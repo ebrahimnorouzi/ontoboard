@@ -36,6 +36,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import equivalence_goldens  # noqa: E402
+import imports_goldens  # noqa: E402
 import lexer_fixture  # noqa: E402
 import make_goldens  # noqa: E402
 import odkimage  # noqa: E402
@@ -253,14 +254,31 @@ def stage_update(tool, image):
                + ", ".join(update_goldens.CASES))
 
 
+def stage_imports(tool, image):
+    said, versions = imports_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-imports"))
+    for line in said:
+        print("import " + line)
+    provenance(tool, image, "imports", versions,
+               "make <target> OBOBASE=%s VERSION=%s TODAY=%s OBODATE=\"%s\" for %s, each on a "
+               "fresh copy of seed/localimports with equivalence/loim/overlay over it, in "
+               "/tmp/odk/loim/src/ontology, the ontologies to mirror being "
+               "equivalence/loim/upstream"
+               % (imports_goldens.UPSTREAM, imports_goldens.VERSION, imports_goldens.DATE,
+                  imports_goldens.OBODATE,
+                  ", ".join((name + " " + extra).strip()
+                            for name, extra in imports_goldens.TARGETS)))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
-                                          "update", "all"])
+                                          "update", "imports", "all"])
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
-    if options.stage in ("seed", "corpus", "make", "equivalence", "update", "all"):
+    if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
+                         "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -273,6 +291,8 @@ def main():
             stage_equivalence(tool, image)
         if options.stage in ("update", "all"):
             stage_update(tool, image)
+        if options.stage in ("imports", "all"):
+            stage_imports(tool, image)
     if options.stage in ("lexer", "all"):
         stage_lexer()
 

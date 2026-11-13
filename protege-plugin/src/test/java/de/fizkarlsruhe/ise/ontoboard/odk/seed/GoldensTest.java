@@ -27,7 +27,7 @@ class GoldensTest {
         assertTrue(provenance.contains("ODK_VERSION=" + OdkPin.VERSION), provenance);
         assertTrue(provenance.contains("ROBOT version 1.9.10"), provenance);
         assertTrue(provenance.contains("Jinja2 3.1.6"), provenance);
-        assertEquals(8, Goldens.configNames().size(), Goldens.configNames().toString());
+        assertEquals(9, Goldens.configNames().size(), Goldens.configNames().toString());
         assertEquals(79, Goldens.corpusNames().size());
     }
 

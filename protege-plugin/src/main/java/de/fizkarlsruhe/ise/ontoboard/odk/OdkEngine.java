@@ -71,12 +71,12 @@ public final class OdkEngine {
      *
      * @param editFile    the project's edit file, in {@code src/ontology}
      * @param commandLine the variables of this run, as on make's command line
-     * @param stopped     asked before each line: whether the person has stopped the run; may be
-     *                    null
+     * @param stopped     asked before each line, and by a fetch while it runs: whether the
+     *                    person has stopped the run; may be null
      */
     public static Outcome run(File editFile, String goal, Map<String, String> commandLine,
             BooleanSupplier stopped) {
-        return run(editFile, goal, commandLine, OdkTools.forProject(), stopped);
+        return run(editFile, goal, commandLine, OdkTools.forProject(stopped), stopped);
     }
 
     /**
@@ -147,6 +147,12 @@ public final class OdkEngine {
                             }
                             if (status != 0) {
                                 complaint[0] = lastOf(transcript, before);
+                                // A line that ended because the run was stopped - a fetch
+                                // does - is the stop, not a failure of the line.
+                                if (stopped != null && stopped.getAsBoolean()) {
+                                    wasStopped[0] = true;
+                                    transcript.add("Stopped.");
+                                }
                             }
                             return status;
                         }
@@ -189,6 +195,17 @@ public final class OdkEngine {
         return cannot == null ? null : "'" + goal + "' needs something OntoBoard's own engine "
                 + "does not do: " + cannot + ". Nothing was run."
                 + FallbackEligibility.OTHER_WAYS;
+    }
+
+    /**
+     * A refusal in short, for a line of a form: its first sentence - what is not done here
+     * - without what was or was not run and who else runs it.
+     */
+    public static String firstSentence(String refusal) {
+        String all = refusal.trim();
+        int end = all.indexOf(". ");
+        String first = end < 0 ? all : all.substring(0, end + 1);
+        return first.endsWith(".") ? first : first + ".";
     }
 
     private static final String MAKEFILE = "Makefile";

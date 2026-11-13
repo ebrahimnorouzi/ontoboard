@@ -1,0 +1,8 @@
+?x	?p	?y
+<http://purl.obolibrary.org/obo/LOIM_0000001>	<http://purl.obolibrary.org/obo/RO_0002233>	<http://purl.obolibrary.org/obo/LOIM_0000000>
+<http://purl.obolibrary.org/obo/LOIM_0000002>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/IAO_0000310>
+<http://purl.obolibrary.org/obo/LOIM_0000001>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/BFO_0000015>
+<http://purl.obolibrary.org/obo/IAO_0000311>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/IAO_0000310>
+<http://purl.obolibrary.org/obo/BFO_0000015>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/BFO_0000003>
+<http://purl.obolibrary.org/obo/BFO_0000003>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/BFO_0000001>
+<http://purl.obolibrary.org/obo/BFO_0000002>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<http://purl.obolibrary.org/obo/BFO_0000001>

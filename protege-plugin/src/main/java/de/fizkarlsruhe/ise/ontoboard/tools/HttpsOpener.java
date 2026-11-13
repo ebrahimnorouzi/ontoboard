@@ -141,6 +141,27 @@ public final class HttpsOpener implements Download.Opener {
         }
     }
 
+    /** One attempt at a connection, for {@link #withOperatingSystemsTrust}. */
+    public interface Trying<T> {
+        /** @param factory another trust store's, or null for the JVM's own */
+        T with(SSLSocketFactory factory) throws IOException;
+    }
+
+    /**
+     * For OntoBoard's other fetches - what ODK's Makefile fetches with curl: tries once with
+     * the JVM's trust store and, after a certificate-path failure and only then, once with
+     * each of the operating system's. The attempt opens its own connection and gives it the
+     * factory it is handed; which addresses it may open is its own business.
+     */
+    public static <T> T withOperatingSystemsTrust(final Trying<T> attempt) throws IOException {
+        return withTrustFallback(new Attempt<T>() {
+            @Override
+            public T with(SSLSocketFactory factory) throws IOException {
+                return attempt.with(factory);
+            }
+        });
+    }
+
     /** The most of an error body kept: enough for any API's explanation, not a whole HTML page. */
     static final int MAX_ERROR_CHARS = 4000;
 

@@ -1,0 +1,50 @@
+Prefix(:=<http://purl.obolibrary.org/obo/loim/imports/iao_import.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/loim/imports/iao_import.owl>
+<http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/iao_import.owl>
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000300>))
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000310>))
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000311>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/IAO_0000115>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/license>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/title>))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: <http://purl.obolibrary.org/obo/IAO_0000115> (definition)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000115> "definition")
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/IAO_0000300> (textual entity)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/IAO_0000300> "A document part that describes some entity.")
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000300> "textual entity"@en)
+
+# Class: <http://purl.obolibrary.org/obo/IAO_0000310> (document)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/IAO_0000310> "A collection of information content entities intended to be understood together as a whole.")
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000310> "document"@en)
+
+# Class: <http://purl.obolibrary.org/obo/IAO_0000311> (publication)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/IAO_0000311> "A document that is the output of a publishing process.")
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000311> "publication"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/IAO_0000311> <http://purl.obolibrary.org/obo/IAO_0000310>)
+
+
+)

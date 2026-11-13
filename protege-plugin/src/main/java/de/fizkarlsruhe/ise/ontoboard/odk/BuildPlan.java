@@ -106,9 +106,11 @@ public final class BuildPlan {
         return new BuildPlan(true, offered, refused, whyNoContainer + ", so OntoBoard runs "
                 + "ODK's own recipes itself, inside Protege - the same Makefile, without the "
                 + "container. test checks the ontology: the reasoner, ODK's checks and your "
-                + "own, the quality report and the OWL profile. Targets that download, or that "
-                + "the project's own Makefile changes, need ODK's container and are not "
-                + "listed. The whole log is kept, and can be saved from the result.",
+                + "own, the quality report and the OWL profile; where the project has "
+                + "imports it fetches them again first, as ODK's test does. A target the "
+                + "engine cannot run for this project is not listed, and the Target "
+                + "field's help says why. The whole log is kept, and can be saved from "
+                + "the result.",
                 whyNoContainer);
     }
 
@@ -201,12 +203,15 @@ public final class BuildPlan {
         StringBuilder help = new StringBuilder("The targets OntoBoard's own engine can run "
                 + "for this project.");
         if (refused.containsKey(TEST)) {
-            help.append(" test is not offered: ").append(inShort(refused.get(TEST)));
+            help.append(" test is not offered: ")
+                    .append(OdkEngine.firstSentence(refused.get(TEST)));
             if (targets.contains(FAST)) {
                 help.append(" test_fast runs the same tests on the imports as they are.");
             }
         } else if (targets.contains(TEST)) {
-            help.append(" test is the full check.");
+            help.append(targets.contains(FAST) ? " test is the full check; test_fast is "
+                    + "the same on the imports as they are, without fetching them again."
+                    : " test is the full check.");
         }
         List<String> others = new ArrayList<String>(refused.keySet());
         others.remove(TEST);
@@ -215,15 +220,6 @@ public final class BuildPlan {
                     .append('.');
         }
         return help.append(RELOAD).toString();
-    }
-
-    /** Why a target is not run here, short enough for a line of help. */
-    private static String inShort(String reason) {
-        if (reason.contains("'curl'")) {
-            return "it fetches the project's imports again, which only ODK's container does.";
-        }
-        int end = reason.indexOf(". ");
-        return end < 0 ? reason : reason.substring(0, end + 1);
     }
 
     /**

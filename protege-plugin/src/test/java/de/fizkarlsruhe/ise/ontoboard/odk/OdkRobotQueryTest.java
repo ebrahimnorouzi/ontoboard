@@ -203,6 +203,8 @@ class OdkRobotQueryTest {
 
         assertNotNull(why, line);
         assertTrue(why.contains(name), why);
+        assertFalse(why.contains("needs ODK's container"), "what OntoBoard does not do is "
+                + "said; who else does is the engine's to add: " + why);
         RecipeShell.Script script = RecipeShell.parse(line);
         assertEquals(1, script.run(OdkTools.forProject(), ontology, said));
         assertTrue(said.toString().contains(name), said.toString());

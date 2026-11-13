@@ -100,8 +100,7 @@ final class RobotQuery {
             if (line.hasOption(option)) {
                 return "'query --" + option + "' is not run inside Protege: OntoBoard runs robot "
                         + "query with the options ODK's recipes give it (--input, --format, "
-                        + "--query, --select, --use-graphs), on its own SPARQL engine. A recipe "
-                        + "that needs --" + option + " needs ODK's container.";
+                        + "--query, --select, --use-graphs), on its own SPARQL engine";
             }
         }
         List<Pair> pairs = pairs(line);

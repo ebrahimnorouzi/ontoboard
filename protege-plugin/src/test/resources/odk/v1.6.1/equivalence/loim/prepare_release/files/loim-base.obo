@@ -1,0 +1,29 @@
+format-version: 1.2
+data-version: loim/releases/1.0.0/loim-base.owl
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: loim/loim-base
+property_value: dce:type IAO:8000001
+property_value: dcterms:description "An ontology that uses terms of three others, for the tests of the import chain" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/by/4.0/
+property_value: dcterms:title "Local imports test ontology" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: LOIM:0000000
+name: root node
+def: "The class everything of this ontology is under." []
+
+[Term]
+id: LOIM:0000001
+name: boiling
+def: "A process in which water is brought to the boil." []
+is_a: BFO:0000015
+relationship: RO:0002233 LOIM:0000000 ! root node
+
+[Term]
+id: LOIM:0000002
+name: recipe
+def: "A document that says how a dish is made." []
+is_a: IAO:0000310
+

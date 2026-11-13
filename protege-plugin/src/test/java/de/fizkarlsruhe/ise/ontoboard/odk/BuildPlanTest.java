@@ -23,7 +23,7 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p>With ODK's container: the project's own targets, {@code test} first - the build its
  * maintainers run. Without it: the targets OntoBoard's own engine can run for this project,
- * {@code test} when nothing has to be fetched and {@code test_fast} when something has; what is
+ * {@code test} first there too, also where the imports have to be fetched for it; what is
  * not offered is said with its reason, never left out in silence.
  */
 class BuildPlanTest {
@@ -58,7 +58,7 @@ class BuildPlanTest {
         }
     }
 
-    /** The shell's own commands, and the programs OntoBoard stands in for; nothing downloads. */
+    /** The shell's own commands and four programs - and none that fetches. */
     private static Map<String, RecipeShell.Tool> tools() {
         Map<String, RecipeShell.Tool> tools =
                 new LinkedHashMap<String, RecipeShell.Tool>(RecipeShell.builtins());
@@ -116,12 +116,32 @@ class BuildPlanTest {
     }
 
     /**
-     * A project that imports from the web: the full test fetches the imports again, which
-     * OntoBoard's engine does not do. The fast test, on the imports as they are, is the choice,
-     * and the form says why the other is missing.
+     * A project that imports from the web: the full test fetches the imports again, and with
+     * the programs OntoBoard has the engine does that too. test is the choice, as it is with
+     * the container, and the form does not send anybody to a container for it.
      */
     @Test
-    void withoutDockerAnImportToFetchMakesTheFastTestTheChoiceAndSaysWhy() throws IOException {
+    void withoutDockerAProjectWithImportsToFetchRunsTestToo() throws IOException {
+        project("oboimports", "obim");
+
+        BuildPlan plan = BuildPlan.inProcess(edit, OdkTools.forProject(),
+                "Docker is not running");
+
+        assertEquals(Collections.<String, String>emptyMap(), plan.refused());
+        assertEquals("test", plan.defaultTarget());
+        assertFalse(plan.explanation().contains("need ODK's container"), plan.explanation());
+        assertTrue(plan.explanation().contains("fetches"), plan.explanation());
+        assertTrue(plan.help().contains("test_fast is the same on the imports as they are"),
+                plan.help());
+    }
+
+    /**
+     * A target that needs a program the engine has not is left out, and the form says why in
+     * the refusal's own words; the fast test, which does not need it, is the choice.
+     */
+    @Test
+    void aTargetThatNeedsAProgramTheEngineHasNotIsLeftOutAndTheFormSaysWhy()
+            throws IOException {
         project("oboimports", "obim");
 
         BuildPlan plan = BuildPlan.inProcess(edit, tools(), "Docker is not running");
@@ -130,6 +150,8 @@ class BuildPlanTest {
         assertEquals("test_fast", plan.defaultTarget());
         assertTrue(plan.refused().get("test").contains("curl"), plan.refused().toString());
         assertTrue(plan.help().contains("test is not offered"), plan.help());
+        assertTrue(plan.help().contains("curl"), "the refusal's own reason: " + plan.help());
+        assertFalse(plan.help().contains("only ODK's container"), plan.help());
         assertTrue(plan.help().contains("test_fast"), plan.help());
     }
 

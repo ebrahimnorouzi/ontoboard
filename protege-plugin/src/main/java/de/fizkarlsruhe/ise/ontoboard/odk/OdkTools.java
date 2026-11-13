@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParserBuilder;
 import org.apache.jena.riot.RiotException;
@@ -33,12 +34,23 @@ final class OdkTools {
      * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml.
      */
     static Map<String, RecipeShell.Tool> forProject() {
+        return forProject(null);
+    }
+
+    /**
+     * The programs of a run the person can stop.
+     *
+     * @param stopped whether the person has stopped the run, for a program that takes its
+     *                time over one line - a fetch; may be null
+     */
+    static Map<String, RecipeShell.Tool> forProject(BooleanSupplier stopped) {
         Map<String, RecipeShell.Tool> tools = new LinkedHashMap<String, RecipeShell.Tool>(
                 RecipeShell.builtins());
         tools.put("robot", new Robot());
         tools.put("odk-info", new OdkInfo());
         tools.put("dicer-cli", new Dicer());
         tools.put("check-rdfxml", new CheckRdfXml());
+        tools.put("curl", new OdkCurl(stopped));
         return tools;
     }
 

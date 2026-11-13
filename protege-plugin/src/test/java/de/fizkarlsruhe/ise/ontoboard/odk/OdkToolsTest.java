@@ -72,13 +72,13 @@ class OdkToolsTest {
             + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n)\n";
 
     @Test
-    void theToolsAreTheShellsOwnAndFourMore() {
+    void theToolsAreTheShellsOwnAndFiveMore() {
         Map<String, RecipeShell.Tool> tools = OdkTools.forProject();
 
         assertTrue(tools.keySet().containsAll(RecipeShell.builtins().keySet()));
         assertTrue(tools.keySet().containsAll(Arrays.asList("robot", "odk-info", "dicer-cli",
-                "check-rdfxml")));
-        assertEquals(RecipeShell.builtins().size() + 4, tools.size(), tools.keySet().toString());
+                "check-rdfxml", "curl")));
+        assertEquals(RecipeShell.builtins().size() + 5, tools.size(), tools.keySet().toString());
     }
 
     // ------------------------------------------------------------------ robot
@@ -135,6 +135,9 @@ class OdkToolsTest {
                 whyNot("robot convert --frobnicate x.owl"));
         assertTrue(whyNot("robot frobnicate -i x.owl").contains("frobnicate"));
         assertTrue(whyNot("robot expand -i x.owl").contains("'expand'"));
+        // What OntoBoard does not do is said; who else does is the engine's to add.
+        assertFalse(whyNot("robot expand -i x.owl").contains("needs ODK's container"),
+                whyNot("robot expand -i x.owl"));
         assertTrue(whyNot("robot report -i x.owl --fail-on ERROR").contains("--output"));
         assertNull(whyNot("robot --catalog catalog-v001.xml merge -i x.owl reason --reasoner ELK "
                 + "--output y.owl"));

@@ -10,9 +10,9 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
  * container" nothing else builds, and without one nothing is built.
  *
  * <p>OntoBoard itself builds what ODK's Makefile builds. A release script of the project's own
- * is a shell script and is not built this way; and where the full release cannot run here - it
- * fetches the imported ontologies again - the release is built on the import modules as they
- * are, which is ODK's {@code prepare_release_fast}.
+ * is a shell script and is not built this way; and where the full release - the one that
+ * fetches the imported ontologies again first - cannot run here for a project, the release is
+ * built on the import modules as they are, which is ODK's {@code prepare_release_fast}.
  */
 public final class ReleaseRoute {
 

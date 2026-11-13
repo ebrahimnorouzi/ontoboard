@@ -299,8 +299,10 @@ final class OdkReleaseForm {
             return start.route.noContainer() + ", so OntoBoard builds the release itself, "
                     + "inside Protege, with ODK's own Makefile (prepare_release): " + what
                     + (start.mayRefreshImports() ? "" : " The import modules are used as they "
-                            + "are: fetching the imported ontologies again is not something "
-                            + "OntoBoard itself does.") + git;
+                            + "are, since the release that fetches the imported ontologies "
+                            + "again first is not built here: "
+                            + de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.firstSentence(
+                                    start.route.whyNotFull())) + git;
         }
         return "Builds the release with ODK's prepare_release, "
                 + (start.isBuiltBy(ReleaseRoute.Kind.NATIVE) ? "in the native ODK environment"

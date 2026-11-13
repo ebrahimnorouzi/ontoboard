@@ -19,7 +19,12 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.FileDocumentSource;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.util.VersionInfo;
 
@@ -118,18 +123,25 @@ final class RunComparisons {
         for (String line : transcript) {
             if (line.matches("make\\[\\d+\\]: (Entering|Leaving) directory .*")) {
                 said.add(line.substring(0, line.indexOf("directory") + "directory".length()));
-            } else if (line.startsWith("robot ") || line.startsWith("mkdir ")
-                    || line.startsWith("if [") || line.equals("fi") || line.startsWith("echo ")
-                    || line.startsWith("make ") || line.startsWith("rsync ")
-                    || line.startsWith("rm ") || line.startsWith("\t")) {
+            } else if (isARecipeLine(line)) {
                 said.add(line);
             }
         }
         return said;
     }
 
+    /** A recipe line as make says it before it runs it; not what a program printed. */
+    private static boolean isARecipeLine(String line) {
+        return line.startsWith("robot ") || line.startsWith("mkdir ")
+                || line.startsWith("if [") || line.equals("fi") || line.startsWith("echo ")
+                || line.startsWith("make ") || line.startsWith("rsync ")
+                || line.startsWith("rm ") || line.startsWith("curl ")
+                || line.startsWith("cat ") || line.startsWith("for ")
+                || line.equals("done") || line.startsWith("\t");
+    }
+
     /**
-     * What ROBOT's report printed: the lines between its own line and ROBOT's next. What it
+     * What ROBOT's report printed: the lines between its own line and make's next. What it
      * says of its rules as it runs them comes sorted here, since ROBOT keeps its rules in a set
      * and runs them in no fixed order; the counts and the findings after them are in theirs.
      */
@@ -138,7 +150,7 @@ final class RunComparisons {
         List<String> after = new ArrayList<String>();
         boolean inside = false;
         for (String line : transcript) {
-            if (inside && line.startsWith("robot ")) {
+            if (inside && isARecipeLine(line)) {
                 break;
             }
             if (inside) {
@@ -149,6 +161,29 @@ final class RunComparisons {
         Collections.sort(ofItsRules);
         ofItsRules.addAll(after);
         return ofItsRules;
+    }
+
+    /**
+     * The ontology a file holds, by itself: what it imports is named in it and is not
+     * fetched, so that a file made part way through a run - the edit file as it is
+     * prepared, say, which still imports its modules - can be held against ODK's as well.
+     */
+    private static OWLOntology byItself(File file) throws Exception {
+        OWLOntologyManager reader = OWLManager.createOWLOntologyManager();
+        final File nowhere = new File(file.getAbsoluteFile().getParentFile(),
+                ".no-such-import");
+        reader.getIRIMappers().add(iri -> IRI.create(nowhere));
+        reader.setOntologyLoaderConfiguration(reader.getOntologyLoaderConfiguration()
+                .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
+        return reader.loadOntologyFromOntologyDocument(new FileDocumentSource(file));
+    }
+
+    private static Set<String> imported(OWLOntology ontology) {
+        Set<String> imports = new TreeSet<String>();
+        for (OWLImportsDeclaration declaration : ontology.getImportsDeclarations()) {
+            imports.add(declaration.getIRI().toString());
+        }
+        return imports;
     }
 
     static List<String> starting(String with, List<String> transcript) {
@@ -171,11 +206,10 @@ final class RunComparisons {
     }
 
     static void assertSameOntology(String name, File theirs, File ours) throws Exception {
-        OWLOntology recorded = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(theirs);
-        OWLOntology here = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(ours);
+        OWLOntology recorded = byItself(theirs);
+        OWLOntology here = byItself(ours);
         assertEquals(recorded.getOntologyID(), here.getOntologyID(), name + ": its names");
+        assertEquals(imported(recorded), imported(here), name + ": what it imports");
         assertEquals(sorted(recorded.getAnnotations()), sorted(here.getAnnotations()),
                 name + ": what the ontology says of itself");
         assertEquals(sorted(recorded.getAxioms(Imports.EXCLUDED)),

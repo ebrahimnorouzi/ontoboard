@@ -1,0 +1,136 @@
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+Repository is up-to-date.
+if [ -f loim-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error loim-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input loim-edit.owl --format ofn --output tmp/loim-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/loim-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/loim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-loim-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-loim-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+PASS Rule ../sparql/owldef-self-reference-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/label-with-iri-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/multiple-replaced_by-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/dc-properties-violation.sparql: 0 violation(s)
+robot --catalog catalog-v001.xml report -i tmp/merged-loim-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/LOIM_ --base-iri http://purl.obolibrary.org/obo/loim --print 5 -o reports/loim-edit.owl-obo-report.tsv
+WARN: 'missing_superclass' query is missing ?value variable
+Violations: 1
+-----------------
+ERROR:      0
+WARN:       0
+INFO:       1
+
+First 1 violations:
+INFO	missing_superclass	root node	rdfs:subClassOf	
+curl -L file:///work/in/upstream/ro.owl --create-dirs -o tmp/ro-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  2848  100  2848    0     0  1926k      0 --:--:-- --:--:-- --:--:-- 1926k
+mkdir -p mirror
+if [ -f tmp/mirror-ro.owl ]; then if cmp -s tmp/mirror-ro.owl mirror/ro.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-ro.owl mirror/ro.owl; fi; fi
+Mirrors different, updating.
+robot --catalog catalog-v001.xml query --input tmp/merged-loim-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+robot --catalog catalog-v001.xml annotate --input mirror/ro.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	         --force true --copy-ontology-annotations true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/imports/ro_import.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/ro_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/ro_import.owl.tmp.owl && mv imports/ro_import.owl.tmp.owl imports/ro_import.owl
+curl -L file:///work/in/upstream/iao.owl --create-dirs -o tmp/iao-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/iao-download.owl -o tmp/mirror-iao.owl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  2175  100  2175    0     0  1183k      0 --:--:-- --:--:-- --:--:-- 1183k
+if [ -f tmp/mirror-iao.owl ]; then if cmp -s tmp/mirror-iao.owl mirror/iao.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-iao.owl mirror/iao.owl; fi; fi
+Mirrors different, updating.
+robot --catalog catalog-v001.xml annotate --input mirror/iao.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	         --copy-ontology-annotations true --force true \
+	         --individuals include \
+	         --method TOP \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term rdfs:label \
+	        --term IAO:0000115 \
+	        --term OMO:0002000 \
+	        --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/imports/iao_import.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/iao_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/iao_import.owl.tmp.owl && mv imports/iao_import.owl.tmp.owl imports/iao_import.owl
+curl -L file:///work/in/upstream/bfo.owl --create-dirs -o tmp/bfo-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/bfo-download.owl -o tmp/mirror-bfo.owl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  1882  100  1882    0     0  1272k      0 --:--:-- --:--:-- --:--:-- 1272k
+if [ -f tmp/mirror-bfo.owl ]; then if cmp -s tmp/mirror-bfo.owl mirror/bfo.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-bfo.owl mirror/bfo.owl; fi; fi
+Mirrors different, updating.
+robot --catalog catalog-v001.xml annotate --input mirror/bfo.owl --remove-annotations \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	               --add-source true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/imports/bfo_import.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/bfo_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/bfo_import.owl.tmp.owl && mv imports/bfo_import.owl.tmp.owl imports/bfo_import.owl
+robot --catalog catalog-v001.xml merge --input tmp/loim-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/loim-full.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/loim-full.owl --annotation owl:versionInfo 1.0.0 --output loim-full.owl.tmp.owl && mv loim-full.owl.tmp.owl loim-full.owl
+robot --catalog catalog-v001.xml annotate --input loim-full.owl --ontology-iri http://purl.obolibrary.org/obo/loim.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/loim.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o loim.owl.tmp.owl && mv loim.owl.tmp.owl loim.owl
+robot --catalog catalog-v001.xml merge -i loim.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_loim.owl.txt || { cat reports/validate_profile_owl2dl_loim.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/loim-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml convert --input loim.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o loim.obo
+robot --catalog catalog-v001.xml merge --input tmp/loim-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/LOIM --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/loim/loim-base.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/loim-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output loim-base.owl.tmp.owl && mv loim-base.owl.tmp.owl loim-base.owl
+robot --catalog catalog-v001.xml convert --input loim-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o loim-base.obo
+robot --catalog catalog-v001.xml convert --input loim-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o loim-full.obo
+Checking RDF/XML file loim.owl...
+  LightRDF: OK
+Checking RDF/XML file loim-base.owl...
+  LightRDF: OK
+Checking RDF/XML file loim-full.owl...
+  LightRDF: OK
+make copy_release_files
+make[1]: Entering directory '/tmp/odk/loim/src/ontology'
+rsync -R   loim.obo  loim.owl   loim-base.obo  loim-base.owl   loim-full.obo  loim-full.owl   ../..
+make[1]: Leaving directory '/tmp/odk/loim/src/ontology'
+rm -f   loim.obo  loim.owl   loim-base.obo  loim-base.owl   loim-full.obo  loim-full.owl  tmp/merged-loim-edit.ofn tmp/loim-preprocess.owl
+Release files are now in ../.. - now you should commit, push and make a release         on your git hosting site such as GitHub or GitLab

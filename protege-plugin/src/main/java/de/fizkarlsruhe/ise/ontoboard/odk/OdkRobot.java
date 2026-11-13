@@ -652,8 +652,7 @@ public final class OdkRobot {
 
         private static String notHere(String name) {
             return "ROBOT's '" + name + "' is not run inside Protege: it goes through a part of "
-                    + "the OWL API that Protege's own version does not have. A recipe that needs "
-                    + "it needs ODK's container.";
+                    + "the OWL API that Protege's own version does not have";
         }
 
         /**

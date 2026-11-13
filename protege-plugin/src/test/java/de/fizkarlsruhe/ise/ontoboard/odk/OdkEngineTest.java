@@ -387,6 +387,45 @@ class OdkEngineTest {
                 + "said: " + outcome.getFailure());
     }
 
+    /**
+     * A program that takes its time over one line - a fetch - ends when the person stops
+     * the run, and its line fails. That is said as the stop it was, not as a failure of
+     * the line.
+     */
+    @Test
+    void aStopDuringALineIsSaidAsAStop() {
+        final boolean[] stopped = {false};
+        Map<String, RecipeShell.Tool> tools = tools();
+        final RecipeShell.Tool robot = tools.get("robot");
+        final int[] calls = {0};
+        tools.put("robot", new RecipeShell.Tool() {
+            @Override
+            public String whyNot(List<String> arguments) {
+                return robot.whyNot(arguments);
+            }
+
+            @Override
+            public int run(RecipeShell.Call call) throws IOException {
+                if (++calls[0] == 2) {
+                    stopped[0] = true;
+                    call.complain("the fetch was stopped");
+                    return 130;
+                }
+                return robot.run(call);
+            }
+        });
+
+        OdkEngine.Outcome outcome = OdkEngine.run(edit, "test_fast",
+                Goldens.makeFixedVariables(), tools, () -> stopped[0]);
+
+        assertFalse(outcome.isOk());
+        assertEquals(2, calls[0], "nothing ran after it");
+        assertTrue(outcome.getFailure().startsWith("You stopped 'test_fast'"),
+                outcome.getFailure());
+        assertTrue(outcome.getTranscript().contains("Stopped."),
+                outcome.getTranscript().toString());
+    }
+
     // ------------------------------------------------------------------ asked, not run
 
     /**

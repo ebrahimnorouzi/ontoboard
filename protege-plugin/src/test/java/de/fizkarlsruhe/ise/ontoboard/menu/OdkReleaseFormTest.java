@@ -624,14 +624,17 @@ class OdkReleaseFormTest {
     }
 
     /**
-     * The full release fetches the imported ontologies again, which OntoBoard itself does not
-     * do. The form then does not offer it, says that the import modules are used as they are,
+     * Where OntoBoard itself cannot run the full release for a project - the one that
+     * fetches the imported ontologies again first - the form does not offer it, says that
+     * the import modules are used as they are and why, in the engine's own first sentence,
      * and the release is the fast one whatever was left in the form.
      */
     @Test
-    void whereTheImportsCannotBeFetchedAgainTheFormDoesNotOfferIt() {
+    void whereTheFullReleaseCannotRunHereTheFormDoesNotOfferItAndSaysWhy() {
         OdkReleaseForm.Start start = start().withRoute(
-                itself("it fetches the project's imports again"));
+                itself("'prepare_release' needs something OntoBoard's own engine does not "
+                        + "do: the program 'wget' (Makefile:498). Nothing was run. It can "
+                        + "be run some other way."));
 
         assertFalse(keys(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)))
                 .contains(OdkReleaseForm.REFRESH));
@@ -640,6 +643,10 @@ class OdkReleaseFormTest {
                 chosen(start, OdkReleaseForm.REFRESH, "true")).refreshesImports());
         String explanation = OdkReleaseForm.explanation(start);
         assertTrue(explanation.contains("import modules are used as they are"), explanation);
+        assertTrue(explanation.contains("the program 'wget' (Makefile:498)."), explanation);
+        assertFalse(explanation.contains("Nothing was run"), explanation);
+        assertFalse(explanation.contains("is not something OntoBoard itself does"),
+                "fetching is something it does: " + explanation);
     }
 
     /** With ODK's own tools installed on the machine, the form names that. */

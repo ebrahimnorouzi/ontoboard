@@ -1,0 +1,48 @@
+Prefix(:=<http://purl.obolibrary.org/obo/iao.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/iao.owl>
+Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)
+Annotation(dcterms:title "A small stand-in for an information ontology, made for OntoBoard's tests")
+
+Declaration(Class(obo:IAO_0000030))
+Declaration(Class(obo:IAO_0000310))
+Declaration(Class(obo:IAO_0000311))
+Declaration(Class(obo:IAO_0000300))
+Declaration(AnnotationProperty(obo:IAO_0000112))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+
+############################
+#   Annotation Properties
+############################
+
+AnnotationAssertion(rdfs:label obo:IAO_0000112 "example of usage")
+AnnotationAssertion(rdfs:label obo:IAO_0000115 "definition")
+
+############################
+#   Classes
+############################
+
+AnnotationAssertion(obo:IAO_0000115 obo:IAO_0000030 "A generically dependent continuant that is about some thing.")
+AnnotationAssertion(rdfs:label obo:IAO_0000030 "information content entity"@en)
+
+AnnotationAssertion(obo:IAO_0000115 obo:IAO_0000300 "A document part that describes some entity.")
+AnnotationAssertion(rdfs:label obo:IAO_0000300 "textual entity"@en)
+SubClassOf(obo:IAO_0000300 obo:IAO_0000030)
+
+AnnotationAssertion(obo:IAO_0000112 obo:IAO_0000310 "A journal article, a patent application, a laboratory notebook, or a book.")
+AnnotationAssertion(obo:IAO_0000115 obo:IAO_0000310 "A collection of information content entities intended to be understood together as a whole.")
+AnnotationAssertion(rdfs:label obo:IAO_0000310 "document"@en)
+SubClassOf(obo:IAO_0000310 obo:IAO_0000030)
+
+AnnotationAssertion(obo:IAO_0000115 obo:IAO_0000311 "A document that is the output of a publishing process.")
+AnnotationAssertion(rdfs:label obo:IAO_0000311 "publication"@en)
+SubClassOf(obo:IAO_0000311 obo:IAO_0000310)
+)

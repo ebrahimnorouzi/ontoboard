@@ -1,0 +1,89 @@
+format-version: 1.2
+data-version: releases/1.0.0
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: loim
+property_value: dcterms:description "An ontology that uses terms of three others, for the tests of the import chain" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/by/4.0/
+property_value: dcterms:title "Local imports test ontology" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: BFO:0000001
+name: entity
+
+[Term]
+id: BFO:0000002
+name: continuant
+def: "An entity that persists, endures, or continues to exist through time while maintaining its identity." []
+is_a: BFO:0000001 ! entity
+disjoint_from: BFO:0000003 ! occurrent
+
+[Term]
+id: BFO:0000003
+name: occurrent
+def: "An entity that unfolds itself in time." []
+is_a: BFO:0000001 ! entity
+
+[Term]
+id: BFO:0000015
+name: process
+def: "An occurrent that has some temporal proper part and for some time has a material entity as participant." []
+is_a: BFO:0000003 ! occurrent
+
+[Term]
+id: IAO:0000300
+name: textual entity
+def: "A document part that describes some entity." []
+
+[Term]
+id: IAO:0000310
+name: document
+def: "A collection of information content entities intended to be understood together as a whole." []
+
+[Term]
+id: IAO:0000311
+name: publication
+def: "A document that is the output of a publishing process." []
+is_a: IAO:0000310 ! document
+
+[Term]
+id: LOIM:0000000
+name: root node
+def: "The class everything of this ontology is under." []
+
+[Term]
+id: LOIM:0000001
+name: boiling
+def: "A process in which water is brought to the boil." []
+is_a: BFO:0000015 ! process
+relationship: RO:0002233 LOIM:0000000 ! has input root node
+
+[Term]
+id: LOIM:0000002
+name: recipe
+def: "A document that says how a dish is made." []
+is_a: IAO:0000310 ! document
+
+[Typedef]
+id: RO:0000056
+name: participates in
+def: "A relation between a continuant and a process, in which the continuant is somehow involved in the process." []
+inverse_of: RO:0000057 ! has participant
+
+[Typedef]
+id: RO:0000057
+name: has participant
+def: "A relation between a process and a continuant, in which the continuant is somehow involved in the process." []
+
+[Typedef]
+id: RO:0002233
+name: has input
+def: "p has input c iff p is a process, c is a material entity, c is a participant in p, and c is present at the start of p." []
+is_a: RO:0000057 ! has participant
+
+[Typedef]
+id: RO:0002234
+name: has output
+is_a: RO:0000057 ! has participant
+

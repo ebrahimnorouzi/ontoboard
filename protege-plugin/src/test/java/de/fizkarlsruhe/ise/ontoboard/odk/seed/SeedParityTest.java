@@ -32,7 +32,7 @@ class SeedParityTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"eggboil", "evidence-eggboil", "oboimports", "custombase",
-        "components", "artefacts", "nodefaults", "frozen"})
+        "components", "artefacts", "nodefaults", "frozen", "localimports"})
     void theSeedIsOdksByteForByte(String name) {
         Goldens.assertTreeEquals(Goldens.seedTree(name),
                 OdkInstaller.renderSeed(Goldens.config(name)).files());
