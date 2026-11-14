@@ -87,6 +87,18 @@ class ConfigSyncTest {
         assertTrue(done.needsALook(), "the whole result is shown: it says where it stopped");
     }
 
+    /** A failure is never in line, whatever its sentence begins with. */
+    @Test
+    void aFailedUpdateIsNotInLineEvenWhenItsSentenceBeginsLikeASuccess() {
+        ConfigSync.Done done = ConfigSync.done(itself(), OperationResult.failed("Update "
+                + "project files", OdkUpdateForm.UPDATED + " 2 files, and then the edit "
+                        + "file could not be put in place."));
+
+        assertFalse(done.inLine());
+        assertTrue(done.needsALook());
+        assertTrue(done.said().contains("once that is sorted out"), done.said());
+    }
+
     /** Written, and something to know about it - the edit file could not be read again. */
     @Test
     void anUpdateWithAWarningIsInLineAndWorthALook() {

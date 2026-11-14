@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,28 @@ class EngineReachTest {
                 .replace('\\', '/');
     }
 
+    /**
+     * The table is of Java 11 and later. On Java 8 (Protege 5.5) three lines differ, as they
+     * should: the artefacts project releases the JSON form of its ontology, which a library
+     * writes that needs Java 11 ({@link OdkRobot#whyNoJson}), and the engine says so before
+     * it runs anything of such a target.
+     */
+    private static String onThisJava(String table) {
+        String whyNot = OdkRobot.whyNoJson(System.getProperty("java.specification.version"));
+        if (whyNot == null) {
+            return table;
+        }
+        String here = table;
+        for (String goal : Arrays.asList("prepare_release_fast", "prepare_release", "all")) {
+            String runs = "artefacts " + goal + ": runs\n";
+            assertTrue(here.contains(runs), "on Java 11 it does: " + runs);
+            here = here.replace(runs, "artefacts " + goal + ": not run - '" + goal
+                    + "' needs something OntoBoard's own engine does not do: 'convert': "
+                    + OdkEngine.firstSentence(whyNot) + "\n");
+        }
+        return here;
+    }
+
     @Test
     void whatTheEngineRunsOfOdksTargetsForEveryRecordedProject() throws IOException {
         List<String> found = new ArrayList<String>();
@@ -100,8 +123,9 @@ class EngineReachTest {
         Files.createDirectories(kept.getAbsoluteFile().getParentFile().toPath());
         Files.write(kept.toPath(), table.getBytes(StandardCharsets.UTF_8));
 
-        assertEquals(new String(Goldens.bytes(new File(Goldens.root().getParentFile(),
-                "engine-reach.txt")), StandardCharsets.UTF_8).replace("\r\n", "\n"), table,
+        assertEquals(onThisJava(new String(Goldens.bytes(new File(
+                Goldens.root().getParentFile(), "engine-reach.txt")), StandardCharsets.UTF_8)
+                .replace("\r\n", "\n")), table,
                 runs + " of " + found.size() + " run; the table found is in "
                         + kept.getPath());
     }

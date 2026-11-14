@@ -309,17 +309,18 @@ public final class Guide {
         facts.hasRequirements = hasAQuestion(new File(root, "docs/requirements.md"))
                 || hasAQuestion(new File(root, "docs/xd/requirements.md"));
         facts.importModules = ImportModules.modulesIn(root).size();
+        // A question - a .rq file in src/sparql - is a test of one's own in every project;
+        // in an ODK project so is a check of one's own that the configuration lists.
         if (OdkRelease.isOdkProject(editFile)) {
             facts.ownTests = ownChecks(root, ontologyDirectory);
-        } else {
-            File[] sparql = new File(root, "src/sparql").listFiles();
-            if (sparql != null) {
-                for (File query : sparql) {
-                    if (query.getName().endsWith(".rq")
-                            && !query.getName().equals("check_labels.rq")
-                            && !isTheTemplate(query)) {
-                        facts.ownTests++;
-                    }
+        }
+        File[] sparql = new File(root, "src/sparql").listFiles();
+        if (sparql != null) {
+            for (File query : sparql) {
+                if (query.getName().endsWith(".rq")
+                        && !query.getName().equals("check_labels.rq")
+                        && !isTheTemplate(query)) {
+                    facts.ownTests++;
                 }
             }
         }
@@ -426,9 +427,10 @@ public final class Guide {
     }
 
     /**
-     * In an ODK project, the tests of the project's own: the checks its configuration lists whose
+     * In an ODK project, the checks of the project's own: those its configuration lists whose
      * file is there - what ODK's test runs - other than ODK's own and the label check every
-     * project starts with. A query in src/sparql that no list names is not run, so not counted.
+     * project starts with. A check file that no list names is not run, so not counted. (Its
+     * questions, the .rq files, are counted beside these.)
      */
     static int ownChecks(File root, File ontologyDirectory) {
         File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);

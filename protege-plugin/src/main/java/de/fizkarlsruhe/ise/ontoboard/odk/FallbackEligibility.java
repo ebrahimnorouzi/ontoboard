@@ -31,6 +31,12 @@ import java.util.Map;
  *       line. A target of their own that the run never reaches is no obstacle.</li>
  * </ol>
  *
+ * <p>One thing in a project's own makefile is OntoBoard's: the rule that asks the project's
+ * questions of the ontology with its imports ({@link OdkQuestions}). Where it stands as
+ * OntoBoard writes it, it is part of what the engine runs - the comparison is made with
+ * the project's own file reduced to that rule - and a rule that was changed is the
+ * project's own like any other.
+ *
  * <p>A variable of the run itself - the version, the shape of the version IRI - is given on
  * make's command line and is not a setting of the project's.
  */
@@ -49,6 +55,13 @@ public final class FallbackEligibility {
     private static final String CONTAINER = " What a project adds to ODK's Makefile is run by "
             + "make and not by OntoBoard's own engine, which runs ODK's Makefile as ODK "
             + "writes it." + OTHER_WAYS;
+
+    /** Said of OntoBoard's own rule for the questions, where somebody changed it. */
+    private static final String CHANGED_QUESTIONS = " It is OntoBoard's rule for the "
+            + "project's questions, changed after OntoBoard wrote it, and OntoBoard's "
+            + "engine runs it only as written: "
+            + "OntoBoard > Check and test > Write a test from a question... "
+            + "writes it again as it was.";
 
     private FallbackEligibility() {
     }
@@ -139,16 +152,22 @@ public final class FallbackEligibility {
             return refused("OntoBoard's own engine cannot follow this project's Makefile for '"
                     + goal + "': " + notRead.getMessage() + ". make can." + OTHER_WAYS);
         }
-        MakeFile.Step theirs = firstOfTheirs(plan);
+        // OntoBoard's rule for the project's questions, where it stands as written.
+        String ownText = disk.read(own);
+        int[] questions = OdkQuestions.linesIn(ownText);
+        MakeFile.Step theirs = firstOfTheirs(plan, own, questions);
         if (theirs != null) {
             return refused(theirs.file() + ":" + ruleLine(theirs, make) + " has a rule of the "
                     + "project's own for " + theirs.target()
                     + (theirs.target().equals(goal) ? "" : ", which '" + goal + "' runs")
-                    + "." + CONTAINER);
+                    + "." + (OdkQuestions.TARGET.equals(theirs.target())
+                            && OdkQuestions.isChangedIn(ownText) ? CHANGED_QUESTIONS : "")
+                    + CONTAINER);
         }
         List<MakeFile.Step> odksPlan;
         try {
-            odksPlan = MakeFile.read(MAKEFILE, without(disk, own), commandLine).runPlan(goal);
+            odksPlan = MakeFile.read(MAKEFILE, without(disk, own,
+                    OdkQuestions.alone(ownText)), commandLine).runPlan(goal);
         } catch (MakeFile.MakeException onlyWithTheirs) {
             return refused("'" + goal + "' can be made only with the project's own " + own
                     + " (without it: " + onlyWithTheirs.getMessage() + ")" + CONTAINER);
@@ -185,14 +204,24 @@ public final class FallbackEligibility {
 
     // ------------------------------------------------------------------ what is theirs
 
-    /** The first step of a run that is not from ODK's Makefile, sub-makes included; or null. */
-    private static MakeFile.Step firstOfTheirs(List<MakeFile.Step> plan) {
+    /**
+     * The first step of a run that is neither from ODK's Makefile nor from OntoBoard's
+     * rule for the questions, sub-makes included; or null.
+     *
+     * @param own       the name of the project's own makefile
+     * @param questions the first and last line of OntoBoard's rule in it, where it stands
+     *                  as written; else null
+     */
+    private static MakeFile.Step firstOfTheirs(List<MakeFile.Step> plan, String own,
+            int[] questions) {
         for (MakeFile.Step step : plan) {
+            boolean ontoBoards = questions != null && own.equals(step.file())
+                    && step.line() >= questions[0] && step.line() <= questions[1];
             if (step.kind() != MakeFile.Step.Kind.MESSAGE && step.file() != null
-                    && !step.file().equals(MAKEFILE)) {
+                    && !step.file().equals(MAKEFILE) && !ontoBoards) {
                 return step;
             }
-            MakeFile.Step inside = firstOfTheirs(step.steps());
+            MakeFile.Step inside = firstOfTheirs(step.steps(), own, questions);
             if (inside != null) {
                 return inside;
             }
@@ -298,13 +327,22 @@ public final class FallbackEligibility {
         return text.replace("\r\n", "\n");
     }
 
-    /** The same folder, with the project's own makefile holding nothing. */
-    private static MakeFile.Disk without(final MakeFile.Disk disk, final String own) {
+    /**
+     * The same folder, with the project's own makefile holding nothing of the project's:
+     * nothing at all, or OntoBoard's rule for the questions alone, at its lines.
+     *
+     * @param ruleAlone {@link OdkQuestions#alone} of the file; null when it has no such rule
+     */
+    private static MakeFile.Disk without(final MakeFile.Disk disk, final String own,
+            final String ruleAlone) {
         return new Forwarding(disk) {
             @Override
             public String read(String path) {
-                return path.equals(own) || path.equals("./" + own)
-                        ? "# (the project's own makefile, left out)\n" : disk.read(path);
+                if (path.equals(own) || path.equals("./" + own)) {
+                    return ruleAlone != null ? ruleAlone
+                            : "# (the project's own makefile, left out)\n";
+                }
+                return disk.read(path);
             }
         };
     }

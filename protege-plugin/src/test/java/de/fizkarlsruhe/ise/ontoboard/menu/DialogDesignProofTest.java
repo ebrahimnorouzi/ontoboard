@@ -1,5 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
@@ -416,5 +418,49 @@ class DialogDesignProofTest {
                 + text.getWidth() + " px wide in a view of " + scroll.getViewport().getWidth());
         assertTrue(text.getText().contains("eggboil-full.ttl\ngit add -- releases/1.0.0"),
                 "the commands themselves are unchanged: a wrapped line is still one line");
+    }
+
+    // ---------------------------------------------------------------- a cut cell can be read
+
+    /**
+     * The dialog cannot be resized, so a cell too long for its column stays cut - a state of
+     * Update project files was, in both hosts (1.153.0, live run), and nothing showed the
+     * rest. Pointed at, a cut cell says its whole text; one that fits says nothing twice.
+     */
+    @Test
+    void aCellThatIsCutSaysItsWholeTextWhenPointedAt() {
+        String cut = "changes: its import declarations are brought in line with the "
+                + "configuration";
+        OperationResult result = OperationResult.of("Update project files")
+                .columns("File", "State")
+                .row("src/ontology/Makefile", "changes")
+                .row("src/ontology/eggboil-edit.owl", cut)
+                .summary("2 files would change.")
+                .build();
+        JPanel content = ResultDialog.buildContent(result);
+        render(content);
+        javax.swing.JTable table = find(content, javax.swing.JTable.class);
+        java.awt.Rectangle cell = table.getCellRect(1, 1, false);
+        assertTrue(cell.width > 100 && table.prepareRenderer(table.getCellRenderer(1, 1), 1, 1)
+                .getPreferredSize().width > cell.width, "the cell is laid out, and too narrow "
+                        + "for its text: " + cell);
+
+        assertEquals(cut, table.getToolTipText(over(table, 1, 1)));
+        assertNull(table.getToolTipText(over(table, 0, 1)), "a state that fits");
+        assertNull(table.getToolTipText(over(table, 0, 0)), "a path that fits");
+        assertNull(table.getToolTipText(at(table, 10, table.getRowHeight() * 2 + 30)),
+                "below the last row");
+    }
+
+    private static java.awt.event.MouseEvent over(javax.swing.JTable table, int row,
+            int column) {
+        java.awt.Rectangle cell = table.getCellRect(row, column, false);
+        return at(table, cell.x + 4, cell.y + 4);
+    }
+
+    /** The pointer over a place of a table that is on no screen: its place there is given. */
+    private static java.awt.event.MouseEvent at(javax.swing.JTable table, int x, int y) {
+        return new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_MOVED,
+                0L, 0, x, y, x, y, 0, false, java.awt.event.MouseEvent.NOBUTTON);
     }
 }

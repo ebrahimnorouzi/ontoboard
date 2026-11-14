@@ -137,9 +137,9 @@ class GuideTest {
     }
 
     /**
-     * In an ODK project a test of one's own is a check the configuration lists, with its file:
-     * what ODK's test runs. ODK's own checks and the label check are not one, and nor is a query
-     * in src/sparql that no list names.
+     * In an ODK project a test of one's own is a question - a .rq file in src/sparql - or a
+     * check the configuration lists, with its file. ODK's own checks and the label check
+     * are not one, and nor is a check file that no list names.
      */
     @Test
     void inAnOdkProjectTheTestsAreTheListedChecks(@TempDir File temp) throws Exception {
@@ -155,11 +155,11 @@ class GuideTest {
         String config = de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.config("eggboil");
         write(yaml, config);
         write(new File(root, "src/sparql/check_labels-violation.sparql"), "SELECT * {}");
-        write(new File(root, "src/sparql/mine.rq"), "SELECT * {}");
+        write(new File(root, "src/sparql/check_labels.rq"), "SELECT * {}");
         write(new File(root, "src/sparql/other-violation.sparql"), "SELECT * {}");
 
         assertEquals(0, Guide.factsOf(edit, null).ownTests,
-                "ODK's own, the label check, and two queries nobody runs");
+                "ODK's own, the label check in either form, and a check nobody lists");
 
         config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config, "dc-properties");
         write(yaml, config);
@@ -177,6 +177,30 @@ class GuideTest {
                 "SELECT * {}");
         Guide.Facts facts = Guide.factsOf(edit, null);
         assertEquals(1, facts.ownTests, "a question's check");
+        assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
+                .get("tests"));
+
+        write(new File(root, "src/sparql/every_egg_is_boiled.rq"), "SELECT * {}");
+        assertEquals(2, Guide.factsOf(edit, null).ownTests, "and a question");
+    }
+
+    /** A question alone is a test of one's own: what Write a test from a question writes. */
+    @Test
+    void inAnOdkProjectAQuestionIsATestOfOnesOwn(@TempDir File temp) throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            target.getParentFile().mkdirs();
+            Files.write(target.toPath(), file.getValue());
+        }
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        assertEquals(0, Guide.factsOf(edit, null).ownTests);
+
+        write(new File(root, "src/sparql/every_egg_is_boiled.rq"), "SELECT * {}");
+
+        Guide.Facts facts = Guide.factsOf(edit, null);
+        assertEquals(1, facts.ownTests);
         assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
                 .get("tests"));
     }

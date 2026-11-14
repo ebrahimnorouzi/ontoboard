@@ -391,7 +391,8 @@ class OdkChecksTest {
         for (File file : OdkChecks.undeclaredIn(root, config)) {
             undeclared.add(file.getName());
         }
-        assertEquals(Arrays.asList("mine.rq", "other-violation.sparql"), undeclared);
+        assertEquals(Arrays.asList("other-violation.sparql"), undeclared,
+                "a .rq file is a question, not a check somebody forgot to list");
         assertTrue(OdkChecks.filesIn(new File(root, "nowhere"), config).isEmpty());
     }
 

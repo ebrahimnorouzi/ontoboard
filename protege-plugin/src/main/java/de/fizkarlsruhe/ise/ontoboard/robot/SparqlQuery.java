@@ -132,6 +132,20 @@ public final class SparqlQuery {
      *     needs the parser's own message, which names the line and column
      */
     public static Answer run(OWLOntology ontology, String sparql) {
+        return run(ontology, sparql, true);
+    }
+
+    /**
+     * The same, asked of the ontology by itself: what it says, without what it imports.
+     * That is what ODK's {@code sparql_test} asks a project's checks of
+     * ({@link OntologyDataset#modelOfItself}), so that is how the checks ODK runs are
+     * asked here.
+     */
+    public static Answer runAlone(OWLOntology ontology, String sparql) {
+        return run(ontology, sparql, false);
+    }
+
+    private static Answer run(OWLOntology ontology, String sparql, boolean withImports) {
         if (ontology == null) {
             throw new IllegalArgumentException("no ontology to query");
         }
@@ -148,7 +162,7 @@ public final class SparqlQuery {
             throw new RobotException(describe(cannotParse), cannotParse);
         }
 
-        Dataset dataset = datasetOf(ontology);
+        Dataset dataset = datasetOf(ontology, withImports);
         QueryExecution execution = QueryExecutionFactory.create(query, dataset);
         try {
             if (query.isAskType()) {
@@ -207,6 +221,16 @@ public final class SparqlQuery {
      * stack trace.
      */
     public static List<Check> verify(OWLOntology ontology, List<File> queryFiles) {
+        return verify(ontology, queryFiles, true);
+    }
+
+    /** {@link #verify}, each check asked of the ontology by itself ({@link #runAlone}). */
+    public static List<Check> verifyAlone(OWLOntology ontology, List<File> queryFiles) {
+        return verify(ontology, queryFiles, false);
+    }
+
+    private static List<Check> verify(OWLOntology ontology, List<File> queryFiles,
+            boolean withImports) {
         List<Check> checks = new ArrayList<Check>();
         if (queryFiles == null || queryFiles.isEmpty()) {
             return checks;
@@ -216,7 +240,7 @@ public final class SparqlQuery {
             try {
                 String sparql = new String(Files.readAllBytes(file.toPath()),
                         StandardCharsets.UTF_8);
-                checks.add(new Check(name, run(ontology, sparql), null));
+                checks.add(new Check(name, run(ontology, sparql, withImports), null));
             } catch (IOException cannotRead) {
                 checks.add(new Check(name, null, "could not be read: " + cannotRead.getMessage()));
             } catch (RobotException cannotRun) {
@@ -318,10 +342,11 @@ public final class SparqlQuery {
     }
 
     /** The ontology and its imports as a Jena dataset ROBOT can query. */
-    private static Dataset datasetOf(OWLOntology ontology) {
+    private static Dataset datasetOf(OWLOntology ontology, boolean withImports) {
         // DatasetFactory.create copies the model into the default graph, which is what an
         // unqualified SPARQL pattern matches - wrap() would leave it addressable only by name.
-        return DatasetFactory.create(OntologyDataset.modelOf(ontology));
+        return DatasetFactory.create(withImports ? OntologyDataset.modelOf(ontology)
+                : OntologyDataset.modelOfItself(ontology));
     }
 
     private static String text(QuerySolution row, String variable) {

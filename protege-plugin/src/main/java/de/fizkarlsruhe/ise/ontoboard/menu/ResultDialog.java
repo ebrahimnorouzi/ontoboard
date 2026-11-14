@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -35,7 +36,8 @@ import javax.swing.table.DefaultTableModel;
  * summary, table, log, timing, files - because a saved report missing the warnings is the
  * half-truth this is meant to avoid.
  *
- * <p>Swing, so untested; every decision it renders is made in {@link OperationResult}, which is.
+ * <p>Swing; every decision it renders is made in {@link OperationResult}, which is tested, and
+ * what a decision looks like at the dialog's own size in {@code DialogDesignProofTest}.
  */
 public final class ResultDialog {
 
@@ -188,7 +190,27 @@ public final class ResultDialog {
         for (List<String> row : result.getRows()) {
             model.addRow(row.toArray(new Object[0]));
         }
-        JTable table = new JTable(model);
+        JTable table = new JTable(model) {
+            private static final long serialVersionUID = 1L;
+
+            /**
+             * A cell too long for its column is cut, and the dialog cannot be made wider:
+             * pointed at, such a cell says its whole text. One that fits says nothing.
+             */
+            @Override
+            public String getToolTipText(MouseEvent pointer) {
+                int row = rowAtPoint(pointer.getPoint());
+                int column = columnAtPoint(pointer.getPoint());
+                if (row < 0 || column < 0) {
+                    return null;
+                }
+                Object value = getValueAt(row, column);
+                Component shown = prepareRenderer(getCellRenderer(row, column), row, column);
+                boolean cut = shown.getPreferredSize().width
+                        > getCellRect(row, column, false).width;
+                return cut && value != null ? value.toString() : null;
+            }
+        };
         table.setAutoCreateRowSorter(true);
         table.setFillsViewportHeight(true);
         return table;

@@ -26,8 +26,10 @@ import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * Check and test &gt; SPARQL..., "Run this project's checks": in an ODK project those are the
- * checks its configuration lists - what ODK's test runs - and a query in src/sparql that is not
- * listed is named, not run. In a project of the older layout it is every .rq file, as before.
+ * checks its configuration lists, asked of the ontology by itself as ODK's test asks them,
+ * and the project's questions - the .rq files - asked with its imports. A check file that
+ * is not listed is named, not run. In a project of the older layout it is every .rq file,
+ * as before.
  */
 class SparqlActionChecksTest {
 
@@ -62,7 +64,8 @@ class SparqlActionChecksTest {
     }
 
     @Test
-    void inAnOdkProjectTheChecksAreTheListedOnes(@TempDir File temp) throws Exception {
+    void inAnOdkProjectTheChecksAreTheListedOnesAndTheQuestions(@TempDir File temp)
+            throws Exception {
         File root = odkProject(temp);
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
 
@@ -70,12 +73,19 @@ class SparqlActionChecksTest {
 
         assertEquals(Arrays.asList("owldef-self-reference-violation.sparql",
                 "iri-range-violation.sparql", "label-with-iri-violation.sparql",
-                "multiple-replaced_by-violation.sparql", NAME + "-violation.sparql"),
-                names(checks.files()), "in the configuration's order");
-        assertTrue(checks.notRun().contains("mine.rq")
-                && checks.notRun().contains("other-violation.sparql"), checks.notRun());
+                "multiple-replaced_by-violation.sparql", NAME + "-violation.sparql",
+                "mine.rq"), names(checks.files()),
+                "ODK's checks in the configuration's order, then the questions");
+        assertEquals(Arrays.asList("mine.rq"), names(checks.questions()));
+        assertTrue(checks.notRun().contains("other-violation.sparql"), checks.notRun());
         assertTrue(checks.notRun().contains("not listed under robot_report: "
-                + "custom_sparql_checks in eggboil-odk.yaml, so ODK's test does not run them"),
+                + "custom_sparql_checks in eggboil-odk.yaml, so ODK's test does not run it"),
+                checks.notRun());
+        assertTrue(checks.notRun().contains("mine.rq") && checks.notRun().contains(
+                "the rule that asks a project's questions is not in eggboil.Makefile"),
+                "a question nothing asks yet: " + checks.notRun());
+        assertTrue(checks.notRun().contains(
+                "OntoBoard > Check and test > Write a test from a question..."),
                 checks.notRun());
         assertTrue(checks.missing().contains("check_labels"), "listed, with no file: "
                 + checks.missing());
@@ -93,10 +103,60 @@ class SparqlActionChecksTest {
         for (List<String> row : result.getRows()) {
             ran.add(row.get(0));
         }
-        assertEquals(names(checks.files()), ran, "the listed checks, and nothing else, ran");
+        assertEquals(names(checks.files()), ran, "the listed checks and the question ran");
         assertTrue(result.getLog().contains(checks.notRun()), result.getLog().toString());
         assertTrue(result.getLog().contains(checks.missing()), result.getLog().toString());
-        assertTrue(result.getSummary().startsWith("5 checks: "), result.getSummary());
+        assertTrue(result.getSummary().startsWith("6 checks: "), result.getSummary());
+
+        // With the rule in the project's own makefile the question is asked by ODK's test.
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkQuestions.ensure(root);
+        SparqlAction.ProjectChecks kept = SparqlAction.checksOf(edit);
+        assertFalse(kept.notRun().contains("mine.rq"), kept.notRun());
+        assertTrue(kept.where().contains("with its imports")
+                && kept.where().contains("eggboil.Makefile"), kept.where());
+    }
+
+    /**
+     * One query, two answers: as one of ODK's checks it is asked of the ontology by itself
+     * and finds nothing; as a question it is asked with the imports and names what the
+     * import says. The dialog gives each the answer ODK's test gives it.
+     */
+    @Test
+    void aCheckIsAskedOfTheOntologyAloneAndAQuestionWithItsImports(@TempDir File temp)
+            throws Exception {
+        File root = odkProject(temp);
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        String labelled = "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+                + "SELECT ?x WHERE { ?x rdfs:label \"a\" }\n";
+        write(OdkChecks.fileFor(root, NAME), labelled);
+        write(new File(root, "src/sparql/mine.rq"), labelled);
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLOntology imported = manager.createOntology(
+                IRI.create("https://example.org/imported.owl"));
+        manager.addAxiom(imported, factory.getOWLAnnotationAssertionAxiom(
+                factory.getRDFSLabel(), IRI.create("https://example.org/A"),
+                factory.getOWLLiteral("a")));
+        OWLOntology ontology = manager.createOntology(
+                IRI.create("https://example.org/eggboil/eggboil.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                factory.getOWLImportsDeclaration(
+                        IRI.create("https://example.org/imported.owl"))));
+
+        OperationResult result = SparqlAction.runChecks(SparqlAction.checksOf(edit), ontology,
+                null);
+
+        java.util.Map<String, String> answers = new java.util.LinkedHashMap<String, String>();
+        for (List<String> row : result.getRows()) {
+            answers.put(row.get(0), row.get(1));
+        }
+        assertEquals("pass", answers.get(NAME + "-violation.sparql"),
+                "ODK's check does not see the import");
+        assertEquals("FAIL", answers.get("mine.rq"), "the question does");
+        String log = String.join("\n", result.getLog());
+        assertTrue(log.contains("mine.rq found 1 violations, so this project's `make test` "
+                + "would fail"), log);
     }
 
     /** An empty list is ODK's "no checks", and the action says so instead of running the folder. */
@@ -109,10 +169,10 @@ class SparqlActionChecksTest {
         SparqlAction.ProjectChecks checks =
                 SparqlAction.checksOf(new File(root, "src/ontology/eggboil-edit.owl"));
 
-        assertTrue(checks.files().isEmpty());
         assertTrue(checks.noneFound().contains("eggboil-odk.yaml"), checks.noneFound());
+        assertEquals(Arrays.asList("mine.rq"), names(checks.files()),
+                "none of ODK's checks; the question is the project's own");
         assertTrue(checks.notRun().contains(NAME + "-violation.sparql"), checks.notRun());
-        assertFalse(checks.noneFound().contains(".rq"), checks.noneFound());
     }
 
     /** The older layout: every .rq file in src/sparql, with the words it had. */

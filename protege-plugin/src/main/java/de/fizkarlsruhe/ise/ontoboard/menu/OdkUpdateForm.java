@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import de.fizkarlsruhe.ise.ontoboard.odk.Catalog;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkUpdate;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
@@ -110,6 +111,38 @@ final class OdkUpdateForm {
                 + "and read again afterwards. First you see what would change; nothing is "
                 + "written unless you ask for it.";
     }
+
+    /** The sentence above the form for a project OntoBoard 1.135 or before made. */
+    static String migrationExplanation() {
+        return "This project was made by OntoBoard 1.135 or before: its Makefile is "
+                + "OntoBoard's own. From 1.153 a project is ODK's - the Makefile, run.sh, "
+                + "the checks ODK ships and the workflows for continuous integration are "
+                + "written by ODK from the project's configuration (<id>-odk.yaml). This "
+                + "update carries the project over: the configuration becomes one ODK "
+                + "reads, the modules your edit file imports are declared in it, your test "
+                + "queries in src/sparql go on being asked of the ontology with its "
+                + "imports - by a rule added to your own makefile - and ODK's update "
+                + "writes the rest. What you write yourself is kept - the ontology's "
+                + "content, the README, the pages under docs/, the releases, the report "
+                + "profile, the test queries, the modules and their term lists. The edit "
+                + "file is saved in "
+                + "functional syntax, as ODK keeps it, so the ontology is saved first and "
+                + "read again afterwards. First you see what would change; nothing is "
+                + "written unless you ask for it.";
+    }
+
+    /** What the result of a migration says first. */
+    private static final String MIGRATION = "This project was made by OntoBoard 1.135 or "
+            + "before: its Makefile is OntoBoard's own. With this update it becomes an ODK "
+            + "project - its Makefile and the files beside it written by ODK from the "
+            + "configuration - and keeps what is yours: the ontology's content, the README, "
+            + "the pages under docs/, the releases, the report profile, the test queries, "
+            + "the modules and their term lists.";
+
+    /** What a failure after the conversion says after its own sentence. */
+    private static final String GOES_ON = " What is the project's own was converted "
+            + "before that - its configuration, and the rule for its questions; they are "
+            + "listed - and Update project files goes on from here when it is run again.";
 
     // ------------------------------------------------------------------ whoever has it open
 
@@ -231,9 +264,18 @@ final class OdkUpdateForm {
         }
         File root = projectRoot.getAbsoluteFile();
         OdkUpdate.Plan plan;
+        OdkMigration.Plan migration = null;
+        boolean converted = false;
         boolean editFileChanges;
         try {
-            plan = OdkUpdate.plan(root);
+            if (OdkMigration.isOntoBoards1x(root)) {
+                // A project of OntoBoard's older layout: what is its own is converted
+                // first, and the update is planned on the configuration as it becomes.
+                migration = OdkMigration.plan(root);
+                plan = migration.update();
+            } else {
+                plan = OdkUpdate.plan(root);
+            }
             // Also what stops ODK's own update half way: found here, before anybody writes
             // and before anybody is asked anything.
             editFileChanges = OdkUpdate.check(root, plan);
@@ -245,7 +287,51 @@ final class OdkUpdateForm {
         }
         result.note("Project: " + root.getPath());
 
+        int converting = 0;
+        if (migration != null) {
+            result.note(MIGRATION);
+            result.row(migration.configPath(), migration.changesTheConfig()
+                    ? "changes: becomes a configuration ODK's update goes by" : "as it is");
+            converting += migration.changesTheConfig() ? 1 : 0;
+            int questions = migration.questions().size();
+            if (migration.addsTheQuestionRule()) {
+                result.row(migration.ownMakefilePath(), "changes: the rule that asks the "
+                        + "project's questions is added at its end");
+                converting++;
+            }
+            if (questions > 0) {
+                result.note("Your " + (questions == 1 ? "test query" : questions + " test "
+                        + "queries") + " in src/sparql (" + String.join(", ",
+                        migration.questions()).replace("src/sparql/", "") + ") "
+                        + (questions == 1 ? "stays as it is and is" : "stay as they are and "
+                                + "are") + " asked of the ontology with its imports, as "
+                        + "before: ODK's own checks read the edit file without its "
+                        + "imports, where such a query changes its answer. The rule that "
+                        + "asks them is " + (migration.addsTheQuestionRule() ? "added to "
+                                : "in ") + migration.ownMakefilePath() + ", and ODK's test "
+                        + "runs it.");
+            }
+            for (String said : migration.declared()) {
+                result.note(said);
+            }
+            for (String said : migration.notes()) {
+                result.note(said);
+            }
+            for (String said : migration.warnings()) {
+                result.warn(said);
+            }
+            if (!write && migration.changesTheConfig()) {
+                result.note("The configuration as it becomes:");
+                for (String line : migration.newConfig().replace("\r\n", "\n")
+                        .split("\n")) {
+                    // A bar first: a note is kept without the blanks it starts with.
+                    result.note("| " + line);
+                }
+            }
+        }
+
         // The imports the update would take out: named when looking, decided before writing.
+        // (For a migration the list holds what the conversion wrote as well.)
         List<File> declared = new ArrayList<File>();
         int toDecide = plan.undeclared().size();
         if (toDecide > 0 && !write) {
@@ -272,7 +358,8 @@ final class OdkUpdateForm {
             ImportGuard.Reading reading;
             List<ImportGuard.Finding> findings;
             try {
-                reading = ImportGuard.read(root, plan.editFile());
+                reading = ImportGuard.read(root, plan.editFile(),
+                        migration == null ? null : migration.newConfig());
                 findings = reading.findings(plan.undeclared());
             } catch (IOException | RuntimeException unreadable) {
                 return result.failed("The imports the update would take out could not be "
@@ -283,6 +370,15 @@ final class OdkUpdateForm {
                 result.note("Nothing was written - what is to become of the imports the update "
                         + "would take out was not said.");
                 return result.summary("Nothing was written.").build();
+            }
+            if (migration != null) {
+                // Answered: from here on things are written. The conversion first - what
+                // is declared for an import goes into the configuration as it becomes.
+                String notConverted = convert(root, migration, declared);
+                if (notConverted != null) {
+                    return result.failed(notConverted).build();
+                }
+                converted = true;
             }
             for (int i = 0; i < findings.size(); i++) {
                 ImportGuard.Finding finding = findings.get(i);
@@ -300,7 +396,8 @@ final class OdkUpdateForm {
                     return result.failed(finding.item().iri() + " could not be declared: "
                             + said(notDeclared) + ". The update was not made."
                             + (declared.isEmpty() ? "" : " What had been written for the "
-                                    + "imports before it is listed.")).build();
+                                    + "imports before it is listed.")
+                            + (converted ? GOES_ON : "")).build();
                 }
                 result.note(decision == ImportGuard.Decision.REMOVE
                         ? finding.item().iri() + ": the update takes this import out, as you "
@@ -327,14 +424,16 @@ final class OdkUpdateForm {
                     result.wrote(file);
                 }
                 return result.failed(said(notPlanned) + (declared.isEmpty() ? ""
-                        : " What had been written for the imports is listed.")).build();
+                        : " What had been written for the imports is listed.")
+                        + (converted ? GOES_ON : "")).build();
             }
         }
 
-        result.note("ODK: " + (plan.fromVersion() == null ? "the project's Makefile does not "
+        result.note("ODK: " + (migration != null ? "the project's Makefile is OntoBoard's "
+                + "own" : plan.fromVersion() == null ? "the project's Makefile does not "
                 + "say which wrote it" : "the project's files are " + plan.fromVersion() + "'s")
                 + "; the update writes " + plan.toVersion() + "'s.");
-        int changing = 0;
+        int changing = converting;
         int fresh = 0;
         for (OdkUpdate.Change change : plan.changes()) {
             result.row(change.path(), change.isNew() ? "new"
@@ -379,7 +478,9 @@ final class OdkUpdateForm {
                     + (fresh == 0 ? "" : ", " + fresh + " of them new")
                     + (toDecide == 0 ? "." : "; " + toDecide + (toDecide == 1 ? " import"
                             : " imports") + " the update would take out, to decide about "
-                            + "first.")).build();
+                            + "first.")
+                    + (migration == null ? "" : " The project becomes an ODK project."))
+                    .build();
         }
         for (File file : declared) {
             result.wrote(file);
@@ -391,6 +492,19 @@ final class OdkUpdateForm {
             return result.summary(count + " would have changed, but this was abandoned.")
                     .build();
         }
+
+        if (migration != null && !converted) {
+            String notConverted = convert(root, migration, declared);
+            if (notConverted != null) {
+                return result.failed(notConverted).build();
+            }
+            converted = true;
+            for (File file : declared) {
+                result.wrote(file);
+            }
+        }
+        // What a failure from here on says besides: the conversion stands.
+        String besides = converted ? GOES_ON : "";
 
         List<File> written;
         String failure = null;
@@ -406,7 +520,7 @@ final class OdkUpdateForm {
                 ran = OdkUpdate.inContainer(way.runtime, way.image, way.host, root, plan,
                         runner);
             } catch (OdkUpdate.Refused refused) {
-                return result.failed(refused.getMessage()).build();
+                return result.failed(refused.getMessage() + besides).build();
             }
             for (String line : ran.getTranscript()) {
                 result.note(line);
@@ -422,7 +536,7 @@ final class OdkUpdateForm {
             try {
                 written = OdkUpdate.apply(root, plan);
             } catch (OdkUpdate.Refused refused) {
-                return result.failed(refused.getMessage()).build();
+                return result.failed(refused.getMessage() + besides).build();
             } catch (RuntimeException stopped) {
                 written = noLongerAsTheyWere(root, plan, editBefore);
                 failure = "The update stopped part way: " + said(stopped) + ". "
@@ -458,13 +572,35 @@ final class OdkUpdateForm {
             session.writtenAsItWas(editFile);
         }
         if (failure != null) {
-            return result.failed(failure).build();
+            return result.failed(failure + besides).build();
         }
         result.note("Commit these as a change of their own, so that the update can be told "
                 + "from your work.");
         return result.summary(UPDATED + " " + all + (all == 1 ? " file" : " files")
                 + (way.inContainer() ? " with ODK's own update, in its container."
-                        : ", by OntoBoard itself.")).build();
+                        : ", by OntoBoard itself.")
+                + (migration == null ? "" : " The project is an ODK project now.")).build();
+    }
+
+    /**
+     * Writes the conversion of a project of the older layout - its configuration, and the
+     * rule for its questions - and adds what it wrote to {@code into}.
+     *
+     * @return why it was not written, for a person to read; null when it was
+     */
+    private static String convert(File root, OdkMigration.Plan migration, List<File> into) {
+        try {
+            for (File file : OdkMigration.convert(root, migration)) {
+                if (!into.contains(file)) {
+                    into.add(file);
+                }
+            }
+            return null;
+        } catch (IOException | RuntimeException notWritten) {
+            return "The project's configuration could not be converted: "
+                    + said(notWritten) + ". The update was not made; run it again once that "
+                    + "is put right.";
+        }
     }
 
     /** The file of the project its catalog serves each import from; null where from none. */

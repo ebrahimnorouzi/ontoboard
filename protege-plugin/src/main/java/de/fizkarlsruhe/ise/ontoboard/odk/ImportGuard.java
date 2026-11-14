@@ -211,6 +211,26 @@ public final class ImportGuard {
      * given open, and this one is about to be replaced.
      */
     static List<String> importsOf(File ontologyFile) throws IOException {
+        TreeSet<String> imports = new TreeSet<String>();
+        for (OWLImportsDeclaration declaration : alone(ontologyFile)
+                .getImportsDeclarations()) {
+            imports.add(declaration.getIRI().toString());
+        }
+        return new ArrayList<String>(imports);
+    }
+
+    /**
+     * The address of the ontology a file holds; null when it has none. Read as
+     * {@link #importsOf} reads: nothing it imports is fetched.
+     */
+    static String iriOf(File ontologyFile) throws IOException {
+        OWLOntology ontology = alone(ontologyFile);
+        return ontology.getOntologyID().getOntologyIRI().isPresent()
+                ? ontology.getOntologyID().getOntologyIRI().get().toString() : null;
+    }
+
+    /** The ontology a file holds, by itself: every import is sent to a file that is not there. */
+    static OWLOntology alone(File ontologyFile) throws IOException {
         OWLOntologyManager reader = OWLManager.createOWLOntologyManager();
         final File nowhere = new File(ontologyFile.getAbsoluteFile().getParentFile(),
                 ".ontoboard-no-such-import");
@@ -228,11 +248,7 @@ public final class ImportGuard {
             throw new IOException(ontologyFile.getName() + " could not be read as an ontology: "
                     + unreadable.getMessage(), unreadable);
         }
-        TreeSet<String> imports = new TreeSet<String>();
-        for (OWLImportsDeclaration declaration : ontology.getImportsDeclarations()) {
-            imports.add(declaration.getIRI().toString());
-        }
-        return new ArrayList<String>(imports);
+        return ontology;
     }
 
     // ------------------------------------------------------------------ what to do about it
@@ -474,6 +490,18 @@ public final class ImportGuard {
      * @throws IOException when the configuration or the edit file cannot be read
      */
     public static Reading read(File projectRoot, File editFile) throws IOException {
+        return read(projectRoot, editFile, null);
+    }
+
+    /**
+     * The same, going by this text as the project's configuration instead of the file -
+     * for a configuration that is about to be written: where the project's modules have
+     * their addresses is read from it.
+     *
+     * @param configInstead the configuration's text; null for the file as it is
+     */
+    public static Reading read(File projectRoot, File editFile, String configInstead)
+            throws IOException {
         File root = projectRoot.getAbsoluteFile();
         File ontologyDirectory = new File(root, "src/ontology");
         File config = OdkBuildSettings.yamlIn(ontologyDirectory);
@@ -483,8 +511,9 @@ public final class ImportGuard {
         }
         PyObject project;
         try {
-            project = OdkProjectModel.load(new String(Files.readAllBytes(config.toPath()),
-                    StandardCharsets.UTF_8));
+            project = OdkProjectModel.load(configInstead != null ? configInstead
+                    : new String(Files.readAllBytes(config.toPath()),
+                            StandardCharsets.UTF_8));
         } catch (OdkConfigException notOdks) {
             throw new IOException(config.getName() + " is not a configuration ODK reads: "
                     + notOdks.getMessage(), notOdks);

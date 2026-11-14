@@ -1,0 +1,47 @@
+Prefix(:=<https://example.org/eggboil/eggboil.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<https://example.org/eggboil/eggboil.owl>
+Import(<https://example.org/eggboil/eggboil/imports/measurement_import.owl>)
+Import(<https://example.org/eggboil/eggboil/imports/mini_import.owl>)
+Annotation(dcterms:description "Application ontology for boiling eggs in a test kitchen"@en)
+Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)
+Annotation(dcterms:title "Test kitchen ontology"@en)
+Annotation(rdfs:label "Test kitchen ontology"@en)
+Annotation(owl:versionInfo "0.1.0")
+
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0001000>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0001001>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0001002>))
+Declaration(Class(<https://example.org/mini/MINI_0000005>))
+Declaration(AnnotationProperty(dcterms:description))
+Declaration(AnnotationProperty(dcterms:license))
+Declaration(AnnotationProperty(dcterms:title))
+Declaration(Datatype(xsd:date))
+
+
+############################
+#   Classes
+############################
+
+# Class: <https://example.org/eggboil/EGGBOIL_0001000> (egg)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0001000> "egg"@en)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0001001> (boiling run)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0001001> "boiling run"@en)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0001002> (boiling record)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0001002> "boiling record"@en)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0001002> <https://example.org/mini/MINI_0000005>)
+
+
+)

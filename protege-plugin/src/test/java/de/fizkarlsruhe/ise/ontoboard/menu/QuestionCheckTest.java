@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkQuestions;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
 import java.io.File;
@@ -21,15 +21,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Write a test from a question..., in an ODK project: the test is one of ODK's checks - its file
- * and its name in the configuration - and the dialog says so. In a project of the older layout
- * nothing has changed.
+ * Write a test from a question...: the test is a question of the project - a {@code .rq} file
+ * in {@code src/sparql} - in an ODK project as in one of the older layout, and it is asked of
+ * the ontology with its imports in both. In an ODK project that takes the rule OntoBoard
+ * keeps in the project's own makefile ({@link OdkQuestions}): ODK's own checks read the edit
+ * file without its imports, where a question about an imported term has no answer. The
+ * configuration is not touched, so nothing has to be brought in line afterwards, and the
+ * dialog says what ODK's test does with the question.
  */
 class QuestionCheckTest {
 
     private static final String QUESTION = "Does every pizza have a base?";
     private static final String NAME = "does_every_pizza_have_a_base";
     private static final String SPARQL = "# " + QUESTION + "\nSELECT ?term WHERE { }\n";
+    private static final String OWN = "src/ontology/eggboil.Makefile";
 
     /** The eggboil seed, with OntoBoard's configuration over ODK's. */
     private static File odkProject(File temp) throws IOException {
@@ -66,166 +71,141 @@ class QuestionCheckTest {
         return new TreeMap<String, byte[]>(Goldens.tree(root));
     }
 
+    // ------------------------------------------------------------------ an ODK project
+
     @Test
-    void inAnOdkProjectTheQuestionIsAnOdkCheck(@TempDir File temp) throws IOException {
+    void inAnOdkProjectTheQuestionIsARqFileAndTheRuleThatAsksItIsSeenTo(@TempDir File temp)
+            throws IOException {
         File root = odkProject(temp);
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
-        File config = new File(root, "src/ontology/eggboil-odk.yaml");
-        String configBefore = text(config);
+        String ownBefore = text(new File(root, OWN));
         Map<String, byte[]> before = tree(root);
         boolean odk = QuestionTestAction.inAnOdkProject(edit);
         assertTrue(odk, "ODK's Makefile: an ODK project");
 
         QuestionTestAction.Saved saved = QuestionTestAction.save(root, odk, QUESTION, SPARQL);
 
-        File check = new File(root, "src/sparql/" + NAME + "-violation.sparql");
-        assertEquals(check, saved.getFile());
-        assertTrue(saved.isWritten() && saved.isListed());
-        assertEquals(SPARQL, text(check));
-        assertEquals(NAME, OdkChecks.declaredIn(text(config))
-                .get(OdkChecks.declaredIn(text(config)).size() - 1), "listed last");
-        assertEquals(configBefore + "    - " + NAME + "\n", text(config), "one line more");
-        assertEquals(new TreeSet<String>(Arrays.asList("src/ontology/eggboil-odk.yaml",
-                "src/sparql/" + NAME + "-violation.sparql")), changed(before, tree(root)),
-                "nothing else in the folder changed");
-        assertFalse(new File(root, "src/sparql/" + NAME + ".rq").exists());
-
-        String message = saved.getMessage();
-        assertTrue(message.contains("src/sparql/" + NAME + "-violation.sparql"), message);
-        assertTrue(message.contains("eggboil-odk.yaml"), message);
-        assertTrue(message.contains("robot_report: custom_sparql_checks"), message);
-        assertTrue(message.contains("OntoBoard > Project > Update project files..."), message);
-        assertTrue(message.startsWith(QuestionTestAction.savedMessage(
-                "src/sparql/" + NAME + "-violation.sparql", "eggboil-odk.yaml")), message);
+        File question = new File(root, "src/sparql/" + NAME + ".rq");
+        assertEquals(question, saved.getFile());
+        assertTrue(saved.isWritten() && saved.isAsked());
+        assertEquals(SPARQL, text(question));
+        assertEquals(new TreeSet<String>(Arrays.asList(OWN, "src/sparql/" + NAME + ".rq")),
+                changed(before, tree(root)), "the question and the rule, and nothing else");
+        assertEquals(OdkQuestions.with(ownBefore), text(new File(root, OWN)));
+        assertArrayEquals(before.get("src/ontology/eggboil-odk.yaml"), Files.readAllBytes(
+                new File(root, "src/ontology/eggboil-odk.yaml").toPath()),
+                "a question is no ODK check: the configuration is not touched");
+        assertFalse(new File(root, "src/sparql/" + NAME + "-violation.sparql").exists());
     }
 
-    /** The message the brief gives, word for word. */
+    /** What the dialog says the first time, word for word. */
     @Test
-    void theMessageSaysWhereTheCheckIsAndWhatRunsIt() {
-        assertEquals("Saved as src/sparql/every_pizza_has_a_base-violation.sparql and listed in "
-                + "eggboil-odk.yaml (robot_report: custom_sparql_checks), which is how ODK's test "
-                + "finds it. ODK's Makefile is written from that file: it runs the new check after "
-                + "OntoBoard > Project > Update project files...",
-                QuestionTestAction.savedMessage(
-                        "src/sparql/every_pizza_has_a_base-violation.sparql", "eggboil-odk.yaml")
-                        .replace("\n", " "));
-    }
-
-    /**
-     * Where the list did not exist, ODK's default checks are named in it now, and the dialog says
-     * so - it is a change to the file the user did not ask for in words.
-     */
-    @Test
-    void theFirstCheckSaysOdksOwnAreListedToo(@TempDir File temp) throws IOException {
+    void theFirstQuestionSaysThatTheRuleWasAdded(@TempDir File temp) throws IOException {
         File root = odkProject(temp);
-        File config = new File(root, "src/ontology/eggboil-odk.yaml");
-        String full = text(config);
-        Files.write(config.toPath(), full.substring(0, full.indexOf("  custom_sparql_checks:"))
-                .getBytes(StandardCharsets.UTF_8));
 
         QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
 
-        assertTrue(saved.isListed());
-        assertEquals(Arrays.asList("owldef-self-reference", "iri-range", "label-with-iri",
-                "multiple-replaced_by", NAME), OdkChecks.declaredIn(text(config)));
-        assertTrue(saved.getMessage().contains("owldef-self-reference, iri-range, label-with-iri, "
-                + "multiple-replaced_by"), saved.getMessage());
+        assertEquals("Saved as src/sparql/" + NAME + ".rq. ODK's test asks it of the ontology "
+                + "with its imports: the rule that asks the project's questions was added to "
+                + "eggboil.Makefile.\n\n", saved.getMessage());
     }
 
-    /** Asking the same question again replaces the test, and the list names it once. */
     @Test
-    void askingAgainReplacesTheTestAndListsItOnce(@TempDir File temp) throws IOException {
+    void theNextQuestionFindsTheRuleInItsPlace(@TempDir File temp) throws IOException {
         File root = odkProject(temp);
-        File config = new File(root, "src/ontology/eggboil-odk.yaml");
         QuestionTestAction.save(root, true, QUESTION, SPARQL);
-        String listed = text(config);
+        Map<String, byte[]> before = tree(root);
+
+        QuestionTestAction.Saved next = QuestionTestAction.save(root, true,
+                "Is every topping a food?", SPARQL);
+
+        assertTrue(next.isAsked());
+        assertEquals(new TreeSet<String>(Arrays.asList("src/sparql/is_every_topping_a_food.rq")),
+                changed(before, tree(root)), "the rule is there: only the question is written");
+        assertEquals("Saved as src/sparql/is_every_topping_a_food.rq. ODK's test asks it of the "
+                + "ontology with its imports (the rule for the project's questions in "
+                + "eggboil.Makefile).\n\n", next.getMessage());
+    }
+
+    /** Asking the same question again replaces the test. */
+    @Test
+    void askingAgainReplacesTheTest(@TempDir File temp) throws IOException {
+        File root = odkProject(temp);
+        QuestionTestAction.save(root, true, QUESTION, SPARQL);
 
         QuestionTestAction.Saved again =
                 QuestionTestAction.save(root, true, QUESTION, SPARQL + "# again\n");
 
-        assertEquals(listed, text(config));
         assertEquals(SPARQL + "# again\n", text(again.getFile()));
-        assertTrue(again.isListed());
-        assertTrue(again.getMessage().contains("already"), again.getMessage());
+        assertTrue(again.isAsked());
+        assertEquals(1, text(new File(root, OWN)).split("OntoBoard: end of questions", -1).length
+                - 1, "the rule is there once");
+    }
+
+    /** A rule somebody changed is written again as it was, and that is said. */
+    @Test
+    void aRuleThatWasChangedIsWrittenAgainAndThatIsSaid(@TempDir File temp) throws IOException {
+        File root = odkProject(temp);
+        QuestionTestAction.save(root, true, QUESTION, SPARQL);
+        File own = new File(root, OWN);
+        String good = text(own);
+        Files.write(own.toPath(), good.replace("*.rq", "cq*.rq").getBytes(StandardCharsets.UTF_8));
+
+        QuestionTestAction.Saved saved = QuestionTestAction.save(root, true,
+                "Is every topping a food?", SPARQL);
+
+        assertEquals(good, text(own));
+        assertTrue(saved.isAsked());
+        assertTrue(saved.getMessage().contains("was written again in eggboil.Makefile, where it "
+                + "had been changed"), saved.getMessage());
     }
 
     /**
-     * The file is written, the configuration then cannot be: the dialog says which half
-     * happened, and the file stays.
+     * The question is written, the rule then cannot be: the dialog says which half happened,
+     * and the question stays.
      */
     @Test
-    void aConfigurationThatCannotTakeTheNameKeepsTheTestAndSaysSo(@TempDir File temp)
+    void whenTheRuleCannotBeWrittenTheQuestionIsKeptAndThatIsSaid(@TempDir File temp)
             throws IOException {
         File root = odkProject(temp);
-        File config = new File(root, "src/ontology/eggboil-odk.yaml");
-        String broken = text(config) + "id: twice\n";
-        Files.write(config.toPath(), broken.getBytes(StandardCharsets.UTF_8));
+        File own = new File(root, OWN);
+        // A folder where the file should be: it can neither be read nor written as a file.
+        Files.delete(own.toPath());
+        Files.createDirectory(own.toPath());
 
         QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
 
         assertTrue(saved.isWritten());
-        assertFalse(saved.isListed());
-        assertEquals(SPARQL, text(saved.getFile()), "the test is kept");
-        assertEquals(broken, text(config), "the configuration is untouched");
+        assertFalse(saved.isAsked());
+        assertEquals(SPARQL, text(saved.getFile()), "the question is kept");
         String message = saved.getMessage();
-        assertTrue(message.contains("src/sparql/" + NAME + "-violation.sparql"), message);
-        assertTrue(message.contains("not listed in eggboil-odk.yaml"), message);
-        assertTrue(message.contains("more than once"), "why: " + message);
-        assertTrue(message.contains(NAME), message);
-    }
-
-    /**
-     * The configuration changed, so the project's files follow it at once - and the dialog
-     * says that instead of sending the person to Update project files.
-     */
-    @Test
-    void whereTheProjectsFilesFollowedTheDialogSaysSo(@TempDir File temp) throws IOException {
-        File root = odkProject(temp);
-        QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
-        assertTrue(saved.changedTheConfiguration(), "the list has one name more");
-
-        String message = QuestionTestAction.messageWith(saved, "Then the project's files were "
-                + "brought in line with it: Updated 1 file, by OntoBoard itself.", true);
-
-        assertTrue(message.contains("src/sparql/" + NAME + "-violation.sparql"), message);
-        assertTrue(message.contains("Updated 1 file, by OntoBoard itself."), message);
-        assertTrue(message.contains("ODK's test runs the new check from now on."), message);
-        assertFalse(message.contains("it runs the new check after"),
-                "nothing is left to do: " + message);
+        assertTrue(message.startsWith("Saved as src/sparql/" + NAME + ".rq, but the rule that "
+                + "asks the project's questions could not be written into eggboil.Makefile"),
+                message);
+        assertTrue(message.contains("ODK's test does not ask this question"), message);
         assertTrue(message.endsWith("\n\n"), "the test's answer follows");
     }
 
-    /** Where nobody could bring them in line, the dialog says why and what does. */
+    /** A question that cannot be saved says so, and nothing is seen to. */
     @Test
-    void whereTheyDidNotTheDialogSaysWhyAndThatTheCheckDoesNotRunYet(@TempDir File temp)
-            throws IOException {
+    void aQuestionThatCannotBeSavedSaysSo(@TempDir File temp) throws IOException {
         File root = odkProject(temp);
+        String ownBefore = text(new File(root, OWN));
+        // A folder under the name the question's file would have.
+        Files.createDirectories(new File(root, "src/sparql/" + NAME + ".rq").toPath());
+
         QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
 
-        String message = QuestionTestAction.messageWith(saved, "A container is switched off "
-                + "and this project is made with another ODK.", false);
-
-        assertTrue(message.contains("ODK's test does not run the new check yet."), message);
-        assertTrue(message.contains("A container is switched off and this project is made "
-                + "with another ODK."), message);
-        assertFalse(message.contains("from now on"), message);
-        assertTrue(message.endsWith("\n\n"));
+        assertFalse(saved.isWritten());
+        assertFalse(saved.isAsked());
+        assertTrue(saved.getMessage().startsWith("Could not save it"), saved.getMessage());
+        assertEquals(ownBefore, text(new File(root, OWN)), "no rule for a question that is not "
+                + "there");
     }
 
-    /** A check the list names already changes no configuration: nothing has to follow. */
-    @Test
-    void aCheckListedAlreadyChangesNoConfiguration(@TempDir File temp) throws IOException {
-        File root = odkProject(temp);
-        QuestionTestAction.save(root, true, QUESTION, SPARQL);
+    // ------------------------------------------------------------------ the older layout
 
-        QuestionTestAction.Saved again =
-                QuestionTestAction.save(root, true, QUESTION, SPARQL + "# again\n");
-
-        assertTrue(again.isListed());
-        assertFalse(again.changedTheConfiguration());
-    }
-
-    /** In a project of the older layout the test is a .rq file and no configuration is touched. */
+    /** In a project of the older layout the test is a .rq file, as it always was. */
     @Test
     void inAProjectOfTheOlderLayoutNothingHasChanged(@TempDir File temp) throws IOException {
         OdkProjectConfig project = new OdkProjectConfig("demo", "Demo", "",
@@ -245,11 +225,10 @@ class QuestionCheckTest {
         assertEquals(rq, saved.getFile());
         assertEquals(SPARQL, text(rq));
         assertEquals(new TreeSet<String>(Arrays.asList("src/sparql/" + NAME + ".rq")),
-                changed(before, tree(root)), "the .rq file and nothing else");
-        assertArrayEquals(before.get("src/ontology/demo-odk.yaml"),
-                Files.readAllBytes(new File(root, "src/ontology/demo-odk.yaml").toPath()));
+                changed(before, tree(root)), "the .rq file and nothing else: that layout's own "
+                        + "Makefile asks every .rq it finds");
         assertEquals("Saved as src/sparql/" + NAME + ".rq.\n\n", saved.getMessage());
-        assertFalse(saved.isListed());
+        assertTrue(saved.isAsked());
         assertFalse(QuestionTestAction.inAnOdkProject(new File(temp, "loose.owl")));
         assertFalse(QuestionTestAction.inAnOdkProject(null));
     }

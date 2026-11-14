@@ -31,6 +31,8 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.semanticweb.owlapi.model.OWLDocumentFormat;
+import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * Update project files, without ODK's container: what {@code odk.py update} of ODK v1.6.1 does in
@@ -43,7 +45,7 @@ import java.util.regex.Pattern;
  * files are merged with what the project has ({@link GitignoreMerge}, {@link CatalogMerge}), and
  * at the end ROBOT brings the edit file's import declarations in line with the configuration.
  *
- * <p>Two things are done otherwise than ODK does them, both on purpose:
+ * <p>Three things are done otherwise than ODK does them, all on purpose:
  * <ul>
  *   <li><b>The last step is tried first.</b> ODK's update stops at that last step when an import
  *       of the edit file cannot be loaded, with every other file written already. Here the edit
@@ -52,6 +54,11 @@ import java.util.regex.Pattern;
  *   <li><b>A file that differs only in its line endings is left alone.</b> A checkout on Windows
  *       has every file with Windows line endings; writing ODK's again would change every one of
  *       them for nothing.</li>
+ *   <li><b>An edit file that says what it said is left alone.</b> ROBOT writes the edit file
+ *       again at the end, and what it writes is not always the bytes it read: the atoms of a
+ *       rule's body can come out in another order every time. A rewrite with the same ontology
+ *       in it, in the same syntax, is no change ({@link #saysTheSame}): the file stays as it
+ *       is, and after ODK's own update in its container it is put back as it was.</li>
  * </ul>
  */
 public final class OdkUpdate {
@@ -125,11 +132,13 @@ public final class OdkUpdate {
         private final List<ImportGuard.Undeclared> undeclared;
         private final List<String> notImported;
         private final Set<String> agreed;
+        private final List<String> sameModules;
 
         Plan(List<Change> changes, String fromVersion, File editFile, boolean obo,
                 List<String> imports, byte[] catalog, Set<String> executable,
                 List<String> warnings, List<ImportGuard.Undeclared> undeclared,
-                List<String> notImported, Set<String> agreed) {
+                List<String> notImported, Set<String> agreed, List<String> sameModules) {
+            this.sameModules = Collections.unmodifiableList(sameModules);
             this.changes = Collections.unmodifiableList(changes);
             this.fromVersion = fromVersion;
             this.editFile = editFile;
@@ -197,7 +206,7 @@ public final class OdkUpdate {
             Set<String> all = new TreeSet<String>(agreed);
             all.addAll(imports);
             return new Plan(changes, fromVersion, editFile, obo, this.imports, catalog,
-                    executable, warnings, undeclared, notImported, all);
+                    executable, warnings, undeclared, notImported, all, sameModules);
         }
 
         /**
@@ -208,6 +217,16 @@ public final class OdkUpdate {
          */
         public List<String> notImported() {
             return notImported;
+        }
+
+        /**
+         * The imports of the edit file that are a declared product's module under another
+         * address than ODK's: the catalog serves them from that module's file. The update
+         * writes ODK's address for the module; nothing is taken out with them, so nobody
+         * is asked. In the edit file's order.
+         */
+        public List<String> sameModules() {
+            return sameModules;
         }
 
         /** The imports the update would take out and nobody agreed to. */
@@ -232,12 +251,23 @@ public final class OdkUpdate {
      *                 cannot be merged
      */
     public static Plan plan(File projectRoot) {
+        return plan(projectRoot, null);
+    }
+
+    /**
+     * What an update of this project would do if its configuration held this text: for
+     * looking at a change of the configuration before it is written.
+     *
+     * @param configInstead the configuration's text; null for the file as it is
+     */
+    public static Plan plan(File projectRoot, String configInstead) {
         final File root = projectRoot.getAbsoluteFile();
         File ontology = new File(root, ONTOLOGY);
         File config = theConfiguration(ontology);
         PyObject project;
         try {
-            project = OdkProjectModel.load(text(read(config)));
+            project = OdkProjectModel.load(configInstead != null ? configInstead
+                    : text(read(config)));
         } catch (OdkConfigException notOdks) {
             throw new Refused(config.getName() + " is not a configuration ODK's update can go "
                     + "by: " + notOdks.getMessage());
@@ -277,6 +307,7 @@ public final class OdkUpdate {
         boolean obo = false;
         List<String> imports = new ArrayList<String>();
         List<ImportGuard.Undeclared> undeclared = new ArrayList<ImportGuard.Undeclared>();
+        List<String> sameModules = new ArrayList<String>();
         List<String> notImported = new ArrayList<String>();
         byte[] catalog = null;
         if (Py.truthy(project.get("manage_import_declarations"))) {
@@ -294,7 +325,22 @@ public final class OdkUpdate {
             if (editFile.isFile()) {
                 try {
                     List<String> now = ImportGuard.importsOf(editFile);
-                    undeclared = ImportGuard.undeclared(now, imports, new File(root, CATALOG));
+                    File modules = new File(root, ImportModules.IMPORTS_DIRECTORY)
+                            .getAbsoluteFile();
+                    for (ImportGuard.Undeclared item : ImportGuard.undeclared(now, imports,
+                            new File(root, CATALOG))) {
+                        // Served from the module file of a declared product: that module,
+                        // under another address than ODK's. The update writes ODK's for
+                        // it and nothing is taken out, so there is nothing to ask.
+                        File served = item.localFileOrNull();
+                        if (served != null && modules.equals(served.getAbsoluteFile()
+                                .getParentFile()) && imports.contains(ontbase(project)
+                                        + "/imports/" + served.getName())) {
+                            sameModules.add(item.iri());
+                        } else {
+                            undeclared.add(item);
+                        }
+                    }
                     notImported = ImportGuard.notImported(root, ontbase(project), imports, now,
                             new File(root, CATALOG));
                 } catch (IOException unreadable) {
@@ -315,7 +361,7 @@ public final class OdkUpdate {
         }
         return new Plan(changes, from, editFile, obo, imports, catalog,
                 new TreeSet<String>(installed.executable()), warnings, undeclared,
-                notImported, new TreeSet<String>());
+                notImported, new TreeSet<String>(), sameModules);
     }
 
     /** The one {@code *-odk.yaml} of the folder ODK's update runs in. */
@@ -382,6 +428,79 @@ public final class OdkUpdate {
                 + Py.str(suffix instanceof PyNone ? project.get("id") : suffix);
     }
 
+    /**
+     * Whether two ontology files say the same in the same syntax: the same ontology, importing
+     * the same, with the same said of it and the same axioms, under the same prefixes. Each is
+     * read by itself, without what it imports, and nothing is written. A file that cannot be
+     * read says the same as nothing.
+     *
+     * <p>What ROBOT writes for an edit file it has read is not always the bytes the file had:
+     * the atoms of a rule's body, for one, can come out in another order every time. Such a
+     * rewrite changes nothing that a person, ODK or a reasoner reads from the file.
+     */
+    static boolean saysTheSame(File one, File other) {
+        try {
+            OWLOntology first = ImportGuard.alone(one);
+            OWLOntology second = ImportGuard.alone(other);
+            OWLDocumentFormat firstSyntax = first.getOWLOntologyManager()
+                    .getOntologyFormat(first);
+            OWLDocumentFormat secondSyntax = second.getOWLOntologyManager()
+                    .getOntologyFormat(second);
+            return firstSyntax != null && secondSyntax != null
+                    && firstSyntax.getClass().equals(secondSyntax.getClass())
+                    && prefixesOf(firstSyntax).equals(prefixesOf(secondSyntax))
+                    && first.getOntologyID().equals(second.getOntologyID())
+                    && first.getImportsDeclarations().equals(second.getImportsDeclarations())
+                    && first.getAnnotations().equals(second.getAnnotations())
+                    && first.getAxioms().equals(second.getAxioms());
+        } catch (IOException | RuntimeException unreadable) {
+            return false;
+        }
+    }
+
+    private static Map<String, String> prefixesOf(OWLDocumentFormat syntax) {
+        return syntax.isPrefixOWLOntologyFormat()
+                ? syntax.asPrefixOWLOntologyFormat().getPrefixName2PrefixMap()
+                : Collections.<String, String>emptyMap();
+    }
+
+    /**
+     * Whether the edit file as ROBOT has rewritten it is to take the edit file's place: when
+     * it has other bytes, and they do not say what the file says already.
+     */
+    private static boolean takesThePlaceOf(File editFile, File rewritten) {
+        return !editFile.isFile() || (!Arrays.equals(read(editFile), read(rewritten))
+                && !saysTheSame(editFile, rewritten));
+    }
+
+    /**
+     * After ODK's own update, which writes the edit file whatever it holds: when what it wrote
+     * says what the file said, the file is put back as it was.
+     *
+     * @param before the edit file's bytes before the update; null when it had none
+     * @return whether the file is as it was again
+     */
+    private static boolean putBack(File editFile, byte[] before, boolean obo) {
+        if (before == null) {
+            return false;
+        }
+        File asItWas = new File(editFile.getParentFile(),
+                STAGED_EDIT + (obo ? ".obo" : ".ofn"));
+        try {
+            write(asItWas, before);
+            if (!saysTheSame(asItWas, editFile)) {
+                return false;
+            }
+            replace(editFile, asItWas);
+            return true;
+        } catch (IOException | UncheckedIOException notPutBack) {
+            // What ODK wrote stays, and is among what the update wrote.
+            return false;
+        } finally {
+            asItWas.delete();
+        }
+    }
+
     private static Iterable<Object> productsOf(PyObject group) {
         Object products = group.get("products");
         return products instanceof PyNone ? Collections.<Object>emptyList()
@@ -442,8 +561,7 @@ public final class OdkUpdate {
                 // ODK's last step, first and on the side: when it fails, nothing is written.
                 write(stagedCatalog, plan.catalog);
                 rewriteImports(plan, stagedCatalog, stagedEdit);
-                editChanges = !plan.editFile.isFile()
-                        || !Arrays.equals(read(plan.editFile), read(stagedEdit));
+                editChanges = takesThePlaceOf(plan.editFile, stagedEdit);
             }
             List<File> written = new ArrayList<File>();
             for (Change change : plan.changes) {
@@ -549,7 +667,8 @@ public final class OdkUpdate {
      * loaded - without writing anything: the edit file is rewritten on the side, as the update
      * will rewrite it, and what was made for that is removed again.
      *
-     * @return whether the update would change the edit file
+     * @return whether the update would change the edit file: a rewrite that says what the
+     *         file says ({@link #saysTheSame}) is no change
      * @throws Refused when the edit file cannot be read with all its imports
      */
     public static boolean check(File projectRoot, Plan plan) {
@@ -562,8 +681,7 @@ public final class OdkUpdate {
         try {
             write(stagedCatalog, plan.catalog);
             rewriteImports(plan, stagedCatalog, stagedEdit);
-            return !plan.editFile.isFile()
-                    || !Arrays.equals(read(plan.editFile), read(stagedEdit));
+            return takesThePlaceOf(plan.editFile, stagedEdit);
         } finally {
             stagedCatalog.delete();
             stagedEdit.delete();
@@ -586,6 +704,8 @@ public final class OdkUpdate {
      *
      * <p>What would stop ODK's update half way is looked for first ({@link #check}), since
      * ODK's own stops at its last step with every other file written. Then ODK does it all.
+     * It writes the edit file again whatever the file holds; where what it wrote says what
+     * the file said, the file is put back as it was, and the transcript says so.
      *
      * @param plan what an update would do, made by {@link #plan} just before: it says which
      *             files to look at afterwards
@@ -625,9 +745,16 @@ public final class OdkUpdate {
         List<File> written = new ArrayList<File>();
         for (int i = 0; i < looked.size(); i++) {
             File file = looked.get(i);
-            if (file.isFile() && !Arrays.equals(before.get(i), read(file))) {
-                written.add(file);
+            if (!file.isFile() || Arrays.equals(before.get(i), read(file))) {
+                continue;
             }
+            if (file.equals(plan.editFile) && putBack(file, before.get(i), plan.obo)) {
+                transcript.add(file.getName() + ": ODK's update wrote it again with the same "
+                        + "ontology in it, only written otherwise; it was put back as it "
+                        + "was.");
+                continue;
+            }
+            written.add(file);
         }
         if (outcome.isSuccess()) {
             return new Ran(null, transcript, written);

@@ -99,6 +99,17 @@ public final class OdkEngine {
         return whyNot(editFile, goal, commandLine, OdkTools.forProject());
     }
 
+    /** Where OntoBoard's rule for the questions stands in a project's own makefile; or null. */
+    private static int[] questionsIn(File own) {
+        try {
+            return own == null || !own.isFile() ? null : OdkQuestions.linesIn(new String(
+                    java.nio.file.Files.readAllBytes(own.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8));
+        } catch (java.io.IOException unreadable) {
+            return null;
+        }
+    }
+
     /**
      * Runs a target.
      *
@@ -119,6 +130,11 @@ public final class OdkEngine {
 
         // 3. make runs.
         final File ontology = editFile.getAbsoluteFile().getParentFile();
+        // OntoBoard's rule for the project's questions, where the project's own makefile
+        // holds it as written: the one thing in that file the engine runs.
+        final File own = ontology.getParentFile() == null ? null
+                : OdkQuestions.ownMakefileOf(ontology.getParentFile().getParentFile());
+        final int[] questions = questionsIn(own);
         final boolean[] ran = {false};
         final boolean[] wasStopped = {false};
         final String[] complaint = {null};
@@ -135,7 +151,11 @@ public final class OdkEngine {
                             }
                             // A real run can reach what the look from before it did not show:
                             // each line is asked again as it comes.
-                            String why = !MAKEFILE.equals(step.file())
+                            boolean ontoBoards = questions != null
+                                    && own.getName().equals(step.file())
+                                    && step.line() >= questions[0]
+                                    && step.line() <= questions[1];
+                            String why = !MAKEFILE.equals(step.file()) && !ontoBoards
                                     ? "a rule of the project's own, " + step.file() + ":"
                                             + step.line() + ", which is make's to run"
                                     : refusalOf(step.command(), tools);

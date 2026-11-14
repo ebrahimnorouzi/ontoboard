@@ -1,10 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkQuestions;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml;
 import de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.awt.GridBagConstraints;
@@ -41,9 +39,12 @@ import org.semanticweb.owlapi.model.parameters.Imports;
  * shapes; this writes the chosen one to {@code src/sparql/}, where Build &gt; test runs it from
  * then on, and runs it at once so the answer is there before the dialog has closed.
  *
- * <p>In an ODK project (1.153.0) the test is one of ODK's checks:
- * {@code src/sparql/<name>-violation.sparql}, and its name in the configuration's
- * {@code robot_report: custom_sparql_checks} - a {@code .rq} file there is one ODK never runs.
+ * <p>The test is {@code src/sparql/<name>.rq} in every project, and it is asked of the
+ * ontology with its imports - as the dialog asks it for its answer. In an ODK project
+ * (1.153.0) that takes a rule of the project's own: ODK's checks, the ones its configuration
+ * lists, read the edit file without its imports, where a question about an imported term
+ * has no answer. {@link OdkQuestions} keeps that rule in the project's own makefile, and
+ * saving a question sees to it that it is there.
  */
 public class QuestionTestAction extends ProtegeOWLAction {
 
@@ -147,7 +148,8 @@ public class QuestionTestAction extends ProtegeOWLAction {
         row(form, 6, "", new JLabel("<html>The test lists what <i>breaks</i> the rule; an empty "
                 + "answer passes.<br>" + (root == null ? "This ontology is not in a project, so "
                 + "the test is shown to copy rather than saved." : odk ? "It is saved in "
-                + "src/sparql/ as one of ODK's checks, and listed in the project's configuration."
+                + "src/sparql/, and the project's test asks it of the ontology with its "
+                + "imports from then on."
                 : "It is saved in src/sparql/, "
                 + "and Build and release > Build... runs it from then on.") + "</html>"));
         if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Write a test from a question",
@@ -176,7 +178,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
 
         Saved kept = null;
         if (root != null) {
-            File file = testFileFor(root, odk, question.getText());
+            File file = testFileFor(root, question.getText());
             // Replaced when asked to, not refused: a test is named after its question, so the way
             // to change a test is to ask the same question again - and nothing in Protege removes
             // one, so a refusal left a test whose class had been deleted failing every build, with
@@ -206,27 +208,10 @@ public class QuestionTestAction extends ProtegeOWLAction {
         }
         JComponent shown = root == null ? new javax.swing.JScrollPane(new javax.swing.JTextArea(
                 sparql + "\n# " + answer.replace("\n", "\n# "), 16, 70)) : null;
-        final Saved saved = kept;
-        final String answered = answer;
-        if (saved != null && odk && saved.changedTheConfiguration()) {
-            // ODK's Makefile is written from the configuration, and it is what runs the
-            // checks: the project's files follow the new name now, as Update project files
-            // writes them, so that ODK's test runs the check the person has just written.
-            ConfigSync.afterConfigChange(getOWLWorkspace(), getOWLModelManager(), document,
-                    new java.util.function.Consumer<ConfigSync.Done>() {
-                        @Override
-                        public void accept(ConfigSync.Done synced) {
-                            JOptionPane.showMessageDialog(getOWLWorkspace(),
-                                    ReleaseAction.wrapped(messageWith(saved, synced.said(),
-                                            synced.inLine()) + answered),
-                                    "Write a test from a question",
-                                    JOptionPane.INFORMATION_MESSAGE);
-                        }
-                    });
-            return;
-        }
+        String saved = kept == null ? "" : kept.getMessage();
         JOptionPane.showMessageDialog(getOWLWorkspace(), shown != null ? shown
-                : (saved == null ? "" : saved.getMessage()) + answer,
+                // An ODK project's sentences are long: at a width one reads.
+                : odk ? ReleaseAction.wrapped(saved + answer) : saved + answer,
                 "Write a test from a question", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -249,29 +234,14 @@ public class QuestionTestAction extends ProtegeOWLAction {
     static final class Saved {
         private final File file;
         private final boolean written;
-        private final boolean listed;
-        private final boolean changedTheConfiguration;
+        private final boolean asked;
         private final String message;
 
-        Saved(File file, boolean written, boolean listed, String message) {
-            this(file, written, listed, false, message);
-        }
-
-        Saved(File file, boolean written, boolean listed, boolean changedTheConfiguration,
-                String message) {
+        Saved(File file, boolean written, boolean asked, String message) {
             this.file = file;
             this.written = written;
-            this.listed = listed;
-            this.changedTheConfiguration = changedTheConfiguration;
+            this.asked = asked;
             this.message = message;
-        }
-
-        /**
-         * In an ODK project: the configuration was written - the check's name is new in its
-         * list - so ODK's Makefile, which is written from it, is behind it now.
-         */
-        boolean changedTheConfiguration() {
-            return changedTheConfiguration;
         }
 
         /** Where the test is, or was to be. */
@@ -283,9 +253,13 @@ public class QuestionTestAction extends ProtegeOWLAction {
             return written;
         }
 
-        /** In an ODK project: the configuration's list names the check. */
-        boolean isListed() {
-            return listed;
+        /**
+         * Whether the project's test asks it from now on: in an ODK project, the rule that
+         * asks the project's questions is in the project's own makefile; in a project of the
+         * older layout, that layout's own Makefile asks every .rq it finds.
+         */
+        boolean isAsked() {
+            return asked;
         }
 
         /** What the dialog says before the test's answer: plain sentences, ending in a blank line. */
@@ -295,32 +269,29 @@ public class QuestionTestAction extends ProtegeOWLAction {
     }
 
     /**
-     * Whether the ontology is the edit file of an ODK project - built by ODK's Makefile, which
-     * runs the checks its configuration lists and nothing else in src/sparql. A project of
-     * OntoBoard's older layout runs every .rq file there instead.
+     * Whether the ontology is the edit file of an ODK project - built by ODK's Makefile, whose
+     * own checks read the edit file without its imports, so that the project's questions need
+     * a rule of their own. A project of OntoBoard's older layout runs every .rq file with the
+     * imports merged.
      */
     static boolean inAnOdkProject(File editFile) {
         return editFile != null && OdkRelease.isOdkProject(editFile);
     }
 
-    /**
-     * Where a question's test goes: {@code src/sparql/<name>-violation.sparql}, one of ODK's
-     * checks, in an ODK project; {@code src/sparql/<name>.rq} in a project of the older layout.
-     */
-    static File testFileFor(File root, boolean odk, String question) {
-        return odk ? OdkChecks.fileFor(root, QuestionTests.checkNameFor(question))
-                : new File(new File(root, "src/sparql"), QuestionTests.fileNameFor(question));
+    /** Where a question's test goes, in every project: {@code src/sparql/<name>.rq}. */
+    static File testFileFor(File root, String question) {
+        return new File(new File(root, "src/sparql"), QuestionTests.fileNameFor(question));
     }
 
     /**
-     * Writes the test, and in an ODK project then lists it in the configuration.
+     * Writes the test, and in an ODK project then sees to the rule that asks it.
      *
-     * <p>The file first: it is the user's work, and a configuration that cannot take the name
-     * (changed on disk, unreadable) must not cost them the test. When the second half fails the
-     * message says which half happened, and the file stays.
+     * <p>The file first: it is the person's work, and a makefile that cannot be written must
+     * not cost them the test. When the second half fails the message says which half
+     * happened, and the file stays.
      */
     static Saved save(File root, boolean odk, String question, String sparql) {
-        File file = testFileFor(root, odk, question);
+        File file = testFileFor(root, question);
         try {
             file.getParentFile().mkdirs();
             Files.write(file.toPath(), sparql.getBytes(StandardCharsets.UTF_8));
@@ -328,97 +299,31 @@ public class QuestionTestAction extends ProtegeOWLAction {
             return new Saved(file, false, false,
                     "Could not save it (" + cannotWrite.getMessage() + ").\n\n");
         }
-        if (!odk) {
-            return new Saved(file, true, false, "Saved as src/sparql/" + file.getName() + ".\n\n");
-        }
-        return listed(root, file, QuestionTests.checkNameFor(question));
-    }
-
-    /** The second half, in an ODK project: the check's name in the configuration's list. */
-    private static Saved listed(File root, File file, String name) {
         String path = "src/sparql/" + file.getName();
-        File yaml = OdkBuildSettings.yamlIn(new File(root, "src/ontology"));
-        if (yaml == null) {
-            return new Saved(file, true, false, notListed(path, "the project's configuration",
-                    name, "There is no single <id>-odk.yaml in src/ontology to list it in."));
+        if (!odk) {
+            return new Saved(file, true, true, "Saved as " + path + ".\n\n");
         }
+        File own = OdkQuestions.ownMakefileOf(root);
+        String makefile = own == null ? "the project's own makefile" : own.getName();
         try {
-            String before = new String(Files.readAllBytes(yaml.toPath()), StandardCharsets.UTF_8);
-            String after = OdkChecks.add(before, name);
-            if (after.equals(before)) {
-                return new Saved(file, true, true, "Saved as " + path + ". " + yaml.getName()
-                        + " lists it already (robot_report: custom_sparql_checks), which is how "
-                        + "ODK's test finds it.\n\n");
-            }
-            OdkBuildSettings.writeIfUnchanged(yaml, before, after);
-            String message = savedMessage(path, yaml.getName());
-            if (!OdkChecks.isListed(before)) {
-                message += "\n" + defaultsListed(before, yaml.getName());
-            }
-            return new Saved(file, true, true, true, message + "\n\n");
-        } catch (OdkYaml.UnreadableException | IOException cannot) {
-            return new Saved(file, true, false,
-                    notListed(path, yaml.getName(), name, cannot.getMessage()));
+            boolean changed = OdkQuestions.isChangedIn(root);
+            File wrote = OdkQuestions.ensure(root);
+            return new Saved(file, true, true, "Saved as " + path + ". ODK's test asks it of "
+                    + "the ontology with its imports" + (wrote == null
+                            ? " (the rule for the project's questions in " + makefile + ")."
+                            : changed ? ": the rule that asks the project's questions was "
+                                    + "written again in " + makefile + ", where it had been "
+                                    + "changed."
+                            : ": the rule that asks the project's questions was added to "
+                                    + makefile + ".") + "\n\n");
+        } catch (IOException | RuntimeException notWritten) {
+            String why = notWritten.getMessage() == null
+                    ? notWritten.getClass().getSimpleName() : notWritten.getMessage();
+            return new Saved(file, true, false, "Saved as " + path + ", but the rule that "
+                    + "asks the project's questions could not be written into " + makefile
+                    + " (" + why + ").\nUntil it is there, ODK's test does not ask this "
+                    + "question.\n\n");
         }
-    }
-
-    /**
-     * What the dialog says when the check is saved and listed: where it is, where it is listed,
-     * and what makes ODK run it.
-     */
-    static String savedMessage(String testPath, String configurationName) {
-        return "Saved as " + testPath + " and listed in " + configurationName
-                + "\n(robot_report: custom_sparql_checks), which is how ODK's test finds it.\n"
-                + RUNS_AFTER_AN_UPDATE;
-    }
-
-    /**
-     * What is left to do where nobody brings the project's files in line: how
-     * {@link #savedMessage} ends.
-     */
-    private static final String RUNS_AFTER_AN_UPDATE = "ODK's Makefile is written from that "
-            + "file: it runs the new check after "
-            + "OntoBoard > Project > Update project files...";
-
-    /**
-     * What the dialog says of a check that was saved and listed once the project's files
-     * were - or were not - brought in line with the configuration at once.
-     *
-     * @param said   what came of bringing them in line
-     * @param inLine whether ODK's Makefile is what the configuration asks for now
-     */
-    static String messageWith(Saved saved, String said, boolean inLine) {
-        return saved.getMessage().replace(RUNS_AFTER_AN_UPDATE,
-                "ODK's Makefile is written from that file.\n" + said + "\n"
-                        + (inLine ? "ODK's test runs the new check from now on."
-                                : "ODK's test does not run the new check yet."));
-    }
-
-    /**
-     * Where the configuration had no list, ODK's defaults are written into it before the new
-     * name, since a list replaces them: said, because it is a change nobody asked for in words.
-     */
-    private static String defaultsListed(String before, String configurationName) {
-        String defaults = String.join(", ", OdkChecks.declaredIn(before));
-        boolean block = false;
-        for (OdkYaml.Entry entry : OdkYaml.entriesIn(before)) {
-            block |= "robot_report".equals(entry.getPath());
-        }
-        return block
-                ? configurationName + " had no list of checks, so ODK ran its own: they are "
-                        + "listed before the new one now, so they still run (" + defaults + ")."
-                : configurationName + " had no robot_report block, so ODK ran its own checks: "
-                        + "the block is added with them listed before the new one, so they still "
-                        + "run (" + defaults + "), and with use_base_iris: TRUE, as ODK has it "
-                        + "without a block.";
-    }
-
-    private static String notListed(String path, String configurationName, String name,
-            String why) {
-        return "Saved as " + path + ", but not listed in " + configurationName + ": ODK's test "
-                + "runs only the checks listed there, under robot_report: custom_sparql_checks.\n"
-                + why + "\nAdd " + name + " to that list yourself, or ask the question again once "
-                + "the file can be changed.\n\n";
     }
 
     private static String labelOf(OWLOntology ontology, String iri) {

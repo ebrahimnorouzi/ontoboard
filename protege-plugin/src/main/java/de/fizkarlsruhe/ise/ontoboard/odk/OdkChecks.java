@@ -220,9 +220,10 @@ public final class OdkChecks {
     }
 
     /**
-     * The files in {@code src/sparql} that look like checks - {@code *.rq},
+     * The files in {@code src/sparql} that are named as ODK's checks are -
      * {@code *-violation.sparql} - and are not declared, so ODK's test does not run them; by
-     * name.
+     * name. A {@code .rq} file is not one of them: it is a question of the project's, which
+     * has a rule of its own ({@link OdkQuestions}).
      */
     public static List<File> undeclaredIn(File projectRoot, String configText) {
         List<File> undeclared = new ArrayList<File>();
@@ -237,8 +238,7 @@ public final class OdkChecks {
         }
         for (File child : children) {
             String name = child.getName();
-            if (child.isFile() && !declared.contains(name)
-                    && (name.toLowerCase(Locale.ROOT).endsWith(".rq") || name.endsWith(SUFFIX))) {
+            if (child.isFile() && !declared.contains(name) && name.endsWith(SUFFIX)) {
                 undeclared.add(child);
             }
         }

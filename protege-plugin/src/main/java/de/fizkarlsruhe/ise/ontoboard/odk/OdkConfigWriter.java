@@ -51,10 +51,7 @@ public final class OdkConfigWriter {
      */
     public static String forNewProject(OdkProjectConfig config) {
         String id = config.getOntologyId();
-        return "# ODK configuration for " + oneLine(config.getTitle()) + WRITTEN_BY
-                + OdkPin.VERSION + ".\n"
-                + "# After changing it, run OntoBoard > Project > Update project files... "
-                + "(ODK: sh run.sh update_repo).\n"
+        return header(config.getTitle())
                 + "id: " + plain(id) + "\n"
                 + "title: " + quoted(config.getTitle()) + "\n"
                 + "description: " + quoted(config.getDescription()) + "\n"
@@ -73,6 +70,17 @@ public final class OdkConfigWriter {
                 + "    - label-with-iri\n"
                 + "    - multiple-replaced_by\n"
                 + "    - " + OdkExtras.LABEL_CHECK + "\n";
+    }
+
+    /**
+     * The two comment lines a configuration OntoBoard writes for ODK opens with - a new
+     * project's, and one of the older layout that is carried over ({@link OdkMigration}).
+     */
+    static String header(String title) {
+        return "# ODK configuration for " + oneLine(title) + WRITTEN_BY + OdkPin.VERSION
+                + ".\n"
+                + "# After changing it, run OntoBoard > Project > Update project files... "
+                + "(ODK: sh run.sh update_repo).\n";
     }
 
     /**
@@ -126,7 +134,7 @@ public final class OdkConfigWriter {
     }
 
     /** A value as a plain YAML scalar when it can be one, in double quotes when it cannot. */
-    private static String plain(String value) {
+    static String plain(String value) {
         boolean plain = value.matches("[A-Za-z][^\\s\\p{Cntrl}\u0085  ]*")
                 && !value.endsWith(":") && !NOT_TEXT.contains(value.toLowerCase(Locale.ROOT));
         return plain ? value : quoted(value);

@@ -167,6 +167,53 @@ class SparqlQueryTest {
         assertTrue(answer.size() > 0);
     }
 
+    /**
+     * ODK asks its own checks of the edit file with its imports taken out. Asked that way
+     * here, a query sees what the ontology says itself and nothing of what it imports -
+     * so that the dialog's answer is the one ODK's test will give.
+     */
+    @Test
+    void askedOfTheOntologyAloneAQueryDoesNotSeeTheImports(@TempDir File dir)
+            throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        org.semanticweb.owlapi.model.IRI a =
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/A");
+        OWLOntology imported = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/imported.owl"));
+        manager.addAxiom(imported, factory.getOWLAnnotationAssertionAxiom(
+                factory.getRDFSLabel(), a, factory.getOWLLiteral("a")));
+        OWLOntology own = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/own.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(own,
+                factory.getOWLImportsDeclaration(org.semanticweb.owlapi.model.IRI.create(
+                        "https://example.org/imported.owl"))));
+        manager.addAxiom(own, factory.getOWLSubClassOfAxiom(factory.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/B")),
+                factory.getOWLClass(a)));
+        String labelled = "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+                + "SELECT ?x WHERE { ?x rdfs:label \"a\" }";
+
+        assertEquals(1, SparqlQuery.run(own, labelled).size(), "with its imports");
+        assertEquals(0, SparqlQuery.runAlone(own, labelled).size(), "by itself");
+        assertEquals(1, SparqlQuery.runAlone(own, "PREFIX rdfs: "
+                + "<http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?x WHERE { ?x "
+                + "rdfs:subClassOf <https://example.org/A> }").size(),
+                "what it says itself is there");
+        assertEquals(0, SparqlQuery.runAlone(own, "PREFIX owl: "
+                + "<http://www.w3.org/2002/07/owl#>\nSELECT ?x WHERE { ?o owl:imports ?x }")
+                .size(), "ODK takes the import declarations out as well");
+
+        File check = new File(dir, "labelled-violation.sparql");
+        java.nio.file.Files.write(check.toPath(),
+                labelled.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertTrue(SparqlQuery.verifyAlone(own, java.util.Collections.singletonList(check))
+                .get(0).isPassed());
+        assertFalse(SparqlQuery.verify(own, java.util.Collections.singletonList(check))
+                .get(0).isPassed());
+    }
+
     @Test
     void noChecksDirectoryIsEmptyRatherThanAFailure(@TempDir File dir) {
         assertTrue(SparqlQuery.checksIn(dir).isEmpty());

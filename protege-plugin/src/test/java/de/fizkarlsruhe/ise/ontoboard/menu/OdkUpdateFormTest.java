@@ -268,6 +268,31 @@ class OdkUpdateFormTest {
         assertEquals(0, open.readAgain);
     }
 
+    /** An edit file the update did not write at all is told about to nobody. */
+    @Test
+    void anEditFileTheUpdateLeftAloneIsNotToldAbout() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        final File makefile = new File(root, "src/ontology/Makefile");
+        ProcessRunner.Runner container = new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                Files.write(makefile.toPath(), "# ODK's own\n".getBytes(StandardCharsets.UTF_8));
+                return new ProcessRunner.Outcome(0, Arrays.asList(
+                        "Ontology repository update successfully completed."), false);
+            }
+        };
+        Open open = new Open(false, null);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
+                        OdkContainer.Host.unknown(), null, null), container, open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        assertEquals(new ArrayList<File>(), open.writtenAsItWas);
+        assertEquals(0, open.readAgain);
+    }
+
     /** Where the update changed the edit file, it is read again and that is the whole of it. */
     @Test
     void anEditFileThatWasChangedIsReadAgainAndNotToldAsWrittenAsItWas() throws IOException {

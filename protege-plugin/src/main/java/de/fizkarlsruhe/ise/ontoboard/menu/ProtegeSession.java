@@ -171,7 +171,32 @@ final class ProtegeSession implements OdkUpdateForm.Session {
                 // Said by the reload below.
             }
         }
-        return OntoBoardAction.readAgainFromItsFile(models, open);
+        String failure = OntoBoardAction.readAgainFromItsFile(models, open);
+        if (failure == null) {
+            takeOverTheSyntaxOf(editFile, open);
+        }
+        return failure;
+    }
+
+    /**
+     * ODK's update writes the edit file in functional syntax, whatever it was in; Protege's
+     * reload does not take the syntax of the file over, and its next save would put the
+     * file back into the one it first read ({@link FileSyntax}). What is open is told the
+     * syntax its file is in now, on the dispatch thread, as Protege's own Save as does.
+     */
+    private static void takeOverTheSyntaxOf(File editFile, final OWLOntology open) {
+        final OWLOntologyManager owl = open.getOWLOntologyManager();
+        final org.semanticweb.owlapi.model.OWLDocumentFormat now = FileSyntax.toTakeOver(
+                owl.getOntologyFormat(open), FileSyntax.of(editFile));
+        if (now == null) {
+            return;
+        }
+        OntoBoardAction.onDispatchThread(new OntoBoardAction.Step() {
+            @Override
+            public void take() {
+                owl.setOntologyFormat(open, now);
+            }
+        });
     }
 
     /** The ontology Protege has loaded from a file, or null when it has none from there. */

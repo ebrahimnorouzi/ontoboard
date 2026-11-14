@@ -111,4 +111,15 @@ class OdkSyncTest {
                 way.why());
         assertTrue(way.why().contains("OntoBoard > Project > Update project files..."), way.why());
     }
+
+    /** A reason is a sentence with or without its full stop: it gets one, not two. */
+    @Test
+    void aReasonGetsOneFullStop() {
+        String without = OdkSync.later("It was left for now").why();
+        String with = OdkSync.later("It was left for now. ").why();
+
+        assertTrue(without.startsWith("It was left for now. The configuration was written"),
+                without);
+        assertEquals(without, with);
+    }
 }
