@@ -85,10 +85,62 @@ public class RequirementsAction extends ProtegeOWLAction {
                     new java.awt.datatransfer.StringSelection(Toolchain.asText(report)), null);
         });
 
+        // Enabled only where a container program answers and ODK's image is not here; it asks
+        // before anything is fetched (OdkImagePull decides and words, this only shows).
+        final OdkImagePull image = report.getImage();
+        final JButton pull = new JButton(OdkImagePull.BUTTON);
+        pull.setEnabled(image != null && image.offersThePull());
+        pull.setToolTipText(image == null ? null : image.buttonHelp());
+        pull.addActionListener(a -> askThenPull(image, pull));
+
         JOptionPane.showOptionDialog(getOWLWorkspace(), new RequirementsPanel(report),
                 "OntoBoard requirements", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.PLAIN_MESSAGE, null,
-                new Object[] {container, choose, copy, "Close"}, "Close");
+                new Object[] {container, choose, pull, copy, "Close"}, "Close");
+    }
+
+    /**
+     * Asks whether to pull ODK's image - the command and the size shown - and on a yes runs
+     * that one command in the background, where the progress dialog's Stop ends it. The
+     * outcome is shown, then Check requirements runs again, so the image's row says what is
+     * there now. Cancel is the answer Enter gives: a download of this size is never started by
+     * a key pressed out of habit.
+     */
+    private void askThenPull(final OdkImagePull image, JButton pull) {
+        if (image == null || !image.offersThePull()) {
+            return;
+        }
+        java.awt.Window requirements = javax.swing.SwingUtilities.getWindowAncestor(pull);
+        Object[] answers = {"Pull", "Cancel"};
+        int answer = JOptionPane.showOptionDialog(
+                requirements == null ? getOWLWorkspace() : requirements, image.question(),
+                OdkImagePull.OPERATION, JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, answers, answers[1]);
+        if (answer != 0) {
+            return;
+        }
+        if (requirements != null) {
+            // Shown again, as it is then, when the pull is over.
+            requirements.dispose();
+        }
+        de.fizkarlsruhe.ise.ontoboard.menu.BackgroundRun.execute(getOWLWorkspace(),
+                OdkImagePull.OPERATION,
+                new java.util.concurrent.Callable<
+                        de.fizkarlsruhe.ise.ontoboard.menu.OperationResult>() {
+                    @Override
+                    public de.fizkarlsruhe.ise.ontoboard.menu.OperationResult call() {
+                        return image.pull(ProcessRunner.real());
+                    }
+                },
+                new java.util.function.Consumer<
+                        de.fizkarlsruhe.ise.ontoboard.menu.OperationResult>() {
+                    @Override
+                    public void accept(de.fizkarlsruhe.ise.ontoboard.menu.OperationResult done) {
+                        de.fizkarlsruhe.ise.ontoboard.menu.ResultDialog.show(getOWLWorkspace(),
+                                done);
+                        actionPerformed(null);
+                    }
+                });
     }
 
     /**

@@ -313,6 +313,48 @@ class OdkImageTest {
         assertTrue(OdkImage.howToFetch().contains("Check requirements"), OdkImage.howToFetch());
     }
 
+    /**
+     * The image's size is said from one place, as {@code docker images} reports it for ODK
+     * v1.6.1's image (3.37GB): "about 3.4 GB". No other sentence of OntoBoard's names a size of
+     * its own.
+     */
+    @Test
+    void theImagesSizeIsSaidFromOnePlace() throws IOException {
+        assertEquals("about 3.4 GB", OdkImage.SIZE);
+        assertTrue(OdkImage.howToFetch().contains(OdkImage.SIZE), OdkImage.howToFetch());
+
+        java.util.regex.Pattern literal = java.util.regex.Pattern.compile(
+                "\"((?:[^\"\\\\\\n]|\\\\.)*)\"");
+        java.util.regex.Pattern size = java.util.regex.Pattern.compile(
+                "(?i)\\d\\s*GB\\b|gigabyte");
+        List<String> found = new ArrayList<String>();
+        java.util.stream.Stream<java.nio.file.Path> sources =
+                Files.walk(new File("src/main/java").toPath());
+        try {
+            for (Object each : sources.toArray()) {
+                java.nio.file.Path source = (java.nio.file.Path) each;
+                if (!source.toString().endsWith(".java")) {
+                    continue;
+                }
+                int number = 0;
+                for (String line : Files.readAllLines(source, StandardCharsets.UTF_8)) {
+                    number++;
+                    java.util.regex.Matcher literals = literal.matcher(line);
+                    while (literals.find()) {
+                        if (size.matcher(literals.group(1)).find()) {
+                            found.add(source.getFileName() + ":" + number + ": "
+                                    + literals.group(1));
+                        }
+                    }
+                }
+            }
+        } finally {
+            sources.close();
+        }
+        assertEquals(1, found.size(), "one place says the size: " + found);
+        assertTrue(found.get(0).startsWith("OdkImage.java:"), found.toString());
+    }
+
     /** A runtime that cannot be started at all is a machine with no images, not a crash. */
     @Test
     void aRuntimeThatDoesNotAnswerHasNoImages() {

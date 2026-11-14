@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  *       {@code run.sh} of its own (go-ontology's says {@code obolibrary/odkfull:v1.5.4}, and
  *       that the version must match its pipeline). Such a pin is kept or the run is refused;
  *       another ODK is not swapped in for it.
- *   <li>OntoBoard never downloads an image on its own - five gigabytes is a decision. An image
+ *   <li>OntoBoard never downloads an image on its own - {@link #SIZE} is a decision. An image
  *       that is not on the machine is therefore never the answer; when none will do, the answer
  *       is no image and a sentence saying what to do.
  * </ul>
@@ -75,8 +75,16 @@ public final class OdkImage {
         }
     }
 
+    /**
+     * How large ODK's image is, as every sentence of OntoBoard says it: {@code docker images}
+     * reports 3.37GB for {@code obolibrary/odkfull} of ODK v1.6.1. Said from here only, so that
+     * a new pin changes it in one place.
+     */
+    public static final String SIZE = "about 3.4 GB";
+
     private static final String ADVICE = "OntoBoard does not download an image on its own (it is "
-            + "about 5 GB). OntoBoard > Check requirements... shows the command that does.";
+            + SIZE + "). OntoBoard > Check requirements... shows the command that does, and "
+            + "runs it when you say so.";
 
     private OdkImage() {
     }

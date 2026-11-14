@@ -68,4 +68,77 @@ class ToolchainTest {
             }
         }
     }
+
+    /** No program can be started: what a machine with nothing installed answers. */
+    private static final de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner NOTHING =
+            new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner() {
+                @Override
+                public de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Outcome run(
+                        java.io.File workingDirectory, List<String> command, long timeoutMinutes,
+                        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Sink sink)
+                        throws java.io.IOException {
+                    throw new java.io.IOException("Cannot run program \"" + command.get(0)
+                            + "\"");
+                }
+            };
+
+    /**
+     * Without Docker OntoBoard is complete: a missing container program and a missing image are
+     * said to be fine, each row saying what it would be for - none reads as if it were needed.
+     */
+    @Test
+    void aMissingContainerProgramAndAMissingImageAreSaidToBeFine() {
+        Toolchain.Report report = Toolchain.probe(NOTHING);
+
+        List<String> seen = new ArrayList<String>();
+        for (Toolchain.Tool tool : report.getTools()) {
+            String name = tool.getName();
+            if (name.equals("Docker") || name.equals("Podman")
+                    || name.equals("Container for ODK's targets")
+                    || name.equals(OdkImagePull.NAME)) {
+                seen.add(name);
+                assertTrue(tool.getRemedy().contains("OntoBoard runs ODK's targets itself"),
+                        name + ": " + tool.getRemedy());
+                assertTrue(tool.getState() != Toolchain.State.NOT_WORKING, name);
+            }
+        }
+        assertEquals(Arrays.asList("Docker", "Podman", "Container for ODK's targets",
+                OdkImagePull.NAME), seen);
+        assertTrue(report.isEverythingAvailable(), Toolchain.asText(report));
+    }
+
+    /**
+     * What OntoBoard makes is an ODK project, built by ODK's own Makefile; no line speaks of
+     * the scaffold of 1.135.x, and none says what OntoBoard's engine does - fetching from the
+     * network - needs a container.
+     */
+    @Test
+    void noCapabilitySpeaksOfTheOldScaffoldOrSendsTheNetworkToAContainer() {
+        for (Toolchain.Capability capability : Toolchain.capabilities(false, null,
+                OdkRoute.Use.AUTOMATIC, false)) {
+            String said = capability.getName() + " - " + capability.getHow();
+            assertTrue(!said.contains("scaffold"), said);
+            assertTrue(!said.contains("network"), said);
+            assertTrue(capability.isAvailable(), said);
+        }
+    }
+
+    /**
+     * Who settled "Always in a container" builds in the container and nowhere else: that
+     * capability does not promise OntoBoard's engine where the image is missing.
+     */
+    @Test
+    void alwaysInAContainerIsNotSaidToFallBackToOntoBoardsEngine() {
+        for (Toolchain.Capability capability : Toolchain.capabilities(false, "docker",
+                OdkRoute.Use.ALWAYS_CONTAINER, false)) {
+            if (capability.getName().equals("Build an ODK project")) {
+                assertTrue(!capability.getHow().contains("OntoBoard itself"),
+                        capability.getHow());
+                assertTrue(capability.getHow().contains(OdkRoute.Use.ALWAYS_CONTAINER.label()),
+                        capability.getHow());
+                return;
+            }
+        }
+        throw new AssertionError("no row for building an ODK project");
+    }
 }
