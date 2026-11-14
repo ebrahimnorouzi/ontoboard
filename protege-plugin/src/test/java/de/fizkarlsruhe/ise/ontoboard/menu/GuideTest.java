@@ -240,6 +240,56 @@ class GuideTest {
         }
     }
 
+    private static Guide.Step step(Guide.Start start, String id) {
+        for (Guide.Step step : Guide.steps(start)) {
+            if (step.getId().equals(id)) {
+                return step;
+            }
+        }
+        throw new AssertionError("no step " + id);
+    }
+
+    /**
+     * Task O26: what the guide says reads true for the ODK project OntoBoard 1.153.0 makes and
+     * runs. Where the files are; what Build's test runs - ODK's test, in ODK's container or by
+     * OntoBoard itself, asking the project's questions with its imports; and what a release
+     * leaves: a commit and a tag v&lt;version&gt;, and a copy under releases/ only in projects
+     * that keep that folder.
+     */
+    @Test
+    void theGuidesSentencesReadTrueForAnOdkProject() {
+        Guide.Step project = step(Guide.Start.NEW, "project");
+        assertTrue(project.getWhat().contains("-edit.owl")
+                && project.getWhat().contains("-odk.yaml"), project.getWhat());
+        assertFalse(project.getWhat().contains("release folder"),
+                "a new project has no releases/ until its first release: " + project.getWhat());
+        assertTrue(project.getInstead().contains("(ODK) itself writes"), project.getInstead());
+
+        Guide.Step file = step(Guide.Start.FILE, "project");
+        assertTrue(file.getWhat().contains("Start from"),
+                "New ODK project starts from the open file: " + file.getWhat());
+        assertFalse(file.getWhat().contains("Merge ontologies"), file.getWhat());
+
+        Guide.Step tests = step(Guide.Start.NEW, "tests");
+        assertTrue(tests.getInstead().contains("make test")
+                && tests.getInstead().contains("with its imports"), tests.getInstead());
+        assertTrue(tests.getDoneWhen().contains(".rq") && tests.getDoneWhen().contains("-odk.yaml"),
+                tests.getDoneWhen());
+
+        Guide.Step build = step(Guide.Start.NEW, "build");
+        assertTrue(build.getInstead().contains("ODK's container")
+                && build.getInstead().contains("OntoBoard itself"), build.getInstead());
+        assertFalse(build.getInstead().contains("no Docker"),
+                "Docker is used where its image is: " + build.getInstead());
+
+        Guide.Step release = step(Guide.Start.NEW, "release");
+        assertTrue(release.getWhat().contains("commit") && release.getWhat().contains("tag")
+                && release.getWhat().contains("v1.0.0"), release.getWhat());
+        assertTrue(release.getWhat().contains("releases/1.0.0/")
+                && release.getWhat().contains("keeps its releases there"),
+                "the copy, only where the folder is kept: " + release.getWhat());
+    }
+
     private static void git(File root, String... arguments) throws Exception {
         java.util.List<String> command = new java.util.ArrayList<String>(java.util.Arrays.asList(
                 "git", "-c", "user.name=Test", "-c", "user.email=test@example.org", "-c",

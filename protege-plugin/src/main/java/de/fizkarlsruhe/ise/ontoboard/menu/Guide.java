@@ -148,9 +148,10 @@ public final class Guide {
             case FILE:
                 setUpAction = ODK + "NewProjectAction";
                 setUpLabel = "New ODK project...";
-                setUpWhat = "Create a project, open its edit file, and bring your ontology into "
-                        + "it with Protege's Refactor > Merge ontologies.... From then on you "
-                        + "work in the edit file, and the project keeps everything else beside it.";
+                setUpWhat = "Open your ontology file, then New ODK project... and tick Start "
+                        + "from your file: it becomes the project's edit file, its address and "
+                        + "everything in it kept. From then on you work in the edit file, and the "
+                        + "project keeps everything else beside it.";
                 break;
             case PROJECT:
                 setUpAction = ODK + "OpenProjectAction";
@@ -169,17 +170,17 @@ public final class Guide {
                 setUpLabel = "New ODK project...";
                 setUpWhat = "Answer a few questions - a short id, a title, a web address for your "
                         + "terms, a licence - and OntoBoard writes the project: the edit file you "
-                        + "work in, folders for imports and tests, a build, a release folder and a "
-                        + "documentation site.";
+                        + "work in, src/ontology/<id>-edit.owl, its configuration <id>-odk.yaml, "
+                        + "ODK's Makefile and checks, and a documentation site.";
                 break;
         }
         steps.add(new Step("project", "Set up a project", setUpWhat,
                 "A project is what makes everything after it repeatable. Anyone who opens it "
                         + "gets the same build, the same tests and the same releases - you next "
                         + "year included.",
-                "It is the layout the Ontology Development Kit (ODK) uses, so other ontology "
-                        + "developers recognise it - but there is no Docker and no command line "
-                        + "to set up. OntoBoard writes it from one dialog.",
+                "It is the project the Ontology Development Kit (ODK) itself writes, so other "
+                        + "ontology developers recognise it - but there is no Docker and no "
+                        + "command line to set up. OntoBoard writes it from one dialog.",
                 "The ontology you have open is a project's edit file: src/ontology/<id>-edit.owl.",
                 setUpAction, setUpLabel, false, false));
         steps.add(new Step("requirements", "Say what it is for",
@@ -229,22 +230,29 @@ public final class Guide {
                         + "no base\". An empty answer passes.",
                 "A test catches next month's mistake before a user does, and a set of passing "
                         + "tests is how you know the ontology answers what it was built for.",
-                "Build runs every query in src/sparql inside Protege, and names the terms that "
-                        + "break a rule.",
-                "src/sparql holds a test of your own, besides the label check every project "
-                        + "starts with.",
+                "Write a test writes the question into src/sparql, and the rule in the "
+                        + "project's own makefile by which ODK's make test - what Build runs - "
+                        + "asks every question there of the ontology with its imports, beside "
+                        + "ODK's own checks, and names the terms that break a rule.",
+                "src/sparql holds a question of your own (a .rq file), or a check of your own "
+                        + "that the project's <id>-odk.yaml lists - besides ODK's checks and the "
+                        + "label check every project starts with.",
                 "tests", "Write a test", false, false));
         steps.add(new Step("build", "Build and test",
                 "Reason, check quality, run your tests and check the OWL profile - in one go, "
                         + "after every change worth keeping.",
                 "A passing build is how you know a change broke nothing.",
-                "This is ODK's make test, run inside Protege in seconds - no ROBOT, no make, no "
-                        + "Docker.",
+                "This is ODK's own make test: in ODK's container where its image is on the "
+                        + "machine, otherwise run by OntoBoard itself inside Protege - with "
+                        + "nothing to install.",
                 "Never finished: run it before every release, and after any change you doubt.",
                 MENU + "BuildAction", "Build...", false, true));
         steps.add(new Step("release", "Release a version",
-                "Give the ontology a version - 1.0.0 - and OntoBoard stamps it in, keeps a copy "
-                        + "under releases/, and writes the merged, reasoned files people use.",
+                "Give the ontology a version - 1.0.0 - and ODK's release writes the merged, "
+                        + "reasoned files people use, with the version stamped in. OntoBoard "
+                        + "records them in a commit and a git tag, v1.0.0, and - in a project "
+                        + "OntoBoard made, or one that keeps its releases there - a copy under "
+                        + "releases/1.0.0/.",
                 "A released version never changes under the people who depend on it, and its "
                         + "number tells them what kind of change to expect.",
                 "This is ODK's release step, with the version scheme explained as you choose "
