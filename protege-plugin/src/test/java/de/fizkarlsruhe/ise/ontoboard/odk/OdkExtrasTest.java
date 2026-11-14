@@ -54,6 +54,33 @@ class OdkExtrasTest {
         assertTrue(page.contains("`docs/eggboil/releases/1.0.0/eggboil.owl`"), page);
     }
 
+    /**
+     * A project site serves docs/X at https://user.github.io/repo/X, so an address deeper
+     * in the repository is copied to the same path under docs/ (1.135.1 review). It said
+     * docs/egg.owl for https://user.github.io/repo/ontology/egg.owl, where the address
+     * would not answer.
+     */
+    @Test
+    void onAProjectSiteADeeperAddressIsCopiedToItsOwnPathUnderDocs() {
+        String page = OdkExtras.files(new OdkProjectConfig("egg", "Eggs", "Boiling eggs",
+                "https://user.github.io/repo/ontology/egg.owl", LICENCE, null))
+                .get("docs/release.md");
+
+        assertTrue(page.contains("`egg.owl` to `docs/ontology/egg.owl`"), page);
+        assertTrue(page.contains("`docs/ontology/egg/releases/1.0.0/egg.owl`"), page);
+        assertFalse(page.contains("`docs/egg.owl`"), page);
+    }
+
+    /** A user site, https://user.github.io/x.owl, has no repository in its path. */
+    @Test
+    void onAUserSiteTheAddressIsCopiedToTheTopOfDocs() {
+        String page = OdkExtras.files(new OdkProjectConfig("egg", "Eggs", "Boiling eggs",
+                "https://user.github.io/egg.owl", LICENCE, null)).get("docs/release.md");
+
+        assertTrue(page.contains("`egg.owl` to `docs/egg.owl`"), page);
+        assertTrue(page.contains("`docs/egg/releases/1.0.0/egg.owl`"), page);
+    }
+
     @Test
     void theEditingPageNamesOdksTargetsAndThePlaceholderRanges() {
         String page = pages("https://example.org/eggboil/eggboil.owl").get("docs/editing.md");

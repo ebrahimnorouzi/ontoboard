@@ -560,6 +560,94 @@ class OdkCreateTest {
                 Files.readAllBytes(new File(root, "src/ontology/profile.txt").toPath()));
     }
 
+    /** Rule names from a ROBOT profile, a line each of level and rule. */
+    private static Set<String> rulesIn(String profile) {
+        Set<String> rules = new TreeSet<String>();
+        for (String line : profile.split("\r?\n")) {
+            String[] parts = line.trim().split("\\s+");
+            if (parts.length >= 2) {
+                rules.add(parts[1]);
+            }
+        }
+        return rules;
+    }
+
+    /** ROBOT's own list, from its jar, so this cannot drift from the dependency. */
+    private static Set<String> rulesRobotShips() throws IOException {
+        try (java.io.InputStream in = org.obolibrary.robot.ReportOperation.class
+                .getResourceAsStream("/report_profile.txt")) {
+            assertNotNull(in, "robot-core's report_profile.txt");
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            for (int read = in.read(buffer); read > 0; read = in.read(buffer)) {
+                bytes.write(buffer, 0, read);
+            }
+            return rulesIn(new String(bytes.toByteArray(), StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * ROBOT builds its list of rules from the profile alone, without its defaults: a rule
+     * the profile does not name never runs, and nothing says so. (The profile OntoBoard
+     * once wrote named seven of ROBOT's rules, and that was not a smaller profile but a
+     * silently emptier one.) The profile of a new project is ODK's, to the byte; this
+     * holds that it names the rules the embedded ROBOT ships, all of them and no other,
+     * so that a new pin of either shows what it changed.
+     */
+    @Test
+    void theProfileOfANewProjectAgainstTheRulesRobotShips(@TempDir File temp)
+            throws IOException {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        Set<String> ours = rulesIn(text(new File(temp, "eggboil"), "src/ontology/profile.txt"));
+        Set<String> robots = rulesRobotShips();
+
+        Set<String> leftOut = new TreeSet<String>(robots);
+        leftOut.removeAll(ours);
+        Set<String> notRobots = new TreeSet<String>(ours);
+        notRobots.removeAll(robots);
+
+        assertEquals("[]", leftOut.toString(), "rules of ROBOT that never run in a new "
+                + "project");
+        assertEquals("[]", notRobots.toString(), "names this ROBOT ships no rule for");
+        assertEquals(32, robots.size(), "the rules ROBOT ships");
+    }
+
+    /**
+     * The checks that catch what several editors do to one ontology are errors, not
+     * warnings: they are the ones a build must stop for.
+     */
+    @Test
+    void theRulesThatCatchWhatSeveralEditorsDoAreErrors(@TempDir File temp) throws IOException {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        String profile = text(new File(temp, "eggboil"), "src/ontology/profile.txt");
+
+        for (String rule : new String[] {"deprecated_class_reference", "misused_obsolete_label",
+            "misused_replaced_by", "duplicate_label", "duplicate_definition",
+            "illegal_use_of_built_in_vocabulary", "multiple_equivalent_class_definitions",
+            "missing_label", "multiple_labels"}) {
+            assertTrue(profile.contains("ERROR\t" + rule + "\n"),
+                    rule + " is not an error in a new project's profile:\n" + profile);
+        }
+    }
+
+    /**
+     * The profile holds nothing but rules. ROBOT reads every line as a level and a rule
+     * and has no comments: a leading # is taken for a level, and the report dies with
+     * "REPORT LEVEL ERROR" - as it did in every project OntoBoard once made.
+     */
+    @Test
+    void theProfileHoldsNothingButRules(@TempDir File temp) throws IOException {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        String profile = text(new File(temp, "eggboil"), "src/ontology/profile.txt");
+
+        for (String line : profile.split("\r?\n")) {
+            String[] parts = line.split("\\s+");
+            assertEquals(2, parts.length, "not a line of a level and a rule: " + line);
+            assertTrue(Arrays.asList("ERROR", "WARN", "INFO").contains(parts[0]),
+                    "not a level ROBOT accepts: " + line);
+        }
+    }
+
     // ------------------------------------------------------------------ the label check
 
     private static List<List<String>> unlabelled(String functionalSyntaxBody) throws Exception {
@@ -671,5 +759,118 @@ class OdkCreateTest {
         assertTrue(made.notes().toString().contains("mounts denied"), made.notes().toString());
         assertTrue(Goldens.tree(new File(temp, "eggboil")).keySet()
                 .containsAll(Goldens.seedTree("eggboil").keySet()));
+    }
+
+    // ------------------------------------------------------------------ what it is good for
+    //
+    // First asked of the projects OntoBoard made up to 1.135, each after one of them had
+    // failed somebody. A project is ODK's seed now, and the same is asked of it.
+
+    /** The edit file is an ontology that opens, under the address the form was given. */
+    @Test
+    void theEditFileOpensUnderTheAddressThatWasAsked(@TempDir File temp) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "https://example.institute/abc.owl",
+                "https://creativecommons.org/publicdomain/zero/1.0/", temp);
+        OdkCreate.create(config, null, nothingInstalled(), false);
+        byte[] bytes = Files.readAllBytes(config.getEditFile().toPath());
+
+        OWLOntology ontology = OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(new java.io.ByteArrayInputStream(bytes));
+
+        assertEquals("https://example.institute/abc.owl",
+                ontology.getOntologyID().getOntologyIRI().get().toString());
+        assertFalse(new String(bytes, StandardCharsets.UTF_8).contains("example.org"),
+                "a placeholder address leaked into the edit file");
+    }
+
+    /**
+     * ODK's Makefile reasons with the two options OntoBoard's own preview reasons with, so
+     * what somebody looks at before a release is what the build writes. ROBOT by itself
+     * lets a reasoner conclude that two named classes are equivalent - two terms defined
+     * alike by accident - and says nothing.
+     */
+    @Test
+    void odksMakefileReasonsWithTheOptionsThePreviewUses(@TempDir File temp) throws Exception {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        String makefile = text(new File(temp, "eggboil"), "src/ontology/Makefile");
+
+        assertTrue(makefile.contains("--"
+                + de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform
+                        .OPTION_EQUIVALENT_CLASSES_ALLOWED + " "
+                + de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.EQUIVALENT_CLASSES_ALLOWED),
+                "ROBOT defaults to allowing every inferred equivalence");
+        assertTrue(makefile.contains("--"
+                + de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.OPTION_EXCLUDE_TAUTOLOGIES
+                + " " + de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.EXCLUDE_TAUTOLOGIES),
+                "and to writing what is true of any ontology whatsoever");
+    }
+
+    /**
+     * The ID ranges file is one OntoBoard can mint from: a project with no range it reads
+     * cannot allocate an identifier to anybody, which makes two people minting the same
+     * one a certainty rather than a risk.
+     */
+    @Test
+    void theIdRangesOfANewProjectCanBeMintedFrom(@TempDir File temp) throws Exception {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+
+        IdRanges ranges = IdRanges.parse(text(new File(temp, "eggboil"),
+                "src/ontology/eggboil-idranges.owl"));
+
+        assertEquals("EGGBOIL", ranges.getPolicyName());
+        assertEquals(7, ranges.getIdDigits());
+        assertFalse(ranges.getRanges().isEmpty(), "a project with no ranges cannot mint");
+        String owner = ranges.getRanges().get(0).getAllocatedTo();
+        String minted = ranges.mint(owner, Collections.<String>emptySet());
+        assertTrue(minted.matches("https://example\\.org/eggboil/EGGBOIL_\\d{7}"), minted);
+    }
+
+    /**
+     * The documentation site is whole. mkdocs fails on a nav entry whose file is not there,
+     * with an error about the config rather than the page; and ODK's config is
+     * {@code mkdocs.yaml} where the publishing action looks for {@code mkdocs.yml}, so the
+     * workflow has to name it.
+     */
+    @Test
+    void theSiteOfANewProjectIsWhole(@TempDir File temp) throws Exception {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        File root = new File(temp, "eggboil");
+
+        java.util.regex.Matcher pages = java.util.regex.Pattern
+                .compile("(?m)^\\s+-\\s+[^:]+:\\s*(\\S+\\.md)\\s*$")
+                .matcher(text(root, "mkdocs.yaml"));
+        int found = 0;
+        while (pages.find()) {
+            found++;
+            assertTrue(new File(new File(root, "docs"), pages.group(1)).isFile(),
+                    "the nav names docs/" + pages.group(1) + ", which is not there");
+        }
+        assertEquals(3, found, "the three pages OntoBoard adds");
+        String workflow = text(root, ".github/workflows/docs.yml");
+        assertTrue(workflow.contains("CONFIG_FILE: mkdocs.yaml"), workflow);
+    }
+
+    /**
+     * Import modules are committed. Ignoring them makes a repository whose imports resolve
+     * for their author and for nobody else: clone it, and the catalog maps an address to
+     * a file that is not there. The one thing under imports that git leaves out is a list
+     * the build puts together and takes away again; what the build writes is left out.
+     */
+    @Test
+    void theImportModulesOfANewProjectAreNotIgnored(@TempDir File temp) throws Exception {
+        OdkCreate.create(egg(temp), null, nothingInstalled(), false);
+        String ignored = text(new File(temp, "eggboil"), ".gitignore");
+
+        List<String> aboutImports = new ArrayList<String>();
+        for (String line : ignored.split("\\r?\\n")) {
+            if (!line.trim().startsWith("#") && line.contains("imports")) {
+                aboutImports.add(line.trim());
+            }
+        }
+        assertEquals(Collections.singletonList("src/ontology/imports/*_terms_combined.txt"),
+                aboutImports);
+        assertTrue(ignored.contains("\nsrc/ontology/eggboil.owl\n"), ignored);
+        assertTrue(ignored.contains("\nsrc/ontology/tmp/*\n"), ignored);
     }
 }

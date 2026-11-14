@@ -233,19 +233,22 @@ public class SparqlAction extends OntoBoardAction {
      * ({@link OdkQuestions}). In a project of the older layout, or for a loose file, every
      * {@code .rq} file in {@code src/sparql}, as before.
      */
+    /** Where a first check comes from, for an ontology that has none. */
+    private static final String WRITES_ONE =
+            "OntoBoard > Check and test > Write a test from a question... writes one.";
+
     static ProjectChecks checksOf(File editFile) {
         File root = editFile == null ? null : ReleaseAction.projectRootOf(editFile);
         if (editFile == null || !OdkRelease.isOdkProject(editFile)) {
             return new ProjectChecks(SparqlQuery.checksIn(root),
                     "No .rq files under " + SparqlQuery.CHECKS_DIRECTORY
                             + (root == null ? "" : " in " + root.getAbsolutePath())
-                            + ". The ODK wizard writes check_labels.rq there.",
+                            + ". " + WRITES_ONE,
                     "This project has no src/sparql directory, or nothing with a .rq extension in "
-                            + "it. The ODK wizard writes check_labels.rq there, and the generated "
-                            + "sparql_test target runs everything it finds.",
+                            + "it. " + WRITES_ONE,
                     " found: ", "the build's sparql_test target",
-                    "Checks live in " + SparqlQuery.CHECKS_DIRECTORY + " and are what the "
-                            + "generated sparql_test target runs.",
+                    "Checks live in " + SparqlQuery.CHECKS_DIRECTORY + ": every .rq file there "
+                            + "is one.",
                     null, null);
         }
         File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();

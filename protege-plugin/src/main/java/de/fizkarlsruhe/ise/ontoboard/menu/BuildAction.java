@@ -122,14 +122,13 @@ public class BuildAction extends OntoBoardAction {
         } else {
             String why = MakeRun.whyNotRunnable(editFile, ProcessRunner.real());
             if (why != null) {
-                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), why,
-                        "Cannot build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                        ReleaseAction.wrapped(why), "Cannot build",
+                        javax.swing.JOptionPane.INFORMATION_MESSAGE);
                 return false;
             }
         }
         List<String> targets = engine != null ? engine.targets()
-                : route == MakeRun.Route.IN_PROCESS
-                ? de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.TARGETS
                 : MakeRun.targetsFor(editFile);
         if (targets.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
@@ -147,15 +146,13 @@ public class BuildAction extends OntoBoardAction {
                         .defaultValue(engine != null ? engine.defaultTarget()
                                 : targets.contains("test") ? "test" : targets.get(0))
                         .required()
-                        .help(engine != null ? engine.help() : helpFor())
+                        .help(engine != null ? engine.help()
+                                : helpFor(route, editFile, image, runtime))
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
                 engine != null ? engine.explanation()
-                        : "Checks the ontology. test runs the reasoner, the quality report, your "
-                                + "own tests and the OWL profile check, inside Protege - nothing "
-                                + "else needs installing. The whole log is kept, and can be saved "
-                                + "from the result.",
+                        : explanationFor(route, editFile, image, runtime),
                 parameters);
         if (chosen == null) {
             return false;
@@ -184,12 +181,8 @@ public class BuildAction extends OntoBoardAction {
         result.note("Directory: " + directory.getAbsolutePath());
 
         if (engine != null) {
-            return runWithTheEngine(editFile, result);
+            return runWithTheEngine(editFile, ontology, result);
         }
-        if (route == MakeRun.Route.IN_PROCESS) {
-            return runHere(editFile, ontology, result);
-        }
-
         List<String> command = commandForRoute(directory, editFile);
         if (route == MakeRun.Route.ODK_IN_CONTAINER && imageNote != null) {
             // Not the ODK that wrote this project's Makefile: said, because a build that
@@ -209,27 +202,7 @@ public class BuildAction extends OntoBoardAction {
                     + " (command: " + join(command) + ")").build();
         }
         long seconds = (System.currentTimeMillis() - started) / 1000;
-
-        int shown = 0;
-        for (String line : outcome.getOutput()) {
-            if (shown++ >= MAX_LINES) {
-                break;
-            }
-            result.note(line);
-        }
-        if (outcome.getOutput().size() > MAX_LINES) {
-            result.warn("Transcript cut after " + MAX_LINES + " of "
-                    + outcome.getOutput().size() + " lines.");
-        }
-        result.note("Took " + seconds + "s, " + outcome.getOutput().size() + " lines of output.");
-
-        String failure = MakeRun.explain(target, outcome);
-        if (failure != null) {
-            // The transcript is above; this is the sentence that says where to look in it.
-            return result.failed(failure).build();
-        }
-
-        return result.summary("make " + target + " succeeded in " + seconds + "s.").build();
+        return processResult(result, target, outcome, seconds, editFile, ontology);
     }
 
     /**
@@ -237,7 +210,8 @@ public class BuildAction extends OntoBoardAction {
      * make runs it, ROBOT inside Protege, no container and no other program. The transcript
      * reads as make's own; a run can be stopped between two lines.
      */
-    private OperationResult runWithTheEngine(File editFile, OperationResult.Builder result) {
+    private OperationResult runWithTheEngine(File editFile, OWLOntology ontology,
+            OperationResult.Builder result) {
         result.note("Run by OntoBoard itself: ODK's own Makefile and recipes, inside Protege, "
                 + "without a container.");
         long started = System.currentTimeMillis();
@@ -251,8 +225,101 @@ public class BuildAction extends OntoBoardAction {
                             }
                         });
         long seconds = (System.currentTimeMillis() - started) / 1000;
+        return engineResult(result, target, outcome, seconds, editFile, ontology);
+    }
 
+    /**
+     * What a target run by OntoBoard itself reports, apart from running it, so a test can
+     * read it.
+     */
+    static OperationResult engineResult(OperationResult.Builder result, String target,
+            de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome, long seconds,
+            File editFile, OWLOntology ontology) {
         List<String> transcript = outcome.getTranscript();
+        noteTheTranscript(result, transcript, seconds);
+        if (!outcome.isOk()) {
+            // A run the person stopped, or one refused before its first line, is that:
+            // whatever it had found by then is not why it ended.
+            return result.failed(outcome.wasStopped() || !outcome.ranAnything()
+                    ? outcome.getFailure()
+                    : whyItFailed(target, transcript, outcome.getFailure(), editFile,
+                            ontology)).build();
+        }
+        return passed(result, target + " succeeded in " + seconds + "s, run by OntoBoard "
+                + "itself", transcript, true, ontology);
+    }
+
+    /**
+     * What a target run by make - in ODK's container, or with the tools of the machine -
+     * reports, apart from running it, so a test can read it.
+     */
+    static OperationResult processResult(OperationResult.Builder result, String target,
+            ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology) {
+        List<String> transcript = outcome.getOutput();
+        noteTheTranscript(result, transcript, seconds);
+        String failure = MakeRun.explain(target, outcome);
+        if (failure != null) {
+            // The transcript is above; this is the sentence that says where to look in it.
+            return result.failed(outcome.wasCancelled() || outcome.timedOut() ? failure
+                    : whyItFailed(target, transcript, failure, editFile, ontology)).build();
+        }
+        return passed(result, "make " + target + " succeeded in " + seconds + "s", transcript,
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile), ontology);
+    }
+
+    /**
+     * Why a run failed, as a person can act on it (1.135.1, Windows study rehearsal; said of
+     * ODK's run since 1.153.0). make's last word on a failing check is a line of CSV, and on
+     * a failing report one finding out of however many. Where the transcript says more -
+     * which check and what its rule is, which terms by their names, what to do on the board,
+     * what the reasoner found - that is said first, then where make stopped; otherwise the
+     * sentence of whoever ran the target stands. Then the project's own tests that had
+     * passed by then: a build that fails for something else has still passed them.
+     */
+    private static String whyItFailed(String target, List<String> transcript, String runners,
+            File editFile, OWLOntology ontology) {
+        String why = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.whyItStopped(transcript,
+                editFile, ontology);
+        String at = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.stoppedAt(transcript);
+        return (why == null ? runners : why + " '" + target + "' stopped"
+                + (at == null ? "" : " at " + at) + "; the log has every line up to there.")
+                + testsSaid(de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.ownAmong(
+                        de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.passed(transcript)));
+    }
+
+    /**
+     * What a run that passed says above its log: who ran it and how long it took, how many
+     * checks passed, the project's own tests among them by name, and what HermiT sees that
+     * ELK, which ODK's Makefile reasons with, does not.
+     *
+     * <p>The summary is the part nobody has to scroll to (1.135.1): the result dialog cannot
+     * be resized, its log box shows six lines, and a passing test's PASS is far below them.
+     *
+     * @param odks whether the checks are an ODK project's: ODK's own and the project's
+     */
+    private static OperationResult passed(OperationResult.Builder result, String ran,
+            List<String> transcript, boolean odks, OWLOntology ontology) {
+        List<String> passed =
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.passed(transcript);
+        List<String> warnings = new ArrayList<String>();
+        if (de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.reasonedWithElk(transcript)) {
+            String second = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.secondOpinion(
+                    ontology,
+                    de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory());
+            if (second != null) {
+                result.warn(second);
+                warnings.add(second);
+            }
+        }
+        return result.summary(ran + (passed.isEmpty() ? "." : "; " + passed.size()
+                + (odks ? " of ODK's and your checks passed." : " checks passed."))
+                + testsSaid(de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.ownAmong(passed))
+                + warningsSaid(warnings)).build();
+    }
+
+    /** The run's lines as far as they are kept, and how long it took. */
+    private static void noteTheTranscript(OperationResult.Builder result,
+            List<String> transcript, long seconds) {
         int shown = 0;
         for (String line : transcript) {
             if (shown++ >= MAX_LINES) {
@@ -265,14 +332,6 @@ public class BuildAction extends OntoBoardAction {
                     + " lines.");
         }
         result.note("Took " + seconds + "s, " + transcript.size() + " lines of output.");
-        if (!outcome.isOk()) {
-            return result.failed(outcome.getFailure()).build();
-        }
-        List<String> passing =
-                de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.passingChecks(transcript);
-        return result.summary(target + " succeeded in " + seconds + "s, run by OntoBoard "
-                + "itself" + (passing.isEmpty() ? "." : "; " + passing.size() + " of ODK's and "
-                + "your checks passed.")).build();
     }
 
     /** The command this route runs, already decided in {@link #configure()}. */
@@ -287,51 +346,6 @@ public class BuildAction extends OntoBoardAction {
                     target);
         }
         return MakeRun.command(target);
-    }
-
-    /**
-     * The build this plugin runs itself, for a project it scaffolded.
-     *
-     * <p>No process at all: every target is mapped onto the embedded robot-core, so this works
-     * with nothing installed, on every platform. The transcript is the same shape a real build
-     * produces, so the result dialog does not need to know which route ran.
-     */
-    private OperationResult runHere(File editFile, OWLOntology ontology,
-            OperationResult.Builder result) {
-        long started = System.currentTimeMillis();
-        de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome =
-                de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.run(editFile, ontology,
-                        reasoner().newFactory(), target);
-        long seconds = (System.currentTimeMillis() - started) / 1000;
-        return inProcessResult(result, target, outcome, seconds);
-    }
-
-    /**
-     * What an in-process build reports, apart from running it, so a test can read it.
-     *
-     * <p>The summary says what passed and what to read (1.135.1, Windows study rehearsal). It is
-     * the part nobody scrolls to: the result dialog cannot be resized, its log box shows six lines,
-     * and a passing test's PASS was the ninth and HermiT's warning the seventh.
-     */
-    static OperationResult inProcessResult(OperationResult.Builder result, String target,
-            de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome,
-            long seconds) {
-        for (String line : outcome.getTranscript()) {
-            result.note(line);
-        }
-        for (File file : outcome.getWritten()) {
-            result.wrote(file);
-        }
-        for (String warning : outcome.getWarnings()) {
-            result.warn(warning);
-        }
-        String tests = testsSaid(outcome.getPassingChecks());
-        if (!outcome.isOk()) {
-            return result.failed(outcome.getFailure() + tests).build();
-        }
-        return result.summary(target + " finished in " + seconds
-                + "s, inside Protege - nothing was installed or started." + tests
-                + warningsSaid(outcome.getWarnings())).build();
     }
 
     /** How many passing tests the summary names before it counts the rest. */
@@ -364,34 +378,43 @@ public class BuildAction extends OntoBoardAction {
                         + (warnings.size() == 2 ? "" : "s") + " in the log.");
     }
 
-    /** The reasoner the in-process build uses. ELK, as the generated recipe specifies. */
-    private de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice reasoner() {
-        return de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK;
-    }
-
-    /** What the target chooser says about where the build will run. */
-    private String helpFor() {
-        String common = " What it rewrites that Protege has open is read again when it is "
-                + "done.";
-        if (route == MakeRun.Route.IN_PROCESS) {
-            return "This project was scaffolded by OntoBoard, so its build runs inside Protege "
-                    + "against the embedded ROBOT - no make, no robot on your PATH, and no "
-                    + "container. 'all' and 'reason' regenerate the published file, 'report' runs "
-                    + "the quality checks, 'test' runs all four." + common;
-        }
+    /**
+     * What the form says above its Target field, for a build that make runs: where it runs.
+     * (The sentence written for the build OntoBoard ran inside Protege for its own projects
+     * stood over every one of these up to 1.153.0, a build in ODK's container included.)
+     */
+    static String explanationFor(MakeRun.Route route, File editFile, String image,
+            String runtime) {
         if (route == MakeRun.Route.ODK_IN_CONTAINER) {
-            return "Read from this project's own Makefile, most useful first. This is an ODK "
-                    + "project, so the build runs inside " + image + " through " + runtime
-                    + " - the same image its CI uses. The first run of a target may take a "
-                    + "while." + common;
+            return de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.inContainer(editFile, image,
+                    runtime).explanation();
         }
         if (route == MakeRun.Route.ODK_NATIVE) {
-            return "Read from this project's own Makefile, most useful first. This is an ODK "
-                    + "project and you have a native ODK environment configured, so the build "
-                    + "runs directly on your machine with no container." + common;
+            return "Runs a target of this project's own Makefile with ODK's tools as they are "
+                    + "installed on this machine, without a container. test checks the "
+                    + "ontology: the reasoner, ODK's checks and your own, the quality report "
+                    + "and the OWL profile. The whole log is kept, and can be saved from the "
+                    + "result.";
         }
-        return "Read from this project's own Makefile, most useful first. The build runs with "
-                + "make and robot on your PATH." + common;
+        return "Runs a target of this project's own Makefile with the make of this machine; "
+                + "the programs its recipes name have to be on the PATH. The whole log is "
+                + "kept, and can be saved from the result.";
+    }
+
+    /** What the Target field's help says, for a build that make runs. */
+    static String helpFor(MakeRun.Route route, File editFile, String image, String runtime) {
+        if (route == MakeRun.Route.ODK_IN_CONTAINER) {
+            return de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.inContainer(editFile, image,
+                    runtime).help();
+        }
+        String common = " What it rewrites that Protege has open is read again when it is "
+                + "done.";
+        if (route == MakeRun.Route.ODK_NATIVE) {
+            return "Read from this project's own Makefile, most useful first. test is the "
+                    + "full check; test_fast is the same on the imports as they are, without "
+                    + "fetching them again." + common;
+        }
+        return "Read from this project's own Makefile, most useful first." + common;
     }
 
     /** A command as one line, quoting only the arguments that need it. */

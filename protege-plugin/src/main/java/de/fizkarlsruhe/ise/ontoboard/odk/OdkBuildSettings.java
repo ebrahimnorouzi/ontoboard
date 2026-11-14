@@ -22,11 +22,11 @@ import java.util.Locale;
  * more with ROBOT_JAVA_ARGS" - could not work, because the plugin overrode exactly the variable
  * it was telling the user to set.
  *
- * <p>Separate from {@link OdkProjectSettings}, which reads the five keys the scaffold's
- * regenerator needs and throws on a repository it cannot regenerate - which is every genuine ODK
- * repository. These settings have to be readable from any project, so every one of them is
- * optional and a missing or unreadable file yields the documented default rather than an error:
- * a build must not fail because a configuration key is absent.
+ * <p>These settings have to be readable from any project, so every one of them is optional and
+ * a missing or unreadable file yields the documented default rather than an error: a build
+ * must not fail because a configuration key is absent. (The reader OntoBoard's older layout
+ * had for its own five keys threw on a repository it did not know - which was every genuine
+ * ODK repository.)
  *
  * <p>Read through {@link OdkYaml}, so quoting, comments and nesting are handled by the code that
  * is already tested for them rather than by a second regex.

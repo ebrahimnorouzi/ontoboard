@@ -513,30 +513,32 @@ class MakeRunTest {
     }
 
     /**
-     * macOS ships /usr/bin/make with the Command Line Tools, so a project OntoBoard scaffolded
-     * whose Makefile is not the one this version renders fell through to the host make and died
-     * on the first robot call. With no robot to run its recipes it is not runnable, and the
-     * advice is to update the project files, after which it builds in-process again.
+     * A project OntoBoard 1.135 or before made has OntoBoard's own Makefile. Up to 1.135 its
+     * build ran inside Protege; a project is ODK's now, and such a one is carried over, not
+     * built - on every machine alike, whatever is installed on it: the older Makefile's
+     * targets are not ODK's. (macOS ships make, and a host make died on that Makefile's
+     * first robot call; with robot on the PATH it ran. Neither is offered any more.)
      */
     @Test
-    void anOntoBoardMakefileThisVersionDoesNotRenderIsNotHandedToAHostMake(@TempDir File where)
-            throws Exception {
-        OdkProjectConfig config = new OdkProjectConfig("demo", "Demo", "A demo",
-                "http://purl.obolibrary.org/obo/demo.owl",
-                "https://creativecommons.org/licenses/by/4.0/", where);
-        OdkScaffold.create(config);
-        File ontology = new File(new File(config.getProjectRoot(), "src"), "ontology");
-        File edit = new File(ontology, "demo-edit.owl");
-        java.nio.file.Files.write(new File(ontology, "Makefile").toPath(),
-                "\n# an older version wrote one more line\n".getBytes("UTF-8"),
-                java.nio.file.StandardOpenOption.APPEND);
+    void aProjectOfTheOlderLayoutIsCarriedOverNotBuilt(@TempDir File where) throws Exception {
+        File root = new File(where, "eggboil");
+        OdkMigrationTest.copy(MigrationFixtureTest.fixture("odk/migration/eggboil-1.135.2"),
+                root);
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
 
-        assertEquals(MakeRun.Route.NOT_RUNNABLE, MakeRun.routeFor(edit, runnerWith("make")));
-        String why = MakeRun.whyNotRunnable(edit, runnerWith("make"));
-        assertTrue(why.contains("Update project files"), why);
-
-        // With robot on the PATH the Makefile can genuinely run, so it is still offered.
-        assertEquals(MakeRun.Route.MAKE_ON_PATH,
-                MakeRun.routeFor(edit, runnerWith("make", "robot")));
+        for (ProcessRunner.Runner machine : Arrays.asList(runnerWith(), runnerWith("make"),
+                runnerWith("make", "robot"), runnerWith("docker", "make", "robot"))) {
+            assertEquals(MakeRun.Route.NOT_RUNNABLE, MakeRun.routeFor(edit, machine));
+            assertEquals(OdkMigration.CARRY_OVER + " After that, Build runs ODK's targets on "
+                    + "it.", MakeRun.whyNotRunnable(edit, machine));
+        }
+        assertTrue(OdkMigration.CARRY_OVER.startsWith("This project was made by OntoBoard "
+                + "1.135 or before"), OdkMigration.CARRY_OVER);
+        assertTrue(OdkMigration.CARRY_OVER.contains(
+                "OntoBoard > Project > Update project files..."), OdkMigration.CARRY_OVER);
+        for (MakeRun.Route route : MakeRun.Route.values()) {
+            assertFalse(route.name().contains("PROCESS"), "the route for OntoBoard's own "
+                    + "Makefile, inside Protege, is gone: " + route);
+        }
     }
 }

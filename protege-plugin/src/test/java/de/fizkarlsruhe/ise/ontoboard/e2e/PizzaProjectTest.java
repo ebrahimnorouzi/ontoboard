@@ -13,7 +13,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.SeededProject;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
 import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
@@ -57,7 +57,7 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
  * mvn -o test -Dtest=PizzaProjectTest -Dpizza.repo=/somewhere -Dpizza.version=v1
  * </pre>
  *
- * <p>Everything it writes comes from the plugin's own code - {@link OdkScaffold} for the project
+ * <p>Everything it writes comes from the plugin's own code - New ODK project's for the project
  * layout, {@link OntologyProjection} for what the canvas would show, {@link InferredEdges} for what
  * the reasoner concludes, {@link ReleaseDiff} for the evolution. Nothing here reimplements a
  * feature in order to demonstrate it, which would prove only that this file works.
@@ -135,8 +135,8 @@ class PizzaProjectTest {
             // scaffolding over somebody's project would destroy it. So it is asked only on the
             // run that actually scaffolds; later releases edit a project that is already there.
             config.validate();
-            List<File> written = OdkScaffold.create(config);
-            assertFalse(written.isEmpty(), "the scaffold wrote nothing");
+            List<File> written = SeededProject.create(config).written();
+            assertFalse(written.isEmpty(), "nothing was written");
         }
         assertTrue(new File(ontologyDir, "Makefile").isFile(), "no Makefile - ODK cannot build");
         assertTrue(new File(ontologyDir, "catalog-v001.xml").isFile(), "no catalog");
@@ -869,11 +869,11 @@ class PizzaProjectTest {
         assertNotNull(provenance.getCutFrom(), "the module must record which release it came from");
     }
 
-    /** What the generated Makefile actually offers, read by the plugin's own parser. */
+    /** What the project's Makefile actually offers, read by the plugin's own parser. */
     private void writeMakeTargetsReport(File editFile, File reports) throws IOException {
         List<String> targets = de.fizkarlsruhe.ise.ontoboard.odk.MakeTargets.of(editFile);
         StringBuilder text = new StringBuilder("# Make targets - " + version + "\n\n");
-        text.append("Parsed from the generated Makefile by the plugin's own parser, which is\n");
+        text.append("Parsed from the project's Makefile by the plugin's own parser, which is\n");
         text.append("what OntoBoard's Build... dialog offers.\n\n");
         for (String target : targets) {
             text.append("- `make ").append(target).append("`\n");

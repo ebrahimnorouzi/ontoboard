@@ -261,8 +261,8 @@ public final class ProfileCheck {
             return null;
         }
         if (target == Target.EL) {
-            return "This axiom is outside OWL 2 EL. OntoBoard's release action and the ODK build "
-                    + "it scaffolds both classify with ELK, which ignores axioms it cannot "
+            return "This axiom is outside OWL 2 EL. OntoBoard's release action and ODK's build "
+                    + "both classify with ELK, which ignores axioms it cannot "
                     + "express - silently, without an error or a warning. The axiom will be in "
                     + "the file and the reasoner will not see it. Write it if you mean it, but "
                     + "do not expect the classification to reflect it.";

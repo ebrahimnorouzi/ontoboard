@@ -149,6 +149,40 @@ public final class OdkChecks {
         return crlf ? after.replace("\n", "\r\n") : after;
     }
 
+    /**
+     * What one of the checks ODK ships holds, in a sentence: their files open with no
+     * comment that says it. Null for any other check - a project's own says its rule in
+     * its own file.
+     */
+    public static String ruleOf(String checkName) {
+        return checkName == null ? null : RULES.get(checkName);
+    }
+
+    /** Read off ODK's queries ({@code _dynamic_sparql.jinja2}): what each lets no term do. */
+    private static final java.util.Map<String, String> RULES = rules();
+
+    private static java.util.Map<String, String> rules() {
+        java.util.Map<String, String> rules = new java.util.HashMap<String, String>();
+        rules.put("owldef-self-reference", "No class is defined by way of itself.");
+        rules.put("redundant-subClassOf", "No class names as a parent a class that another "
+                + "of its parents is a kind of already.");
+        rules.put("taxon-range", "What never in taxon and present in taxon point to is an "
+                + "NCBITaxon term.");
+        rules.put("iri-range", "The values of never in taxon, present in taxon, depicted "
+                + "by, in subset and contributor are IRIs, not text.");
+        rules.put("iri-range-advanced", "The values of never in taxon, present in taxon, "
+                + "see also, depicted by, in subset and contributor are IRIs, not text.");
+        rules.put("label-with-iri", "No label contains a web address.");
+        rules.put("multiple-replaced_by", "No term is replaced by more than one other.");
+        rules.put("term-tracker-uri", "A term tracker item is a URI (xsd:anyURI).");
+        rules.put("illegal-date", "A date, issued, created or creation date is a "
+                + "well-formed xsd:date or xsd:dateTime.");
+        rules.put("dc-properties", "No term uses a property of Dublin Core Elements 1.1 "
+                + "(http://purl.org/dc/elements/1.1/), which DC Terms "
+                + "(http://purl.org/dc/terms/) has replaced.");
+        return rules;
+    }
+
     /** Why a name cannot be a check's name, or null: it becomes a file name and a make word. */
     public static String whyNotAName(String checkName) {
         if (checkName == null || checkName.trim().isEmpty()) {

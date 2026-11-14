@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Test;
  * <p>1.153.0 deletes the code that wrote projects the 1.135.x way, and <em>Update project
  * files...</em> has to carry such a project over to ODK's seed without losing anything of its
  * own. A project made by hand after that code is gone would be what somebody remembers 1.135.2
- * writing, not what it wrote; so one was written by it while it still existed
- * ({@link MigrationFixtureWriter}) and kept, byte for byte, with the files a user adds to one:
+ * writing, not what it wrote; so one was written by it while it still existed (by a test
+ * that went with that code; the README beside the project says how) and kept, byte for byte,
+ * with the files a user adds to one:
  * three classes, an import module, a pattern, a module nothing imports, a question, a relaxed
  * report rule, a release.
  *

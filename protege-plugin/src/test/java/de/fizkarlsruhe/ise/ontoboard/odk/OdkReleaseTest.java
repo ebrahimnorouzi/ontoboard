@@ -867,17 +867,17 @@ class OdkReleaseTest {
     }
 
     /**
-     * A project of OntoBoard's older layout has a Makefile too, one OntoBoard wrote and builds
-     * itself. It is released the older way until it has been converted.
+     * A project of OntoBoard's older layout has a Makefile too, one OntoBoard wrote. It is
+     * no ODK project until it has been carried over.
      */
     @Test
     void anOdkProjectIsOneWithOdksMakefile() throws IOException {
         assertTrue(OdkRelease.isOdkProject(edit));
 
         File makefile = new File(ontology, "Makefile");
-        write(makefile, OdkScaffold.GENERATED_MAKEFILE_HEADER + "\n" + new String(
+        write(makefile, OdkMigration.OLD_MAKEFILE_HEADER + "\n" + new String(
                 Files.readAllBytes(makefile.toPath()), StandardCharsets.UTF_8));
-        assertFalse(OdkRelease.isOdkProject(edit), "a Makefile OntoBoard's old scaffold wrote");
+        assertFalse(OdkRelease.isOdkProject(edit), "a Makefile OntoBoard's older layout has");
 
         assertTrue(makefile.delete());
         assertFalse(OdkRelease.isOdkProject(edit), "no Makefile");

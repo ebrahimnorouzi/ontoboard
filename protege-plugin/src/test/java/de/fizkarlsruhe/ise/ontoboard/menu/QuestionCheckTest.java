@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkQuestions;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
 import java.io.File;
 import java.io.IOException;
@@ -208,12 +207,8 @@ class QuestionCheckTest {
     /** In a project of the older layout the test is a .rq file, as it always was. */
     @Test
     void inAProjectOfTheOlderLayoutNothingHasChanged(@TempDir File temp) throws IOException {
-        OdkProjectConfig project = new OdkProjectConfig("demo", "Demo", "",
-                "http://example.org/demo.owl",
-                "https://creativecommons.org/publicdomain/zero/1.0/", temp);
-        OdkScaffold.create(project);
-        File root = project.getProjectRoot();
-        File edit = new File(root, "src/ontology/demo-edit.owl");
+        File root = new File(temp, "eggboil");
+        File edit = RecordedProject.of1352(root);
         assertTrue(edit.isFile());
         Map<String, byte[]> before = tree(root);
         boolean odk = QuestionTestAction.inAnOdkProject(edit);

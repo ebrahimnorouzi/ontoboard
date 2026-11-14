@@ -179,6 +179,35 @@ public final class OdkExtras {
     }
 
     /**
+     * The path under {@code docs/} that GitHub Pages serves an IRI on {@code github.io} from, or
+     * null when it has no path. A project site, {@code https://<user>.github.io/<repo>/},
+     * publishes {@code docs/X} at {@code .../<repo>/X}, so it is the path after the repository; a
+     * user site's IRI, {@code https://<user>.github.io/x.owl}, has only the one segment.
+     */
+    static String underDocs(String iri) {
+        String path;
+        try {
+            path = new java.net.URI(iri).getPath();
+        } catch (java.net.URISyntaxException notAnIri) {
+            return null;
+        }
+        if (path == null) {
+            return null;
+        }
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        while (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.isEmpty()) {
+            return null;
+        }
+        int repository = path.indexOf('/');
+        return repository < 0 ? path : path.substring(repository + 1);
+    }
+
+    /**
      * The project's release page: numbered releases, committed and tagged, as Release... makes
      * them. On GitHub Pages it also says what to copy into {@code docs/} for the IRIs to answer:
      * Release... writes only the project's own folders.
@@ -188,8 +217,8 @@ public final class OdkExtras {
         String base = OdkConfigWriter.ontBase(c);
         boolean pages = c.getBaseIri().contains(".github.io/");
         // Where GitHub Pages serves the two IRIs from: the path after the repository's name.
-        String file = pages ? OdkScaffold.underDocs(c.getBaseIri()) : null;
-        String versions = pages ? OdkScaffold.underDocs(base) : null;
+        String file = pages ? underDocs(c.getBaseIri()) : null;
+        String versions = pages ? underDocs(base) : null;
         boolean served = file != null && versions != null;
         return "# Releasing " + OdkConfigWriter.oneLine(c.getTitle()) + "\n\n"
                 + "A release is a frozen, numbered copy - 1.0.0, then 1.1.0 and so on - that other\n"

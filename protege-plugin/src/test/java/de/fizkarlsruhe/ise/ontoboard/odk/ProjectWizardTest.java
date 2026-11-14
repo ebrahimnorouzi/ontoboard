@@ -334,7 +334,7 @@ class ProjectWizardTest {
      * A rejection with nothing to say still says something.
      *
      * <p>{@code IllegalArgumentException.getMessage()} is null for a throw with no message, and
-     * three of the exceptions this form can catch come from {@code OdkScaffold} rather than from
+     * three of the exceptions this form can catch come from writing the project rather than from
      * validation. A banner reading "Not created." followed by the word "null" is worse than the
      * old modal it replaced.
      */

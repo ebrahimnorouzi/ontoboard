@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.io.File;
@@ -175,15 +174,15 @@ class SparqlActionChecksTest {
         assertTrue(checks.notRun().contains(NAME + "-violation.sparql"), checks.notRun());
     }
 
-    /** The older layout: every .rq file in src/sparql, with the words it had. */
+    /**
+     * The older layout - the project OntoBoard 1.135.2 made, as recorded: every .rq file in
+     * src/sparql is a check. What is said no longer speaks of a wizard that writes
+     * check_labels.rq, or of a Makefile OntoBoard generates: neither is there any more.
+     */
     @Test
     void inAProjectOfTheOlderLayoutEveryRqFileIsACheck(@TempDir File temp) throws Exception {
-        OdkProjectConfig project = new OdkProjectConfig("demo", "Demo", "",
-                "http://example.org/demo.owl",
-                "https://creativecommons.org/publicdomain/zero/1.0/", temp);
-        OdkScaffold.create(project);
-        File root = project.getProjectRoot();
-        File edit = new File(root, "src/ontology/demo-edit.owl");
+        File root = new File(temp, "eggboil");
+        File edit = RecordedProject.of1352(root);
         write(new File(root, "src/sparql/stray-violation.sparql"), "SELECT * WHERE { }\n");
 
         SparqlAction.ProjectChecks checks = SparqlAction.checksOf(edit);
@@ -191,21 +190,23 @@ class SparqlActionChecksTest {
         assertEquals(SparqlQuery.checksIn(root), checks.files());
         assertNull(checks.notRun());
         assertNull(checks.missing());
-        assertEquals("Checks live in src/sparql and are what the generated sparql_test target "
-                + "runs.", checks.where());
-        assertEquals("1 check found: check_labels.rq. Each is a SELECT whose rows are the "
-                + "violations - it passes by returning nothing, which is the same convention "
-                + "robot verify and the build's sparql_test target use.",
-                SparqlAction.help(checks));
+        assertEquals("Checks live in src/sparql: every .rq file there is one.",
+                checks.where());
+        assertEquals("2 checks found: check_labels.rq, every_dataset_has_part.rq. Each is a "
+                + "SELECT whose rows are the violations - it passes by returning nothing, "
+                + "which is the same convention robot verify and the build's sparql_test "
+                + "target use.", SparqlAction.help(checks));
 
         assertTrue(new File(root, "src/sparql/check_labels.rq").delete());
+        assertTrue(new File(root, "src/sparql/every_dataset_has_part.rq").delete());
         checks = SparqlAction.checksOf(edit);
-        assertEquals("No .rq files under src/sparql in " + root.getAbsolutePath() + ". The ODK "
-                + "wizard writes check_labels.rq there.", checks.noneFound());
+        String writesOne = "OntoBoard > Check and test > Write a test from a question... "
+                + "writes one.";
+        assertEquals("No .rq files under src/sparql in " + root.getAbsolutePath() + ". "
+                + writesOne, checks.noneFound());
         assertEquals("This project has no src/sparql directory, or nothing with a .rq extension "
-                + "in it. The ODK wizard writes check_labels.rq there, and the generated "
-                + "sparql_test target runs everything it finds.", SparqlAction.help(checks));
-        assertEquals("No .rq files under src/sparql. The ODK wizard writes check_labels.rq "
-                + "there.", SparqlAction.checksOf(null).noneFound());
+                + "in it. " + writesOne, SparqlAction.help(checks));
+        assertEquals("No .rq files under src/sparql. " + writesOne,
+                SparqlAction.checksOf(null).noneFound());
     }
 }

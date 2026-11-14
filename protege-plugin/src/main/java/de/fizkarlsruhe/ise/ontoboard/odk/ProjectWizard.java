@@ -21,7 +21,7 @@ import org.semanticweb.owlapi.model.IRI;
  *
  * <p>The dialog is {@code JOptionPane}'s; the form in it is built by {@link #form}, which a test
  * lays out headlessly. Every decision it collects - validation, IRI normalisation, the file
- * tree - lives in {@link OdkProjectConfig} and {@link OdkScaffold}, which are covered.
+ * tree - lives in {@link OdkProjectConfig} and {@link OdkCreate}, which are covered.
  */
 public final class ProjectWizard {
 

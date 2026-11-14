@@ -12,6 +12,11 @@ version 1.135.2), on 2026-11-11, JDK 11.0.19, Maven 3.8.7, with:
     cd protege-plugin
     mvn -o -Dtest=MigrationFixtureWriter -Dontoboard.writeFixture=<new folder> test
 
+The writer went with the code it called, in 1.153.0 (`OdkScaffold`, `OdkRegenerator`,
+`OdkProjectSettings`, `InProcessTargets`): it is in the history at the commit above, and this
+folder cannot be written again from a later one. `RecordedProject` (in the tests) hands a copy
+of it to a test.
+
 Nothing in it is written by hand except what a person edits by hand. It holds:
 
 - the project `OdkScaffold.create` writes: id `eggboil`, title "Test kitchen ontology",

@@ -44,14 +44,14 @@ class OdkYamlAppendBlockTest {
         return productsIn(text);
     }
 
-    // ---------- the case that matters: OntoBoard's own scaffold ----------
+    // ---------- the case that matters: a project OntoBoard 1.135 or before made ----------
 
     /**
      * An empty flow list is seeded, which {@link OdkYaml#appendTo} refuses.
      *
-     * <p>This is the whole reason the method exists. OdkScaffold writes {@code products: []} into
-     * every project OntoBoard generates, so refusing an empty list refused every project this
-     * plugin made - the only ones where somebody would be adding the first product.
+     * <p>This is the whole reason the method exists. OntoBoard up to 1.135 wrote
+     * {@code products: []} into every project it made, so refusing an empty list refused every
+     * such project - the only ones where somebody would be adding the first product.
      */
     @Test
     void anEmptyFlowListIsSeeded() {

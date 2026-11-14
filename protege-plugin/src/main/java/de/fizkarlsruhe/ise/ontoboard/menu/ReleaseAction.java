@@ -99,9 +99,17 @@ public class ReleaseAction extends OntoBoardAction {
             editFile = null;
         }
         // An ODK project is released by ODK - its Makefile, or the project's own script - from
-        // the file on disk. A project of OntoBoard's older layout is released here, from what
-        // is open, until it has been converted.
+        // the file on disk. A project of OntoBoard's older layout is carried over first: up
+        // to 1.135 it was released here, and one more release made that way would be one
+        // more to carry over. An ontology that is in no project is released where it is,
+        // from what is open.
         boolean odk = editFile != null && OdkRelease.isOdkProject(editFile);
+        String older = odk ? null : carriedOverFirst(editFile);
+        if (older != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), wrapped(older),
+                    "Cannot release", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
         // A release is made from what is open, so unsaved changes went into it while the edit
         // file never had them: a release nobody could make again from the project, and one a "No"
         // on quitting would make permanent. Build asked this; Release did not.
@@ -179,6 +187,17 @@ public class ReleaseAction extends OntoBoardAction {
         merge = "true".equalsIgnoreCase(chosen.get(OPTION_MERGE));
         strip = "true".equalsIgnoreCase(chosen.get(OPTION_STRIP));
         return true;
+    }
+
+    /**
+     * Why Release... does not release this file's project, or null: a project OntoBoard
+     * 1.135 or before made is carried over first.
+     */
+    static String carriedOverFirst(File editFile) {
+        return editFile != null && de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration
+                .isOntoBoards1x(projectRootOf(editFile))
+                ? de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.CARRY_OVER
+                        + " After that, Release... makes ODK's release of it." : null;
     }
 
     /**
@@ -532,8 +551,8 @@ public class ReleaseAction extends OntoBoardAction {
                         .defaultValue(values.get(OPTION_SCHEME))
                         .help("How this project names its releases, and it changes the published "
                                 + "IRI rather than only the text. Dated publishes OBO's "
-                                + ".../releases/" + today + "/<id>.owl, which is what the "
-                                + "generated Makefile does (VERSION = $(TODAY)). Semantic "
+                                + ".../releases/" + today + "/<id>.owl, which is what ODK's "
+                                + "Makefile does by itself (VERSION = $(TODAY)). Semantic "
                                 + "publishes .../<id>/1.2.0, numbered MAJOR.MINOR.PATCH as "
                                 + "semver.org defines it. "
                                 + history)
@@ -651,7 +670,7 @@ public class ReleaseAction extends OntoBoardAction {
                 result.note("Reasoner: " + reasoner.getLabel());
                 result.note("Inferences written: " + inferred.getAdded());
                 // What HermiT sees and ELK cannot: said before the release is written, not after.
-                String second = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.secondOpinion(
+                String second = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.secondOpinion(
                         ontology, reasoner.newFactory());
                 if (second != null) {
                     result.warn(second);

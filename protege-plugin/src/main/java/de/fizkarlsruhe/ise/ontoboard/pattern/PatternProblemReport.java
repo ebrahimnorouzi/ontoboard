@@ -160,7 +160,7 @@ public final class PatternProblemReport {
     /**
      * The pom's {@code <github.repo>}, as Maven filtered it into the build properties.
      *
-     * <p>Lenient, as {@code Bench} is about the version and unlike {@code OdkScaffold} about
+     * <p>Lenient, as {@code Bench} is about the version and unlike {@code OdkTools} about
      * ROBOT's: a missing value only disables one button, and a library dialog that refused to open
      * over it would turn a missing link into a missing feature.
      */

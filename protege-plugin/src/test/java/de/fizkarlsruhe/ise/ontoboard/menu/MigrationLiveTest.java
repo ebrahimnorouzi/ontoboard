@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
-import de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
@@ -16,7 +15,6 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
-import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -32,8 +30,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * The migration of a 1.135.x project with nothing standing in.
@@ -226,27 +222,12 @@ class MigrationLiveTest {
             copy(original, root);
             File editFile = editFileOf(root);
 
-            // As 1.135.x built it: its own test, inside the JVM.
-            String before;
-            try {
-                // With the project's catalog, as 1.135.x's Build loads it: its modules
-                // have addresses that only the catalog resolves.
-                org.semanticweb.owlapi.model.OWLOntologyManager loading =
-                        OWLManager.createOWLOntologyManager();
-                File catalog = new File(editFile.getParentFile(), "catalog-v001.xml");
-                if (catalog.isFile()) {
-                    loading.getIRIMappers().add(
-                            new org.obolibrary.robot.CatalogXmlIRIMapper(catalog));
-                }
-                OWLOntology loaded = loading.loadOntologyFromOntologyDocument(editFile);
-                InProcessTargets.Outcome old = InProcessTargets.run(editFile, loaded,
-                        Reasoners.Choice.ELK.newFactory(), "test");
-                before = old.isOk() ? "passed" : "FAILED: " + old.getFailure();
-            } catch (Exception | LinkageError notRun) {
-                before = "could not be run: " + notRun;
-            }
-            said.append("## Before\n\n- `test` as 1.135.x runs it (inside the JVM): ")
-                    .append(before).append("\n\n");
+            // As 1.135.x built it - its own test, inside the JVM - it is not run any more:
+            // the code that ran OntoBoard's own Makefile went with 1.153.0. What it said of
+            // these projects is in the record of 2026-11-13 (the ledger, task O24).
+            said.append("## Before\n\n- `test` as 1.135.x ran it, inside the JVM, is not run "
+                    + "any more: the code that ran OntoBoard's own Makefile went with "
+                    + "1.153.0.\n\n");
 
             OperationResult look = OdkUpdateForm.run(OPERATION, root, false,
                     OdkUpdateForm.way(OdkRoute.Use.NEVER_CONTAINER, null, null, null,

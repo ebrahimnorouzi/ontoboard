@@ -30,6 +30,24 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class OdkChecksTest {
 
+    /**
+     * ODK's own checks open with no comment that says what they hold, so OntoBoard says it:
+     * a sentence for every check ODK ships a query for. A new ODK that ships another fails
+     * here until its sentence is written.
+     */
+    @Test
+    void everyCheckOdkShipsHasItsRuleInWords() {
+        for (String check : OdkChecks.ODK_SHIPS) {
+            String rule = OdkChecks.ruleOf(check);
+            assertNotNull(rule, check);
+            assertTrue(rule.endsWith(".") && Character.isUpperCase(rule.charAt(0)),
+                    check + ": " + rule);
+        }
+        assertEquals("No label contains a web address.", OdkChecks.ruleOf("label-with-iri"));
+        assertNull(OdkChecks.ruleOf("check_labels"), "not ODK's: its own file says its rule");
+        assertNull(OdkChecks.ruleOf(null));
+    }
+
     private static final List<String> FOUR = Arrays.asList("owldef-self-reference", "iri-range",
             "label-with-iri", "multiple-replaced_by");
 

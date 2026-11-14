@@ -610,7 +610,7 @@ class SideBySideLiveTest {
                 first(runtime, "version", "--format", "{{.Server.Version}}"), image,
                 first(runtime, "image", "inspect", "--format", "{{.Id}}", image),
                 VersionInfo.getVersionInfo().getVersion(), LocalDate.now().toString(),
-                OdkScaffold.ROBOT_VERSION,
+                OdkTools.ROBOT_VERSION,
                 robotInImage.replaceFirst("(?i)^ROBOT version ", ""));
     }
 

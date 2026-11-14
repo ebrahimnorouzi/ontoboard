@@ -229,6 +229,36 @@ class OdkToolsTest {
         assertEquals(Collections.singletonList(firstLine()), said);
     }
 
+    /**
+     * ROBOT's version is written once, in the pom: the dependency takes the property, and
+     * what odk-info says is the property, filtered into the build's properties. A second
+     * literal in Java was kept in step by a test, which works right up until somebody
+     * bumps one and not the other between two runs.
+     */
+    @Test
+    void theRobotOdkInfoNamesIsWrittenOnceInThePom() throws IOException {
+        String pom = new String(Files.readAllBytes(new File("pom.xml").toPath()),
+                StandardCharsets.UTF_8);
+
+        // The dependency must take the property rather than a literal, or there are two
+        // versions again and this test is checking one of them against itself.
+        int robotCore = pom.indexOf("<artifactId>robot-core</artifactId>");
+        assertTrue(robotCore > 0, "robot-core is not a dependency any more");
+        int versionStart = pom.indexOf("<version>", robotCore) + "<version>".length();
+        assertEquals("${robot.version}", pom.substring(versionStart,
+                pom.indexOf("</version>", versionStart)), "robot-core must take the version "
+                + "from the property, so there is exactly one place it is written");
+
+        int property = pom.indexOf("<robot.version>") + "<robot.version>".length();
+        assertTrue(property > "<robot.version>".length(), "no robot.version property");
+        String embedded = pom.substring(property, pom.indexOf("</robot.version>", property));
+
+        assertEquals(embedded, OdkTools.ROBOT_VERSION);
+        assertEquals(embedded, robotVersion(), "and it is the ROBOT that is embedded");
+        assertFalse(OdkTools.ROBOT_VERSION.contains("${"),
+                "resource filtering did not run: the version is still a placeholder");
+    }
+
     @Test
     void odkInfoWithAnArgumentItDoesNotKnowSaysHowToCallIt() {
         assertEquals(0, run("odk-info --frobnicate"));

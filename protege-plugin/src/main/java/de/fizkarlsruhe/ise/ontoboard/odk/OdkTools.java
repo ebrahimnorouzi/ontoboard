@@ -31,6 +31,50 @@ final class OdkTools {
     }
 
     /**
+     * The ROBOT this bundle embeds, as {@code odk-info} says it.
+     *
+     * <p>Read from {@code ontoboard-build.properties}, which Maven fills in from the single
+     * {@code robot.version} property in {@code pom.xml} - the same property that picks the
+     * robot-core this bundle embeds. So what is said and what runs cannot drift apart,
+     * because there is only one of them.
+     */
+    static final String ROBOT_VERSION = buildProperty("robot.version");
+
+    /**
+     * One value out of the filtered build properties.
+     *
+     * @throws IllegalStateException when the resource is missing or was never filtered - both
+     *     mean the bundle was built wrongly
+     */
+    private static String buildProperty(String key) {
+        java.io.InputStream in = OdkTools.class.getClassLoader()
+                .getResourceAsStream("ontoboard-build.properties");
+        if (in == null) {
+            throw new IllegalStateException("ontoboard-build.properties is not on the classpath; "
+                    + "the plugin was built without resource filtering.");
+        }
+        try {
+            java.util.Properties properties = new java.util.Properties();
+            properties.load(in);
+            String value = properties.getProperty(key);
+            if (value == null || value.trim().isEmpty() || value.contains("${")) {
+                throw new IllegalStateException("ontoboard-build.properties has no usable " + key
+                        + " (got '" + value + "'); Maven resource filtering did not run.");
+            }
+            return value.trim();
+        } catch (java.io.IOException cannotRead) {
+            throw new IllegalStateException("Could not read ontoboard-build.properties: "
+                    + cannotRead.getMessage(), cannotRead);
+        } finally {
+            try {
+                in.close();
+            } catch (java.io.IOException ignored) {
+                // Nothing to do about a failure to close a classpath resource.
+            }
+        }
+    }
+
+    /**
      * Every program ODK's recipes name that OntoBoard runs itself: the shell's own
      * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml.
      */
@@ -208,7 +252,7 @@ final class OdkTools {
             call.say("OntoBoard " + BuildInfo.version() + " running ODK " + OdkPin.VERSION
                     + "'s recipes without ODK's image");
             if (tools) {
-                call.say("ROBOT version " + OdkScaffold.ROBOT_VERSION);
+                call.say("ROBOT version " + ROBOT_VERSION);
             }
             if (python) {
                 call.say("Python packages: none - no Python runs ODK's recipes here.");

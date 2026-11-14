@@ -54,9 +54,7 @@ public class RunScriptAction extends ProtegeOWLAction {
             JOptionPane.showMessageDialog(getOWLWorkspace(),
                     "This project has no scripts.\n\nOntoBoard looked in "
                             + (looked == null ? "src/scripts" : looked.getAbsolutePath())
-                            + ".\nAn ODK project keeps them there; a project OntoBoard "
-                            + "scaffolded has none, because an empty directory advertises a "
-                            + "capability that is not there.",
+                            + ".\nAn ODK project keeps its scripts there.",
                     "No scripts", JOptionPane.INFORMATION_MESSAGE);
             return;
         }

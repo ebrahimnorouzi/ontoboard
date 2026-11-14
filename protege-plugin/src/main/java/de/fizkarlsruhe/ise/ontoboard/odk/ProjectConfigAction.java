@@ -53,7 +53,12 @@ public class ProjectConfigAction extends ProtegeOWLAction {
     public void actionPerformed(ActionEvent event) {
         File yaml;
         try {
-            yaml = OdkProjectSettings.yamlIn(ontologyDirectory());
+            File directory = ontologyDirectory();
+            String why = whyNoConfiguration(directory);
+            if (why != null) {
+                throw new IllegalStateException(why);
+            }
+            yaml = OdkBuildSettings.yamlIn(directory);
         } catch (RuntimeException notFound) {
             JOptionPane.showMessageDialog(getOWLWorkspace(), notFound.getMessage(),
                     "No project configuration", JOptionPane.INFORMATION_MESSAGE);
@@ -445,10 +450,33 @@ public class ProjectConfigAction extends ProtegeOWLAction {
     }
 
     /**
+     * Why there is no configuration to edit in a directory, or null when there is the
+     * one: none means the ontology is not in a project, and two cannot be chosen between.
+     */
+    static String whyNoConfiguration(File ontologyDirectory) {
+        int found = 0;
+        File[] files = ontologyDirectory == null ? null : ontologyDirectory.listFiles();
+        for (File file : files == null ? new File[0] : files) {
+            if (file.isFile() && file.getName().endsWith("-odk.yaml")) {
+                found++;
+            }
+        }
+        if (found == 1) {
+            return null;
+        }
+        String where = ontologyDirectory == null ? "no folder"
+                : ontologyDirectory.getAbsolutePath();
+        return found == 0 ? "There is no *-odk.yaml in " + where + ", so this ontology is "
+                + "not in an ODK project and has no project configuration to edit."
+                : "There are " + found + " *-odk.yaml files in " + where + ", so which of "
+                        + "them configures this project cannot be decided. Leave one.";
+    }
+
+    /**
      * The directory the open ontology is saved in, which is where its configuration lives.
      *
      * <p>The configuration sits beside the edit file in {@code src/ontology}, so this is the
-     * directory to search - the same one {@code OdkProjectSettings} reads from, through the
+     * directory to search - the same one {@link OdkBuildSettings} reads from, through the
      * same method, so the editor cannot end up showing a different file from the one the rest
      * of the plugin uses.
      */

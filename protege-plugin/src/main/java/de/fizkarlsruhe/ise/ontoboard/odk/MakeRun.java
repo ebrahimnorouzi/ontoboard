@@ -43,14 +43,15 @@ public final class MakeRun {
     public static final String DEFAULT_IMAGE = "obolibrary/odkfull";
 
     /**
-     * How a given project's build can actually be started on this machine.
+     * How a given project's make can be started on this machine, in preference order.
      *
-     * <p>In preference order, and the order is the point: the routes that need nothing installed
-     * come first, and a container is the last resort rather than the assumption.
+     * <p>These are the routes that start a program. An ODK project that none of them runs
+     * is built by OntoBoard's own engine ({@link BuildPlan#withoutContainer}), which is
+     * decided by the action; a project of OntoBoard's older layout, whose Makefile was
+     * OntoBoard's own and ran inside Protege up to 1.135, is not built at all any more -
+     * {@link #whyNotRunnable} says how it becomes an ODK project.
      */
     public enum Route {
-        /** A project OntoBoard scaffolded: every target runs inside Protege, needing nothing. */
-        IN_PROCESS,
         /** An ODK project, with a native ODK environment configured: no container. */
         ODK_NATIVE,
         /** An ODK project, through Docker or Podman, in the project's own ODK image. */
@@ -84,20 +85,13 @@ public final class MakeRun {
         if (directory == null || !new File(directory, "Makefile").isFile()) {
             return Route.NOT_RUNNABLE;
         }
-        // First: can we simply do it ourselves? A project this plugin scaffolded needs no
-        // tools at all, on any platform, because every ROBOT call in its generated Makefile has
-        // an in-process implementation here. InProcessTargets refuses anything it did not write.
-        if (InProcessTargets.whyNotEligible(editFile) == null) {
-            return Route.IN_PROCESS;
-        }
-        // A Makefile OntoBoard wrote but this version does not render byte for byte - an older
-        // scaffold, or one edited by hand - is NOT handed to a host make when there is no robot
-        // for its recipes to call. macOS ships /usr/bin/make with the Command Line Tools (GNU
-        // Make 3.81 on the Mac that reported "build is not working"), so this used to fall
-        // through to MAKE_ON_PATH and die on the first robot call, which reads as a broken
-        // project. whyNotRunnable says what to do instead.
-        if (writtenByOntoBoard(directory)
-                && !ProcessRunner.isAvailable(runner, "robot", "--version")) {
+        // A project of OntoBoard's older layout. Its Makefile was OntoBoard's own, and up to
+        // 1.135 OntoBoard ran it inside Protege; a project is ODK's now, and this one is
+        // carried over, not built - whatever is installed. It is never handed to a host
+        // make: macOS ships /usr/bin/make with the Command Line Tools (GNU Make 3.81 on the
+        // Mac that reported "build is not working"), and that died on the first robot call,
+        // which reads as a broken project. whyNotRunnable says what to do instead.
+        if (writtenByOntoBoard(directory)) {
             return Route.NOT_RUNNABLE;
         }
         if (odkRunner(directory) != null) {
@@ -258,11 +252,7 @@ public final class MakeRun {
             return null;
         }
         if (writtenByOntoBoard(directory)) {
-            String why = InProcessTargets.whyNotEligible(editFile);
-            return (why == null ? "" : why + " ")
-                    + "Use OntoBoard > Project > Update project files... to bring it up to date: "
-                    + "after that, Build runs inside Protege with nothing installed. (Running "
-                    + "this Makefile with make instead would need robot on the PATH.)";
+            return OdkMigration.CARRY_OVER + " After that, Build runs ODK's targets on it.";
         }
         return toolingAdvice(odkRunner(directory) != null,
                 ProcessRunner.isAvailable(runner, "docker", "--version"),
@@ -271,8 +261,8 @@ public final class MakeRun {
     }
 
     /**
-     * Whether the Makefile beside the edit file opens with the line every OntoBoard scaffold has
-     * written since the first one, whichever version wrote it.
+     * Whether the Makefile beside the edit file opens with the line every Makefile of
+     * OntoBoard's older layout opened with, whichever version wrote it.
      */
     static boolean writtenByOntoBoard(File directory) {
         File makefile = directory == null ? null : new File(directory, "Makefile");
@@ -285,7 +275,7 @@ public final class MakeRun {
             try {
                 String first = reader.readLine();
                 return first != null
-                        && first.trim().equals(OdkScaffold.GENERATED_MAKEFILE_HEADER);
+                        && first.trim().equals(OdkMigration.OLD_MAKEFILE_HEADER);
             } finally {
                 reader.close();
             }
@@ -437,7 +427,7 @@ public final class MakeRun {
                 || transcript.contains("'robot' is not recognized")
                 || transcript.contains("robot: command not found")) {
             return "The build calls robot and could not find it. Install ROBOT and put it on the "
-                    + "PATH - the generated Makefile calls it directly rather than through Docker.";
+                    + "PATH: this Makefile calls it directly.";
         }
         if (transcript.contains("java.lang.outofmemoryerror")) {
             // Naming the YAML key, not the environment variable. The old advice could not work:

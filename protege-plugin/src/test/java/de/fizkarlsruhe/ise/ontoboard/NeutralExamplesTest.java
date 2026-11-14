@@ -3,8 +3,8 @@ package de.fizkarlsruhe.ise.ontoboard;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkExtras;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -232,33 +232,34 @@ class NeutralExamplesTest {
     }
 
     /**
-     * Every file the scaffold writes, for a project that is not any of those ontologies.
+     * Every file OntoBoard adds to a new project, for a project that is not any of those
+     * ontologies. (The rest of a new project is ODK's seed, as ODK writes it.)
      *
      * <p>These files are committed into the user's repository and published with it, so a name
-     * in them is a name in somebody else's project. The generated .gitignore named CHEBI as its
-     * example of a large upstream until this test.
+     * in them is a name in somebody else's project. The .gitignore OntoBoard once generated
+     * named CHEBI as its example of a large upstream until this test.
      */
     @Test
-    void aScaffoldedProjectNamesNoOtherOntology(@TempDir Path directory) throws IOException {
+    void whatOntoBoardAddsToANewProjectNamesNoOtherOntology(@TempDir Path directory) {
         OdkProjectConfig config = new OdkProjectConfig("myont", "My Ontology",
                 "An ontology about one thing.", "http://purl.obolibrary.org/obo/myont.owl",
                 "https://creativecommons.org/licenses/by/4.0/", directory.toFile());
 
-        List<File> written = OdkScaffold.create(config);
+        Map<String, String> added = OdkExtras.files(config);
 
         List<String> findings = new ArrayList<String>();
-        for (File file : written) {
-            List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-            for (int index = 0; index < lines.size(); index++) {
-                if (NAMED.matcher(lines.get(index)).find()) {
-                    findings.add(file.getName() + ":" + (index + 1) + ": " + lines.get(index));
+        for (Map.Entry<String, String> file : added.entrySet()) {
+            String[] lines = file.getValue().split("\r?\n");
+            for (int index = 0; index < lines.length; index++) {
+                if (NAMED.matcher(lines[index]).find()) {
+                    findings.add(file.getKey() + ":" + (index + 1) + ": " + lines[index]);
                 }
             }
         }
 
-        assertTrue(written.size() >= 15, "only " + written.size() + " files written");
+        assertTrue(added.size() >= 4, "only " + added.keySet() + " added");
         assertEquals("[]", findings.toString(),
-                "a generated file names a particular ontology as an example");
+                "a file OntoBoard adds names a particular ontology as an example");
     }
 
     private static void javaFilesUnder(File directory, List<File> into) {

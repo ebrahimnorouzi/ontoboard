@@ -18,7 +18,7 @@ import org.semanticweb.owlapi.model.IRI;
  *
  * <p>Three places worked this out separately and each got a different wrong answer, so one release
  * could be identified three ways depending on whether it was built from the menu, from the
- * generated Makefile, or read from the javadoc. A version IRI is a permanent citation handle -
+ * Makefile OntoBoard then wrote, or read from the javadoc. A version IRI is a permanent citation handle -
  * baked into the artefact, and not retractable once anybody has imported it.
  */
 class ProjectIriTest {
@@ -69,59 +69,61 @@ class ProjectIriTest {
     // ---------- the invariant that actually matters ----------
 
     /**
-     * The menu and the generated Makefile must mint the same version IRI, or one release has two
-     * permanent identifiers depending on how somebody happened to build it.
+     * The menu and the project's Makefile must mint the same version IRI, or one release has
+     * two permanent identifiers depending on how somebody happened to build it.
      *
-     * <p>They did not. For the wizard's own default base IRI the Makefile emitted
-     * {@code .../obo/mwo.owl/releases/<date>/mwo.owl} - no stripping at all - while
-     * {@code Release.versionIri} emitted {@code .../obo/releases/<date>/mwo.owl}, and the javadoc
-     * documented a third form that neither produced. This test compares the two generators
-     * directly rather than asserting a literal, so they cannot drift apart again.
+     * <p>They did not, when the Makefile was OntoBoard's own: for the wizard's default base
+     * IRI it emitted {@code .../obo/mwo.owl/releases/<date>/mwo.owl} - no stripping at all -
+     * while {@code Release.versionIri} emitted {@code .../obo/releases/<date>/mwo.owl}, and the
+     * javadoc documented a third form that neither produced. The Makefile is ODK's now, and
+     * the comparison is with that: the dated IRI a release made here, of an ontology in no
+     * project, is the one ODK's Makefile gives a project of the same address. The two
+     * generators are compared directly rather than against a literal, so they cannot drift
+     * apart again.
      */
     @Test
-    void theScaffoldedMakefileAndTheReleaseActionAgree(@TempDir Path dir) throws Exception {
-        // The id and the IRI name always match - OdkProjectConfig.validate now refuses anything
+    void odksMakefileAndTheReleaseActionAgree(@TempDir Path dir) throws Exception {
+        // The id and the IRI name always match - OdkProjectConfig.validate refuses anything
         // else, because ODK names the artefact after the id and the version IRI after the IRI.
         for (String baseIri : new String[] {
             "http://purl.obolibrary.org/obo/mwo.owl",
-            "http://example.org/mwo",
+            "http://example.org/mwo.owl",
             "https://w3id.org/mwo/mwo.owl"}) {
 
             Path into = Files.createTempDirectory(dir, "proj");
             OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "", baseIri, CC0,
                     into.toFile());
-            OdkScaffold.create(config);
+            SeededProject.create(config);
             String makefile = new String(Files.readAllBytes(
                     new File(config.getProjectRoot(), "src/ontology/Makefile").toPath()),
                     Charset.forName("UTF-8"));
 
-            // What the Makefile would expand for a given date, with make's own variables filled
-            // in. --version-iri now reads $(VERSION_IRI), which is overridable so that a project
-            // versioning semantically can build under the IRI shape it publishes; this resolves
-            // it the way make would, so the agreement being checked is still the real one.
-            String fromMake = null;
-            String versionIri = null;
+            // What ODK's Makefile expands for a given date and the main product, with
+            // make's own variables filled in.
+            String ontBase = null;
+            String annotate = null;
             for (String line : makefile.split("\r?\n")) {
-                if (line.trim().startsWith("VERSION_IRI ?=")) {
-                    versionIri = line.substring(line.indexOf("?=") + 2).trim();
+                if (line.startsWith("ONTBASE=")) {
+                    ontBase = line.substring(line.indexOf('=') + 1).trim();
                 }
-                if (line.contains("--version-iri")) {
-                    fromMake = line.substring(line.indexOf('"') + 1, line.lastIndexOf('"'));
+                if (line.startsWith("ANNOTATE_ONTOLOGY_VERSION =")) {
+                    annotate = line.substring(line.indexOf('=') + 1).trim();
                 }
             }
-            assertNotNull(versionIri, "the Makefile no longer defines VERSION_IRI");
-            assertEquals("$(VERSION_IRI)", fromMake,
-                    "the release target must use the overridable IRI, or overriding it does "
-                            + "nothing");
-            fromMake = versionIri
+            assertNotNull(ontBase, "ODK's Makefile no longer defines ONTBASE");
+            assertNotNull(annotate, "ODK's Makefile no longer annotates the version this way");
+            assertTrue(annotate.startsWith("annotate -V $(ONTBASE)/releases/$(VERSION)/$@ "),
+                    annotate);
+            String fromMake = annotate.substring("annotate -V ".length(),
+                            annotate.indexOf(" --annotation"))
+                    .replace("$(ONTBASE)", ontBase)
                     .replace("$(VERSION)", "2026-08-30")
-                    .replace("$(TODAY)", "2026-08-30")
-                    .replace("$(ONT)", "mwo");
+                    .replace("$@", "mwo.owl");
             String fromMenu = Release.versionIri(
                     IRI.create(config.getBaseIri()), "2026-08-30").toString();
 
             assertEquals(fromMake, fromMenu,
-                    "the Makefile and the Release action disagree for base IRI " + baseIri);
+                    "ODK's Makefile and the Release action disagree for base IRI " + baseIri);
             assertTrue(fromMenu.contains("/releases/2026-08-30/"), fromMenu);
             assertTrue(fromMenu.endsWith(".owl"), fromMenu);
         }

@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.e2e.PizzaOntology;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,7 +20,6 @@ import org.semanticweb.owlapi.model.OWLOntology;
 /** SPARQL over the open ontology, and over an ODK project's own committed checks. */
 class SparqlQueryTest {
 
-    private static final String CC0 = "https://creativecommons.org/publicdomain/zero/1.0/";
 
     /** Every value in one column, across all rows. */
     private static List<String> column(SparqlQuery.Answer answer, String name) {
@@ -80,25 +78,27 @@ class SparqlQueryTest {
     }
 
     /**
-     * The scaffold's own check runs, and this is the gap that closes.
-     *
-     * <p>OntoBoard writes {@code src/sparql/check_labels.rq} and a {@code sparql_test} target that
-     * runs it, and until now nothing in the plugin could run the file it had just written.
+     * The checks of a project of the older layout are found and run: the label check
+     * OntoBoard 1.135 wrote into every project, and a test written from a question. (When
+     * this was written, OntoBoard wrote {@code src/sparql/check_labels.rq} and nothing in
+     * the plugin could run the file it had just written.)
      */
     @Test
-    void theScaffoldsOwnCheckIsFoundAndRun(@TempDir File dir) throws Exception {
-        OdkProjectConfig config = new OdkProjectConfig("demo", "Demo", "",
-                "http://example.org/demo.owl", CC0, dir);
-        OdkScaffold.create(config);
+    void theChecksOfAProjectOfTheOlderLayoutAreFoundAndRun(@TempDir File dir)
+            throws Exception {
+        File root = new File(dir, "eggboil");
+        RecordedProject.of1352(root);
 
-        List<File> checks = SparqlQuery.checksIn(config.getProjectRoot());
-        assertFalse(checks.isEmpty(), "the scaffold writes src/sparql/check_labels.rq");
+        List<File> checks = SparqlQuery.checksIn(root);
+        assertEquals(2, checks.size(), checks.toString());
         assertEquals("check_labels.rq", checks.get(0).getName());
+        assertEquals("every_dataset_has_part.rq", checks.get(1).getName());
 
         List<SparqlQuery.Check> results = SparqlQuery.verify(PizzaOntology.v2(), checks);
-        assertEquals(1, results.size());
-        assertEquals(null, results.get(0).getFailure(),
-                "the scaffold's own check must at least parse and run");
+        assertEquals(2, results.size());
+        for (SparqlQuery.Check result : results) {
+            assertEquals(null, result.getFailure(), "each must at least parse and run");
+        }
     }
 
     /**

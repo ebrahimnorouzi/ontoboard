@@ -292,19 +292,20 @@ class RegressionPinsTest {
     // ---------------------------------------------------------------- the generated build
 
     /**
-     * What CI runs includes reasoning and the SPARQL check.
+     * What CI runs includes reasoning and the SPARQL checks.
      *
-     * <p>{@code test: report} alone meant an inconsistent ontology or an unsatisfiable class passed
-     * QC green, in a job named QC, and the SPARQL file the scaffold writes was never executed by
-     * anything.
+     * <p>{@code test: report} alone, in the Makefile OntoBoard once wrote, meant an
+     * inconsistent ontology or an unsatisfiable class passed QC green, in a job named QC,
+     * and the SPARQL file written into the project was never executed by anything. The
+     * build is ODK's now; the pin is on what a new project's CI runs, whoever wrote it.
      */
     @Test
-    void whatCiRunsIncludesReasoningAndTheSparqlCheck(@TempDir Path dir) throws Exception {
+    void whatCiRunsIncludesReasoningAndTheSparqlChecks(@TempDir Path dir) throws Exception {
         de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
                 new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("abc", "ABC", "",
                         "http://x.org/abc.owl",
                         "https://creativecommons.org/publicdomain/zero/1.0/", dir.toFile());
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
+        de.fizkarlsruhe.ise.ontoboard.odk.SeededProject.create(config);
         File ontology = new File(config.getProjectRoot(), "src/ontology");
 
         String makefile = utf8(new File(ontology, "Makefile"));
@@ -315,62 +316,20 @@ class RegressionPinsTest {
             }
         }
         assertNotNull(testLine, makefile);
-        assertTrue(testLine.contains("reason"),
+        assertTrue(testLine.contains("reason_test"),
                 "CI must reason, or an inconsistent ontology passes: " + testLine);
         assertTrue(testLine.contains("sparql_test"),
-                "the scaffolded SPARQL check must run: " + testLine);
-        // Through $(ROBOT), not "robot": every robot call in the generated Makefile goes through
-        // a ROBOT variable that carries --catalog, so that the catalog entries "Import terms..."
-        // writes actually resolve. The pin is about the SPARQL check really being invoked, which
-        // it still is. Read from the sparql_test recipe rather than as "$(ROBOT) verify" anywhere
-        // in the file: since 1.134.2 the recipe merges the imports first -
-        // "$(ROBOT) merge --input ... verify --queries ..." - and no longer contains that text.
-        String unix = makefile.replace("\r\n", "\n");
-        int target = unix.indexOf("\nsparql_test:\n");
-        assertTrue(target >= 0, "no sparql_test target: " + makefile);
-        int from = target + "\nsparql_test:\n".length();
-        int end = unix.indexOf("\n\n", from);
-        String sparql = unix.substring(from, end < 0 ? unix.length() : end);
-        assertTrue(sparql.startsWith("\t$(ROBOT) ")
-                        && sparql.contains("verify --queries ../sparql/*.rq"),
-                "the SPARQL check must run, through $(ROBOT): " + sparql);
-        assertTrue(makefile.contains(".DEFAULT_GOAL := all"),
-                "without this the first target of an included Makefile becomes the default goal");
+                "the project's SPARQL checks must run: " + testLine);
+        assertTrue(testLine.contains("robot_reports"),
+                "and the quality report: " + testLine);
 
         String workflow = utf8(new File(config.getProjectRoot(), ".github/workflows/qc.yml"));
-        assertTrue(workflow.contains("curl -fsSL"),
-                "without --fail curl exits 0 on a missing asset and writes 'Not Found' into the "
-                        + "jar: " + workflow);
-        assertFalse(workflow.contains("releases/latest/download"),
-                "the ROBOT version must be pinned, not 'latest': " + workflow);
-        assertTrue(workflow.contains("upload-artifact"),
-                "a failing run must publish the report that names the violations");
-    }
-
-    /** The changes a release writes reach the project root, where a PURL resolves. */
-    @Test
-    void theGitignoreKeepsTheReleaseAndDropsTheBuildProduct(@TempDir Path dir) throws Exception {
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
-                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("abc", "ABC", "",
-                        "http://x.org/abc.owl",
-                        "https://creativecommons.org/publicdomain/zero/1.0/", dir.toFile());
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
-
-        String ignored = utf8(new File(config.getProjectRoot(), ".gitignore"));
-
-        boolean ignoresBuildProduct = false;
-        for (String line : ignored.split("\r?\n")) {
-            String rule = line.trim();
-            if (rule.startsWith("#") || rule.isEmpty()) {
-                continue;
-            }
-            assertFalse(rule.equals("abc.owl") || rule.equals("/abc.owl"),
-                    "the release artefact at the project root must be committed: " + rule);
-            ignoresBuildProduct |= rule.equals("src/ontology/abc.owl");
-        }
-        assertTrue(ignoresBuildProduct,
-                "what `make reason` writes and `make clean` deletes must not be tracked: "
-                        + ignored);
+        assertTrue(workflow.contains("cd src/ontology && make ") && workflow.contains(" test "),
+                "CI runs the Makefile's test: " + workflow);
+        assertTrue(workflow.contains("container: obolibrary/odkfull:v"),
+                "in ODK's image, at a version that is named: " + workflow);
+        assertFalse(workflow.contains("odkfull:latest"),
+                "the tools' version must be pinned, not 'latest': " + workflow);
     }
 
     // ---------------------------------------------------------------- rendering
