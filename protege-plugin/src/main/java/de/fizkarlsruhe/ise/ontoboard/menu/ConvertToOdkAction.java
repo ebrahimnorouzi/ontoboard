@@ -36,8 +36,9 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * earlier versions, made an ODK project ready for GitHub, every step shown as it happens.
  *
  * <p>Asked for by somebody with an ontology and its history and no ODK repository: the earlier
- * versions as releases and git tags, its imports as modules, the build run, the current version
- * released. {@link OdkConversion} does the work; this asks the questions and shows the steps, a
+ * versions as releases and git tags, its imports as modules, ODK's test run, the current version
+ * released as ODK releases one. {@link OdkConversion} does the work - ODK's own seed, ODK's own
+ * targets, in its container or by OntoBoard itself; this asks the questions and shows the steps, a
  * log of what each did, and at the end what to type to publish it. Nothing is pushed anywhere.
  */
 public class ConvertToOdkAction extends ProtegeOWLAction {
@@ -164,6 +165,23 @@ public class ConvertToOdkAction extends ProtegeOWLAction {
 
         Progress(OdkConversion.Request request) {
             this.request = request;
+            // Who runs ODK's targets on the new project - ODK's container, a native ODK
+            // environment, or OntoBoard itself - is found out once the project is there, by
+            // the settings of Check requirements, as Build, Release and Refresh imports find
+            // it out. Not on the dispatch thread: the conversion asks from its own.
+            request.odk(new java.util.function.Function<File,
+                    de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Odk>() {
+                @Override
+                public de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Odk apply(File editFile) {
+                    return OdkImportsRoute.detect(editFile).odk(editFile,
+                            new java.util.function.BooleanSupplier() {
+                                @Override
+                                public boolean getAsBoolean() {
+                                    return attempt.isStopped();
+                                }
+                            });
+                }
+            });
             dialog = new JDialog(javax.swing.SwingUtilities.getWindowAncestor(
                     getOWLWorkspace()), "Turning the ontology into an ODK repository",
                     java.awt.Dialog.ModalityType.MODELESS);
@@ -252,10 +270,10 @@ public class ConvertToOdkAction extends ProtegeOWLAction {
                         summary.setText("<html><b>Done: " + root.getAbsolutePath() + "</b> - "
                                 + result.getVersions().size() + " versions, "
                                 + result.getTags().size() + " git tags, "
-                                + result.getModules().size() + " import modules, build "
-                                + (result.isBuildPassed() ? "passing" : "with problems - see "
-                                        + "the log") + ", " + result.getWarnings().size()
-                                + " warnings.</html>");
+                                + result.getModules().size() + " import modules, ODK's test "
+                                + (result.isBuildPassed() ? "passing" : "not passing, so the "
+                                        + "current version is not released - see the log")
+                                + ", " + result.getWarnings().size() + " warnings.</html>");
                     } catch (Exception failed) {
                         Throwable cause = failed.getCause() != null ? failed.getCause() : failed;
                         summary.setText("<html><b>Stopped:</b> " + cause.getMessage()

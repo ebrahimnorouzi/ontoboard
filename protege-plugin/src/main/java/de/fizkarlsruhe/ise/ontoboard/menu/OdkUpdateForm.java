@@ -231,11 +231,16 @@ final class OdkUpdateForm {
                 .append("' in the configuration, with the module src/ontology/imports/")
                 .append(finding.name()).append("_import.owl, and the edit file imports the "
                         + "module from then on.");
-        help.append(finding.isFrozen() ? "\n\nIt is read from " + relative(
-                projectRoot.getAbsoluteFile(), item.localFileOrNull()) + ", a file of the "
-                + "project, so there is no address ODK could fetch it from again: ODK keeps "
-                + "the module as it is." : "\n\nODK fetches it again from its address whenever "
-                + "the imports are refreshed.");
+        help.append(!finding.isFrozen() ? "\n\nODK fetches it again from its address whenever "
+                + "the imports are refreshed."
+                : item.localFileOrNull() != null ? "\n\nIt is read from " + relative(
+                        projectRoot.getAbsoluteFile(), item.localFileOrNull()) + ", a file of "
+                        + "the project, so there is no address ODK could fetch it from "
+                        + "again: ODK keeps the module as it is."
+                        : "\n\nIt is read from a file on this machine, which is an address "
+                                + "on no other, so there is nothing ODK could fetch it from "
+                                + "again: ODK keeps the module as it is, and the path is "
+                                + "written into no file of the project.");
         return help.toString();
     }
 
@@ -409,8 +414,8 @@ final class OdkUpdateForm {
                                                         : " terms") + " of it the ontology uses"
                                         : ", its module the whole ontology")
                                 + (finding.isFrozen() ? "; ODK keeps the module as it is - it "
-                                        + "is read from a file of the project, so there is no "
-                                        + "address to fetch it from again" : "; ODK fetches it "
+                                        + "is read from a file, so there is no address to "
+                                        + "fetch it from again" : "; ODK fetches it "
                                         + "again from its address when the imports are "
                                         + "refreshed") + ".");
             }

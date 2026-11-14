@@ -108,7 +108,7 @@ class ReleaseByItselfTest {
                 + "releases/1.0.0, where ODK's version IRIs point");
         assertEquals("https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl",
                 versionIriOf(new File(root, "eggboil.owl")), "ODK's version IRI");
-        assertTrue(log.contains("$ make prepare_release_fast VERSION=1.0.0"), log);
+        assertTrue(log.contains("$ make prepare_release_fast -B VERSION=1.0.0"), log);
         assertTrue(log.contains("run by OntoBoard itself"), "the log says who ran it: " + log);
         assertTrue(log.contains("PASS Rule ../sparql/check_labels-violation.sparql"),
                 "the tests ran as part of it: " + log);
@@ -116,6 +116,36 @@ class ReleaseByItselfTest {
         assertEquals("v1.0.0", outcome.getTag());
         assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-m",
                 "eggboil 1.0.0")), gitRan.toString());
+    }
+
+    /**
+     * ODK's test builds the ontology it validates - the file a release puts at the top of the
+     * project - and stamps it with the day. A release made afterwards must not take that file
+     * for its own: ODK's instructions release with {@code make -B}, which makes everything
+     * again. Found in 1.153.0's own work: a release numbered 1.0.0, made after a test, carried
+     * the day as its version.
+     */
+    @Test
+    void aReleaseAfterATestCarriesItsOwnVersionNotTheDays() throws Exception {
+        OdkEngine.Outcome tested = OdkEngine.run(edit, "test_fast",
+                new java.util.LinkedHashMap<String, String>(), null);
+        assertTrue(tested.isOk(), tested.getFailure());
+        File validated = new File(edit.getParentFile(), "eggboil.owl");
+        assertTrue(validated.isFile(), "ODK's test has built the ontology it validates");
+        assertTrue(!versionIriOf(validated).contains("/releases/1.0.0/"),
+                "under the day's version: " + versionIriOf(validated));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        String log = String.join("\n", outcome.getTranscript());
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + log);
+        for (String product : Arrays.asList("eggboil.owl", "eggboil-base.owl",
+                "eggboil-full.owl")) {
+            assertEquals("https://example.org/eggboil/eggboil/releases/1.0.0/" + product,
+                    versionIriOf(new File(root, product)), product);
+        }
+        assertTrue(log.contains("$ make prepare_release_fast -B VERSION=1.0.0"),
+                "as ODK's own instructions release: " + log);
     }
 
     /**

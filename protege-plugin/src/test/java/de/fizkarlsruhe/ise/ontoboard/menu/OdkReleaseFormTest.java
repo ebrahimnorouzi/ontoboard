@@ -519,7 +519,7 @@ class OdkReleaseFormTest {
         assertTrue(result.getSummary().contains("git push --follow-tags"), result.getSummary());
         String log = String.join("\n", result.getLog());
         assertTrue(log.contains("Version IRI: " + BASE + "/releases/1.0.0/eggboil.owl"), log);
-        assertTrue(log.contains("docker run --rm ... make prepare_release VERSION=1.0.0"), log);
+        assertTrue(log.contains("docker run --rm ... make prepare_release -B VERSION=1.0.0"), log);
         assertTrue(result.getFiles().contains(new File(root, "eggboil.owl")));
         assertTrue(result.getFiles().contains(new File(root, "releases/1.0.0/eggboil.owl")));
         assertNull(scriptAsRun, "no script in this project, none written");

@@ -87,6 +87,104 @@ class OdkConfigWriterTest {
                 "https://example.org/shop/shop.owl").adopting()));
     }
 
+    /**
+     * What ODK names under a project's base - its modules, its releases - is under an adopted
+     * ontology's own address: where that address does not end in the id, its last part is
+     * ODK's {@code uribase_suffix}. The file ODK releases is named after the id all the same.
+     */
+    @Test
+    void whatOdkNamesForAnAdoptedOntologyIsUnderItsOwnAddress() {
+        OdkProjectConfig odd = project("shopcore", "Shop",
+                "https://example.org/vocab/ontology").adopting();
+        assertEquals("ontology", OdkConfigWriter.uriBaseSuffix(odd));
+        assertEquals("https://example.org/vocab/ontology", OdkConfigWriter.ontBase(odd));
+        assertEquals("https://example.org/vocab/shopcore.owl", OdkConfigWriter.odkIri(odd));
+        String config = OdkConfigWriter.forNewProject(odd);
+        assertTrue(config.contains("uribase: https://example.org/vocab\n"
+                + "uribase_suffix: ontology\nlicense: "), config);
+        PyObject read = OdkProjectModel.load(config);
+        assertEquals("ontology", de.fizkarlsruhe.ise.ontoboard.odk.seed.Py.str(
+                read.get("uribase_suffix")), "ODK reads it");
+        assertEquals("https://example.org/vocab/ontology", OdkUpdate.ontbase(read));
+
+        // The .owl of a file's name is no part of the address it stands for.
+        OdkProjectConfig file = project("shop_ontology", "Shop",
+                "https://example.org/Shop-Ontology.owl").adopting();
+        assertEquals("Shop-Ontology", OdkConfigWriter.uriBaseSuffix(file));
+        assertEquals("https://example.org/Shop-Ontology", OdkConfigWriter.ontBase(file));
+        assertEquals("https://example.org/shop_ontology.owl", OdkConfigWriter.odkIri(file));
+
+        // ODK's own shape, with or without .owl, needs none - and has none.
+        OdkProjectConfig odks = project("shop", "Shop", "https://example.org/shop/shop.owl")
+                .adopting();
+        assertEquals(null, OdkConfigWriter.uriBaseSuffix(odks));
+        assertEquals("https://example.org/shop/shop", OdkConfigWriter.ontBase(odks));
+        assertFalse(OdkConfigWriter.forNewProject(odks).contains("uribase_suffix"));
+        assertEquals(null, OdkConfigWriter.uriBaseSuffix(project("shop", "Shop",
+                "https://example.org/shop").adopting()));
+        // A separator at the end is no part of the address.
+        assertEquals("shop", OdkConfigWriter.uriBaseSuffix(project("shopx", "Shop",
+                "https://example.org/shop/").adopting()));
+        // Nothing to name it by: a bare host, a part after a hash (ODK joins with a slash),
+        // or a part make would not read as a word.
+        for (String address : new String[] {"https://example.org",
+            "https://example.org/shops#core", "https://example.org/my%20shop",
+            "https://example.org/shop$(X)"}) {
+            assertEquals(null, OdkConfigWriter.uriBaseSuffix(project("shopx", "Shop", address)
+                    .adopting()), address);
+        }
+        // A project that starts from nothing has ODK's shape by rule.
+        assertEquals(null, OdkConfigWriter.uriBaseSuffix(egg()));
+        assertEquals("https://example.org/eggboil/eggboil", OdkConfigWriter.ontBase(egg()));
+        assertEquals("https://example.org/eggboil/eggboil.owl", OdkConfigWriter.odkIri(egg()));
+    }
+
+    /**
+     * ODK takes a project's own terms to begin with {@code <uribase>/<ID>_}: its base release
+     * keeps what begins so, its quality report looks at it, its lists of terms hold it. The
+     * terms of an ontology somebody already has begin with that ontology's own address. The
+     * configuration names both - ODK's {@code namespaces} - and has the report go by them;
+     * without that the base release of an adopted ontology held none of its terms (1.153.0,
+     * live run: 0 classes).
+     */
+    @Test
+    void anAdoptedOntologysOwnTermsAreWhereItsAddressIs() {
+        String config = OdkConfigWriter.forNewProject(project("shop", "Shop",
+                "https://example.org/shop.owl").adopting());
+
+        assertTrue(config.contains("repo: shop\n"
+                + "namespaces:\n"
+                + "  - https://example.org/shop\n"
+                + "  - https://example.org/SHOP_\n"
+                + "robot_report:\n"), config);
+        assertTrue(config.contains("  custom_profile: TRUE\n  use_base_iris: TRUE\n"), config);
+        PyObject read = OdkProjectModel.load(config);
+        java.util.List<String> named = new java.util.ArrayList<String>();
+        for (Object namespace : de.fizkarlsruhe.ise.ontoboard.odk.seed.Py.iterate(
+                read.get("namespaces"))) {
+            named.add(de.fizkarlsruhe.ise.ontoboard.odk.seed.Py.str(namespace));
+        }
+        assertEquals(java.util.Arrays.asList("https://example.org/shop",
+                "https://example.org/SHOP_"), named, "ODK reads them");
+
+        // With an address of another shape: that address, and where ODK names new terms.
+        String odd = OdkConfigWriter.forNewProject(project("shopcore", "Shop",
+                "https://example.org/vocab/ontology").adopting());
+        assertTrue(odd.contains("namespaces:\n"
+                + "  - https://example.org/vocab/ontology\n"
+                + "  - https://example.org/vocab/SHOPCORE_\n"), odd);
+
+        // An address make would not read as one word goes into no Makefile.
+        String unsafe = OdkConfigWriter.forNewProject(project("shopx", "Shop",
+                "https://example.org/shop$(X)").adopting());
+        assertFalse(unsafe.contains("namespaces"), unsafe);
+        assertFalse(unsafe.contains("use_base_iris"), unsafe);
+
+        // A project that starts from nothing names its terms as ODK does: nothing to say.
+        assertFalse(OdkConfigWriter.forNewProject(egg()).contains("namespaces"));
+        assertFalse(OdkConfigWriter.forNewProject(egg()).contains("use_base_iris"));
+    }
+
     /** ODK reads the file with PyYAML; what was typed must be what it reads. */
     @ParameterizedTest
     @ValueSource(strings = {"Say \"cheese\"", "Back\\slash C:\\ontologies", "Colon: and # hash",

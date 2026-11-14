@@ -214,6 +214,45 @@ class ImportGuardTest {
                 + "from nowhere");
     }
 
+    /**
+     * An ontology that is loaded already - Convert to ODK has read it with what it imports,
+     * perhaps from far away - is gone by as it is: nothing it imports is read a second time.
+     */
+    @Test
+    void anOntologyThatIsLoadedAlreadyIsNotReadAgain() throws Exception {
+        theProjectUsingTheSpoon();
+        File edit = inOntology("eggboil-edit.owl");
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        manager.getIRIMappers().add(new org.obolibrary.robot.CatalogXmlIRIMapper(
+                inOntology("catalog-v001.xml")));
+        OWLOntology loaded = manager.loadOntologyFromOntologyDocument(
+                new org.semanticweb.owlapi.io.StreamDocumentSource(
+                        new java.io.ByteArrayInputStream(Files.readAllBytes(edit.toPath()))));
+        List<ImportGuard.Undeclared> undeclared = OdkUpdate.plan(root).undeclared();
+        // What it imports is no longer to be had: the catalog has stopped serving it.
+        File catalog = inOntology("catalog-v001.xml");
+        String served = text(catalog);
+        String without = served.replaceAll("(?m)^.*uri=\"whole\\.owl\".*\\r?\\n", "");
+        assertFalse(without.equals(served), served);
+        write(catalog, without);
+        assertFalse(ImportGuard.read(root, edit).findings(undeclared).get(0).isReadable(),
+                "read from the file now, the import cannot be read");
+
+        ImportGuard.Reading reading = ImportGuard.reading(root, loaded);
+        ImportGuard.Finding finding = reading.findings(undeclared).get(0);
+
+        assertTrue(finding.isReadable(), finding.whyUnreadable());
+        assertEquals("whole", finding.name());
+        assertEquals(1, finding.termsUsed());
+        reading.declare(finding, ImportGuard.Decision.MODULE);
+        assertTrue(read(inOntology("imports/whole_import.owl")).containsEntityInSignature(
+                IRI.create(SPOON), Imports.EXCLUDED));
+        assertEquals(MODULES + "whole_import.owl", read(inOntology("imports/whole_import.owl"))
+                .getOntologyID().getOntologyIRI().get().toString(),
+                "named under the project's base, as the configuration has it");
+    }
+
     @Test
     void asAModuleItsProductIsDeclaredAndTheModuleHoldsWhatTheOntologyUses() throws Exception {
         theProjectUsingTheSpoon();
@@ -270,15 +309,43 @@ class ImportGuardTest {
                 "all of it, used or not");
     }
 
+    /** A web address for a file, on this machine: what an import read from its address is. */
+    private static final class Served implements AutoCloseable {
+        private final com.sun.net.httpserver.HttpServer server;
+
+        Served(File file) throws IOException {
+            final byte[] bytes = Files.readAllBytes(file.toPath());
+            server = com.sun.net.httpserver.HttpServer.create(
+                    new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/", new com.sun.net.httpserver.HttpHandler() {
+                @Override
+                public void handle(com.sun.net.httpserver.HttpExchange exchange)
+                        throws IOException {
+                    exchange.sendResponseHeaders(200, bytes.length);
+                    exchange.getResponseBody().write(bytes);
+                    exchange.close();
+                }
+            });
+            server.start();
+        }
+
+        String address() {
+            return "http://127.0.0.1:" + server.getAddress().getPort() + "/whole.owl";
+        }
+
+        @Override
+        public void close() {
+            server.stop(0);
+        }
+    }
+
     /** An import read from its address is one ODK can fetch again: declared with the address. */
     @Test
     void anImportReadFromItsAddressIsDeclaredWithIt() throws Exception {
         theProjectUsingTheSpoon();
         // Outside the project and outside its catalog: read from where its IRI points.
-        File elsewhere = new File(root.getParentFile(), root.getName() + "-elsewhere.owl");
-        try {
-            Files.copy(inOntology("whole.owl").toPath(), elsewhere.toPath());
-            String address = elsewhere.toURI().toString();
+        try (Served served = new Served(inOntology("whole.owl"))) {
+            String address = served.address();
             File edit = inOntology("eggboil-edit.owl");
             write(edit, text(edit).replace("Import(<" + WHOLE + ">)",
                     "Import(<" + address + ">)"));
@@ -295,6 +362,48 @@ class ImportGuardTest {
             assertEquals(address, product.getMirrorFrom());
             assertEquals("slme", product.getModuleType());
             assertEquals("BOT", product.getSlmeMethod());
+            assertTrue(text(inOntology("imports/" + finding.name() + "_terms.txt"))
+                    .contains("# Source: " + address), "and the term list says where from");
+        }
+    }
+
+    /**
+     * A file of this machine is an address on no other. Its import is kept as it is, like one
+     * the project's catalog serves from a file, and no path goes into what is committed -
+     * ODK's refresh would stop on it on the next person's machine and in continuous
+     * integration.
+     */
+    @Test
+    void anImportReadFromAFileOfThisMachineIsKeptAsItIs() throws Exception {
+        theProjectUsingTheSpoon();
+        File elsewhere = new File(root.getParentFile(), root.getName() + "-elsewhere.owl");
+        try {
+            Files.copy(inOntology("whole.owl").toPath(), elsewhere.toPath());
+            String address = elsewhere.toURI().toString();
+            File edit = inOntology("eggboil-edit.owl");
+            write(edit, text(edit).replace("Import(<" + WHOLE + ">)",
+                    "Import(<" + address + ">)"));
+            ImportGuard.Reading reading = ImportGuard.read(root, edit);
+            ImportGuard.Finding finding = reading.findings(
+                    OdkUpdate.plan(root).undeclared()).get(0);
+            assertEquals(address, finding.item().iri());
+            assertNull(finding.item().localFileOrNull(), "no file of the project");
+            assertTrue(finding.isFrozen(), "there is no address ODK could fetch it from");
+
+            reading.declare(finding, ImportGuard.Decision.MODULE);
+
+            File config = inOntology("eggboil-odk.yaml");
+            File terms = inOntology("imports/" + finding.name() + "_terms.txt");
+            File module = inOntology("imports/" + finding.name() + "_import.owl");
+            ImportProducts.Product product = ImportProducts.named(
+                    ImportProducts.declaredIn(text(config)), finding.name());
+            assertEquals("custom", product.getModuleType());
+            assertFalse(product.isMirrored(), "kept as it is: nothing is fetched for it");
+            assertTrue(text(terms).contains(SPOON), text(terms));
+            for (File committed : new File[] {config, terms, module}) {
+                assertFalse(text(committed).contains("elsewhere"), committed.getName()
+                        + " names a file of this machine: " + text(committed));
+            }
         } finally {
             elsewhere.delete();
         }
@@ -303,10 +412,8 @@ class ImportGuardTest {
     @Test
     void theWholeOfAnImportReadFromItsAddressIsAMirror() throws Exception {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
-        File elsewhere = new File(root.getParentFile(), root.getName() + "-elsewhere.owl");
-        try {
-            Files.copy(inOntology("whole.owl").toPath(), elsewhere.toPath());
-            String address = elsewhere.toURI().toString();
+        try (Served served = new Served(inOntology("whole.owl"))) {
+            String address = served.address();
             File edit = inOntology("eggboil-edit.owl");
             write(edit, text(edit).replace("Import(<" + WHOLE + ">)",
                     "Import(<" + address + ">)"));
@@ -320,8 +427,6 @@ class ImportGuardTest {
                     text(inOntology("eggboil-odk.yaml"))), finding.name());
             assertEquals(address, product.getMirrorFrom());
             assertEquals("mirror", product.getModuleType());
-        } finally {
-            elsewhere.delete();
         }
     }
 

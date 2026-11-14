@@ -135,6 +135,29 @@ class OdkQuestionsTest {
     }
 
     /** The first marker without the last: not touched in between; the rule goes to the end. */
+    /**
+     * The rule is told by what it says, not by where one starts: a rule with one line
+     * changed has as many lines as before, and lines of the project's own after it - and is
+     * not the rule (mutant Q01 of the round on this step said it was, and lived).
+     */
+    @Test
+    void aChangedRuleOfTheSameLengthIsNotTheRule() {
+        String changed = OdkQuestions.rule().replace("merge --input",
+                "merge --catalog other.xml --input");
+        assertFalse(changed.equals(OdkQuestions.rule()), "one line of it is another");
+        String file = "# mine\n\n" + changed + "\nmine:\n\techo mine\n\techo more\n";
+
+        assertFalse(OdkQuestions.isIn(file));
+        assertTrue(OdkQuestions.isChangedIn(file));
+        assertNull(OdkQuestions.linesIn(file));
+        assertNull(OdkQuestions.alone(file), "a changed rule is the project's own");
+        String putRight = OdkQuestions.with(file);
+        assertTrue(OdkQuestions.isIn(putRight), putRight);
+        assertFalse(putRight.contains("other.xml"), putRight);
+        assertTrue(putRight.startsWith("# mine\n\n"), putRight);
+        assertTrue(putRight.endsWith("\nmine:\n\techo mine\n\techo more\n"), putRight);
+    }
+
     @Test
     void aRuleCutOffIsLeftAndAWholeOneAdded() {
         String cut = SEEDS + "\n" + OdkQuestions.rule().substring(0,
@@ -144,6 +167,16 @@ class OdkQuestionsTest {
         String with = OdkQuestions.with(cut);
         assertTrue(with.startsWith(cut), with);
         assertTrue(with.endsWith(OdkQuestions.rule()), with);
+        // The whole one is found behind the one cut off - every line that begins a rule is
+        // looked at, not only the first - so it is there now, and is not added a second time
+        // (mutant Q01 of the round on this step looked at the first alone, and lived).
+        assertTrue(OdkQuestions.isIn(with), "the whole rule is found after the one cut off");
+        assertFalse(OdkQuestions.isChangedIn(with));
+        assertEquals(with, OdkQuestions.with(with), "adding it again changes nothing");
+        int[] place = OdkQuestions.linesIn(with);
+        assertNotNull(place);
+        assertEquals(with.split("\n", -1).length - 1, place[1], "the rule's last line is the "
+                + "file's last");
     }
 
     /** For the engine's comparison: the rule alone, at the lines it has in the file. */

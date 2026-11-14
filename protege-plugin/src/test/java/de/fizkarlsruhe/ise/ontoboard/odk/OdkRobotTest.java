@@ -254,6 +254,54 @@ class OdkRobotTest {
     }
 
     /**
+     * The OWL API's OBO writer logs every axiom OBO cannot say as an error, with the stack of
+     * where it stood - "MASKING ERROR", it calls it itself. ODK's own log has none of it:
+     * ROBOT in ODK's container converts the same ontology without a word. Inside Protege the
+     * release of a real ontology carried 104 of them at 76 lines each, and its transcript was
+     * cut after 4000 lines of nothing else (1.153.0, live run).
+     */
+    @Test
+    void whatTheOboWriterMasksStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        // What OBO has no words for: only this or that, of a property.
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:Pan))\nDeclaration(Class(:Pot))\n"
+                        + "Declaration(ObjectProperty(:boiledIn))\n"
+                        + "SubClassOf(:Egg ObjectAllValuesFrom(:boiledIn "
+                        + "ObjectUnionOf(:Pan :Pot)))\n");
+        File obo = new File(temp, "out.obo");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("convert", "--input", path(a),
+                    "--check", "false", "-f", "obo", "--clean-obo",
+                    "strict drop-untranslatable-axioms", "-o", path(obo)));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            assertTrue(obo.isFile(), "the OBO file is written");
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertFalse(event.getFormattedMessage().contains("MASKING"),
+                        "logged by the run: " + event.getLevel() + " " + event.getLoggerName()
+                                + " " + event.getFormattedMessage());
+            }
+            assertEquals(java.util.Collections.<String>emptyList(), ran.output(),
+                    "the conversion says nothing, as in ODK's own log");
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+        }
+    }
+
+    /**
      * Errors are what ROBOT's command line lets through, and one of them is how anybody learns
      * what is wrong with an ontology: when the reasoner finds classes that can have no members,
      * ROBOT logs which, as errors, and fails. Those lines are in the run's output - and so in a

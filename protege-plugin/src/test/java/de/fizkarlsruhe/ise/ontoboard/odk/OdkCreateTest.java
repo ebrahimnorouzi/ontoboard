@@ -437,11 +437,73 @@ class OdkCreateTest {
         assertArrayEquals(ontology, Files.readAllBytes(mine.toPath()), "left as it was");
         assertTrue(text(root, "src/ontology/Makefile").contains(
                 "URIBASE=                    https://example.org\n"));
+        // What ODK names under the project's base is under the ontology's own address.
+        assertTrue(text(root, "src/ontology/Makefile").contains(
+                "ONTBASE=                    https://example.org/Shop-Ontology\n"),
+                text(root, "src/ontology/Makefile").substring(0, 1500));
+        // What ODK takes for the project's own terms begins where the ontology is: its base
+        // release and its report go by that.
+        String own = "--base-iri https://example.org/Shop-Ontology "
+                + "--base-iri https://example.org/SHOP_ONTOLOGY_ ";
+        String makefile = text(root, "src/ontology/Makefile");
+        assertTrue(makefile.contains("remove " + own), "the base release keeps them");
+        assertTrue(makefile.contains("--fail-on $(REPORT_FAIL_ON) " + own),
+                "the report looks at them");
         // The address is the ontology's own, and ODK's release would name another: said.
         assertTrue(made.notes().toString().contains("https://example.org/shop_ontology.owl"),
                 made.notes().toString());
         assertTrue(made.notes().toString().contains("https://example.org/Shop-Ontology.owl"),
                 made.notes().toString());
+    }
+
+    /**
+     * An ontology whose terms begin with another address than its own: ODK's base release
+     * would hold none of them and its report would look at none. That is said, with the
+     * address most of them begin with and where to put it.
+     */
+    @Test
+    void anAdoptedOntologyWhoseTermsAreElsewhereIsToldWhereToNameThem(@TempDir File temp)
+            throws IOException {
+        File mine = new File(temp, "shop.ofn");
+        Files.write(mine.toPath(), ("Ontology(<https://example.org/shop.owl>\n"
+                + "Declaration(Class(<https://w3id.org/things#Pizza>))\n"
+                + "Declaration(Class(<https://w3id.org/things#Base>))\n"
+                + "Declaration(ObjectProperty(<https://w3id.org/other/has>))\n"
+                + "SubClassOf(<https://w3id.org/things#Pizza> <http://www.w3.org/2002/07/owl#Thing>)\n"
+                + ")\n").getBytes(StandardCharsets.UTF_8));
+        OdkProjectConfig config = new OdkProjectConfig("shop", "Shop", "",
+                "https://example.org/shop.owl",
+                "https://creativecommons.org/licenses/by/4.0/", new File(temp, "projects"))
+                .adopting();
+
+        OdkCreate.Created made = OdkCreate.create(config, mine, nothingInstalled());
+
+        assertEquals(1, made.notes().size(), made.notes().toString());
+        String note = made.notes().get(0);
+        assertTrue(note.startsWith("None of the ontology's 3 terms has an address that "
+                + "begins with https://example.org/shop or https://example.org/SHOP_"), note);
+        assertTrue(note.contains("most begin with https://w3id.org/things#"), note);
+        assertTrue(note.contains("namespaces: in shop-odk.yaml"), note);
+        assertTrue(note.contains("OntoBoard > Project > Update project files..."), note);
+    }
+
+    /** One term at the ontology's own address is enough: the rest may be others' terms. */
+    @Test
+    void anAdoptedOntologyWithTermsOfItsOwnNeedsNoSuchNote(@TempDir File temp)
+            throws IOException {
+        File mine = new File(temp, "shop.ofn");
+        Files.write(mine.toPath(), ("Ontology(<https://example.org/shop.owl>\n"
+                + "Declaration(Class(<https://example.org/shop#Pizza>))\n"
+                + "Declaration(Class(<https://w3id.org/things#Base>))\n"
+                + ")\n").getBytes(StandardCharsets.UTF_8));
+        OdkProjectConfig config = new OdkProjectConfig("shop", "Shop", "",
+                "https://example.org/shop.owl",
+                "https://creativecommons.org/licenses/by/4.0/", new File(temp, "projects"))
+                .adopting();
+
+        OdkCreate.Created made = OdkCreate.create(config, mine, nothingInstalled());
+
+        assertEquals(Collections.<String>emptyList(), made.notes());
     }
 
     @Test

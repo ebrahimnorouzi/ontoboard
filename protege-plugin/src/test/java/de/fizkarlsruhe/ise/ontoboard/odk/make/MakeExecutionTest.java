@@ -217,6 +217,90 @@ class MakeExecutionTest {
                 "make: *** [Makefile:2: outer] Error 2"), said);
     }
 
+    // ------------------------------------------------------------- make -B
+
+    private boolean runAlways(MemoryDisk disk, String goal) {
+        LinkedHashMap<String, String> commandLine = new LinkedHashMap<String, String>();
+        commandLine.put(MakeFile.ALWAYS_MAKE, "");
+        return MakeFile.read("Makefile", disk, commandLine).run(goal, shell(disk));
+    }
+
+    /**
+     * {@code make -B}: every target is made again, also one that is newer than what it is made
+     * from. ODK's instructions release with it - an earlier build leaves files that were made
+     * for another version - and a file nothing makes is still no target.
+     */
+    @Test
+    void withAlwaysMakeATargetThatIsUpToDateIsMadeAgain() {
+        MemoryDisk disk = disk("out: in\n\ttouch out\n")
+                .file("in", "", MemoryDisk.SAME_TIME)
+                .file("out", "", MemoryDisk.SAME_TIME + 5000);
+
+        assertTrue(run(disk, "out"));
+        assertEquals(Collections.<String>emptyList(), ran, "up to date: nothing to do");
+
+        assertTrue(runAlways(disk, "out"));
+        assertEquals(Collections.singletonList("touch out"), ran);
+    }
+
+    /** And what the target is made from is made again first, each once. */
+    @Test
+    void withAlwaysMakeWhatATargetIsMadeFromIsMadeAgainFirst() {
+        MemoryDisk disk = disk("all: out other\nout: mid\n\ttouch out\nother: mid\n\ttouch other\n"
+                + "mid: in\n\ttouch mid\n")
+                .file("in", "", MemoryDisk.SAME_TIME)
+                .file("mid", "", MemoryDisk.SAME_TIME + 1000)
+                .file("out", "", MemoryDisk.SAME_TIME + 2000)
+                .file("other", "", MemoryDisk.SAME_TIME + 2000);
+
+        assertTrue(runAlways(disk, "all"));
+
+        assertEquals(Arrays.asList("touch mid", "touch out", "touch other"), ran);
+    }
+
+    /** As make hands its flags down: a make that a recipe starts makes everything again too. */
+    @Test
+    void alwaysMakeGoesDownToAMakeARecipeStarts() {
+        MemoryDisk disk = disk("fast:\n\t$(MAKE) out X=1\nout: in\n\ttouch out\n")
+                .file("in", "", MemoryDisk.SAME_TIME)
+                .file("out", "", MemoryDisk.SAME_TIME + 5000);
+
+        assertTrue(run(disk, "fast"));
+        assertEquals(Collections.<String>emptyList(), ran, "without it the make below finds "
+                + "nothing to do");
+
+        assertTrue(runAlways(disk, "fast"));
+        assertEquals(Collections.singletonList("touch out"), ran);
+    }
+
+    /** A dry run says the same lines: what would be run is decided the same way. */
+    @Test
+    void aDryRunWithAlwaysMakeNamesEveryRecipe() {
+        MemoryDisk disk = disk("out: in\n\ttouch out\n")
+                .file("in", "", MemoryDisk.SAME_TIME)
+                .file("out", "", MemoryDisk.SAME_TIME + 5000);
+        LinkedHashMap<String, String> always = new LinkedHashMap<String, String>();
+        always.put(MakeFile.ALWAYS_MAKE, "");
+
+        assertEquals(Collections.singletonList("make: 'out' is up to date."),
+                read(disk).dryRun("out"));
+        assertEquals(Collections.singletonList("touch out"),
+                MakeFile.read("Makefile", disk, always).dryRun("out"));
+    }
+
+    /** The flag is no variable: a makefile that asks for one of its name finds none. */
+    @Test
+    void alwaysMakeIsNoVariableOfTheMakefile() {
+        MemoryDisk disk = disk("all:\n\techo [$(-B)]\n");
+        LinkedHashMap<String, String> always = new LinkedHashMap<String, String>();
+        always.put(MakeFile.ALWAYS_MAKE, "");
+
+        assertFalse(MakeFile.read("Makefile", disk, always).variables()
+                .containsKey(MakeFile.ALWAYS_MAKE), "the command line's variables: none");
+        assertTrue(runAlways(disk, "all"));
+        assertEquals(Collections.singletonList("echo []"), ran);
+    }
+
     // ------------------------------------------------------------- what is not make's own stop
 
     /** What the reader does not read is not a failed run: it is thrown, as when planning. */

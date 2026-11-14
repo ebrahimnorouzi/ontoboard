@@ -34,7 +34,14 @@ public final class ReleaseRun {
     // ------------------------------------------------------------------ make
 
     /**
-     * What to run in ODK's container for a release: {@code make prepare_release VERSION=...}.
+     * What to run for a release: {@code make prepare_release -B VERSION=...}.
+     *
+     * <p>{@code -B} - every target is made again - is how ODK's own instructions release
+     * ({@code sh run.sh make prepare_release -B}), and it is no nicety: ODK's {@code test}
+     * builds the ontology it validates, the very file a release puts at the top of the
+     * project, and stamps it with the day. Without -B a release made after a test finds that
+     * file up to date and takes it for its own - a release numbered 1.0.0 then carries the
+     * day as its version IRI.
      *
      * @param shape          the version IRI's shape; ODK's own needs no further argument, any
      *                       other is handed to make as {@code ANNOTATE_ONTOLOGY_VERSION=...},
@@ -50,7 +57,7 @@ public final class ReleaseRun {
                     + "as 2026-11-11, or numbers such as 1.0.0.");
         }
         List<String> arguments = new ArrayList<String>(Arrays.asList("make",
-                refreshImports ? "prepare_release" : "prepare_release_fast",
+                refreshImports ? "prepare_release" : "prepare_release_fast", "-B",
                 "VERSION=" + version));
         String annotate = shape.annotateArgument(ontbase, version);
         if (annotate != null) {

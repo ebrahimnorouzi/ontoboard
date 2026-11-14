@@ -16,8 +16,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.function.BooleanSupplier;
+import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * New ODK project: ODK's seed, then OntoBoard's extras, then a first commit.
@@ -193,6 +196,13 @@ public final class OdkCreate {
                     + config.getOntologyId() + ".Makefile in src/ontology says otherwise.");
         }
 
+        if (config.isAdopted()) {
+            String elsewhere = termsElsewhere(config, config.getEditFile());
+            if (elsewhere != null) {
+                notes.add(elsewhere);
+            }
+        }
+
         String notRecorded = null;
         boolean committed = false;
         if (recordInGit) {
@@ -208,6 +218,68 @@ public final class OdkCreate {
             throw new CancellationException(STOPPED);
         }
         return new Created(written, route, committed, notRecorded, notes);
+    }
+
+    /**
+     * For a project that starts from an existing ontology: what to say when none of the
+     * ontology's terms begins with an address the configuration names as the project's own
+     * ({@link OdkConfigWriter#namespaces}) - ODK's base release, its report and its lists of
+     * terms would then hold none of them.
+     *
+     * @return the sentence; null when there is nothing to say - no terms, one of them at
+     *         home, or a file that cannot be read as an ontology (it is the person's, and is
+     *         kept as it is either way)
+     */
+    static String termsElsewhere(OdkProjectConfig config, File editFile) {
+        List<String> own = OdkConfigWriter.namespaces(config);
+        if (own.isEmpty()) {
+            return null;
+        }
+        OWLOntology ontology;
+        try {
+            ontology = ImportGuard.alone(editFile);
+        } catch (IOException | RuntimeException unreadable) {
+            return null;
+        }
+        int terms = 0;
+        Map<String, Integer> begins = new TreeMap<String, Integer>();
+        for (OWLEntity entity : ontology.getSignature()) {
+            String iri = entity.getIRI().toString();
+            for (String namespace : own) {
+                if (iri.startsWith(namespace)) {
+                    return null;
+                }
+            }
+            if (entity.isBuiltIn() || entity.isOWLAnnotationProperty()
+                    || entity.isOWLDatatype()) {
+                // Not counted: an ontology's annotation properties are others' as a rule.
+                continue;
+            }
+            terms++;
+            int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+            String begin = cut < 0 ? iri : iri.substring(0, cut + 1);
+            Integer so = begins.get(begin);
+            begins.put(begin, so == null ? 1 : so + 1);
+        }
+        if (terms == 0) {
+            return null;
+        }
+        String most = null;
+        for (Map.Entry<String, Integer> begin : begins.entrySet()) {
+            if (most == null || begin.getValue() > begins.get(most)) {
+                most = begin.getKey();
+            }
+        }
+        return (terms == 1 ? "The ontology's one term does not have"
+                : "None of the ontology's " + terms + " terms has")
+                + " an address that begins with " + String.join(" or ", own) + ", which is "
+                + "what the configuration names as the project's own (namespaces: in "
+                + config.getOntologyId() + "-odk.yaml); " + (terms == 1 ? "it begins"
+                        : "most begin") + " with " + most + ". ODK's base release, its "
+                + "quality report and its lists of terms go by those addresses, and so "
+                + "hold nothing of the ontology's own. Put the address the terms begin "
+                + "with under namespaces: there, then run "
+                + "OntoBoard > Project > Update project files...";
     }
 
     private static final String STOPPED = "Stopped. Nothing is left of the project.";

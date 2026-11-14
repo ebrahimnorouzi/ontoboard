@@ -176,7 +176,7 @@ class OdkReleaseTest {
         OdkRelease.Outcome outcome = release("1.0.0");
 
         assertTrue(outcome.isOk(), outcome.getFailure());
-        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0"), odkRan.get(0));
+        assertEquals(Arrays.asList("make", "prepare_release", "-B", "VERSION=1.0.0"), odkRan.get(0));
         assertEquals(Arrays.asList("make", "-s", "show_release_assets"), odkRan.get(1));
         assertEquals(Arrays.asList(Boolean.FALSE, Boolean.FALSE), withPassThrough);
         assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile());
@@ -198,7 +198,7 @@ class OdkReleaseTest {
                 outcome.getSummary());
         assertTrue(outcome.getSummary().contains("git push --follow-tags"), outcome.getSummary());
         assertTrue(String.join("\n", outcome.getTranscript())
-                .contains("docker run --rm ... make prepare_release VERSION=1.0.0"));
+                .contains("docker run --rm ... make prepare_release -B VERSION=1.0.0"));
     }
 
     /**
@@ -220,7 +220,7 @@ class OdkReleaseTest {
             }
         };
         File script = new File(temp, "odk env/bin/activate-odk-environment.sh");
-        List<String> make = Arrays.asList("make", "prepare_release", "VERSION=1.0.0",
+        List<String> make = Arrays.asList("make", "prepare_release", "-B", "VERSION=1.0.0",
                 "ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/"
                         + "1.0.0/$@ --annotation owl:versionInfo 1.0.0");
 
@@ -232,11 +232,11 @@ class OdkReleaseTest {
         assertEquals(Arrays.asList("sh", "-c"), ran.get(0).subList(0, 2));
         String line = ran.get(0).get(2);
         assertTrue(line.startsWith(". '" + script.getAbsolutePath() + "' && "), line);
-        assertTrue(line.endsWith(" && 'make' 'prepare_release' 'VERSION=1.0.0' "
+        assertTrue(line.endsWith(" && 'make' 'prepare_release' '-B' 'VERSION=1.0.0' "
                 + "'ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/"
                 + "1.0.0/$@ --annotation owl:versionInfo 1.0.0'"), line);
         String shown = odk.shown(make, false);
-        assertTrue(shown.contains("make prepare_release VERSION=1.0.0"), shown);
+        assertTrue(shown.contains("make prepare_release -B VERSION=1.0.0"), shown);
         assertTrue(shown.contains("native ODK environment"), shown);
     }
 
@@ -244,7 +244,7 @@ class OdkReleaseTest {
     void theShapeChosenAndTheFastBuildReachMake() {
         release("1.0.0", VersionIriShape.of(VersionIriShape.Kind.VERSION_AND_FILE), false);
 
-        assertEquals(Arrays.asList("make", "prepare_release_fast", "VERSION=1.0.0",
+        assertEquals(Arrays.asList("make", "prepare_release_fast", "-B", "VERSION=1.0.0",
                 "ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/1.0.0/$@"
                         + " --annotation owl:versionInfo 1.0.0"), odkRan.get(0));
     }

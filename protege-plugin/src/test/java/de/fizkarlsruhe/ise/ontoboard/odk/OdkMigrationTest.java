@@ -698,6 +698,26 @@ class OdkMigrationTest {
         assertTrue(warned.contains("https://example.org/kitchen/eggboil.owl"), warned);
     }
 
+    /**
+     * A checkout on Windows has the configuration with Windows line endings, and it keeps
+     * them: a file that came back with others would show as changed in every line (mutant
+     * M17 of the round on this step lost them, and lived).
+     */
+    @Test
+    void aConfigurationWithWindowsLineEndingsKeepsThem() throws IOException {
+        write(CONFIG, text(CONFIG).replace("\r\n", "\n").replace("\n", "\r\n"));
+        String becomes = new String(Files.readAllBytes(MigrationFixtureTest.fixture(
+                "odk/migration/expected/eggboil-odk.yaml").toPath()), StandardCharsets.UTF_8);
+        assertFalse(becomes.contains("\r"), "the recorded one has Unix line endings");
+
+        OdkMigration.Plan plan = OdkMigration.plan(root);
+
+        assertTrue(plan.changesTheConfig());
+        assertEquals(becomes.replace("\n", "\r\n"), plan.newConfig());
+        OdkMigration.convert(root, plan);
+        assertEquals(becomes.replace("\n", "\r\n"), text(CONFIG), "and so it is written");
+    }
+
     /** The usual address needs neither a suffix nor a remark. */
     @Test
     void theUsualAddressNeedsNoSuffixAndNoRemark() throws IOException {

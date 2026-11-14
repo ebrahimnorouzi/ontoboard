@@ -403,9 +403,10 @@ public final class OdkRobot {
      * "Subcommand Timing: convert took 0.05 seconds" at WARN for every command, and a reasoner
      * says each of its stages at INFO; with the host logging from INFO up, to a console the
      * run's transcript is taken from, a build would carry a line per command and forty per
-     * call of the reasoner, none of which ODK's own log has. What the host's other threads log
-     * is the host's, and is not touched. What is held back is held back from the host's log
-     * file as well, as it is from ROBOT's own output.
+     * call of the reasoner, none of which ODK's own log has. Nor has it what the OWL API's OBO
+     * writer logs as an error for every axiom OBO cannot say, which is held back too. What the
+     * host's other threads log is the host's, and is not touched. What is held back is held
+     * back from the host's log file as well, as it is from ROBOT's own output.
      */
     private static final class HostLog {
         private final ch.qos.logback.classic.Logger root;
@@ -501,9 +502,23 @@ public final class OdkRobot {
         public ch.qos.logback.core.spi.FilterReply decide(org.slf4j.Marker marker,
                 ch.qos.logback.classic.Logger logger, ch.qos.logback.classic.Level level,
                 String format, Object[] params, Throwable thrown) {
-            return Thread.currentThread() == thread && level != null && level.toInt() < from
+            return Thread.currentThread() == thread && level != null
+                    && (level.toInt() < from || isMaskedByTheOboWriter(logger, format))
                     ? ch.qos.logback.core.spi.FilterReply.DENY
                     : ch.qos.logback.core.spi.FilterReply.NEUTRAL;
+        }
+
+        /**
+         * The OWL API's OBO writer says every axiom OBO has no words for as an error, with
+         * the stack of where it stood - a "MASKING ERROR" in its own words, and no failure:
+         * the file is written without the axiom. ROBOT in ODK's container converts the same
+         * ontology without a word of it, so a run here says none either - a release's
+         * transcript was cut after 4000 lines of these.
+         */
+        private static boolean isMaskedByTheOboWriter(ch.qos.logback.classic.Logger logger,
+                String format) {
+            return logger != null && format != null && format.startsWith("MASKING ERROR")
+                    && "org.obolibrary.obo2owl.OWLAPIOwl2Obo".equals(logger.getName());
         }
     }
 

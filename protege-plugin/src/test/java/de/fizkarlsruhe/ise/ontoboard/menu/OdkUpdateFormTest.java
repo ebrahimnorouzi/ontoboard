@@ -815,6 +815,34 @@ class OdkUpdateFormTest {
         assertTrue(help.contains("keeps the module as it is"), help);
     }
 
+    /**
+     * An import read from a file elsewhere on this machine has no address ODK could fetch it
+     * from either: the question says so, and that its module is kept as it is.
+     */
+    @Test
+    void theQuestionSaysThatAFileOfThisMachineIsNoAddress() throws IOException {
+        theProjectUsingTheSpoon();
+        File elsewhere = new File(root.getParentFile(), root.getName() + "-elsewhere.owl");
+        try {
+            Files.copy(new File(root, "src/ontology/whole.owl").toPath(), elsewhere.toPath());
+            File edit = new File(root, EDIT);
+            Files.write(edit.toPath(), new String(Files.readAllBytes(edit.toPath()),
+                    StandardCharsets.UTF_8).replace("Import(<" + WHOLE + ">)",
+                            "Import(<" + elsewhere.toURI() + ">)")
+                    .getBytes(StandardCharsets.UTF_8));
+            ImportGuard.Finding finding = theFinding();
+            assertEquals(elsewhere.toURI().toString(), finding.item().iri());
+
+            String help = OdkUpdateForm.helpFor(finding, root);
+
+            assertTrue(help.contains("a file on this machine"), help);
+            assertTrue(help.contains("an address on no other"), help);
+            assertTrue(help.contains("keeps the module as it is"), help);
+        } finally {
+            elsewhere.delete();
+        }
+    }
+
     // ------------------------------------------------------------------ who makes it
 
     @Test

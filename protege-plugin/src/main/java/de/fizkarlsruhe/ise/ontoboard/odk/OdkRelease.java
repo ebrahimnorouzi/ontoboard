@@ -310,6 +310,11 @@ public final class OdkRelease {
                         // prints is wanted. The lines make says are told apart by whoever
                         // reads the output.
                         continue;
+                    } else if (word.equals("-B") || word.equals("--always-make")) {
+                        // Every target made again: carried with the variables, as make
+                        // carries both to a make below it.
+                        variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile
+                                .ALWAYS_MAKE, "");
                     } else if (equals > 0
                             && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
                         variables.put(word.substring(0, equals), word.substring(equals + 1));

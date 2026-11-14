@@ -41,6 +41,8 @@ final class MakeRunner {
     private final List<String> assumeNew;
     private final String makefile;
     private final boolean everyMake;
+    /** make's -B: every target is made again ({@link MakeFile#ALWAYS_MAKE}). */
+    private final boolean alwaysMake;
     /** Who runs the recipe lines; null for a dry run, which only says what they are. */
     private final MakeFile.Executor executor;
 
@@ -82,6 +84,7 @@ final class MakeRunner {
         this.disk = disk;
         this.shell = shell;
         this.commandLine = new LinkedHashMap<String, String>(commandLine);
+        this.alwaysMake = commandLine.containsKey(MakeFile.ALWAYS_MAKE);
         this.level = level;
         this.assumeNew = new ArrayList<String>(assumeNew);
         this.makefile = makefile;
@@ -105,6 +108,10 @@ final class MakeRunner {
         db.variables.put(shellVariable.name, shellVariable);
         for (Map.Entry<String, String> variable : commandLine.entrySet()) {
             String name = variable.getKey();
+            if (name.equals(MakeFile.ALWAYS_MAKE)) {
+                // A flag, carried with the variables as MAKEFLAGS carries both.
+                continue;
+            }
             if (name.isEmpty() || !name.matches("[^\\s$=:#]+")) {
                 throw new MakeFile.MakeException("'" + name + "' is no variable name for the"
                         + " command line");
@@ -285,8 +292,11 @@ final class MakeRunner {
             dep.changed |= noexist || depMtime > thisMtime;
         }
 
-        if (!noexist && file.isTarget && !depsChanged && file.cmds == null) {
+        if (!noexist && file.isTarget && !depsChanged && file.cmds == null && !alwaysMake) {
             mustMake = false;
+        } else if (!mustMake && file.cmds != null && alwaysMake) {
+            // "Making 'x' due to always-make flag."
+            mustMake = true;
         }
         if (!mustMake) {
             noticeFinished(file, false);

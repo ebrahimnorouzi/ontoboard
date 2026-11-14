@@ -1,11 +1,9 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
-import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
-import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
-import de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform;
-import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.WebOntology;
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,23 +14,21 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
-import org.semanticweb.owlapi.formats.TurtleDocumentFormat;
 import org.semanticweb.owlapi.model.AddImport;
 import org.semanticweb.owlapi.model.AddOntologyAnnotation;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLDataFactory;
-import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyID;
@@ -41,9 +37,15 @@ import org.semanticweb.owlapi.model.parameters.Imports;
 
 /**
  * An ontology - one file in any format OWL reads, or a web address, with its earlier versions -
- * turned into an ODK repository: the project, every earlier version as a release and a git tag,
- * its imports as modules of the terms it uses, a build that passes or says why, and the current
- * version released.
+ * turned into an ODK repository: ODK's own seed with the ontology in it, every earlier version
+ * as a release and a git tag, its imports as modules ODK's configuration declares, ODK's test
+ * run on it, and the current version released as ODK releases one.
+ *
+ * <p>Nothing here is a project of OntoBoard's own making: the files are ODK's
+ * ({@link OdkCreate}), the imports are declared as Update project files declares them
+ * ({@link ImportGuard}, {@link OdkUpdate}), the test and the release are targets of ODK's
+ * Makefile ({@link OdkRelease}) - run in ODK's container, or by OntoBoard itself where there
+ * is none.
  *
  * <p>Asked for: somebody with an ontology and its history who wants an ODK-based repository to
  * publish on GitHub, "with all the previous versions available, imported terms and everything
@@ -53,7 +55,8 @@ import org.semanticweb.owlapi.model.parameters.Imports;
  *
  * <p>No Swing and no Protégé types: the dialog and the tests drive the same code. Git is the git
  * command, used when it is installed; without it the versions are still written under
- * {@code releases/}, and the log says what was not recorded.
+ * {@code releases/}, and the log says what was not recorded. A version is released only when
+ * ODK's test passes, since ODK's release runs it; the project is made either way.
  */
 public final class OdkConversion {
 
@@ -65,8 +68,8 @@ public final class OdkConversion {
             "Record the earlier versions",
             "Turn imports into modules",
             "Build and test",
+            "Record the project in git",
             "Release the current version",
-            "Record it in git",
             "Ready to publish"));
 
     private OdkConversion() {
@@ -96,6 +99,27 @@ public final class OdkConversion {
         String title;
         boolean modules = true;
         boolean git = true;
+        ProcessRunner.Runner runner = ProcessRunner.real();
+        java.util.function.Function<File, OdkRelease.Odk> odk;
+
+        /**
+         * How commands are run: the container program's, when ODK seeds the project in its
+         * container, and git's for the release. This machine's own unless said otherwise.
+         */
+        public Request runner(ProcessRunner.Runner runs) {
+            this.runner = runs == null ? ProcessRunner.real() : runs;
+            return this;
+        }
+
+        /**
+         * How ODK's targets are run on the new project, given its edit file: in ODK's
+         * container ({@link OdkRelease#inContainer}), or - when nothing is said - by
+         * OntoBoard itself.
+         */
+        public Request odk(java.util.function.Function<File, OdkRelease.Odk> runsOdksTargets) {
+            this.odk = runsOdksTargets;
+            return this;
+        }
 
         public Request current(String source) {
             this.current = source;
@@ -149,7 +173,10 @@ public final class OdkConversion {
             return root;
         }
 
-        /** Every version in the repository, oldest first, the current one last. */
+        /**
+         * Every version in the repository, oldest first; the current one last, when it was
+         * released.
+         */
         public List<String> getVersions() {
             return versions;
         }
@@ -162,6 +189,7 @@ public final class OdkConversion {
             return modules;
         }
 
+        /** Whether ODK's test passed on the project. */
         public boolean isBuildPassed() {
             return buildPassed;
         }
@@ -245,7 +273,7 @@ public final class OdkConversion {
         log.done(1, warn.clean());
         stopIfAsked(attempt, 1, result);
 
-        // 3. The project.
+        // 3. The project: ODK's own seed, with the ontology where the seed's edit file is.
         log.step(2);
         IRI ontologyIri = current.ontology.getOntologyID().getOntologyIRI().isPresent()
                 ? current.ontology.getOntologyID().getOntologyIRI().get() : null;
@@ -260,20 +288,37 @@ public final class OdkConversion {
                 ? request.title.trim() : titleOf(current.ontology, id);
         OdkProjectConfig config = new OdkProjectConfig(id, title, descriptionOf(current.ontology),
                 ontologyIri.toString(), licenceOf(current.ontology), request.parent).adopting();
-        File root = config.getProjectRoot();
+        File root = config.getProjectRoot().getAbsoluteFile();
         if (root.exists()) {
             throw new IllegalArgumentException(root.getAbsolutePath() + " is there already. "
                     + "Choose another folder, or another project id.");
         }
+        final WebOntology.Attempt asked = attempt;
+        BooleanSupplier stopped = new BooleanSupplier() {
+            @Override
+            public boolean getAsBoolean() {
+                return asked != null && asked.isStopped();
+            }
+        };
+        OWLOntology edit = copyOf(current.ontology, true);
+        OdkCreate.Created created = seeded(config, edit, request.runner, stopped);
         result.root = root;
-        for (File written : OdkScaffold.create(config)) {
-            log.line("wrote " + root.toPath().relativize(written.toPath()));
+        for (File written : created.written()) {
+            log.line("wrote " + under(root, written));
         }
-        File editFile = new File(new File(root, "src/ontology"), id + "-edit.owl");
+        log.line(created.route() == OdkCreate.Route.CONTAINER
+                ? "ODK " + OdkPin.VERSION + " wrote the project, in its container."
+                : "It is the project ODK " + OdkPin.VERSION + " writes, made from ODK's "
+                        + "templates inside OntoBoard.");
+        for (String note : created.notes()) {
+            warn.warn(note);
+        }
+        File editFile = new File(root, "src/ontology/" + id + "-edit.owl");
         log.done(2, warn.clean());
         stopIfAsked(attempt, 2, result);
 
-        // 4. The earlier versions, each a release, a commit and a tag.
+        // 4. The earlier versions, each a release as an ODK repository keeps one: the file
+        // released at the top of the project and under releases/, a commit and a tag.
         log.step(3);
         boolean git = request.git && gitIsInstalled();
         if (request.git && !git) {
@@ -289,18 +334,21 @@ public final class OdkConversion {
                     : "git: a new repository; git has no name and e-mail for you, so the commits "
                             + "are signed OntoBoard");
         }
+        File top = new File(root, id + ".owl");
         for (Read version : distinct) {
             String label = version.version.getText();
             try {
-                save(copyOf(version.ontology, true), editFile);
-                save(copyOf(version.ontology, false), Release.releaseFile(root, id, label));
-                log.line(label + ": the edit file and releases/" + label + "/" + id + ".owl, as "
-                        + "published (" + version.source + ")");
+                saveEdit(copyOf(version.ontology, true), editFile);
+                OWLOntology published = copyOf(version.ontology, false);
+                save(published, new File(root, "releases/" + label + "/" + id + ".owl"));
+                save(published, top);
+                log.line(label + ": the edit file, " + id + ".owl and releases/" + label + "/"
+                        + id + ".owl, as published (" + version.source + ")");
                 result.versions.add(label);
                 if (git) {
-                    commitAndTag(root, label, "release(" + label + "): " + title + " " + label
-                            + ", as published - converted by OntoBoard", dateOf(version), warn,
-                            result, log);
+                    commitAndTag(root, id, label, "release(" + label + "): " + title + " "
+                            + label + ", as published - converted by OntoBoard",
+                            dateOf(version), warn, result, log);
                 }
             } catch (Exception cannot) {
                 warn.warn(label + " could not be written: " + cannot.getMessage());
@@ -312,73 +360,135 @@ public final class OdkConversion {
         log.done(3, warn.clean());
         stopIfAsked(attempt, 3, result);
 
-        // 5. Imports, as modules of the terms the ontology uses.
+        // 5. Imports, as modules ODK's configuration declares.
         log.step(4);
-        OWLOntology edit = copyOf(current.ontology, true);
-        if (request.modules) {
-            modules(current.ontology, edit, root, id, ontologyIri, warn, log, result);
-        } else {
-            log.line("Left as they are: the ontology imports what it imported.");
-        }
         metadata(edit, title, config, log);
         try {
-            save(edit, editFile);
+            saveEdit(edit, editFile);
             log.line("wrote src/ontology/" + editFile.getName());
-        } catch (Exception cannot) {
+        } catch (IOException cannot) {
             throw new IllegalStateException("Could not write the edit file: "
                     + cannot.getMessage(), cannot);
+        }
+        if (current.ontology.getImportsDeclarations().isEmpty()) {
+            log.line("The ontology imports nothing.");
+            try {
+                odksUpdate(root, editFile, Collections.<String>emptyList(), log);
+            } catch (IOException | RuntimeException cannot) {
+                warn.warn("ODK's update could not be made (" + cannot.getMessage() + "). "
+                        + "OntoBoard > Project > Update project files... makes it.");
+            }
+        } else if (request.modules) {
+            modules(current.ontology, edit, root, editFile, warn, log, result);
+        } else {
+            log.line("Left as they are: the ontology imports what it imported. ODK's update "
+                    + "takes out an import its configuration does not declare; "
+                    + "OntoBoard > Project > Update project files... asks about each one "
+                    + "before it does.");
         }
         log.done(4, warn.clean());
         stopIfAsked(attempt, 4, result);
 
-        // 6. Build and test, as Build and release > Build... > test does.
+        // 6. ODK's own test, on the modules as they are: its Makefile's test_fast.
         log.step(5);
+        OdkRelease.Odk odk = null;
         try {
-            OWLOntologyManager building = OWLManager.createOWLOntologyManager();
-            building.getIRIMappers().add(new org.obolibrary.robot.CatalogXmlIRIMapper(
-                    new File(editFile.getParentFile(), "catalog-v001.xml")));
-            OWLOntology loaded = building.loadOntologyFromOntologyDocument(editFile);
-            InProcessTargets.Outcome outcome = InProcessTargets.run(editFile, loaded,
-                    Reasoners.Choice.ELK.newFactory(), "test");
-            for (String line : outcome.getTranscript()) {
+            // Who runs ODK's targets here is found out now: the project is there to ask about.
+            odk = request.odk != null ? request.odk.apply(editFile)
+                    : OdkRelease.byOntoBoardItself(editFile, stopped);
+            List<String> test = Arrays.asList("make", "test_fast");
+            log.line("$ " + odk.shown(test, false));
+            ProcessRunner.Outcome tested = odk.run(test, false);
+            for (String line : tested.getOutput()) {
                 log.line(line);
             }
-            result.buildPassed = outcome.isOk();
-            if (!outcome.isOk()) {
-                warn.warn("The build found problems: " + outcome.getFailure() + " The project is "
-                        + "made all the same; Build and release > Build... shows them in Protégé.");
+            result.buildPassed = tested.isSuccess();
+            if (!tested.isSuccess()) {
+                warn.warn("ODK's test did not pass: " + MakeRun.explain("test_fast", tested)
+                        + " The project is made all the same; "
+                        + "OntoBoard > Build and release > Build... runs the test again.");
             }
-        } catch (Exception cannot) {
-            warn.warn("The build could not run: " + cannot.getMessage());
+        } catch (IOException | RuntimeException cannot) {
+            warn.warn("ODK's test could not be run: " + cannot.getMessage());
         }
         log.done(5, warn.clean());
         stopIfAsked(attempt, 5, result);
 
-        // 7. The current version, released.
+        // 7. The project as it is now, a commit of its own: ODK's release commits what git
+        // knows of, and of the project itself git knows nothing yet.
         log.step(6);
+        File readme = new File(root, "README.md");
+        String readmeOfOdk = textOf(readme);
+        if (git) {
+            writeHistory(readme, readmeOfOdk, title, result.versions);
+            if (git(root, warn, null, "add", "-A") == 0 && git(root, warn, null, "commit", "-q",
+                    "-m", title + ": the ODK repository, converted by OntoBoard") == 0) {
+                log.line("git: committed the project");
+            }
+        } else {
+            log.line("Not recorded: no git.");
+        }
+        log.done(6, warn.clean());
+        stopIfAsked(attempt, 6, result);
+
+        // 8. The current version, released as Release... releases one: ODK's own
+        // prepare_release on the modules as they are, its products at the top of the
+        // project and under releases/, a commit and a tag.
+        log.step(7);
         String label = current.version != null ? current.version.getText() : Provenance.today();
         if (current.version == null) {
             warn.warn("The ontology does not say which version it is, so it is released as "
                     + label + ", today's date.");
         }
-        try {
-            release(root, id, edit, ontologyIri, OntologyVersion.of(label),
-                    distinct.isEmpty() ? null : distinct.get(distinct.size() - 1).version, log);
-            result.versions.add(label);
-        } catch (Exception cannot) {
-            warn.warn("The release could not be made: " + cannot.getMessage());
-        }
-        log.done(6, warn.clean());
-        stopIfAsked(attempt, 6, result);
-
-        // 8. Recorded.
-        log.step(7);
-        if (git) {
-            writeReadmeHistory(root, title, result.versions);
-            commitAndTag(root, label, "release(" + label + "): " + title + " " + label
-                    + ", converted to an ODK repository by OntoBoard", null, warn, result, log);
+        if (!result.buildPassed || odk == null) {
+            warn.warn("Version " + label + " is not released: ODK's release runs its test "
+                    + "first, and the test did not pass here. Once it does, "
+                    + "OntoBoard > Build and release > Release... makes the release.");
         } else {
-            log.line("Not recorded: no git.");
+            ProcessRunner.Runner recording = signing(request.runner, root);
+            if (git) {
+                List<String> withThisOne = new ArrayList<String>(result.versions);
+                withThisOne.add(label);
+                writeHistory(readme, readmeOfOdk, title, withThisOne);
+            }
+            OdkRelease.Outcome released = OdkRelease.run(new OdkRelease.Request(editFile, label,
+                    OdkRelease.proposedShape(editFile, recording), false, false), odk, recording,
+                    git ? new OdkRelease.Asks() {
+                        @Override
+                        public boolean commit(ReleaseRun.Staging staging) {
+                            return true;
+                        }
+                    } : null);
+            for (String line : released.getTranscript()) {
+                log.line(line);
+            }
+            for (String warning : released.getWarnings()) {
+                // Without git there is no repository, and that was chosen, or said already.
+                if (git || !warning.contains("is not a git repository")) {
+                    warn.warn(warning);
+                }
+            }
+            if (released.isOk()) {
+                if (!OdkConfigWriter.odkIri(config).equals(config.getBaseIri())) {
+                    warn.warn("The release names the ontology " + OdkConfigWriter.odkIri(config)
+                            + ", as ODK names what it releases; the edit file says "
+                            + config.getBaseIri() + ". Look at " + id + ".owl before you "
+                            + "publish " + (released.isCommitted() ? "the tag "
+                                    + released.getTag() : "it") + ".");
+                }
+                result.versions.add(label);
+                if (released.isCommitted()) {
+                    result.tags.add(released.getTag());
+                }
+                log.line(git ? released.getSummary() : "Released " + id + " " + label + ": "
+                        + "ODK's products at the top of the project, a copy under releases/"
+                        + label + ".");
+            } else {
+                if (git) {
+                    writeHistory(readme, readmeOfOdk, title, result.versions);
+                }
+                warn.warn("Version " + label + " could not be released: " + released.getFailure());
+            }
         }
         log.done(7, warn.clean());
         stopIfAsked(attempt, 7, result);
@@ -391,6 +501,60 @@ public final class OdkConversion {
         }
         log.done(8, true);
         return result;
+    }
+
+    /** A file of the project as a path from its top. */
+    private static String under(File root, File file) {
+        return root.getAbsoluteFile().toPath().relativize(file.getAbsoluteFile().toPath())
+                .toString();
+    }
+
+    /**
+     * ODK's seed for the project, with the ontology as its edit file: what New ODK project
+     * makes for somebody who starts from an ontology ({@link OdkCreate}) - in ODK's container
+     * where one runs and the image is there, else from ODK's templates inside OntoBoard. Git
+     * is the conversion's own to start: the first commit is the oldest version, not ODK's
+     * "initial commit".
+     */
+    private static OdkCreate.Created seeded(OdkProjectConfig config, OWLOntology edit,
+            ProcessRunner.Runner runner, BooleanSupplier stopped) {
+        File adopted = null;
+        try {
+            adopted = File.createTempFile("ontoboard-convert-", ".ofn");
+            saveEdit(edit, adopted);
+            return OdkCreate.create(config, adopted, runner, false, stopped);
+        } catch (IOException cannot) {
+            throw new IllegalStateException("The ontology could not be written for the project: "
+                    + cannot.getMessage(), cannot);
+        } finally {
+            if (adopted != null) {
+                adopted.delete();
+            }
+        }
+    }
+
+    /**
+     * git as the release runs it, signed OntoBoard where git knows nobody - a git that knows
+     * nobody refuses to commit, and the versions before were signed the same way.
+     */
+    private static ProcessRunner.Runner signing(final ProcessRunner.Runner runner, File root) {
+        if (knowsWho(root)) {
+            return runner;
+        }
+        return new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                if (command.size() > 1 && command.get(0).equals("git")
+                        && (command.get(1).equals("commit") || command.get(1).equals("tag"))) {
+                    List<String> signed = new ArrayList<String>(Arrays.asList("git", "-c",
+                            "user.name=OntoBoard", "-c", "user.email=ontoboard@localhost"));
+                    signed.addAll(command.subList(1, command.size()));
+                    return runner.run(workingDirectory, signed, timeoutMinutes, sink);
+                }
+                return runner.run(workingDirectory, command, timeoutMinutes, sink);
+            }
+        };
     }
 
     private static void stopIfAsked(WebOntology.Attempt attempt, int step, Result result) {
@@ -535,7 +699,7 @@ public final class OdkConversion {
                     source.getOWLOntologyManager().getOntologyFormat(source);
             if (format != null && format.isPrefixOWLOntologyFormat()) {
                 RDFXMLDocumentFormat rdf = new RDFXMLDocumentFormat();
-                rdf.copyPrefixesFrom(format.asPrefixOWLOntologyFormat());
+                copyPrefixes(format, rdf);
                 manager.setOntologyFormat(copy, rdf);
             }
             return copy;
@@ -553,6 +717,60 @@ public final class OdkConversion {
                 ontology.getOWLOntologyManager().getOntologyFormat(ontology);
         writeCanonically(ontology,
                 format instanceof RDFXMLDocumentFormat ? format : new RDFXMLDocumentFormat(), file);
+    }
+
+    /** OWL's and RDF's own vocabularies: nobody's default prefix. */
+    private static final Set<String> STANDARD_VOCABULARIES = new java.util.HashSet<String>(
+            Arrays.asList("http://www.w3.org/2002/07/owl#",
+                    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                    "http://www.w3.org/2000/01/rdf-schema#",
+                    "http://www.w3.org/2001/XMLSchema#",
+                    "http://www.w3.org/XML/1998/namespace"));
+
+    /**
+     * The prefixes an ontology was read with, for writing it again - all but a default prefix
+     * that is OWL's own vocabulary. OWL/XML has that as its XML namespace, and the OWL API of
+     * Protege 5.6 hands it on as the ontology's default prefix: a version read from OWL/XML was
+     * written with {@code <Ontology>} and {@code <Class>} for {@code <owl:Ontology>} and
+     * {@code <owl:Class>}, and its edit file began with OWL's namespace under no name.
+     */
+    private static void copyPrefixes(org.semanticweb.owlapi.model.OWLDocumentFormat from,
+            org.semanticweb.owlapi.formats.PrefixDocumentFormat into) {
+        if (from == null || !from.isPrefixOWLOntologyFormat()) {
+            return;
+        }
+        for (Map.Entry<String, String> prefix : from.asPrefixOWLOntologyFormat()
+                .getPrefixName2PrefixMap().entrySet()) {
+            if (prefix.getKey().equals(":") && STANDARD_VOCABULARIES.contains(prefix.getValue())) {
+                continue;
+            }
+            into.setPrefix(prefix.getKey(), prefix.getValue());
+        }
+    }
+
+    /**
+     * An edit file as ODK keeps one: functional syntax, under the prefixes the ontology was
+     * read with, a string always in its simple form ({@link SimpleStrings}).
+     */
+    private static void saveEdit(OWLOntology ontology, File file) throws IOException {
+        File parent = file.getAbsoluteFile().getParentFile();
+        if (!parent.isDirectory() && !parent.mkdirs()) {
+            throw new IOException("could not create " + parent);
+        }
+        org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat syntax =
+                new org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat();
+        org.semanticweb.owlapi.model.OWLDocumentFormat had =
+                ontology.getOWLOntologyManager().getOntologyFormat(ontology);
+        copyPrefixes(had, syntax);
+        try {
+            java.io.ByteArrayOutputStream written = new java.io.ByteArrayOutputStream();
+            ontology.getOWLOntologyManager().saveOntology(ontology, syntax, written);
+            Files.write(file.toPath(), SimpleStrings.simplified(
+                    new String(written.toByteArray(), StandardCharsets.UTF_8))
+                    .getBytes(StandardCharsets.UTF_8));
+        } catch (org.semanticweb.owlapi.model.OWLOntologyStorageException cannot) {
+            throw new IOException(cannot.getMessage(), cannot);
+        }
     }
 
     /**
@@ -595,111 +813,90 @@ public final class OdkConversion {
     }
 
     /**
-     * Each import, as an ODK module of the terms the ontology uses from it: extracted (BOT), its
-     * term list with labels, a catalog entry, the import pointed at the module, and the product
-     * declared with the import's address as its mirror.
+     * Each import, as a product ODK's configuration declares: its module of the terms the
+     * ontology uses and its term list, and - by ODK's own update - the import pointed at the
+     * module, the catalog's entry and the Makefile's targets for it. It is what Update
+     * project files' question about an import the configuration does not declare makes of
+     * one ({@link ImportGuard}), answered here without asking: a module of the terms used;
+     * the whole of an import none of whose terms is used; out with one that cannot be read,
+     * since what cannot be read cannot be declared and ODK keeps no import it does not know.
+     *
+     * @param current the ontology as it was read, with what it imports: nothing is fetched
+     *                a second time
+     * @param edit    what the edit file holds
      */
-    private static void modules(OWLOntology current, OWLOntology edit, File root, String id,
-            IRI ontologyIri, WarnCounting warn, Log log, Result result) {
-        OWLOntologyManager manager = current.getOWLOntologyManager();
-        OWLDataFactory df = edit.getOWLOntologyManager().getOWLDataFactory();
-        // What the ontology's own axioms mention - not its declarations, which a parser also
-        // writes for terms it only met in an import.
-        Set<OWLEntity> used = new java.util.HashSet<OWLEntity>();
-        for (org.semanticweb.owlapi.model.OWLAxiom axiom : current.getAxioms()) {
-            if (axiom instanceof org.semanticweb.owlapi.model.OWLDeclarationAxiom) {
-                continue;
-            }
-            used.addAll(axiom.getSignature());
-            if (axiom instanceof org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom) {
-                org.semanticweb.owlapi.model.OWLAnnotationSubject subject =
-                        ((org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom) axiom)
-                                .getSubject();
-                if (subject instanceof IRI) {
-                    used.addAll(current.getEntitiesInSignature((IRI) subject, Imports.INCLUDED));
+    private static void modules(OWLOntology current, OWLOntology edit, File root, File editFile,
+            WarnCounting warn, Log log, Result result) {
+        try {
+            ImportGuard.Reading reading = ImportGuard.reading(root, current);
+            List<String> declared = new ArrayList<String>();
+            boolean takenOut = false;
+            for (ImportGuard.Finding finding : reading.findings(
+                    OdkUpdate.plan(root).undeclared())) {
+                String iri = finding.item().iri();
+                if (!finding.isReadable()) {
+                    edit.getOWLOntologyManager().applyChange(
+                            new org.semanticweb.owlapi.model.RemoveImport(edit,
+                                    edit.getOWLOntologyManager().getOWLDataFactory()
+                                            .getOWLImportsDeclaration(IRI.create(iri))));
+                    takenOut = true;
+                    warn.warn(iri + " could not be read, so no module can be made of it, and "
+                            + "ODK keeps no import its configuration does not declare: it is "
+                            + "taken out of the edit file. Once it can be read, "
+                            + "OntoBoard > Reuse > Import terms from a list... brings its "
+                            + "terms back.");
+                    continue;
                 }
-            }
-        }
-        if (current.getImportsDeclarations().isEmpty()) {
-            log.line("The ontology imports nothing.");
-            return;
-        }
-        File yaml = OdkBuildSettings.yamlIn(new File(root, "src/ontology"));
-        for (OWLImportsDeclaration declaration : current.getImportsDeclarations()) {
-            OWLOntology imported = manager.getImportedOntology(declaration);
-            if (imported == null) {
-                warn.warn(declaration.getIRI() + " could not be read, so it stays an import of "
-                        + "the whole ontology. Turn it into a module later with "
-                        + "OntoBoard > Reuse > Imported terms... once it can be read.");
-                continue;
-            }
-            List<IRI> terms = new ArrayList<IRI>();
-            for (OWLEntity entity : used) {
-                if (!entity.isBuiltIn() && imported.containsEntityInSignature(entity.getIRI(),
-                        Imports.INCLUDED)) {
-                    terms.add(entity.getIRI());
-                }
-            }
-            Collections.sort(terms, (a, b) -> a.toString().compareTo(b.toString()));
-            if (terms.isEmpty()) {
-                warn.warn(declaration.getIRI() + " is imported but none of its terms is used, so "
-                        + "it stays as it was.");
-                continue;
-            }
-            try {
-                String name = TermExtract.shortNameOf(imported);
-                IRI moduleIri = TermExtract.moduleIriIn(ontologyIri, imported);
-                TermExtract.Result extracted = ModuleRebuild.extract(imported, terms,
-                        TermExtract.DEFAULT_METHOD, moduleIri, Provenance.today());
-                File moduleFile = ImportModules.moduleFileFor(root, name);
-                save(extracted.getModule(), moduleFile);
-                ImportModules.writeTerms(root, name, new ArrayList<IRI>(),
-                        declaration.getIRI().toString());
-                File list = ImportModules.termsFileFor(root, name);
-                Map<IRI, String> labels = new LinkedHashMap<IRI, String>();
-                for (IRI term : terms) {
-                    String label = null;
-                    for (OWLEntity entity : imported.getEntitiesInSignature(term,
-                            Imports.INCLUDED)) {
-                        label = DisplayLabels.forEntity(imported, entity);
+                boolean used = finding.termsUsed() > 0;
+                for (File written : reading.declare(finding, used
+                        ? ImportGuard.Decision.MODULE : ImportGuard.Decision.WHOLE)) {
+                    if (written.getName().endsWith("_import.owl")) {
+                        SimpleStrings.simplify(written);
                     }
-                    labels.put(term, label);
                 }
-                String listText = new String(Files.readAllBytes(list.toPath()),
-                        StandardCharsets.UTF_8);
-                StringBuilder written = new StringBuilder(listText);
-                for (Map.Entry<IRI, String> term : labels.entrySet()) {
-                    written.append(term.getKey()).append(term.getValue() == null
-                            || term.getValue().equals(term.getKey().toString()) ? ""
-                                    : " # " + term.getValue()).append('\n');
-                }
-                Files.write(list.toPath(), written.toString().getBytes(StandardCharsets.UTF_8));
-                Catalog.addEntry(new File(root, "src/ontology/catalog-v001.xml"),
-                        moduleIri.toString(), "imports/" + moduleFile.getName());
-                edit.getOWLOntologyManager().applyChange(
-                        new org.semanticweb.owlapi.model.RemoveImport(edit, declaration));
-                edit.getOWLOntologyManager().applyChange(new AddImport(edit,
-                        df.getOWLImportsDeclaration(moduleIri)));
-                if (yaml != null) {
-                    String before = new String(Files.readAllBytes(yaml.toPath()),
-                            StandardCharsets.UTF_8);
-                    ImportProducts.Declaration product = ImportProducts.declarationFor(name,
-                            declaration.getIRI().toString(), TermExtract.DEFAULT_METHOD);
-                    OdkBuildSettings.writeIfUnchanged(yaml, before,
-                            OdkYaml.appendBlockTo(before, "import_group.products",
-                                    product.getFields()));
-                }
-                result.modules.add(name);
-                log.line(declaration.getIRI() + " -> imports/" + moduleFile.getName() + ": "
-                        + terms.size() + " terms the ontology uses, a module of "
-                        + extracted.getModule().getAxiomCount() + " axioms"
-                        + (extracted.getMissing().isEmpty() ? ""
-                                : "; not found in it: " + extracted.getMissing()));
-            } catch (Exception cannot) {
-                warn.warn(declaration.getIRI() + " could not be made a module ("
-                        + cannot.getMessage() + "), so it stays an import of the whole ontology.");
+                declared.add(iri);
+                result.modules.add(finding.name());
+                log.line(iri + " -> imports/" + finding.name() + "_import.owl"
+                        + ", declared as the product " + finding.name() + ": "
+                        + (used ? "a module of the " + finding.termsUsed()
+                                + (finding.termsUsed() == 1 ? " term" : " terms")
+                                + " the ontology uses"
+                                : "the whole of it, since the ontology's own axioms use none "
+                                        + "of its terms")
+                        + (finding.isFrozen() ? ". ODK keeps the module as it is: it was read "
+                                + "from a file, so there is no address to fetch it from again."
+                                : ". ODK fetches it again from its address when the imports "
+                                        + "are refreshed."));
             }
+            if (takenOut) {
+                saveEdit(edit, editFile);
+            }
+            odksUpdate(root, editFile, declared, log);
+        } catch (IOException | RuntimeException cannot) {
+            warn.warn("The imports could not be made modules (" + cannot.getMessage()
+                    + "), so the ontology imports what it imported. "
+                    + "OntoBoard > Project > Update project files... asks about each import "
+                    + "the configuration does not declare.");
         }
+    }
+
+    /**
+     * ODK's own update, as after any change of the configuration: the Makefile, the catalog
+     * and the edit file's import declarations follow what the configuration declares. Made
+     * also where nothing was declared: the first time ODK's update runs on a seed it writes
+     * two of the seed's files its own way - the last line of .gitignore, the first two of
+     * the catalog - and the first Update project files on a converted project would show
+     * that as two files to change.
+     *
+     * @param declared the imports that were just declared, which the update replaces by
+     *                 their modules
+     */
+    private static void odksUpdate(File root, File editFile, List<String> declared, Log log)
+            throws IOException {
+        for (File written : OdkUpdate.apply(root, OdkUpdate.plan(root).removing(declared))) {
+            log.line("ODK's update wrote " + under(root, written));
+        }
+        SimpleStrings.simplify(editFile);
     }
 
     private static final String DCTERMS = "http://purl.org/dc/terms/";
@@ -731,39 +928,12 @@ public final class OdkConversion {
             edit.getOWLOntologyManager().applyChange(new AddOntologyAnnotation(edit,
                     df.getOWLAnnotation(df.getOWLAnnotationProperty(IRI.create(property)),
                             value)));
+            // As it reads: what an annotation value prints as is the OWL API's own business -
+            // "Shop"^^xsd:string on one version, the name of a Java object on another.
             log.line("added dcterms:" + each[0] + " - ODK's quality report requires it, and "
-                    + "the ontology did not say: " + value);
+                    + "the ontology did not say: " + (value.asLiteral().isPresent()
+                            ? value.asLiteral().get().getLiteral() : each[1].toString()));
         }
-    }
-
-    /** As Release... cuts one: imports merged, reasoned with ELK, versioned, kept and published. */
-    private static void release(File root, String id, OWLOntology edit, IRI ontologyIri,
-            OntologyVersion version, OntologyVersion previous, Log log) throws Exception {
-        OWLOntologyManager loading = OWLManager.createOWLOntologyManager();
-        loading.getIRIMappers().add(new org.obolibrary.robot.CatalogXmlIRIMapper(
-                new File(root, "src/ontology/catalog-v001.xml")));
-        OWLOntology withImports = loading.loadOntologyFromOntologyDocument(
-                new File(root, "src/ontology/" + id + "-edit.owl"));
-        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-        OWLOntology release = manager.createOntology(ontologyIri);
-        manager.addAxioms(release, withImports.getAxioms(Imports.INCLUDED));
-        for (OWLAnnotation annotation : withImports.getAnnotations()) {
-            manager.applyChange(new AddOntologyAnnotation(release, annotation));
-        }
-        RobotTransform.Diff inferred = RobotTransform.preview(release,
-                RobotTransform.Kind.REASON, Reasoners.Choice.ELK.newFactory());
-        manager.applyChanges(inferred.getChanges());
-        manager.applyChanges(Release.stamp(release, version,
-                previous != null && previous.getScheme() == version.getScheme() ? previous
-                        : null));
-        File kept = Release.releaseFile(root, id, version.getText());
-        kept.getParentFile().mkdirs();
-        writeCanonically(release, new RDFXMLDocumentFormat(), kept);
-        writeCanonically(release, new RDFXMLDocumentFormat(), new File(root, id + ".owl"));
-        writeCanonically(release, new TurtleDocumentFormat(), new File(root, id + ".ttl"));
-        log.line(version.getText() + ": releases/" + version.getText() + "/" + id + ".owl, "
-                + id + ".owl and " + id + ".ttl - " + release.getAxiomCount() + " axioms, "
-                + inferred.getAdded() + " inferred, version IRI " + Release.versionIriOf(release));
     }
 
     // ---------------------------------------------------------------- git
@@ -785,12 +955,19 @@ public final class OdkConversion {
         }
     }
 
-    private static void commitAndTag(File root, String label, String message, String date,
-            WarnCounting warn, Result result, Log log) {
+    /**
+     * A version, as a release is recorded: everything written, the file released at the top
+     * of the project with it - ODK's .gitignore keeps a release's files out of git, and a
+     * release takes them in all the same, as ODK's own instructions do with git add -f - a
+     * commit, and the tag a release has.
+     */
+    private static void commitAndTag(File root, String id, String label, String message,
+            String date, WarnCounting warn, Result result, Log log) {
         git(root, warn, date, "add", "-A");
+        git(root, warn, date, "add", "-f", "--", id + ".owl");
         if (git(root, warn, date, "commit", "-q", "-m", message) == 0) {
-            String tag = "v" + label;
-            git(root, warn, date, "tag", "-a", tag, "-m", label);
+            String tag = GitTags.tagFor(label);
+            git(root, warn, date, "tag", "-a", tag, "-m", id + " " + label);
             result.tags.add(tag);
             log.line("git: committed and tagged " + tag);
         }
@@ -887,11 +1064,32 @@ public final class OdkConversion {
         return null;
     }
 
-    private static void writeReadmeHistory(File root, String title, List<String> versions) {
-        File readme = new File(root, "README.md");
+    /** A file's text; empty when it is not there or cannot be read. */
+    private static String textOf(File file) {
         try {
-            String text = readme.isFile() ? new String(Files.readAllBytes(readme.toPath()),
-                    StandardCharsets.UTF_8) : "# " + title + "\n";
+            return file.isFile() ? new String(Files.readAllBytes(file.toPath()),
+                    StandardCharsets.UTF_8) : "";
+        } catch (IOException unreadable) {
+            return "";
+        }
+    }
+
+    /**
+     * ODK's README with the history after it: every version that is a release and a tag,
+     * newest first. With no version, ODK's README as it is.
+     *
+     * @param readmeOfOdk the README as the seed wrote it
+     */
+    private static void writeHistory(File readme, String readmeOfOdk, String title,
+            List<String> versions) {
+        try {
+            if (versions.isEmpty()) {
+                if (!readmeOfOdk.isEmpty()) {
+                    Files.write(readme.toPath(), readmeOfOdk.getBytes(StandardCharsets.UTF_8));
+                }
+                return;
+            }
+            String text = readmeOfOdk.isEmpty() ? "# " + title + "\n" : readmeOfOdk;
             StringBuilder history = new StringBuilder("\n## History\n\nConverted to an ODK "
                     + "repository by OntoBoard. Every version is a release under `releases/` and a "
                     + "git tag:\n\n| Version | Tag |\n|---|---|\n");

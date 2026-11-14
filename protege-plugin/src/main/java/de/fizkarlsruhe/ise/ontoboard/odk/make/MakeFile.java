@@ -35,6 +35,14 @@ import java.util.regex.Pattern;
  */
 public final class MakeFile {
 
+    /**
+     * make's {@code -B}, "always make": every target is made again, up to date or not. It is
+     * given with the command line's variables, under this name and with an empty value, and
+     * goes down with them to a make that a recipe starts - as make itself hands both down,
+     * in MAKEFLAGS. It is no variable: a makefile that asks for one of this name finds none.
+     */
+    public static final String ALWAYS_MAKE = "-B";
+
     /** What make would find on disk: the reader never touches the real disk except through this. */
     public interface Disk {
         /** Relative to the Makefile's folder, or absolute, with {@code /}; a file or a folder. */

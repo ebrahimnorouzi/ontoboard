@@ -289,6 +289,37 @@ class MigrationThroughUpdateTest {
                 again.getSummary());
     }
 
+    /**
+     * What the conversion warns of - here an address ODK names otherwise in what it
+     * releases - makes the result one with warnings, looking and writing: a line among
+     * forty of a log that ended "Finished" is not read (mutant F05 of the round on this
+     * step made it a note, and lived).
+     */
+    @Test
+    void whatTheConversionWarnsOfMakesTheResultOneWithWarnings() throws IOException {
+        replace(EDIT, "https://example.org/eggboil/eggboil", "https://example.org/kitchen/egg");
+        replace("src/ontology/catalog-v001.xml", "https://example.org/eggboil/eggboil",
+                "https://example.org/kitchen/egg");
+        replace(CONFIG, "uribase: https://example.org/eggboil\n",
+                "uribase: https://example.org/kitchen\n");
+
+        OperationResult look = OdkUpdateForm.run(OPERATION, root, false, itself(),
+                noContainer(), open());
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, look.getStatus(),
+                look.getSummary());
+        assertTrue(String.join("\n", look.getLog()).contains(
+                "https://example.org/kitchen/eggboil.owl"), look.getLog().toString());
+
+        OperationResult written = OdkUpdateForm.run(OPERATION, root, true, itself(),
+                noContainer(), open());
+
+        assertTrue(written.getSummary().startsWith(OdkUpdateForm.UPDATED),
+                written.getSummary());
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, written.getStatus(),
+                written.getSummary());
+    }
+
     @Test
     void whoStoppedWaitingGetsNothingWritten() throws IOException {
         Map<String, byte[]> before = tree();

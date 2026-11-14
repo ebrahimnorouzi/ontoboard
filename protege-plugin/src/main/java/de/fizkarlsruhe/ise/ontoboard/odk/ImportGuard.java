@@ -301,9 +301,14 @@ public final class ImportGuard {
             return unreadable;
         }
 
-        /** Whether ODK would fetch it again from its address, or keeps the module as it is. */
+        /**
+         * Whether ODK keeps the module as it is instead of fetching the import again from
+         * its address: so where the import is read from a file - one of the project, which
+         * its catalog serves, or one this machine has elsewhere. A file of this machine is
+         * an address on no other.
+         */
         public boolean isFrozen() {
-            return item.localFileOrNull() != null;
+            return item.localFileOrNull() != null || isOfThisMachine(item.iri());
         }
     }
 
@@ -408,7 +413,10 @@ public final class ImportGuard {
                         }
                     }
                 }
-                written.add(ImportModules.writeTerms(root, name, terms, finding.item().iri(),
+                // Where from is said with an address. A path of this machine is none, and
+                // goes into no file that is committed.
+                written.add(ImportModules.writeTerms(root, name, terms,
+                        isOfThisMachine(finding.item().iri()) ? null : finding.item().iri(),
                         null, labels));
             }
             String before = new String(Files.readAllBytes(config.toPath()),
@@ -422,8 +430,9 @@ public final class ImportGuard {
         /** The product's lines in the configuration. */
         private LinkedHashMap<String, String> productFor(Finding finding, Decision decision) {
             if (finding.isFrozen()) {
-                // Read from a file of the project: there is no address ODK could fetch it
-                // from, so the module is kept as it is - ODK's words for that.
+                // Read from a file, the project's or this machine's: there is no address
+                // ODK could fetch it from, so the module is kept as it is - ODK's words for
+                // that - and no path is written.
                 return ImportProducts.frozen(finding.name());
             }
             if (decision == Decision.MODULE) {
@@ -484,6 +493,47 @@ public final class ImportGuard {
     }
 
     /**
+     * The same for an ontology that is loaded already, with what it imports in its manager:
+     * the content of the project's edit file as somebody has just read it. Nothing is read
+     * again - an import fetched from far away is not fetched a second time, and what could
+     * be read then can be declared now.
+     *
+     * @param loaded the ontology the project's edit file holds, read with its imports
+     * @throws IOException when the project's configuration cannot be read
+     */
+    static Reading reading(File projectRoot, OWLOntology loaded) throws IOException {
+        File root = projectRoot.getAbsoluteFile();
+        File config = configIn(root);
+        return new Reading(root, config, OdkUpdate.ontbase(projectOf(config, null)), loaded);
+    }
+
+    /** Whether an import's address is a file of this machine and so an address on no other. */
+    private static boolean isOfThisMachine(String iri) {
+        return iri != null && iri.trim().toLowerCase(Locale.ROOT).startsWith("file:");
+    }
+
+    /** The project's one ODK configuration. */
+    private static File configIn(File root) throws IOException {
+        File config = OdkBuildSettings.yamlIn(new File(root, "src/ontology"));
+        if (config == null) {
+            throw new IOException("src/ontology holds no ODK configuration (or more than one), "
+                    + "so there is nowhere to declare an import.");
+        }
+        return config;
+    }
+
+    /** The configuration as ODK reads it: the file's, or this text in its place. */
+    private static PyObject projectOf(File config, String configInstead) throws IOException {
+        try {
+            return OdkProjectModel.load(configInstead != null ? configInstead
+                    : new String(Files.readAllBytes(config.toPath()), StandardCharsets.UTF_8));
+        } catch (OdkConfigException notOdks) {
+            throw new IOException(config.getName() + " is not a configuration ODK reads: "
+                    + notOdks.getMessage(), notOdks);
+        }
+    }
+
+    /**
      * Reads the project's edit file with what it imports - through the project's catalog, and
      * past what cannot be read.
      *
@@ -504,20 +554,8 @@ public final class ImportGuard {
             throws IOException {
         File root = projectRoot.getAbsoluteFile();
         File ontologyDirectory = new File(root, "src/ontology");
-        File config = OdkBuildSettings.yamlIn(ontologyDirectory);
-        if (config == null) {
-            throw new IOException("src/ontology holds no ODK configuration (or more than one), "
-                    + "so there is nowhere to declare an import.");
-        }
-        PyObject project;
-        try {
-            project = OdkProjectModel.load(configInstead != null ? configInstead
-                    : new String(Files.readAllBytes(config.toPath()),
-                            StandardCharsets.UTF_8));
-        } catch (OdkConfigException notOdks) {
-            throw new IOException(config.getName() + " is not a configuration ODK reads: "
-                    + notOdks.getMessage(), notOdks);
-        }
+        File config = configIn(root);
+        PyObject project = projectOf(config, configInstead);
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         File catalog = new File(ontologyDirectory, "catalog-v001.xml");
         if (catalog.isFile()) {

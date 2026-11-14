@@ -188,6 +188,8 @@ public final class OntologySource {
      * sent nowhere and left out; then each is read as it would have been, a local file through
      * this method and anything else through loadOntology, and the closure is whole again: the OWL
      * API resolves an import against the ontologies already loaded, by IRI and by document IRI.
+     * An import declared under neither - a file's address spelt another way, an address a
+     * catalog sends to a copy - gets the address it is declared under as its document.
      * The mappers are swapped for the moment the file is read, so the manager must be the
      * caller's own - every caller creates one - and never Protege's.
      */
@@ -233,7 +235,16 @@ public final class OntologySource {
                 if (local == null) {
                     manager.loadOntology(declaration.getIRI());
                 } else if (reading.add(IRI.create(local).toString())) {
-                    loadFile(manager, local, reading);
+                    OWLOntology imported = loadFile(manager, local, reading);
+                    if (imported != null && manager.getImportedOntology(declaration) == null) {
+                        // Read, and not found as this import: it is declared under another
+                        // address than the ontology's own and than its file's as Java writes
+                        // it - file:///C:/... for file:/C:/..., or an address a catalog sends
+                        // to a copy. The OWL API finds an import by what it is declared
+                        // under, letter for letter; that address is recorded as its
+                        // document, as it is when the OWL API reads an import itself.
+                        manager.setOntologyDocumentIRI(imported, declaration.getIRI());
+                    }
                 }
             } catch (IOException | OWLOntologyCreationException | RuntimeException unreadable) {
                 // As the OWL API would have treated it: left out when the caller said missing

@@ -215,7 +215,10 @@ public class ReleaseAction extends OntoBoardAction {
         String whyNotFull = null;
         if (!container && script == null && OdkRoute.mayRunWithoutContainer(use)
                 && !nativeEnvironment) {
-            Map<String, String> variables = java.util.Collections.singletonMap("VERSION",
+            // As the release runs it: every target made again (make -B).
+            Map<String, String> variables = new java.util.LinkedHashMap<String, String>();
+            variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile.ALWAYS_MAKE, "");
+            variables.put("VERSION",
                     OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
             whyNotFast = OdkEngine.whyNot(editFile, "prepare_release_fast", variables);
             whyNotFull = whyNotFast != null ? whyNotFast

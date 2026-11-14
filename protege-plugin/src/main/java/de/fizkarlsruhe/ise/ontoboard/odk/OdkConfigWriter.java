@@ -2,7 +2,9 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -51,17 +53,29 @@ public final class OdkConfigWriter {
      */
     public static String forNewProject(OdkProjectConfig config) {
         String id = config.getOntologyId();
+        String suffix = uriBaseSuffix(config);
+        List<String> namespaces = namespaces(config);
+        StringBuilder own = new StringBuilder();
+        if (!namespaces.isEmpty()) {
+            own.append("namespaces:\n");
+            for (String namespace : namespaces) {
+                own.append("  - ").append(plain(namespace)).append("\n");
+            }
+        }
         return header(config.getTitle())
                 + "id: " + plain(id) + "\n"
                 + "title: " + quoted(config.getTitle()) + "\n"
                 + "description: " + quoted(config.getDescription()) + "\n"
                 + "uribase: " + plain(uriBase(config)) + "\n"
+                + (suffix == null ? "" : "uribase_suffix: " + plain(suffix) + "\n")
                 + "license: " + plain(config.getLicense()) + "\n"
                 + "repo: " + plain(id) + "\n"
+                + own
                 + "robot_report:\n"
                 + "  use_labels: TRUE\n"
                 + "  fail_on: ERROR\n"
                 + "  custom_profile: TRUE\n"
+                + (namespaces.isEmpty() ? "" : "  use_base_iris: TRUE\n")
                 + "  report_on:\n"
                 + "    - edit\n"
                 + "  custom_sparql_checks:\n"
@@ -120,17 +134,84 @@ public final class OdkConfigWriter {
                 + "_0000001, so an IRI of another shape would not be the one the project uses.");
     }
 
+    /** What an address is made of that make, a shell and a query read as one word. */
+    private static final String WORD_OF_AN_ADDRESS = "https?://[A-Za-z0-9._~:/#@%+=-]+";
+
     /**
-     * ODK's {@code ONTBASE}: what the project's files other than the ontology itself are named
-     * under - its releases, its import modules. {@code <uribase>/<id>}.
+     * The addresses the terms of a project that starts from an existing ontology begin with -
+     * ODK's {@code namespaces}: the ontology's own address without {@code .owl}, where the
+     * terms it has are, and {@code <uribase>/<ID>_}, where ODK names new ones.
+     *
+     * <p>ODK takes a project's own terms to begin with {@code <uribase>/<ID>_} alone. Its
+     * base release keeps the axioms about such terms and drops the rest; its quality report,
+     * told to go by the project's own terms, looks at nothing else; its lists of terms hold
+     * nothing else. An ontology somebody already has names its terms as it always did - under
+     * its own address, as a rule - so without these its base release holds none of them. The
+     * report is told to go by them ({@code use_base_iris}), as ODK's own default does: an
+     * ontology that says something about another's term is not failed for that term's faults.
+     *
+     * @return both addresses; none for a project that starts from nothing, whose terms are
+     *         where ODK expects them, and none where one of them is not an address ODK's
+     *         Makefile could carry as a word
      */
-    static String ontBase(OdkProjectConfig config) {
-        return uriBase(config) + "/" + config.getOntologyId();
+    static List<String> namespaces(OdkProjectConfig config) {
+        if (!config.isAdopted()) {
+            return Collections.emptyList();
+        }
+        String own = ProjectIri.stemOf(config.getBaseIri());
+        String named = uriBase(config) + "/" + config.getOntologyId().toUpperCase(Locale.ROOT)
+                + "_";
+        if (own == null || !own.matches(WORD_OF_AN_ADDRESS)
+                || !named.matches(WORD_OF_AN_ADDRESS)) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(Arrays.asList(own, named));
     }
 
-    /** The IRI ODK gives the ontology in everything it builds: {@code <uribase>/<id>.owl}. */
+    /**
+     * ODK's {@code uribase_suffix} for a project that starts from an existing ontology whose
+     * address does not end in the id: the address's last part, without the {@code .owl} of a
+     * file's name. With it, what ODK names under the project's base - its import modules,
+     * its releases - is under the ontology's own address, where the versions published so far
+     * are, and not under a name made from the id that nothing was ever published at.
+     *
+     * @return the suffix; null where ODK's own shape needs none, where the address has no
+     *         such part (a bare host; a part after a hash, since ODK joins with a slash), or
+     *         where the part is not a plain word make and a shell read as themselves
+     */
+    static String uriBaseSuffix(OdkProjectConfig config) {
+        if (!config.isAdopted()) {
+            return null;
+        }
+        String iri = config.getBaseIri();
+        int cut = Math.max(iri.lastIndexOf('/'), iri.lastIndexOf('#'));
+        if (cut < 0 || iri.charAt(cut) == '#' || iri.startsWith("://", cut - 2)) {
+            return null;
+        }
+        String last = iri.substring(cut + 1);
+        if (last.toLowerCase(Locale.ROOT).endsWith(".owl")) {
+            last = last.substring(0, last.length() - ".owl".length());
+        }
+        return last.equals(config.getOntologyId()) || !last.matches("[A-Za-z0-9._~-]+")
+                ? null : last;
+    }
+
+    /**
+     * ODK's {@code ONTBASE}: what the project's files other than the ontology itself are named
+     * under - its releases, its import modules. {@code <uribase>/<id>}, or
+     * {@code <uribase>/<uribase_suffix>} where the project has one ({@link #uriBaseSuffix}).
+     */
+    static String ontBase(OdkProjectConfig config) {
+        String suffix = uriBaseSuffix(config);
+        return uriBase(config) + "/" + (suffix == null ? config.getOntologyId() : suffix);
+    }
+
+    /**
+     * The IRI ODK gives the ontology in what it releases: {@code <uribase>/<id>.owl}, after
+     * the id whatever the project's base is.
+     */
     static String odkIri(OdkProjectConfig config) {
-        return ontBase(config) + ".owl";
+        return uriBase(config) + "/" + config.getOntologyId() + ".owl";
     }
 
     /** A value as a plain YAML scalar when it can be one, in double quotes when it cannot. */
