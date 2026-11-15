@@ -57,6 +57,46 @@ class GuideTest {
         }
     }
 
+    /**
+     * A project OntoBoard 1.135 or before made is not set up for this version: Build and
+     * Release say so when they are asked. The guide is what somebody opens first, and it
+     * showed such a project's first step as done. It is the step to do, and its button
+     * carries the project over.
+     */
+    @Test
+    void aProjectOfTheOlderLayoutIsCarriedOverFirst(@TempDir File temp) throws Exception {
+        File edit = de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject.of1352(
+                new File(temp, "eggboil"));
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        List<Guide.Step> steps = Guide.steps(Guide.Start.PROJECT, facts);
+        Map<String, Guide.State> states = Guide.progress(steps, facts);
+
+        Guide.Step first = steps.get(0);
+        assertEquals("project", first.getId());
+        assertEquals(Guide.State.NEXT, states.get("project"), "not set up for this version");
+        assertEquals("Update project files...", first.getActionLabel());
+        assertTrue(first.getAction().endsWith(".UpdateProjectAction"), first.getAction());
+        assertTrue(first.getWhat().startsWith("This project was made by OntoBoard 1.135 or "
+                + "before"), first.getWhat());
+        assertTrue(first.getWhat().endsWith("Until then, Build and Release do not run on "
+                + "it."), first.getWhat());
+        assertEquals(10, steps.size(), "the rest of the path is the same");
+        assertEquals(Guide.steps(Guide.Start.PROJECT).get(1).getTitle(),
+                steps.get(1).getTitle());
+
+        // An ODK project, and nothing open at all, have the steps they had.
+        File odk = de.fizkarlsruhe.ise.ontoboard.odk.SeededProject.in(new File(temp, "new"));
+        Guide.Facts odkFacts = Guide.factsOf(odk, null);
+        List<Guide.Step> odkSteps = Guide.steps(Guide.Start.PROJECT, odkFacts);
+        assertEquals(Guide.State.DONE, Guide.progress(odkSteps, odkFacts).get("project"));
+        assertEquals("Open existing ODK project...", odkSteps.get(0).getActionLabel());
+        assertEquals("New ODK project...", Guide.steps(Guide.Start.NEW,
+                Guide.factsOf(null, null)).get(0).getActionLabel());
+        assertEquals("New ODK project...", Guide.steps(Guide.Start.NEW, null).get(0)
+                .getActionLabel());
+    }
+
     /** With nothing open, the first step is the one to do, and Build is never finished. */
     @Test
     void aNewcomerStartsAtTheFirstStep() {

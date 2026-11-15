@@ -58,8 +58,12 @@ class ToolchainTest {
             assertTrue(!remedy.contains("Use Docker or Podman here")
                     && !remedy.contains("is the only route"), tool.getName() + ": " + remedy);
             if (tool.getName().equals("GNU make")) {
-                assertTrue(remedy.contains("neither ODK's nor OntoBoard's"),
-                        "what a make of the machine's own would be for: " + remedy);
+                // OntoBoard has no Makefile of its own any more (1.153.0): a project of
+                // its older layout is carried over, not built.
+                assertTrue(remedy.startsWith("Only needed to run a Makefile that is not "
+                        + "ODK's: "), "what a make of the machine's own would be for: "
+                        + remedy);
+                assertTrue(!remedy.contains("OntoBoard's"), remedy);
             }
             if (tool.getName().equals("Native ODK environment")) {
                 assertTrue(remedy.contains("OntoBoard builds an ODK project itself")

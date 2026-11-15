@@ -292,10 +292,11 @@ public final class Toolchain {
         boolean make = ProcessRunner.isAvailable(runner, "make", "--version");
         tools.add(new Tool("GNU make", make ? State.PRESENT : State.ABSENT,
                 make ? "on the PATH" : "not found",
-                // ODK's Makefile and OntoBoard's own are read and run by OntoBoard itself; a
-                // make of the machine's own runs only what is neither.
+                // ODK's Makefile is read and run by OntoBoard itself; a make of the machine's
+                // own runs only one that is not ODK's. (The Makefile OntoBoard wrote up to
+                // 1.135 is not run at all any more: such a project is carried over.)
                 make ? ""
-                        : "Only needed to run a Makefile that is neither ODK's nor OntoBoard's: "
+                        : "Only needed to run a Makefile that is not ODK's: "
                                 + (isWindows() ? "'choco install make' or 'scoop install make'."
                                         : "'apt install make' or 'brew install make'.")));
 

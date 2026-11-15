@@ -255,6 +255,65 @@ class OdkTargetsTest {
                 OdkTargets.whyItStopped(ran.getTranscript(), edit, ontology));
     }
 
+    /**
+     * A check the configuration lists whose file is not there (seen live, 1.153.0: a project
+     * put together without the label check's file). ROBOT's word on it is the file's path
+     * and nothing else, and it stands before the lines of the checks that passed, so the
+     * last line of the run is a PASS: "'test' stopped at sparql_test: PASS Rule ...".
+     */
+    @Test
+    void aListedCheckWithoutItsFileIsSaid(@TempDir File where) throws Exception {
+        File edit = SeededProject.in(where);
+        OWLOntology ontology = open(edit);
+        assertTrue(new File(SeededProject.root(edit),
+                "src/sparql/check_labels-violation.sparql").delete());
+
+        OdkEngine.Outcome ran = run(edit, "sparql_test");
+
+        assertFalse(ran.isOk(), String.join("\n", ran.getTranscript()));
+        assertEquals("The run asks the check src/sparql/check_labels-violation.sparql, and "
+                + "that file is not there. It is listed as check_labels under "
+                + "custom_sparql_checks in the project's <id>-odk.yaml: put the file back, or "
+                + "take the name out of the list and update the project's files "
+                + "(OntoBoard > Project > Update project files...).",
+                OdkTargets.whyItStopped(ran.getTranscript(), edit, ontology));
+    }
+
+    /** One of ODK's own is written again by the update; and what else is missing is counted. */
+    @Test
+    void aCheckOfOdksOwnWithoutItsFileIsWrittenAgainByTheUpdate(@TempDir File where)
+            throws Exception {
+        File edit = SeededProject.in(where);
+        File sparql = new File(SeededProject.root(edit), "src/sparql");
+        assertTrue(new File(sparql, "iri-range-violation.sparql").delete());
+        assertTrue(new File(sparql, "check_labels-violation.sparql").delete());
+
+        OdkEngine.Outcome ran = run(edit, "sparql_test");
+
+        assertFalse(ran.isOk(), String.join("\n", ran.getTranscript()));
+        assertEquals("The run asks the check src/sparql/iri-range-violation.sparql, and that "
+                + "file is not there (nor is 1 more of the checks it asks). It is one of "
+                + "ODK's own checks: OntoBoard > Project > Update project files... writes "
+                + "its file again.",
+                OdkTargets.whyItStopped(ran.getTranscript(), edit, null));
+    }
+
+    /** A run whose checks are all there, and that stopped for something else, is not this. */
+    @Test
+    void checksThatAreThereAreNotSaidToBeMissing(@TempDir File where) throws Exception {
+        File edit = SeededProject.in(where);
+        List<String> transcript = Arrays.asList(
+                "robot --catalog catalog-v001.xml verify -i tmp/merged-eggboil-edit.ofn "
+                        + "--queries ../sparql/iri-range-violation.sparql "
+                        + "../sparql/check_labels-violation.sparql -O reports",
+                "PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)",
+                "PASS Rule ../sparql/check_labels-violation.sparql: 0 violation(s)",
+                "cp x y", "cp: cannot stat 'x': No such file or directory",
+                "make: *** [Makefile:300: y] Error 1");
+
+        assertNull(OdkTargets.whyItStopped(transcript, edit, null));
+    }
+
     // ------------------------------------------------------------------ a test about nothing
 
     @Test

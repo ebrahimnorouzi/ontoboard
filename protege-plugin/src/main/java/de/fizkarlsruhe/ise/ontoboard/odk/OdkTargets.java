@@ -302,6 +302,10 @@ public final class OdkTargets {
         for (Failed check : failed(transcript, ontologyDirectory)) {
             said.add(saidOf(check, ontology));
         }
+        String missing = whatIsNotThere(transcript, ontologyDirectory);
+        if (missing != null) {
+            said.add(missing);
+        }
         String report = whatTheReportFound(transcript);
         if (report != null) {
             said.add(report);
@@ -389,6 +393,78 @@ public final class OdkTargets {
         } catch (RuntimeException found) {
             return RobotTransform.isAboutTheModel(found) ? found.getMessage() : null;
         }
+    }
+
+    private static final Pattern VERIFY_LINE = Pattern.compile(
+            "(?:\\S+=\\S*\\s+)*robot\\s(?:.*\\s)?verify\\s.*", Pattern.DOTALL);
+
+    /**
+     * A check the run was to ask whose file is not there: the configuration lists a name
+     * and nothing is under it in {@code src/sparql} - deleted to be rid of it, or listed by
+     * hand and never written. ROBOT's whole word on it is the file's path, among the lines
+     * of the checks that passed. Read off the last line of ROBOT's the run came to, where
+     * that asks checks: the files it names, looked for where make ran. Null when they are
+     * all there.
+     */
+    static String whatIsNotThere(List<String> transcript, File ontologyDirectory) {
+        int at = -1;
+        for (int i = 0; i < transcript.size(); i++) {
+            if (ROBOT_LINE.matcher(transcript.get(i).trim()).matches()) {
+                at = i;
+            }
+        }
+        if (ontologyDirectory == null || at < 0
+                || !VERIFY_LINE.matcher(transcript.get(at).trim()).matches()) {
+            return null;
+        }
+        // What ROBOT said of a check, it has read: only one it said nothing of can be
+        // the one it did not find.
+        List<String> spokenOf = new ArrayList<String>();
+        for (String line : transcript.subList(at + 1, transcript.size())) {
+            Matcher pass = PASS.matcher(line.trim());
+            Matcher fail = FAIL.matcher(line.trim());
+            if (pass.matches()) {
+                spokenOf.add(pass.group(1));
+            } else if (fail.matches()) {
+                spokenOf.add(fail.group(1));
+            }
+        }
+        List<String> missing = new ArrayList<String>();
+        boolean queries = false;
+        for (String word : transcript.get(at).trim().split("\\s+")) {
+            if (word.equals("--queries") || word.equals("-q")) {
+                queries = true;
+            } else if (word.startsWith("-")) {
+                queries = false;
+            } else if (queries && !word.equals("\\") && !spokenOf.contains(word)
+                    && !new File(ontologyDirectory,
+                            word.replace('/', File.separatorChar)).isFile()) {
+                missing.add(word);
+            }
+        }
+        if (missing.isEmpty()) {
+            return null;
+        }
+        String first = missing.get(0);
+        String name = first.substring(first.lastIndexOf('/') + 1);
+        String shown = first.startsWith("../sparql/")
+                ? SparqlQuery.CHECKS_DIRECTORY + "/" + name : first;
+        String asked = "The run asks the check " + shown + ", and that file is not there"
+                + (missing.size() == 1 ? "" : " (nor " + (missing.size() == 2 ? "is 1"
+                        : "are " + (missing.size() - 1)) + " more of the checks it asks)")
+                + ".";
+        if (odksNameOf(name) != null) {
+            return asked + " It is one of ODK's own checks: "
+                    + "OntoBoard > Project > Update project files... writes its file again.";
+        }
+        if (!name.endsWith(OdkChecks.SUFFIX)) {
+            return asked;
+        }
+        return asked + " It is listed as "
+                + name.substring(0, name.length() - OdkChecks.SUFFIX.length())
+                + " under custom_sparql_checks in the project's <id>-odk.yaml: put the file "
+                + "back, or take the name out of the list and update the project's files "
+                + "(OntoBoard > Project > Update project files...).";
     }
 
     /** A recipe line that calls ROBOT, as make says it - variables set before it or not. */

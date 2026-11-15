@@ -139,6 +139,32 @@ public final class Guide {
     private static final String ODK = "de.fizkarlsruhe.ise.ontoboard.odk.";
 
     /** The steps, in order, for somebody starting from {@code start}. */
+    /**
+     * The path for a project as it is: the steps of {@link #steps(Start)}, but for a
+     * project OntoBoard 1.135 or before made the first one carries it over.
+     */
+    public static List<Step> steps(Start start, Facts facts) {
+        List<Step> steps = steps(start);
+        if (facts == null || !facts.olderLayout) {
+            return steps;
+        }
+        // Build and Release say it when they are asked; the guide is what somebody opens
+        // first, and showed such a project's first step as done.
+        Step first = steps.get(0);
+        List<Step> carriedOver = new ArrayList<Step>(steps);
+        carriedOver.set(0, new Step(first.getId(), first.getTitle(),
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.CARRY_OVER
+                        + " Until then, Build and Release do not run on it.",
+                first.getWhy(),
+                "OntoBoard turns the project's configuration into one ODK reads, declares "
+                        + "the import modules your edit file uses, and has ODK's own update "
+                        + "write the rest - in ODK's container where its image is on the "
+                        + "machine, by itself where it is not. Nothing to install.",
+                "The project's Makefile is the one ODK writes.",
+                MENU + "UpdateProjectAction", "Update project files...", false, false));
+        return Collections.unmodifiableList(carriedOver);
+    }
+
     public static List<Step> steps(Start start) {
         List<Step> steps = new ArrayList<Step>();
         String setUpAction;
@@ -282,6 +308,8 @@ public final class Guide {
     /** What the guide reads about a project to say how far along it is. */
     public static final class Facts {
         boolean inProject;
+        /** Made by OntoBoard 1.135 or before: its Makefile is OntoBoard's own. */
+        boolean olderLayout;
         boolean hasRequirements;
         int patterns;
         int importModules;
@@ -312,6 +340,8 @@ public final class Guide {
         File root = ReleaseAction.projectRootOf(editFile);
         facts.inProject = editFile.getName().endsWith("-edit.owl") && ontologyDirectory != null
                 && "ontology".equals(ontologyDirectory.getName());
+        facts.olderLayout = facts.inProject
+                && de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.isOntoBoards1x(root);
         // Written, not merely present: the guide's own button writes the template, and ticking
         // the step for an empty table told a newcomer the work was done when it had not begun.
         facts.hasRequirements = hasAQuestion(new File(root, "docs/requirements.md"))
@@ -365,7 +395,8 @@ public final class Guide {
     private static boolean isDone(Step step, Facts facts) {
         switch (step.getId()) {
             case "project":
-                return facts.inProject;
+                // A project of the older layout is carried over before it is one.
+                return facts.inProject && !facts.olderLayout;
             case "requirements":
                 return facts.hasRequirements;
             case "pattern":
