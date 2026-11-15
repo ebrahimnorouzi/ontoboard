@@ -500,11 +500,94 @@ class BundleConfigurationTest {
         return newest;
     }
 
+    // ------------------------------------------------------------------ since 1.153.0
+
+    /**
+     * One package of OntoBoard's sources is somebody else's name:
+     * {@code org.geneontology.obographs.owlapi}, holding one class compiled for Java 8 so that
+     * ROBOT can save a file on Protege 5.5. The bundle plugin's defaults would export it - to
+     * any plugin that asks for obographs - and merge obographs' own Java 11 classes of that
+     * package in beside it. The pom says otherwise, and has to go on saying so.
+     */
+    @Test
+    void theOnePackageThatIsNotOntoBoardsIsNeitherExportedNorMerged() throws Exception {
+        NodeList exported = parsePom().getElementsByTagName("Export-Package");
+        NodeList own = parsePom().getElementsByTagName("Private-Package");
+
+        assertEquals(1, exported.getLength());
+        assertEquals("de.fizkarlsruhe.ise.ontoboard.*", exported.item(0).getTextContent().trim());
+        assertEquals(1, own.getLength());
+        assertEquals("org.geneontology.obographs.owlapi;-split-package:=first",
+                own.item(0).getTextContent().trim());
+
+        // And the pattern is the whole of it: no other package of the sources lies outside.
+        List<String> outside = new java.util.ArrayList<String>();
+        java.nio.file.Path sources = new File("src/main/java").toPath();
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.walk(sources)) {
+            for (java.nio.file.Path file : (Iterable<java.nio.file.Path>) files::iterator) {
+                String path = sources.relativize(file).toString().replace('\\', '/');
+                if (path.endsWith(".java") && !path.startsWith("de/fizkarlsruhe/ise/ontoboard/")
+                        && !path.equals("org/geneontology/obographs/owlapi/"
+                                + "OboGraphJsonDocumentFormat.java")) {
+                    outside.add(path);
+                }
+            }
+        }
+        assertEquals(java.util.Collections.emptyList(), outside, "sources outside OntoBoard's "
+                + "own package are not exported by the pom's pattern, and not in the bundle");
+    }
+
+    /** The same, read off the jar that was built. */
+    @Test
+    void theBuiltBundleCarriesThatOneClassAndExportsOnlyItsOwnPackages() throws Exception {
+        File jar = newestBuiltJar();
+        org.junit.jupiter.api.Assumptions.assumeTrue(jar != null,
+                "no built jar yet; run mvn package");
+
+        for (String exported : packagesOf(jar, "Export-Package")) {
+            assertTrue(exported.startsWith("de.fizkarlsruhe.ise.ontoboard"),
+                    "the bundle exports " + exported);
+        }
+        assertTrue(packagesOf(jar, "Export-Package")
+                .contains("de.fizkarlsruhe.ise.ontoboard.odk.seed"), "and all of its own");
+        List<String> foreign = new java.util.ArrayList<String>();
+        try (java.util.jar.JarFile open = new java.util.jar.JarFile(jar)) {
+            for (java.util.jar.JarEntry entry : java.util.Collections.list(open.entries())) {
+                if (entry.getName().startsWith("org/geneontology/")
+                        && entry.getName().endsWith(".class")) {
+                    foreign.add(entry.getName());
+                    try (InputStream in = open.getInputStream(entry)) {
+                        byte[] head = new byte[8];
+                        assertEquals(8, in.read(head));
+                        assertEquals(52, ((head[6] & 0xff) << 8) | (head[7] & 0xff),
+                                entry.getName() + " is not a Java 8 class file");
+                    }
+                }
+            }
+            String classPath = open.getManifest().getMainAttributes()
+                    .getValue("Bundle-ClassPath");
+            assertTrue(classPath.startsWith(".,"), "the bundle's own classes are looked in "
+                    + "first, which is what lets that class stand in: " + classPath);
+            // ROBOT's command line casts the host's root logger to logback's class. A logback
+            // of the bundle's own would be a second copy of that class.
+            assertFalse(classPath.contains("logback"), classPath);
+        }
+        assertEquals(java.util.Collections.singletonList(
+                "org/geneontology/obographs/owlapi/OboGraphJsonDocumentFormat.class"), foreign);
+        assertTrue(importedPackagesOf(jar).contains("ch.qos.logback.classic"),
+                "the host's logback is imported");
+    }
+
     /** Package names from a bundle's Import-Package, with folding undone and attributes stripped. */
     private static Set<String> importedPackagesOf(File jar) throws Exception {
+        return packagesOf(jar, "Import-Package");
+    }
+
+    /** The same for any header that lists packages. */
+    private static Set<String> packagesOf(File jar, String header) throws Exception {
         Set<String> packages = new java.util.HashSet<>();
         try (java.util.jar.JarFile open = new java.util.jar.JarFile(jar)) {
-            String value = open.getManifest().getMainAttributes().getValue("Import-Package");
+            String value = open.getManifest().getMainAttributes().getValue(header);
             if (value == null) {
                 return packages;
             }

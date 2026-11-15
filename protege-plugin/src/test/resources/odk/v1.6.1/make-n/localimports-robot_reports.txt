@@ -1,0 +1,6 @@
+robot --catalog catalog-v001.xml convert --input loim-edit.owl --format ofn --output tmp/loim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/loim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-loim-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml report -i tmp/merged-loim-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/LOIM_ --base-iri http://purl.obolibrary.org/obo/loim --print 5 -o reports/loim-edit.owl-obo-report.tsv

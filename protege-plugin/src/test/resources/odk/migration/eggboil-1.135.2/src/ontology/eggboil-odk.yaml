@@ -1,0 +1,28 @@
+# ODK configuration for Test kitchen ontology
+# This project's Makefile calls robot directly, so it needs make and robot on
+# PATH - not Docker. Nothing regenerates the Makefile from this file:
+# ODK's `make update_repo` is not part of this project. Put your own
+# rules in eggboil.Makefile, which the build includes
+# and never overwrites.
+id: eggboil
+title: "Test kitchen ontology"
+description: "Application ontology for boiling eggs in a test kitchen"
+uribase: https://example.org/eggboil
+license: https://creativecommons.org/licenses/by/4.0/
+robot_version: 1.9.8
+release_artefacts:
+  - full
+primary_release: full
+export_formats:
+  - owl
+import_group:
+  products:
+    - id: mini
+      mirror_from: https://example.org/mini.owl
+      module_type: slme
+      module_type_slme: BOT
+robot_report:
+  use_labels: TRUE
+  fail_on: ERROR
+  report_on:
+    - edit

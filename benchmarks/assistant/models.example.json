@@ -1,0 +1,21 @@
+[
+  {
+    "_note": "Ollama on this machine. Fill in a model you have pulled, e.g. ollama pull llama3.1.",
+    "name": "ollama-local",
+    "kind": "ollama",
+    "baseUrl": "http://localhost:11434",
+    "model": "",
+    "keyVariable": "",
+    "contextLength": 8192,
+    "maxOutputTokens": 2048
+  },
+  {
+    "_note": "A cloud model. Fill in the model; the key is read from ANTHROPIC_API_KEY, never from this file.",
+    "name": "anthropic",
+    "kind": "anthropic",
+    "baseUrl": "https://api.anthropic.com",
+    "model": "",
+    "keyVariable": "ANTHROPIC_API_KEY",
+    "maxOutputTokens": 2048
+  }
+]

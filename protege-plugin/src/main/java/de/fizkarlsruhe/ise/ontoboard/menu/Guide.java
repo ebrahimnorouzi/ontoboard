@@ -1,6 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkExtras;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns;
 import java.io.File;
 import java.util.ArrayList;
@@ -135,6 +139,32 @@ public final class Guide {
     private static final String ODK = "de.fizkarlsruhe.ise.ontoboard.odk.";
 
     /** The steps, in order, for somebody starting from {@code start}. */
+    /**
+     * The path for a project as it is: the steps of {@link #steps(Start)}, but for a
+     * project OntoBoard 1.135 or before made the first one carries it over.
+     */
+    public static List<Step> steps(Start start, Facts facts) {
+        List<Step> steps = steps(start);
+        if (facts == null || !facts.olderLayout) {
+            return steps;
+        }
+        // Build and Release say it when they are asked; the guide is what somebody opens
+        // first, and showed such a project's first step as done.
+        Step first = steps.get(0);
+        List<Step> carriedOver = new ArrayList<Step>(steps);
+        carriedOver.set(0, new Step(first.getId(), first.getTitle(),
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.CARRY_OVER
+                        + " Until then, Build and Release do not run on it.",
+                first.getWhy(),
+                "OntoBoard turns the project's configuration into one ODK reads, declares "
+                        + "the import modules your edit file uses, and has ODK's own update "
+                        + "write the rest - in ODK's container where its image is on the "
+                        + "machine, by itself where it is not. Nothing to install.",
+                "The project's Makefile is the one ODK writes.",
+                MENU + "UpdateProjectAction", "Update project files...", false, false));
+        return Collections.unmodifiableList(carriedOver);
+    }
+
     public static List<Step> steps(Start start) {
         List<Step> steps = new ArrayList<Step>();
         String setUpAction;
@@ -144,9 +174,10 @@ public final class Guide {
             case FILE:
                 setUpAction = ODK + "NewProjectAction";
                 setUpLabel = "New ODK project...";
-                setUpWhat = "Create a project, open its edit file, and bring your ontology into "
-                        + "it with Protege's Refactor > Merge ontologies.... From then on you "
-                        + "work in the edit file, and the project keeps everything else beside it.";
+                setUpWhat = "Open your ontology file, then New ODK project... and tick Start "
+                        + "from your file: it becomes the project's edit file, its address and "
+                        + "everything in it kept. From then on you work in the edit file, and the "
+                        + "project keeps everything else beside it.";
                 break;
             case PROJECT:
                 setUpAction = ODK + "OpenProjectAction";
@@ -165,17 +196,17 @@ public final class Guide {
                 setUpLabel = "New ODK project...";
                 setUpWhat = "Answer a few questions - a short id, a title, a web address for your "
                         + "terms, a licence - and OntoBoard writes the project: the edit file you "
-                        + "work in, folders for imports and tests, a build, a release folder and a "
-                        + "documentation site.";
+                        + "work in, src/ontology/<id>-edit.owl, its configuration <id>-odk.yaml, "
+                        + "ODK's Makefile and checks, and a documentation site.";
                 break;
         }
         steps.add(new Step("project", "Set up a project", setUpWhat,
                 "A project is what makes everything after it repeatable. Anyone who opens it "
                         + "gets the same build, the same tests and the same releases - you next "
                         + "year included.",
-                "It is the layout the Ontology Development Kit (ODK) uses, so other ontology "
-                        + "developers recognise it - but there is no Docker and no command line "
-                        + "to set up. OntoBoard writes it from one dialog.",
+                "It is the project the Ontology Development Kit (ODK) itself writes, so other "
+                        + "ontology developers recognise it - but there is no Docker and no "
+                        + "command line to set up. OntoBoard writes it from one dialog.",
                 "The ontology you have open is a project's edit file: src/ontology/<id>-edit.owl.",
                 setUpAction, setUpLabel, false, false));
         steps.add(new Step("requirements", "Say what it is for",
@@ -225,27 +256,35 @@ public final class Guide {
                         + "no base\". An empty answer passes.",
                 "A test catches next month's mistake before a user does, and a set of passing "
                         + "tests is how you know the ontology answers what it was built for.",
-                "Build runs every query in src/sparql inside Protege, and names the terms that "
-                        + "break a rule.",
-                "src/sparql holds a test of your own, besides the label check every project "
-                        + "starts with.",
+                "Write a test writes the question into src/sparql, and the rule in the "
+                        + "project's own makefile by which ODK's make test - what Build runs - "
+                        + "asks every question there of the ontology with its imports, beside "
+                        + "ODK's own checks, and names the terms that break a rule.",
+                "src/sparql holds a question of your own (a .rq file), or a check of your own "
+                        + "that the project's <id>-odk.yaml lists - besides ODK's checks and the "
+                        + "label check every project starts with.",
                 "tests", "Write a test", false, false));
         steps.add(new Step("build", "Build and test",
                 "Reason, check quality, run your tests and check the OWL profile - in one go, "
                         + "after every change worth keeping.",
                 "A passing build is how you know a change broke nothing.",
-                "This is ODK's make test, run inside Protege in seconds - no ROBOT, no make, no "
-                        + "Docker.",
+                "This is ODK's own make test: in ODK's container where its image is on the "
+                        + "machine, otherwise run by OntoBoard itself inside Protege - with "
+                        + "nothing to install.",
                 "Never finished: run it before every release, and after any change you doubt.",
                 MENU + "BuildAction", "Build...", false, true));
         steps.add(new Step("release", "Release a version",
-                "Give the ontology a version - 1.0.0 - and OntoBoard stamps it in, keeps a copy "
-                        + "under releases/, and writes the merged, reasoned files people use.",
+                "Give the ontology a version - 1.0.0 - and ODK's release writes the merged, "
+                        + "reasoned files people use, with the version stamped in. OntoBoard "
+                        + "records them in a commit and a git tag, v1.0.0, and - in a project "
+                        + "OntoBoard made, or one that keeps its releases there - a copy under "
+                        + "releases/1.0.0/.",
                 "A released version never changes under the people who depend on it, and its "
                         + "number tells them what kind of change to expect.",
                 "This is ODK's release step, with the version scheme explained as you choose "
                         + "it.",
-                "releases/ holds at least one version.",
+                "The project has a release: a git tag such as v1.0.0 that holds the ontology, "
+                        + "or a copy under releases/.",
                 MENU + "ReleaseAction", "Release...", false, false));
         steps.add(new Step("history", "See how it evolved",
                 "Every release side by side: what each holds, what was added, obsoleted or "
@@ -269,6 +308,8 @@ public final class Guide {
     /** What the guide reads about a project to say how far along it is. */
     public static final class Facts {
         boolean inProject;
+        /** Made by OntoBoard 1.135 or before: its Makefile is OntoBoard's own. */
+        boolean olderLayout;
         boolean hasRequirements;
         int patterns;
         int importModules;
@@ -299,21 +340,31 @@ public final class Guide {
         File root = ReleaseAction.projectRootOf(editFile);
         facts.inProject = editFile.getName().endsWith("-edit.owl") && ontologyDirectory != null
                 && "ontology".equals(ontologyDirectory.getName());
+        facts.olderLayout = facts.inProject
+                && de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.isOntoBoards1x(root);
         // Written, not merely present: the guide's own button writes the template, and ticking
         // the step for an empty table told a newcomer the work was done when it had not begun.
         facts.hasRequirements = hasAQuestion(new File(root, "docs/requirements.md"))
                 || hasAQuestion(new File(root, "docs/xd/requirements.md"));
         facts.importModules = ImportModules.modulesIn(root).size();
+        // A question - a .rq file in src/sparql - is a test of one's own in every project;
+        // in an ODK project so is a check of one's own that the configuration lists.
+        if (OdkRelease.isOdkProject(editFile)) {
+            facts.ownTests = ownChecks(root, ontologyDirectory);
+        }
         File[] sparql = new File(root, "src/sparql").listFiles();
         if (sparql != null) {
             for (File query : sparql) {
-                if (query.getName().endsWith(".rq") && !query.getName().equals("check_labels.rq")
+                if (query.getName().endsWith(".rq")
+                        && !query.getName().equals("check_labels.rq")
                         && !isTheTemplate(query)) {
                     facts.ownTests++;
                 }
             }
         }
-        facts.releases = CompareReleasesAction.releasesOf(editFile).size();
+        // Its git tags as well as releases/: a project ODK released has only the tags.
+        facts.releases = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseHistory.releasesOf(root,
+                de.fizkarlsruhe.ise.ontoboard.odk.Release.ontologyIdFrom(editFile)).size();
         facts.gitRepository = new File(root, ".git").exists();
         return facts;
     }
@@ -344,7 +395,8 @@ public final class Guide {
     private static boolean isDone(Step step, Facts facts) {
         switch (step.getId()) {
             case "project":
-                return facts.inProject;
+                // A project of the older layout is carried over before it is one.
+                return facts.inProject && !facts.olderLayout;
             case "requirements":
                 return facts.hasRequirements;
             case "pattern":
@@ -411,6 +463,35 @@ public final class Guide {
             return false;
         }
         return false;
+    }
+
+    /**
+     * In an ODK project, the checks of the project's own: those its configuration lists whose
+     * file is there - what ODK's test runs - other than ODK's own and the label check every
+     * project starts with. A check file that no list names is not run, so not counted. (Its
+     * questions, the .rq files, are counted beside these.)
+     */
+    static int ownChecks(File root, File ontologyDirectory) {
+        File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);
+        if (yaml == null) {
+            return 0;
+        }
+        int own = 0;
+        try {
+            String config = new String(java.nio.file.Files.readAllBytes(yaml.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            for (File check : OdkChecks.filesIn(root, config)) {
+                String name = check.getName().substring(0,
+                        check.getName().length() - OdkChecks.SUFFIX.length());
+                if (!OdkChecks.ODK_SHIPS.contains(name) && !OdkExtras.LABEL_CHECK.equals(name)
+                        && !isTheTemplate(check)) {
+                    own++;
+                }
+            }
+        } catch (java.io.IOException | RuntimeException unreadable) {
+            return 0;
+        }
+        return own;
     }
 
     /** Whether a test is still the guide's template, its rule not yet written. */

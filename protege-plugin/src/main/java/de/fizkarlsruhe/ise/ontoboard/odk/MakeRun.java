@@ -21,9 +21,9 @@ import java.util.Locale;
  * from the end; a result that reported only "make failed (exit 2)" would send somebody to the
  * terminal anyway, which is precisely what this is for.
  *
- * <p>Nothing here touches the ontology Protege has open. {@code make} writes files, and Protege
- * will not notice - {@link #reloadHint} says which ones, so a caller can tell the user rather than
- * leaving them looking at a stale window.
+ * <p>Nothing here touches the ontology Protege has open. {@code make} writes files behind
+ * Protege's back; the action that ran it has Protege read again what it has open of them
+ * ({@code menu.WhatARunWrote}).
  */
 public final class MakeRun {
 
@@ -43,14 +43,15 @@ public final class MakeRun {
     public static final String DEFAULT_IMAGE = "obolibrary/odkfull";
 
     /**
-     * How a given project's build can actually be started on this machine.
+     * How a given project's make can be started on this machine, in preference order.
      *
-     * <p>In preference order, and the order is the point: the routes that need nothing installed
-     * come first, and a container is the last resort rather than the assumption.
+     * <p>These are the routes that start a program. An ODK project that none of them runs
+     * is built by OntoBoard's own engine ({@link BuildPlan#withoutContainer}), which is
+     * decided by the action; a project of OntoBoard's older layout, whose Makefile was
+     * OntoBoard's own and ran inside Protege up to 1.135, is not built at all any more -
+     * {@link #whyNotRunnable} says how it becomes an ODK project.
      */
     public enum Route {
-        /** A project OntoBoard scaffolded: every target runs inside Protege, needing nothing. */
-        IN_PROCESS,
         /** An ODK project, with a native ODK environment configured: no container. */
         ODK_NATIVE,
         /** An ODK project, through Docker or Podman, in the project's own ODK image. */
@@ -84,20 +85,13 @@ public final class MakeRun {
         if (directory == null || !new File(directory, "Makefile").isFile()) {
             return Route.NOT_RUNNABLE;
         }
-        // First: can we simply do it ourselves? A project this plugin scaffolded needs no
-        // tools at all, on any platform, because every ROBOT call in its generated Makefile has
-        // an in-process implementation here. InProcessTargets refuses anything it did not write.
-        if (InProcessTargets.whyNotEligible(editFile) == null) {
-            return Route.IN_PROCESS;
-        }
-        // A Makefile OntoBoard wrote but this version does not render byte for byte - an older
-        // scaffold, or one edited by hand - is NOT handed to a host make when there is no robot
-        // for its recipes to call. macOS ships /usr/bin/make with the Command Line Tools (GNU
-        // Make 3.81 on the Mac that reported "build is not working"), so this used to fall
-        // through to MAKE_ON_PATH and die on the first robot call, which reads as a broken
-        // project. whyNotRunnable says what to do instead.
-        if (writtenByOntoBoard(directory)
-                && !ProcessRunner.isAvailable(runner, "robot", "--version")) {
+        // A project of OntoBoard's older layout. Its Makefile was OntoBoard's own, and up to
+        // 1.135 OntoBoard ran it inside Protege; a project is ODK's now, and this one is
+        // carried over, not built - whatever is installed. It is never handed to a host
+        // make: macOS ships /usr/bin/make with the Command Line Tools (GNU Make 3.81 on the
+        // Mac that reported "build is not working"), and that died on the first robot call,
+        // which reads as a broken project. whyNotRunnable says what to do instead.
+        if (writtenByOntoBoard(directory)) {
             return Route.NOT_RUNNABLE;
         }
         if (odkRunner(directory) != null) {
@@ -121,20 +115,9 @@ public final class MakeRun {
     }
 
     /**
-     * Whether Docker can actually run something, which is not the same as being installed.
-     *
-     * <p>{@code docker --version} answers from the CLI alone and says nothing about the engine. On
-     * the machine this was written for, the CLI reported 29.5.2 while the daemon was down and
-     * every command failed with "failed to connect to the docker API at
-     * npipe:////./pipe/dockerDesktopLinuxEngine". {@code docker info} is the one that needs the
-     * daemon, so it is the one asked.
-     */
-    static boolean dockerUsable(ProcessRunner.Runner runner) {
-        return ProcessRunner.isAvailable(runner, "docker", "info");
-    }
-
-    /**
-     * Which container runtime can actually run something, or null.
+     * Which container runtime can actually run something, or null - by what the person has
+     * settled in OntoBoard's settings ({@link OdkRoute}): whether a container is used at all,
+     * and which program runs it. Left open, the search is the one described here.
      *
      * <p>Podman is accepted because its command line is Docker's: the same {@code run --rm -v
      * host:container -w dir image command} works unchanged, so supporting it costs a name rather
@@ -145,10 +128,7 @@ public final class MakeRun {
      * <p>Docker first only because it is the one ODK's own documentation names.
      */
     public static String containerRuntime(ProcessRunner.Runner runner) {
-        if (dockerUsable(runner)) {
-            return "docker";
-        }
-        return ProcessRunner.isAvailable(runner, "podman", "info") ? "podman" : null;
+        return OdkRoute.runtime(runner);
     }
 
     /**
@@ -171,8 +151,9 @@ public final class MakeRun {
      * </ul>
      *
      * <p>The mount mirrors the project's own wrapper: repository root at {@code /work}, working
-     * directory {@code /work/src/ontology}. Heap settings match {@code run.bat}. {@code --rm}
-     * because a container per build would otherwise accumulate silently.
+     * directory {@code /work/src/ontology}. The rest is {@link OdkContainer#command}, which
+     * issues what {@code run.sh} issues. {@code --rm} because a container per build would
+     * otherwise accumulate silently.
      */
     public static List<String> dockerCommand(File ontologyDirectory, String image, String target) {
         return containerCommand("docker", ontologyDirectory, image, target);
@@ -181,10 +162,20 @@ public final class MakeRun {
     /** The same, naming the runtime - {@code docker} or {@code podman}. */
     public static List<String> containerCommand(String runtime, File ontologyDirectory,
             String image, String target) {
+        return containerCommand(runtime, ontologyDirectory, image, OdkContainer.Host.unknown(),
+                target);
+    }
+
+    /**
+     * The same, on a machine that has been asked about itself: its memory decides Java's when
+     * the project names none, and on Linux and macOS the files made belong to the user.
+     */
+    public static List<String> containerCommand(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, String target) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
-        return containerCommandFor(runtime, ontologyDirectory, image,
+        return containerCommandFor(runtime, ontologyDirectory, image, host,
                 java.util.Arrays.asList("make", target.trim()));
     }
 
@@ -202,6 +193,13 @@ public final class MakeRun {
      */
     public static List<String> containerCommandFor(String runtime, File ontologyDirectory,
             String image, List<String> inContainer) {
+        return containerCommandFor(runtime, ontologyDirectory, image,
+                OdkContainer.Host.unknown(), inContainer);
+    }
+
+    /** The same, on a machine that has been asked about itself. */
+    public static List<String> containerCommandFor(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, List<String> inContainer) {
         if (inContainer == null || inContainer.isEmpty()) {
             throw new IllegalArgumentException("no command to run in the container");
         }
@@ -214,76 +212,17 @@ public final class MakeRun {
             throw new IllegalArgumentException(
                     "expected <project>/src/ontology, got " + ontologyDirectory.getAbsolutePath());
         }
-        List<String> command = new ArrayList<String>();
-        command.add(runtime == null || runtime.trim().isEmpty() ? "docker" : runtime.trim());
-        command.add("run");
-        command.add("--rm");
-        command.add("-v");
-        // Forward slashes: Docker Desktop accepts them on Windows, and they keep a backslash from
-        // being read as an escape inside the colon-separated bind specification.
-        command.add(root.getAbsolutePath().replace(BACKSLASH, '/') + ":/work");
-        command.add("-w");
-        command.add("/work/src/ontology");
-        // The project's own setting, not a hardcoded one. These are passed with -e, which wins
-        // over anything in the environment, so a project declaring robot_java_args: "-Xmx16G"
-        // used to get 8G with nothing to say so - and on a large ontology that is the difference
-        // between a build that finishes and one that dies. Defaults to the value this plugin
-        // always used, so a project without the key behaves exactly as before.
-        String heap = OdkBuildSettings.robotJavaArgs(ontologyDirectory);
-        command.add("-e");
-        command.add("ROBOT_JAVA_ARGS=" + heap);
-        command.add("-e");
-        command.add("JAVA_OPTS=" + heap);
-        command.add(image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image.trim());
-        command.addAll(inContainer);
-        return command;
-    }
-
-    /** The path separator Windows uses and a Docker bind specification cannot carry. */
-    private static final char BACKSLASH = '\\';
-
-    /**
-     * The ODK image a project pins, read from its own runner.
-     *
-     * <p>Worth reading rather than assuming: go-ontology pins {@code obolibrary/odkfull:v1.5.4}
-     * and says in a comment that the version must be coordinated with its pipeline, while MWO's
-     * {@code run.bat} names {@code obolibrary/odkfull} with no tag at all. Building somebody's
-     * ontology against a different ODK than their CI uses is how a release stops being
-     * reproducible.
-     *
-     * <p>A tagged mention beats an untagged one wherever both appear, because {@code run.sh}
-     * composes its reference from {@code $ODK_IMAGE:$ODK_TAG} and may name the bare image in a
-     * comment first.
-     */
-    static String imageFrom(String runnerScript) {
-        if (runnerScript == null) {
-            return DEFAULT_IMAGE;
-        }
-        java.util.regex.Matcher mentions = java.util.regex.Pattern
-                .compile("obolibrary/(?:odkfull|odklite)(?::[A-Za-z0-9._-]+)?")
-                .matcher(runnerScript);
-        String found = null;
-        while (mentions.find()) {
-            String candidate = mentions.group();
-            if (found == null || (candidate.indexOf(':') >= 0 && found.indexOf(':') < 0)) {
-                found = candidate;
-            }
-        }
-        return found == null ? DEFAULT_IMAGE : found;
-    }
-
-    /** The image this project pins, read from its runner, or the default. */
-    public static String imageFor(File ontologyDirectory) {
-        File runner = odkRunner(ontologyDirectory);
-        if (runner == null) {
-            return DEFAULT_IMAGE;
-        }
-        try {
-            return imageFrom(new String(
-                    java.nio.file.Files.readAllBytes(runner.toPath()), "UTF-8"));
-        } catch (IOException unreadable) {
-            return DEFAULT_IMAGE;
-        }
+        // The project's own setting, not a hardcoded one. It is passed with -e, which wins over
+        // anything in the environment, so a project declaring robot_java_args: "-Xmx16G" used to
+        // get 8G with nothing to say so - and on a large ontology that is the difference between
+        // a build that finishes and one that dies. A project that declares none gets what
+        // run.sh would give it: nine tenths of the runtime's memory.
+        String declared = OdkBuildSettings.scalarAt(ontologyDirectory, "robot_java_args");
+        return OdkContainer.command(
+                runtime == null || runtime.trim().isEmpty() ? "docker" : runtime,
+                root,
+                image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image,
+                host, declared, inContainer);
     }
 
     /** Where the build runs: the directory holding the Makefile, beside the edit file. */
@@ -313,11 +252,7 @@ public final class MakeRun {
             return null;
         }
         if (writtenByOntoBoard(directory)) {
-            String why = InProcessTargets.whyNotEligible(editFile);
-            return (why == null ? "" : why + " ")
-                    + "Use OntoBoard > Project > Update project files... to bring it up to date: "
-                    + "after that, Build runs inside Protege with nothing installed. (Running "
-                    + "this Makefile with make instead would need robot on the PATH.)";
+            return OdkMigration.CARRY_OVER + " After that, Build runs ODK's targets on it.";
         }
         return toolingAdvice(odkRunner(directory) != null,
                 ProcessRunner.isAvailable(runner, "docker", "--version"),
@@ -326,8 +261,8 @@ public final class MakeRun {
     }
 
     /**
-     * Whether the Makefile beside the edit file opens with the line every OntoBoard scaffold has
-     * written since the first one, whichever version wrote it.
+     * Whether the Makefile beside the edit file opens with the line every Makefile of
+     * OntoBoard's older layout opened with, whichever version wrote it.
      */
     static boolean writtenByOntoBoard(File directory) {
         File makefile = directory == null ? null : new File(directory, "Makefile");
@@ -340,7 +275,7 @@ public final class MakeRun {
             try {
                 String first = reader.readLine();
                 return first != null
-                        && first.trim().equals(OdkScaffold.GENERATED_MAKEFILE_HEADER);
+                        && first.trim().equals(OdkMigration.OLD_MAKEFILE_HEADER);
             } finally {
                 reader.close();
             }
@@ -453,6 +388,16 @@ public final class MakeRun {
                         + "afterwards so it picks up the new PATH.";
     }
 
+    /** make's word on a rule it does not have: the target, and what needed it. */
+    private static final java.util.regex.Pattern NO_RULE = java.util.regex.Pattern.compile(
+            "No rule to make target '([^']+)'(?:, needed by '([^']+)')?");
+
+    /** What a transcript says, in lower case, when a download failed for want of the network. */
+    private static final java.util.regex.Pattern NO_NETWORK = java.util.regex.Pattern.compile(
+            "could not resolve host|curl: \\((?:6|7|28|35|52|56)\\)|unknownhostexception"
+                    + "|connect timed out|connection timed out|network is unreachable"
+                    + "|temporary failure in name resolution|no route to host");
+
     /**
      * What a failed build most likely means, in terms a user can act on.
      *
@@ -478,6 +423,21 @@ public final class MakeRun {
                     + "been waiting for input, which it cannot get from here.";
         }
         String transcript = joined(outcome.getOutput()).toLowerCase(Locale.ROOT);
+        java.util.regex.Matcher noRule = NO_RULE.matcher(joined(outcome.getOutput()));
+        if (noRule.find() && !noRule.group(1).equals(target)) {
+            // The rule that is missing is the one make names, which need not be the
+            // target that was asked for.
+            String missing = noRule.group(1);
+            return "make has no rule to make '" + missing + "'"
+                    + (noRule.group(2) == null ? "" : ", which '" + noRule.group(2)
+                            + "' needs") + ", so '" + target + "' stopped."
+                    + (missing.startsWith("mirror/") ? " A file under mirror/ is an "
+                            + "imported ontology as it was downloaded: test_fast and "
+                            + "prepare_release_fast download nothing, so a project whose "
+                            + "own rules build its import modules from the downloads "
+                            + "needs test or prepare_release, which fetch them first."
+                            : "");
+        }
         if (transcript.contains("no rule to make target")) {
             return "make has no rule for '" + target + "'. The Makefile may have changed since "
                     + "this list was read - reopen the dialog to read it again.";
@@ -486,7 +446,7 @@ public final class MakeRun {
                 || transcript.contains("'robot' is not recognized")
                 || transcript.contains("robot: command not found")) {
             return "The build calls robot and could not find it. Install ROBOT and put it on the "
-                    + "PATH - the generated Makefile calls it directly rather than through Docker.";
+                    + "PATH: this Makefile calls it directly.";
         }
         if (transcript.contains("java.lang.outofmemoryerror")) {
             // Naming the YAML key, not the environment variable. The old advice could not work:
@@ -499,7 +459,29 @@ public final class MakeRun {
                     + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
                     + "Project > Project configuration... edits the key.";
         }
-        if (transcript.contains("violation") && transcript.contains("report")) {
+        if (theNetworkStoppedIt(outcome.getOutput())) {
+            // make's last line names a mirror file, not the cause. ODK's full targets fetch the
+            // project's imports; the fast ones build from the imports as they are.
+            String fast = target.equals("test") || target.equals("prepare_release")
+                    || target.equals("all") ? target.equals("all") ? "test_fast"
+                            : target + "_fast" : null;
+            return "The build could not download what it fetches from the web - the "
+                    + "project's imports - so it stopped: the network, or the server, did not "
+                    + "answer." + (fast == null ? " Run it again when the network is back."
+                            : " Run " + fast + " instead, which builds from the imports as "
+                                    + "they are, or " + target + " again when the network is "
+                                    + "back.");
+        }
+        // The report is the reason when it stopped the run: every run of ODK's prints its
+        // count of violations, whatever stops it later.
+        String report = OdkTargets.whatTheReportFound(outcome.getOutput());
+        if (report != null) {
+            return report;
+        }
+        // The last line's own word, not the folder ODK keeps every check's file in: the
+        // profile check's file is reports/validate_profile_..., and is no quality report.
+        if (transcript.contains("violation") && outcome.lastMeaningfulLine()
+                .toLowerCase(Locale.ROOT).replace("reports/", "").contains("report")) {
             return "The quality report found violations the project treats as failures. Run "
                     + "OntoBoard > Check and test > Quality report to see them one by one.";
         }
@@ -508,28 +490,22 @@ public final class MakeRun {
                 + (tail.isEmpty() ? "." : ": " + tail);
     }
 
+    /** How far from its end a transcript's word on the network is why the run stopped. */
+    private static final int NETWORK_TAIL = 15;
+
     /**
-     * The files this target is likely to have rewritten, so a caller can say so.
-     *
-     * <p>Protege holds the ontology in memory and knows nothing about a file changing underneath
-     * it. Somebody who runs a build that regenerates the very file they have open, and is not
-     * told, will carry on editing a stale copy and overwrite the build's output when they save.
+     * Whether a download that failed is where the run ended: a line that says so among the
+     * transcript's last few. curl says each try that failed, also when the next one went
+     * through, so the word somewhere in a long log is no reason (review of 1.153.0).
      */
-    public static String reloadHint(String target, File editFile) {
-        if (editFile == null || target == null) {
-            return null;
+    private static boolean theNetworkStoppedIt(List<String> output) {
+        for (String line : output.subList(Math.max(0, output.size() - NETWORK_TAIL),
+                output.size())) {
+            if (line != null && NO_NETWORK.matcher(line.toLowerCase(Locale.ROOT)).find()) {
+                return true;
+            }
         }
-        String lower = target.toLowerCase(Locale.ROOT);
-        if (lower.equals("reason") || lower.equals("all") || lower.startsWith("prepare_release")
-                || lower.equals("release")) {
-            String id = editFile.getName().replaceAll("(?i)-edit\\.(owl|obo)$", "");
-            return "This target rewrites " + id + ".owl. Protege will not notice a file changing "
-                    + "on disk - reopen it if you were looking at it.";
-        }
-        if (lower.startsWith("import")) {
-            return "This target rewrites the import modules. Reload the ontology to pick them up.";
-        }
-        return null;
+        return false;
     }
 
     private static String joined(List<String> lines) {

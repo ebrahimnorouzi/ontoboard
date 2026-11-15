@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="https://example.org/eggboil/eggboil/eggboil-full.owl#"
+     xml:base="https://example.org/eggboil/eggboil/eggboil-full.owl"
+     xmlns:dce="http://purl.org/dc/elements/1.1/"
+     xmlns:obo="http://purl.obolibrary.org/obo/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:dcterms="http://purl.org/dc/terms/">
+    <owl:Ontology rdf:about="https://example.org/eggboil/eggboil/eggboil-full.owl">
+        <owl:versionIRI rdf:resource="https://example.org/eggboil/eggboil/releases/1.0.0/eggboil-full.owl"/>
+        <dcterms:description>Application ontology for boiling eggs in a test kitchen</dcterms:description>
+        <dcterms:license rdf:resource="https://creativecommons.org/licenses/by/4.0/"/>
+        <dcterms:title>Test kitchen ontology</dcterms:title>
+        <owl:versionInfo>1.0.0</owl:versionInfo>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/IAO_0000115 -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115">
+        <rdfs:label>definition</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label>description</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/license -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/license">
+        <rdfs:label>license</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label>title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000010 -->
+
+    <owl:ObjectProperty rdf:about="https://example.org/eggboil/EGGBOIL_0000010">
+        <rdfs:label xml:lang="en">is output of</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000000 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000000">
+        <rdfs:label xml:lang="en">root node</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000001 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000001">
+        <rdfs:subClassOf rdf:resource="https://example.org/eggboil/EGGBOIL_0000000"/>
+        <obo:IAO_0000115 xml:lang="en">The egg of a hen, in its shell.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">egg</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000002 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000002">
+        <rdfs:subClassOf rdf:resource="https://example.org/eggboil/EGGBOIL_0000000"/>
+        <obo:IAO_0000115 xml:lang="en">A process in which something is kept in boiling water.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">boiling</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000003 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000003">
+        <rdfs:subClassOf rdf:resource="https://example.org/eggboil/EGGBOIL_0000002"/>
+        <rdfs:label xml:lang="en">gentle boiling</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000004 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000004">
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="https://example.org/eggboil/EGGBOIL_0000001"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="https://example.org/eggboil/EGGBOIL_0000010"/>
+                        <owl:someValuesFrom rdf:resource="https://example.org/eggboil/EGGBOIL_0000002"/>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <rdfs:subClassOf rdf:resource="https://example.org/eggboil/EGGBOIL_0000001"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://example.org/eggboil/EGGBOIL_0000010"/>
+                <owl:someValuesFrom rdf:resource="https://example.org/eggboil/EGGBOIL_0000002"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <obo:IAO_0000115 xml:lang="en">an egg that is the output of a boiling.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">boiled egg</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/eggboil/EGGBOIL_0000005 -->
+
+    <owl:Class rdf:about="https://example.org/eggboil/EGGBOIL_0000005">
+        <rdfs:subClassOf rdf:resource="https://example.org/eggboil/EGGBOIL_0000004"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://example.org/eggboil/EGGBOIL_0000010"/>
+                <owl:someValuesFrom rdf:resource="https://example.org/eggboil/EGGBOIL_0000003"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">soft-boiled egg</rdfs:label>
+    </owl:Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.29) https://github.com/owlcs/owlapi -->
+

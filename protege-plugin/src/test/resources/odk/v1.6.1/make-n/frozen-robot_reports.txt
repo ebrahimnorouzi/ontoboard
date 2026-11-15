@@ -1,0 +1,6 @@
+robot --catalog catalog-v001.xml convert --input froz-edit.owl --format ofn --output tmp/froz-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/froz-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-froz-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml report -i tmp/merged-froz-edit.ofn -l true --profile profile.txt --fail-on ERROR --print 5 -o reports/froz-edit.owl-obo-report.tsv

@@ -390,12 +390,30 @@ public final class ReleaseDiff {
      * namespaces - the rule {@link ImportedTerms#termsOf} applies to what an import brings.
      */
     private static Set<IRI> termIrisOf(OWLOntology ontology, EntityType<?> type) {
-        Set<IRI> iris = new LinkedHashSet<IRI>();
+        // By IRI: the OWL API hands its axioms out in no order that stays, and what is
+        // listed from them - a release's notes - is to be the same every time.
+        Set<IRI> iris = new java.util.TreeSet<IRI>();
         // From the axioms, not getSignature(), which also counts the properties of the ontology's
         // own header: a review found that changing dc:creator to dcterms:creator there refused
         // the next release, for removing a "published term".
+        // And not from a declaration that only says a property of the header is an annotation
+        // property: RDF/XML - what a release is written in - declares every one it uses, so
+        // that a release read back from its file had the header's properties as terms again.
+        // One the ontology says something about - a label, a definition - is its own term.
+        Set<OWLEntity> ofTheHeader = new java.util.HashSet<OWLEntity>();
+        for (org.semanticweb.owlapi.model.OWLAnnotation said : ontology.getAnnotations()) {
+            ofTheHeader.add(said.getProperty());
+        }
         Set<OWLEntity> signature = new LinkedHashSet<OWLEntity>();
         for (org.semanticweb.owlapi.model.OWLAxiom axiom : ontology.getAxioms()) {
+            if (axiom instanceof org.semanticweb.owlapi.model.OWLDeclarationAxiom) {
+                OWLEntity declared = ((org.semanticweb.owlapi.model.OWLDeclarationAxiom) axiom)
+                        .getEntity();
+                if (ofTheHeader.contains(declared)
+                        && ontology.getAnnotationAssertionAxioms(declared.getIRI()).isEmpty()) {
+                    continue;
+                }
+            }
             signature.addAll(axiom.getSignature());
         }
         for (OWLEntity entity : signature) {

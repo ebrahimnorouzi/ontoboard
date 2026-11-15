@@ -1,8 +1,17 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkQuestions;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -54,17 +63,8 @@ public class SparqlAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
-        List<File> checks = SparqlQuery.checksIn(
-                projectRootOf(getOWLModelManager() == null ? null
-                        : getOWLModelManager().getActiveOntology()));
-        String checksHelp = checks.isEmpty()
-                ? "This project has no src/sparql directory, or nothing with a .rq extension in "
-                        + "it. The ODK wizard writes check_labels.rq there, and the generated "
-                        + "sparql_test target runs everything it finds."
-                : checks.size() + " check" + (checks.size() == 1 ? "" : "s")
-                        + " found: " + names(checks) + ". Each is a SELECT whose rows are the "
-                        + "violations - it passes by returning nothing, which is the same "
-                        + "convention robot verify and the build's sparql_test target use.";
+        String checksHelp = help(checksOf(fileOf(getOWLModelManager() == null ? null
+                : getOWLModelManager().getActiveOntology())));
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "SPARQL",
                 "Runs SPARQL over the ontology you have open, including its imports. Nothing is "
@@ -137,20 +137,228 @@ public class SparqlAction extends OntoBoardAction {
     }
 
     private OperationResult runProjectChecks(OWLOntology ontology) {
-        File root = projectRootOf(ontology);
-        List<File> files = SparqlQuery.checksIn(root);
-        OperationResult.Builder result = OperationResult.of(operationName())
+        return runChecks(checksOf(fileOf(ontology)), ontology, output);
+    }
+
+
+    /**
+     * The checks "Run this project's checks" runs, and what is said about them: read from the
+     * project's files, so it is tested without Protege.
+     */
+    static final class ProjectChecks {
+        private final List<File> files;
+        private final List<File> alone;
+        private final List<File> questions;
+        private final String noneFound;
+        private final String emptyHelp;
+        private final String foundAs;
+        private final String target;
+        private final String where;
+        private final String notRun;
+        private final String missing;
+
+        /** A project of the older layout, or a loose file: every check is asked with the imports. */
+        ProjectChecks(List<File> files, String noneFound, String emptyHelp, String foundAs,
+                String target, String where, String notRun, String missing) {
+            this(files, new ArrayList<File>(), new ArrayList<File>(), noneFound, emptyHelp,
+                    foundAs, target, where, notRun, missing);
+        }
+
+        /**
+         * @param files     everything to run, in the order it runs
+         * @param alone     those of them ODK asks of the ontology by itself: its listed checks
+         * @param questions those of them that are the project's questions, asked with the imports
+         */
+        ProjectChecks(List<File> files, List<File> alone, List<File> questions, String noneFound,
+                String emptyHelp, String foundAs, String target, String where, String notRun,
+                String missing) {
+            this.files = files;
+            this.alone = alone;
+            this.questions = questions;
+            this.noneFound = noneFound;
+            this.emptyHelp = emptyHelp;
+            this.foundAs = foundAs;
+            this.target = target;
+            this.where = where;
+            this.notRun = notRun;
+            this.missing = missing;
+        }
+
+        /** The checks to run, in the order they run. */
+        List<File> files() {
+            return files;
+        }
+
+        /**
+         * In an ODK project, the project's questions among {@link #files}: the .rq files, asked
+         * of the ontology with its imports. The others are ODK's checks, asked of the ontology
+         * by itself, as ODK's test asks them.
+         */
+        List<File> questions() {
+            return questions;
+        }
+
+        /** Whether ODK asks this check of the ontology by itself, without what it imports. */
+        boolean isAskedAlone(File check) {
+            return alone.contains(check);
+        }
+
+        /** Why there is nothing to run, when there is not. */
+        String noneFound() {
+            return noneFound;
+        }
+
+        /** Where the checks come from, and what runs them. */
+        String where() {
+            return where;
+        }
+
+        /** In an ODK project, the queries in src/sparql that are not run and why; else null. */
+        String notRun() {
+            return notRun;
+        }
+
+        /** In an ODK project, the listed checks with no file; else null. */
+        String missing() {
+            return missing;
+        }
+    }
+
+    /**
+     * The checks of the project {@code editFile} is in. In an ODK project: the ones its
+     * configuration lists under {@code robot_report: custom_sparql_checks} whose file is there,
+     * in the list's order - what ODK's sparql_test runs, on the edit file without its imports
+     * - and then the project's questions, the {@code .rq} files of {@code src/sparql}, which
+     * the rule in the project's own makefile asks of the ontology with its imports
+     * ({@link OdkQuestions}). In a project of the older layout, or for a loose file, every
+     * {@code .rq} file in {@code src/sparql}, as before.
+     */
+    /** Where a first check comes from, for an ontology that has none. */
+    private static final String WRITES_ONE =
+            "OntoBoard > Check and test > Write a test from a question... writes one.";
+
+    static ProjectChecks checksOf(File editFile) {
+        File root = editFile == null ? null : ReleaseAction.projectRootOf(editFile);
+        if (editFile == null || !OdkRelease.isOdkProject(editFile)) {
+            return new ProjectChecks(SparqlQuery.checksIn(root),
+                    "No .rq files under " + SparqlQuery.CHECKS_DIRECTORY
+                            + (root == null ? "" : " in " + root.getAbsolutePath())
+                            + ". " + WRITES_ONE,
+                    "This project has no src/sparql directory, or nothing with a .rq extension in "
+                            + "it. " + WRITES_ONE,
+                    " found: ", "the build's sparql_test target",
+                    "Checks live in " + SparqlQuery.CHECKS_DIRECTORY + ": every .rq file there "
+                            + "is one.",
+                    null, null);
+        }
+        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
+        File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);
+        String config = yaml == null ? "the project's <id>-odk.yaml" : yaml.getName();
+        String listed = "listed under robot_report: custom_sparql_checks in " + config;
+        String target = "ODK's sparql_test target";
+        List<File> questions = OdkQuestions.filesIn(root);
+        boolean kept = OdkQuestions.isKeptIn(root);
+        File own = OdkQuestions.ownMakefileOf(root);
+        String makefile = own == null ? "the project's own makefile" : own.getName();
+        String where = "ODK's checks are src/sparql/<name>-violation.sparql for each name "
+                + listed + "; ODK's sparql_test target, part of make test, asks them of the "
+                + "edit file without its imports. The project's questions are the .rq files "
+                + "in src/sparql, asked of the ontology with its imports" + (kept
+                        ? " by the rule in " + makefile + ", as part of make test." : ".");
+        String unknown = null;
+        String text = null;
+        if (yaml == null) {
+            unknown = "There is no single <id>-odk.yaml in " + ontologyDirectory.getAbsolutePath()
+                    + ", so which checks ODK's test runs is not known.";
+        } else {
+            try {
+                text = new String(Files.readAllBytes(yaml.toPath()), StandardCharsets.UTF_8);
+                OdkChecks.declaredIn(text);
+            } catch (IOException | OdkYaml.UnreadableException unreadable) {
+                unknown = config + " could not be read, so which checks ODK's test runs is not "
+                        + "known: " + unreadable.getMessage();
+            }
+        }
+        if (unknown != null) {
+            return new ProjectChecks(new ArrayList<File>(), unknown, unknown, ": ", target,
+                    where, null, null);
+        }
+        List<File> odks = OdkChecks.filesIn(root, text);
+        List<File> files = new ArrayList<File>(odks);
+        files.addAll(questions);
+        List<File> undeclared = OdkChecks.undeclaredIn(root, text);
+        List<String> missing = OdkChecks.missingIn(root, text);
+        String none = OdkChecks.declaredIn(text).isEmpty()
+                ? config + " lists no checks under robot_report: custom_sparql_checks, so ODK's "
+                        + "test runs none."
+                : "None of the checks " + listed + " has its file in src/sparql (ODK runs "
+                        + "src/sparql/<name>-violation.sparql).";
+        String notRun = undeclared.isEmpty() ? null
+                : "Not run: " + names(undeclared) + " - not listed under robot_report: "
+                        + "custom_sparql_checks in " + config + ", so ODK's test does not run "
+                        + (undeclared.size() == 1 ? "it." : "them.");
+        if (!questions.isEmpty() && !kept) {
+            // Asked here, and by nothing when the project's test runs.
+            notRun = (notRun == null ? "" : notRun + "\n\n") + "Not asked by ODK's test: "
+                    + names(questions) + " - the rule that asks a project's questions is not "
+                    + "in " + makefile + (OdkQuestions.isChangedIn(root) ? " as OntoBoard "
+                            + "wrote it" : "") + ". "
+                    + "OntoBoard > Check and test > Write a test from a question... "
+                    + "writes it, with the next question.";
+        }
+        String noFile = missing.isEmpty() ? null
+                : "Listed under robot_report: custom_sparql_checks in " + config + " with no file "
+                        + "in src/sparql: " + String.join(", ", missing) + ". ODK's test stops "
+                        + "on a listed check whose src/sparql/<name>-violation.sparql is not there.";
+        return new ProjectChecks(files, odks, questions, none, none, " - ODK's, " + listed
+                + (questions.isEmpty() ? "" : ", and the project's questions") + ": ", target,
+                where, notRun, noFile);
+    }
+
+    /** What the dialog says under "What to run" about the project's checks. */
+    static String help(ProjectChecks checks) {
+        List<File> files = checks.files();
+        String help = files.isEmpty() ? checks.emptyHelp
+                : files.size() + " check" + (files.size() == 1 ? "" : "s") + checks.foundAs
+                        + names(files) + ". Each is a SELECT whose rows are the violations - it "
+                        + "passes by returning nothing, which is the same convention robot "
+                        + "verify and " + checks.target + " use.";
+        for (String said : new String[] {checks.notRun(), checks.missing()}) {
+            if (said != null) {
+                help += "\n\n" + said;
+            }
+        }
+        return help;
+    }
+
+    /**
+     * Runs the project's checks, the way {@code make sparql_test} does, and says what was not
+     * run. One TSV per failing check goes to {@code output} when it names a folder.
+     */
+    static OperationResult runChecks(ProjectChecks checks, OWLOntology ontology, File output) {
+        List<File> files = checks.files();
+        OperationResult.Builder result = OperationResult.of("SPARQL")
                 .columns("Check", "Result", "Detail");
 
         if (files.isEmpty()) {
-            return result.failed("No .rq files under " + SparqlQuery.CHECKS_DIRECTORY
-                    + (root == null ? "" : " in " + root.getAbsolutePath())
-                    + ". The ODK wizard writes check_labels.rq there.").build();
+            result.failed(checks.noneFound());
+            result.note(checks.notRun());
+            result.note(checks.missing());
+            return result.build();
         }
 
         int failed = 0;
         int unrunnable = 0;
-        for (SparqlQuery.Check check : SparqlQuery.verify(ontology, files)) {
+        List<SparqlQuery.Check> ran = new ArrayList<SparqlQuery.Check>();
+        for (File file : files) {
+            // One of ODK's checks is asked as ODK's test asks it: of the ontology by itself.
+            ran.addAll(checks.isAskedAlone(file)
+                    ? SparqlQuery.verifyAlone(ontology, java.util.Collections.singletonList(file))
+                    : SparqlQuery.verify(ontology, java.util.Collections.singletonList(file)));
+        }
+        for (int at = 0; at < ran.size(); at++) {
+            SparqlQuery.Check check = ran.get(at);
+            boolean question = checks.questions().contains(files.get(at));
             if (check.getFailure() != null) {
                 unrunnable++;
                 result.row(check.getName(), "could not run", check.getFailure());
@@ -162,11 +370,13 @@ public class SparqlAction extends OntoBoardAction {
                 result.row(check.getName(), "FAIL",
                         check.getViolations() + " violations");
                 result.warn(check.getName() + " found " + check.getViolations() + " violations, so "
-                        + "this project's `make sparql_test` would fail.");
+                        + "this project's " + (question ? "`make test`" : "`make sparql_test`")
+                        + " would fail.");
                 // One TSV per failing check, the way `robot verify --output-dir` does it - the
                 // violations are what somebody has to work through, and a count is not a worklist.
                 if (output != null) {
-                    File into = new File(output, check.getName().replaceAll("\\.rq$", "") + ".tsv");
+                    File into = new File(output,
+                            check.getName().replaceAll("\\.(rq|sparql)$", "") + ".tsv");
                     try {
                         if (output.isDirectory() || output.mkdirs()) {
                             SparqlQuery.writeTsv(check.getAnswer(), into);
@@ -184,14 +394,16 @@ public class SparqlAction extends OntoBoardAction {
             }
         }
 
-        result.note("Checks live in " + SparqlQuery.CHECKS_DIRECTORY + " and are what the "
-                + "generated sparql_test target runs.");
+        result.note(checks.notRun());
+        if (checks.missing() != null) {
+            result.warn(checks.missing());
+        }
+        result.note(checks.where());
         String summary = files.size() + " checks: " + (files.size() - failed - unrunnable)
                 + " passed, " + failed + " failed"
                 + (unrunnable > 0 ? ", " + unrunnable + " could not run" : "");
         return result.summary(summary).build();
     }
-
 
     private static String names(List<File> files) {
         StringBuilder text = new StringBuilder();

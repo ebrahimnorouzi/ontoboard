@@ -1,0 +1,11 @@
+Makefile
+reports
+reports/shop-edit.owl-obo-report.tsv
+reports/shop.owl-obo-report.tsv
+robot_reports
+shop-edit.owl
+shop-full.owl
+shop.Makefile
+shop.owl
+tmp/merged-shop-edit.ofn
+tmp/shop-preprocess.owl

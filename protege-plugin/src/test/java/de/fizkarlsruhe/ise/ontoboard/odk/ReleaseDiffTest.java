@@ -250,6 +250,38 @@ class ReleaseDiffTest {
         }
     }
 
+    /**
+     * The terms come in one order - by their IRIs - whatever order the ontology hands its
+     * axioms out in. The same release built a second time has the same notes; notes that
+     * differ from run to run show a change in git where there is none (seen when a conversion
+     * was made twice: two lines of CHANGES.md had changed places).
+     */
+    @Test
+    void theTermsAreNamedInOneOrder() {
+        String[] names = {"Mango", "Apple", "Zucchini", "Fig", "Kiwi", "Banana", "Olive",
+            "Cherry", "Quince", "Date"};
+        for (String name : names) {
+            declare(after, name);
+            declare(before, "Old" + name);
+        }
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        java.util.List<String> added = new java.util.ArrayList<String>();
+        for (ReleaseDiff.TermChange change : diff.of(ReleaseDiff.Change.ADDED)) {
+            added.add(change.getIri().toString().substring(NS.length()));
+        }
+        java.util.List<String> removed = new java.util.ArrayList<String>();
+        for (ReleaseDiff.TermChange change : diff.removals()) {
+            removed.add(change.getIri().toString().substring(NS.length()));
+        }
+        assertEquals(java.util.Arrays.asList("Apple", "Banana", "Cherry", "Date", "Fig", "Kiwi",
+                "Mango", "Olive", "Quince", "Zucchini"), added);
+        assertEquals(java.util.Arrays.asList("OldApple", "OldBanana", "OldCherry", "OldDate",
+                "OldFig", "OldKiwi", "OldMango", "OldOlive", "OldQuince", "OldZucchini"),
+                removed);
+    }
+
     @Test
     void comparingAgainstNothingIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> ReleaseDiff.between(null, after));
@@ -481,5 +513,61 @@ class ReleaseDiffTest {
         OWLOntology after = manager.createOntology(IRI.create("http://example.org/o/2"));
 
         assertTrue(ReleaseDiff.between(before, after).removals().isEmpty());
+    }
+
+    /**
+     * And so for releases as they are compared: read from their files. A release is RDF/XML,
+     * which declares every annotation property it uses - the header's too - so that read
+     * back, the property of the test above has an axiom after all, and a release that no
+     * longer used it in its header "removed a published term" (seen as "Removed: date" when
+     * an ontology's history was converted). A property the ontology says something about, or
+     * uses on a term, is still one.
+     */
+    @Test
+    void aHeaderAnnotationIsNotAPublishedTermInAReleaseFileEither(
+            @org.junit.jupiter.api.io.TempDir java.io.File folder) throws Exception {
+        OWLOntologyManager writing = OWLManager.createOWLOntologyManager();
+        OWLDataFactory df = writing.getOWLDataFactory();
+        IRI creator = IRI.create("http://purl.org/dc/elements/1.1/creator");
+        IRI source = IRI.create("http://purl.org/dc/elements/1.1/source");
+        IRI note = IRI.create(NS + "note");
+        OWLOntology released = writing.createOntology(IRI.create("http://example.org/o"));
+        for (IRI inTheHeader : new IRI[] {creator, source, note}) {
+            writing.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(released,
+                    df.getOWLAnnotation(df.getOWLAnnotationProperty(inTheHeader),
+                            df.getOWLLiteral("Someone"))));
+        }
+        // source is also used on a term, and note is the ontology's own, with a label.
+        writing.addAxiom(released, df.getOWLDeclarationAxiom(df.getOWLClass(
+                IRI.create(NS + "Thing"))));
+        writing.addAxiom(released, df.getOWLAnnotationAssertionAxiom(
+                df.getOWLAnnotationProperty(source), IRI.create(NS + "Thing"),
+                df.getOWLLiteral("a book")));
+        writing.addAxiom(released, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), note,
+                df.getOWLLiteral("note")));
+        java.io.File file = new java.io.File(folder, "o.owl");
+        try (java.io.OutputStream out = java.nio.file.Files.newOutputStream(file.toPath())) {
+            writing.saveOntology(released,
+                    new org.semanticweb.owlapi.formats.RDFXMLDocumentFormat(), out);
+        }
+        String written = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(written.contains("<owl:AnnotationProperty rdf:about=\"" + creator + "\"/>"),
+                "the file declares the header's property: " + written);
+        OWLOntology before;
+        try (java.io.InputStream in = java.nio.file.Files.newInputStream(file.toPath())) {
+            before = OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(in);
+        }
+        OWLOntology after = OWLManager.createOWLOntologyManager().createOntology(
+                IRI.create("http://example.org/o"));
+
+        java.util.List<String> gone = new java.util.ArrayList<String>();
+        for (ReleaseDiff.TermChange removed : ReleaseDiff.between(before, after).removals()) {
+            gone.add(removed.getIri().toString());
+        }
+
+        assertEquals(java.util.Arrays.asList(NS + "Thing", NS + "note", source.toString()), gone,
+                "the class, the ontology's own property and the one used on a term - not the "
+                        + "property that was only ever in the header");
     }
 }

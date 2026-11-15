@@ -1,0 +1,96 @@
+Prefix(:=<https://example.org/eggboil/eggboil.owl#>)
+Prefix(dce:=<http://purl.org/dc/elements/1.1/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<https://example.org/eggboil/eggboil.owl>
+Annotation(dcterms:description "Application ontology for boiling eggs in a test kitchen")
+Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)
+Annotation(dcterms:title "Test kitchen ontology")
+
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000000>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000001>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000002>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000003>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000004>))
+Declaration(Class(<https://example.org/eggboil/EGGBOIL_0000005>))
+Declaration(ObjectProperty(<https://example.org/eggboil/EGGBOIL_0000010>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/IAO_0000115>))
+Declaration(AnnotationProperty(dcterms:description))
+Declaration(AnnotationProperty(dcterms:license))
+Declaration(AnnotationProperty(dcterms:title))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: <http://purl.obolibrary.org/obo/IAO_0000115> (definition)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000115> "definition")
+
+# Annotation Property: dcterms:description (description)
+
+AnnotationAssertion(rdfs:label dcterms:description "description")
+
+# Annotation Property: dcterms:license (license)
+
+AnnotationAssertion(rdfs:label dcterms:license "license")
+
+# Annotation Property: dcterms:title (title)
+
+AnnotationAssertion(rdfs:label dcterms:title "title")
+
+
+############################
+#   Object Properties
+############################
+
+# Object Property: <https://example.org/eggboil/EGGBOIL_0000010> (is output of)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000010> "is output of"@en)
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000000> (root node)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000000> "root node"@en)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000001> (egg)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <https://example.org/eggboil/EGGBOIL_0000001> "The egg of a hen, in its shell."@en)
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000001> "egg"@en)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0000001> <https://example.org/eggboil/EGGBOIL_0000000>)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000002> (boiling)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <https://example.org/eggboil/EGGBOIL_0000002> "A process in which something is kept in boiling water."@en)
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000002> "boiling"@en)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0000002> <https://example.org/eggboil/EGGBOIL_0000000>)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000003> (gentle boiling)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000003> "gentle boiling"@en)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0000003> <https://example.org/eggboil/EGGBOIL_0000002>)
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000004> (boiled egg)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <https://example.org/eggboil/EGGBOIL_0000004> "an egg that is the output of a boiling."@en)
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000004> "boiled egg"@en)
+EquivalentClasses(<https://example.org/eggboil/EGGBOIL_0000004> ObjectIntersectionOf(<https://example.org/eggboil/EGGBOIL_0000001> ObjectSomeValuesFrom(<https://example.org/eggboil/EGGBOIL_0000010> <https://example.org/eggboil/EGGBOIL_0000002>)))
+
+# Class: <https://example.org/eggboil/EGGBOIL_0000005> (soft-boiled egg)
+
+AnnotationAssertion(rdfs:label <https://example.org/eggboil/EGGBOIL_0000005> "soft-boiled egg"@en)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0000005> <https://example.org/eggboil/EGGBOIL_0000001>)
+SubClassOf(<https://example.org/eggboil/EGGBOIL_0000005> ObjectSomeValuesFrom(<https://example.org/eggboil/EGGBOIL_0000010> <https://example.org/eggboil/EGGBOIL_0000003>))
+
+
+)

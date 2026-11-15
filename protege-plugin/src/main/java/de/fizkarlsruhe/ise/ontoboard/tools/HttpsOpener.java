@@ -9,6 +9,8 @@ import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.CertPathBuilderException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,7 +19,9 @@ import java.util.Locale;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Opens a release download over HTTPS: GitHub's redirect followed, nothing else allowed.
@@ -37,6 +41,16 @@ import javax.net.ssl.TrustManagerFactory;
  * against no checking at all - the pinned SHA-256 would catch altered bytes anyway, but a
  * download that silently trusts anybody is not something to ship. macOS's Java offers no
  * equivalent, so there the failure is reported and the user downloads the file by hand.
+ *
+ * <p><b>{@link #send} is for the assistant's model connections</b> (1.136.0): a request with a
+ * method, headers and a body, the same trust-store fallback, and an answer whose body is handed
+ * back unread so a streamed reply can be read as it arrives. <b>It follows no redirect at
+ * all.</b> {@code HttpURLConnection} turns a redirected POST into a GET, so following one would
+ * send a different request from the one shown to the person; and a redirect could carry the API
+ * key in its headers to a host nobody chose. No model API redirects a request, so a 3xx is
+ * reported, not followed. Plain http is allowed only as far as the request's
+ * {@link HttpRequest.PlainHttp} says: to this machine for Ollama's default address, to another
+ * host only when the person marked the server as on their network.
  */
 public final class HttpsOpener implements Download.Opener {
 
@@ -90,8 +104,21 @@ public final class HttpsOpener implements Download.Opener {
             throw new IOException("OntoBoard downloads tools over HTTPS only, and " + url
                     + " is not an HTTPS address.");
         }
+        return withTrustFallback(factory -> openWith(start, factory));
+    }
+
+    /** One attempt at a connection, with another trust store's factory or the JVM's own (null). */
+    private interface Attempt<T> {
+        T with(SSLSocketFactory factory) throws IOException;
+    }
+
+    /**
+     * Tries once with the JVM's trust store and, after a certificate-path failure and only then,
+     * once with each of the operating system's.
+     */
+    private static <T> T withTrustFallback(Attempt<T> attempt) throws IOException {
         try {
-            return openWith(start, null);
+            return attempt.with(null);
         } catch (IOException first) {
             if (!isCertificatePathFailure(first)) {
                 throw first;
@@ -105,7 +132,7 @@ public final class HttpsOpener implements Download.Opener {
                     continue;
                 }
                 try {
-                    return openWith(start, factory);
+                    return attempt.with(factory);
                 } catch (IOException again) {
                     if (!isCertificatePathFailure(again)) {
                         throw again;
@@ -116,6 +143,296 @@ public final class HttpsOpener implements Download.Opener {
             // The certificate failure, not a later one: it is what the message has to explain.
             throw last;
         }
+    }
+
+    /** One attempt at a connection, for {@link #withOperatingSystemsTrust}. */
+    public interface Trying<T> {
+        /** @param factory another trust store's, or null for the JVM's own */
+        T with(SSLSocketFactory factory) throws IOException;
+    }
+
+    /**
+     * For OntoBoard's other fetches - what ODK's Makefile fetches with curl: tries once with
+     * the JVM's trust store and, after a certificate-path failure and only then, once with
+     * each of the operating system's. The attempt opens its own connection and gives it the
+     * factory it is handed; which addresses it may open is its own business.
+     */
+    public static <T> T withOperatingSystemsTrust(final Trying<T> attempt) throws IOException {
+        return withTrustFallback(new Attempt<T>() {
+            @Override
+            public T with(SSLSocketFactory factory) throws IOException {
+                return attempt.with(factory);
+            }
+        });
+    }
+
+    /** One run of something that opens https connections of its own. */
+    public interface Run<T> {
+        T run();
+    }
+
+    /** One at a time changes what this process's https connections trust by default. */
+    private static final Object DEFAULT_TRUST = new Object();
+
+    /**
+     * For code of others that opens its own https connections and cannot be handed a
+     * factory - ROBOT, loading an ontology from its address through the OWL API. The run
+     * is made once as it is, with the JVM's trust store. Only when what came of it is a
+     * certificate-path failure is it made again, once for each of the operating system's
+     * stores, with a default for this process's https connections that trusts what the
+     * JVM's store trusts and what that store trusts - for as long as that run takes; the
+     * default that was there is put back, whatever the run does.
+     *
+     * <p>The default is the process's, so while such a run goes on, any other https
+     * connection made here trusts the operating system's authorities too - which the
+     * machine's browser does all the time. Nothing is trusted that neither store knows.
+     *
+     * @param failedOnCertificatePath whether what a run gave back says such a failure
+     * @return what the first run gave back that is no such failure, else the last one's
+     */
+    public static <T> T alsoWithOperatingSystemsTrust(Run<T> run,
+            java.util.function.Predicate<T> failedOnCertificatePath) {
+        T came = run.run();
+        if (!failedOnCertificatePath.test(came)) {
+            return came;
+        }
+        for (String store : trustFallbacks(System.getProperty("os.name", ""), LINUX_STORES)) {
+            SSLSocketFactory factory;
+            try {
+                factory = socketFactoryTrustingAlso(store);
+            } catch (GeneralSecurityException | IOException cannotLoad) {
+                continue;
+            }
+            synchronized (DEFAULT_TRUST) {
+                SSLSocketFactory before = HttpsURLConnection.getDefaultSSLSocketFactory();
+                HttpsURLConnection.setDefaultSSLSocketFactory(factory);
+                try {
+                    came = run.run();
+                } finally {
+                    HttpsURLConnection.setDefaultSSLSocketFactory(before);
+                }
+            }
+            if (!failedOnCertificatePath.test(came)) {
+                return came;
+            }
+        }
+        return came;
+    }
+
+    /** Trusts a chain that either of the two trusts; the first is asked first. */
+    static X509TrustManager trustingEither(final X509TrustManager first,
+            final X509TrustManager second) {
+        return new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType)
+                    throws CertificateException {
+                try {
+                    first.checkClientTrusted(chain, authType);
+                } catch (CertificateException notByTheFirst) {
+                    try {
+                        second.checkClientTrusted(chain, authType);
+                    } catch (CertificateException notByEither) {
+                        throw notByTheFirst;
+                    }
+                }
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType)
+                    throws CertificateException {
+                try {
+                    first.checkServerTrusted(chain, authType);
+                } catch (CertificateException notByTheFirst) {
+                    try {
+                        second.checkServerTrusted(chain, authType);
+                    } catch (CertificateException notByEither) {
+                        // The first one's reason: it is the JVM's, which the message
+                        // has to explain.
+                        throw notByTheFirst;
+                    }
+                }
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                List<X509Certificate> issuers = new ArrayList<X509Certificate>(
+                        Arrays.asList(first.getAcceptedIssuers()));
+                issuers.addAll(Arrays.asList(second.getAcceptedIssuers()));
+                return issuers.toArray(new X509Certificate[0]);
+            }
+        };
+    }
+
+    /**
+     * Whether a sentence somebody else's code made of a failure says that the JVM did not
+     * trust a server's certificate chain: {@link #isCertificatePathFailure}, for where
+     * only the words are left.
+     */
+    public static boolean saysCertificatePathFailure(String message) {
+        return message != null && (message.contains("PKIX path building failed")
+                || message.contains("unable to find valid certification path"));
+    }
+
+    /** The most of an error body kept: enough for any API's explanation, not a whole HTML page. */
+    static final int MAX_ERROR_CHARS = 4000;
+
+    /** What came back from {@link #send}: a status below 300, and the body, not yet read. */
+    public static final class Answer {
+        private final int status;
+        private final InputStream body;
+        private final String contentType;
+
+        Answer(int status, InputStream body, String contentType) {
+            this.status = status;
+            this.body = body;
+            this.contentType = contentType == null ? "" : contentType;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        /** The caller reads and closes it; {@link HttpsOpener#stop} closes it from elsewhere. */
+        public InputStream getBody() {
+            return body;
+        }
+
+        /** Never null. */
+        public String getContentType() {
+            return contentType;
+        }
+    }
+
+    /**
+     * The server answered 400 or above. The status and the server's own words, which is where a
+     * model API says what was wrong - "invalid x-api-key", "model not found".
+     *
+     * <p>The message names only the host, the status and the path. The body may echo what was
+     * sent, so it is kept apart for a caller that knows what to blank out of it.
+     */
+    public static final class Refused extends IOException {
+        private static final long serialVersionUID = 1L;
+        private final int status;
+        private final String body;
+
+        public Refused(URL url, int status, String body) {
+            super(url.getHost() + " answered " + status + " for " + url.getPath() + ".");
+            this.status = status;
+            this.body = body == null ? "" : body;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        /** At most {@value HttpsOpener#MAX_ERROR_CHARS} characters, never null. */
+        public String getBody() {
+            return body;
+        }
+    }
+
+    /**
+     * Sends one request, follows no redirect, and hands back the answer with its body unread.
+     *
+     * @throws Refused for a status of 400 or above, with the server's own words
+     * @throws IOException for a redirect, a plain-http address the request's policy does not
+     *     allow, a connection failure, or {@link #stop}
+     */
+    public Answer send(HttpRequest request) throws IOException {
+        final URL url = new URL(request.getUrl());
+        refuseUnlessAllowed(url, request.getPlainHttp());
+        return withTrustFallback(factory -> sendWith(url, request, factory));
+    }
+
+    private Answer sendWith(URL url, HttpRequest request, SSLSocketFactory factory)
+            throws IOException {
+        if (stopped) {
+            throw new IOException("The request was stopped.");
+        }
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        current = connection;
+        // As in openWith: either stop() sees the published connection or this sees stop().
+        if (stopped) {
+            connection.disconnect();
+            throw new IOException("The request was stopped.");
+        }
+        if (factory != null && connection instanceof HttpsURLConnection) {
+            ((HttpsURLConnection) connection).setSSLSocketFactory(factory);
+        }
+        connection.setInstanceFollowRedirects(false);
+        connection.setUseCaches(false);
+        connection.setConnectTimeout(CONNECT_MILLIS);
+        connection.setReadTimeout(request.getReadTimeoutMillis());
+        connection.setRequestMethod(request.getMethod());
+        connection.setRequestProperty("User-Agent", "OntoBoard");
+        for (java.util.Map.Entry<String, String> header : request.getHeaders().entrySet()) {
+            connection.setRequestProperty(header.getKey(), header.getValue());
+        }
+        byte[] body = request.getBody();
+        if (body != null) {
+            // Not setFixedLengthStreamingMode, although the length is known. In streaming mode
+            // the JDK answers a 401 by disconnecting and throwing HttpRetryException, so the
+            // server's own explanation ("invalid x-api-key") never reaches getErrorStream -
+            // measured, the body came back empty. A request body here is a few hundred
+            // kilobytes at most, so letting HttpURLConnection buffer it costs nothing.
+            connection.setDoOutput(true);
+            try (java.io.OutputStream out = connection.getOutputStream()) {
+                out.write(body);
+            }
+        }
+        int code = connection.getResponseCode();
+        if (code >= 300 && code < 400) {
+            connection.disconnect();
+            throw new IOException(url.getHost() + " answered " + code + " for " + url.getPath()
+                    + "; a request to a model is not redirected.");
+        }
+        if (code >= 400) {
+            String said = errorText(connection);
+            connection.disconnect();
+            throw new Refused(url, code, said);
+        }
+        return new Answer(code, connection.getInputStream(), connection.getContentType());
+    }
+
+    /** The error body as UTF-8 text, cut at {@link #MAX_ERROR_CHARS}; empty when there is none. */
+    private static String errorText(HttpURLConnection connection) {
+        InputStream in = connection.getErrorStream();
+        if (in == null) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder();
+        try (java.io.Reader reader =
+                new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)) {
+            char[] buffer = new char[1024];
+            int read;
+            while (text.length() < MAX_ERROR_CHARS && (read = reader.read(buffer)) != -1) {
+                text.append(buffer, 0, Math.min(read, MAX_ERROR_CHARS - text.length()));
+            }
+        } catch (IOException unreadable) {
+            // What arrived before the failure is still the best explanation there is.
+        }
+        return text.toString();
+    }
+
+    /** Refuses plain http beyond what the request's policy allows, before connecting. */
+    private static void refuseUnlessAllowed(URL url, HttpRequest.PlainHttp policy)
+            throws IOException {
+        String protocol = url.getProtocol().toLowerCase(Locale.ROOT);
+        if ("https".equals(protocol)) {
+            return;
+        }
+        if ("http".equals(protocol)) {
+            if (policy == HttpRequest.PlainHttp.NETWORK) {
+                return;
+            }
+            if (policy == HttpRequest.PlainHttp.THIS_MACHINE
+                    && Hosts.isThisMachine(url.getHost())) {
+                return;
+            }
+        }
+        throw new IOException("OntoBoard sends to " + url.getHost() + " over HTTPS only. Plain"
+                + " http is allowed to this machine, or to a server you marked as on your"
+                + " network.");
     }
 
     private Download.Opened openWith(URL url, SSLSocketFactory factory) throws IOException {
@@ -222,6 +539,23 @@ public final class HttpsOpener implements Download.Opener {
 
     private static SSLSocketFactory socketFactoryFrom(String store)
             throws GeneralSecurityException, IOException {
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, trustManagersOf(keyStoreOf(store)), null);
+        return context.getSocketFactory();
+    }
+
+    /** A factory that trusts what the JVM's own store trusts, and what this store trusts. */
+    private static SSLSocketFactory socketFactoryTrustingAlso(String store)
+            throws GeneralSecurityException, IOException {
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, new TrustManager[] {trustingEither(x509Of(trustManagersOf(null)),
+                x509Of(trustManagersOf(keyStoreOf(store))))}, null);
+        return context.getSocketFactory();
+    }
+
+    /** One of the operating system's trust stores, opened. */
+    private static KeyStore keyStoreOf(String store)
+            throws GeneralSecurityException, IOException {
         KeyStore trusted;
         if (WINDOWS_TRUST.equals(store)) {
             trusted = KeyStore.getInstance(WINDOWS_TRUST);
@@ -232,12 +566,26 @@ public final class HttpsOpener implements Download.Opener {
                 trusted.load(in, null);
             }
         }
+        return trusted;
+    }
+
+    /** The trust managers of a store; of the JVM's own for null. */
+    private static TrustManager[] trustManagersOf(KeyStore trusted)
+            throws GeneralSecurityException {
         TrustManagerFactory trust =
                 TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trust.init(trusted);
-        SSLContext context = SSLContext.getInstance("TLS");
-        context.init(null, trust.getTrustManagers(), null);
-        return context.getSocketFactory();
+        return trust.getTrustManagers();
+    }
+
+    private static X509TrustManager x509Of(TrustManager[] managers)
+            throws GeneralSecurityException {
+        for (TrustManager manager : managers) {
+            if (manager instanceof X509TrustManager) {
+                return (X509TrustManager) manager;
+            }
+        }
+        throw new GeneralSecurityException("no trust manager for X.509 certificates");
     }
 
     /**

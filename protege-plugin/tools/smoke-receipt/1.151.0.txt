@@ -1,0 +1,67 @@
+OntoBoard 1.151.0 - host smoke receipt
+
+The fresh review of 1.150.0 is acted on, and one thing the maintainer asked for, in their words:
+"assistant always have check the inconsistency and ask in the prompt that the ontology is
+inconsistent without asking whether it's inconsistent by checking the reasoner". A problem chip
+held what the reasoner found when it was explained, and every later question told the model the
+ontology was inconsistent - after the repair was accepted too. Now:
+- Once the ontology's logic has changed, the reasoner is asked again before the chip goes with a
+  question, and right after a change is accepted. A problem that is gone is dropped, with a
+  notice, and the next question tells the model once what the reasoner found; one that still
+  holds is computed again; one the reasoner cannot check goes with a line saying so. "What is
+  sent" says that the reasoner is asked again first.
+- "Why is this unsatisfiable?" follows Protege's last classification; it now asks a fresh
+  reasoner first, and says so when the class is satisfiable now.
+
+The review's findings, each fixed test-first by an agent in its own copy of the tree and read by
+a reviewer, and those reviewers' follow-ups:
+- Keys in the benchmark's models files: a key wrapped, split or left in brackets, and a password
+  of any shape under a password's name, are reported again (1.150.0 let them through); other
+  tools' settings - stop tokens, a rate limit, a credential's name, a token's URL - are no longer
+  called keys; a variable is named only when it is known; a key of letters used twice as a
+  field's name is no longer shown.
+- Saved conversations: a directory symbolic link's target is walked as written, so a clone that
+  holds a junction it names gets the exclude rules; a link that leads back to itself is walked at
+  most 8 times, not 64 (12 to 18 s at every save); a link that cannot be followed is named beside
+  an exclude that cannot be written; the reason is on one line, and "close the program" is said
+  only where a lock can be the cause.
+- Roles: Discard says "Where edits go has changed" when it should; roles of one name are numbered
+  in the list, with their files in its tooltip; New role refuses a name that any saved role has; a
+  role heading or a server's model name that starts with <html> is shown as text.
+- Benchmark: a removal is judged against every justification the loop showed; a refused block is
+  never called "null"; a replacement of an axiom already removed is said.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.150.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 7d75cd7b8b79dfc9dad9cf610460b7a3f15f66a32a897b0ab37ca40396ee9c07, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,560 tests, 0 failures, 0 errors, 4 skipped (3,524 in 1.150.0): PinchZoomTest;
+  BundleConfigurationTest, which a clean build reaches before the jar exists; KoncludeTest's
+  executable-bit test; and a test of a file system that keeps case.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory import.
+  A first build of this version imported javax.swing.plaf.basic, for the HTML guard; that jar was
+  not installed, and the guard no longer needs the package.
+- KeyRedactor is unchanged since 1.150.0, so no corpus comparison was run. Two of its tests on
+  crafted input passed their 1 s limit on a busy machine; the limit is 3 s now, against the 7 to
+  9 s of the defect they guard against.
+- The keys, recorder and role test classes ran on Linux (WSL Ubuntu, Java 17, real git, symbolic
+  links, a virtual display) in the fix agents' and reviewers' copies, before the follow-ups, and
+  passed or were skipped by their own Windows-only or case-ignoring assumptions.
+
+No live benchmark was run: on this laptop one real request takes about 5 minutes, the bench's
+read timeout. A live run needs a GPU host or a smaller model.
+
+This is the last version of this line for now: the work is kept on a branch of its own while
+1.135.1, the version the user study runs on, is released from main.

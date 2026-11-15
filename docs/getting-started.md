@@ -42,10 +42,14 @@ ontology ID - a lowercase letter first, then lowercase letters, digits or unders
 the files - a title, and a folder. The **Base IRI** is the web address your ontology and its terms
 are named under, and it ends in the ID: OBO's address is filled in, which is right only for an
 ontology registered with the OBO Foundry; otherwise use an address on a domain you or your group
-control, such as `https://w3id.org/<id>/<id>.owl`. It writes a project folder in ODK's layout -
-which OntoBoard builds itself, so nothing else is needed - and opens the edit file, the file you
-work in. If your team already uses ODK, open its repository instead (*Open existing ODK
-project…*).
+control, such as `https://w3id.org/<id>/<id>.owl`. Since 1.153.0 it writes the project ODK
+itself writes - in ODK's container where Docker or Podman and ODK's image are there, otherwise
+from ODK's own templates, which OntoBoard carries, so nothing else is needed - makes it a git
+repository with a first commit where git is installed, and opens the edit file, the file you work
+in. Already have the ontology? Open it first and tick **Start from** your file in the same
+dialog. If your team already uses ODK, open its repository instead
+(*OntoBoard > Project > Open existing ODK project...*). A project made by OntoBoard 1.135 or before is carried over with
+*OntoBoard > Project > Update project files...* before it builds.
 
 **The board shows the whole ontology.** Open the OntoBoard tab and every class, object property,
 data property and individual is on the board, laid out as an outline:
@@ -93,12 +97,16 @@ dialog explains each alternative.
 Protégé's undo reverses them. The canvas layout is saved beside the ontology in
 `<ontology>.ontoboard.json`; the ontology file itself is untouched by the diagram.
 
-**Build it.** *OntoBoard → Build and release → Build...* and pick a target: `test` runs
-`reason`, `report`, `sparql_test` and `validate_profile`. For a project OntoBoard created, every
-target runs inside Protégé against the embedded ROBOT. When one fails, the result names the rule and
-the terms that break it - for example a class created without an `rdfs:label`, which the generated
-`src/sparql/check_labels.rq` rejects. The same Makefile also runs from a terminal
-(`make test`) wherever `make` and `robot` are installed, which is what the generated CI does.
+**Build it.** *OntoBoard > Build and release > Build...* and pick a target: `test` is ODK's own
+test - the reasoner, ODK's checks and your questions, the quality report, the ID ranges and the
+OWL profile. It runs in ODK's container where its image is on the machine, and otherwise
+OntoBoard runs ODK's Makefile itself, inside Protégé, with the embedded ROBOT - see [Working with
+ODK](odk-workflow.md#who-runs-odks-targets). When it fails, the result names the rule and the
+terms that break it - for example a class created without an `rdfs:label`, which OntoBoard's
+label check, `src/sparql/check_labels-violation.sparql`, rejects. The same Makefile runs from a
+terminal with `sh run.sh make test` in `src/ontology`, which needs Docker, and in the project's
+CI workflow, which runs ODK's `make test`, on the imports as they are, in ODK's own image on every
+push to `main` and every pull request.
 
 ### The OntoBoard menu
 
@@ -107,7 +115,7 @@ Grouped by what you came to do, in the order the [guide](guide.md) does it:
 | | What is in it |
 |---|---|
 | *Start here: the guide...* | The steps from an idea to a released ontology, ticked as your project does them |
-| *Project* | Start a project, open one from this computer or GitHub, or turn an ontology you have into one; its configuration, ID ranges and scripts |
+| *Project* | Start a project, open one from this computer or GitHub, or turn an ontology you have into one; its configuration, ID ranges and scripts; *Update project files...*, ODK's own update |
 | *Reuse* | Design patterns; terms from other ontologies, by label or from a list; what each import brings |
 | *Terms* | Notes and discussion links on a term; obsoleting, renaming and transforming; exporting terms |
 | *Spreadsheets* | Sheets of terms or data: edit them, check them, turn them into terms or a knowledge graph |
@@ -125,18 +133,19 @@ release*; *Imports* is *Reuse → Check imports*.
 
 ### What works with nothing installed
 
-Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, no `make`:
+Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, no `make`. Since
+1.153.0 the targets are ODK's own, run by OntoBoard itself where nothing else is there:
 
 | Works with nothing installed | Needs something else |
 |---|---|
-| New ODK project, Turn an ontology into an ODK repository, Build (`all`, `test`, `reason`, `report`, `sparql_test`, `validate_profile`, `clean`), Release with dated or semantic versions | Building a repository created by ODK's own seed (`run.sh` beside the Makefile): Docker, Podman or a native ODK install, because its recipes call tools that exist only in the ODK image |
+| New ODK project, Turn an ontology into an ODK repository, Update project files, Build (`test`, `test_fast`, `reason_test`, `sparql_test`, `robot_reports`, `validate_idranges`, `clean`), Release with dated or semantic versions (`prepare_release`, `prepare_release_fast`), Refresh imports | A target a project changes in its own `<id>.Makefile`, a project's own `release.sh`, or a recipe that calls a program OntoBoard has no stand-in for: ODK's container (Docker or Podman with ODK's image) or, on Linux and macOS, ODK's tools installed. The same for a repository whose Makefile another ODK version wrote, until *Update project files...* brings it to ODK v1.6.1 |
 | Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the canvas, and *Record who edits terms* | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
 | | Imports fetched from their URLs, which need the network |
 | | WIDOCO and Konclude: the first time an action needs one, OntoBoard offers to download it (or to use a copy you downloaded yourself) |
 
-*OntoBoard → Run self-test* checks this on your machine: it builds a throwaway project with the
-`test` target and lists whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH -
-none of them is used. *OntoBoard → Check requirements...* lists the rest. The self-test's result
+*OntoBoard → Run self-test* checks this on your machine: it makes a throwaway project from ODK's
+templates, runs ODK's `test` on it by OntoBoard itself without starting any program, and lists
+whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH - none of them is used. *OntoBoard → Check requirements...* lists the rest. The self-test's result
 starts with the OntoBoard version, such as "OntoBoard 1.135.1"; give that number when you report
 a problem.
 

@@ -341,6 +341,65 @@ class OntologySourceTest {
         }
     }
 
+    /**
+     * A file's address is written {@code file:/C:/...} by Java and {@code file:///C:/...} by
+     * most people. The OWL API finds an import by the address it is declared under, letter
+     * for letter, so an import declared the second way was read - and then not found: its
+     * terms were "not here" (1.153.0, live run of a conversion).
+     */
+    @Test
+    void anImportWrittenWithThreeSlashesIsThatFile(@TempDir File folder) throws Exception {
+        File upper = turtle(folder, "upper.ttl", "<http://example.org/upper> a owl:Ontology .\n"
+                + "<http://example.org/upper#Thing> a owl:Class .\n");
+        String path = upper.getAbsolutePath().replace('\\', '/');
+        String spelled = "file://" + (path.startsWith("/") ? "" : "/") + path;
+        assertTrue(spelled.startsWith("file:///") && !spelled.equals(upper.toURI().toString()),
+                spelled);
+        File main = turtle(folder, "main.ttl", "<http://example.org/main> a owl:Ontology ;\n"
+                + "  owl:imports <" + spelled + "> .\n"
+                + "<http://example.org/main#A> a owl:Class .\n");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+
+        OWLOntology read = OntologySource.loadFile(manager, main);
+
+        assertEquals(2, read.getImportsClosure().size(), "the import is in the closure");
+        assertTrue(OntologySource.missingImportsOf(read).isEmpty(),
+                OntologySource.missingImportsOf(read).toString());
+        assertEquals(upper, OntologySource.localFileFor(manager, manager.getOntologyDocumentIRI(
+                manager.getOntology(IRI.create("http://example.org/upper")))),
+                "and its document is still that file");
+        int held = handlesOn(upper);
+        if (held >= 0) {
+            assertEquals(0, held, "the import was left open");
+        }
+    }
+
+    /**
+     * An import declared under an address that is not the ontology's own - a version's, a
+     * download address - which a catalog sends to a local copy: found as the import all the
+     * same, as it is when the OWL API reads the import itself.
+     */
+    @Test
+    void anImportDeclaredUnderAnotherAddressThanItsOwnIsStillTheImport(@TempDir File folder)
+            throws Exception {
+        File copy = turtle(folder, "upper-copy.ttl", "<http://example.org/upper> a owl:Ontology .\n"
+                + "<http://example.org/upper#Thing> a owl:Class .\n");
+        File main = turtle(folder, "main.ttl", "<http://example.org/main> a owl:Ontology ;\n"
+                + "  owl:imports <http://example.org/releases/1.0/upper.owl> .\n");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        manager.getIRIMappers().add(new org.semanticweb.owlapi.util.SimpleIRIMapper(
+                IRI.create("http://example.org/releases/1.0/upper.owl"), IRI.create(copy)));
+
+        OWLOntology read = OntologySource.loadFile(manager, main);
+
+        assertEquals(2, read.getImportsClosure().size(), read.getImportsClosure().toString());
+        assertTrue(OntologySource.missingImportsOf(read).isEmpty(),
+                OntologySource.missingImportsOf(read).toString());
+        assertEquals(copy, OntologySource.localFileFor(manager, manager.getOntologyDocumentIRI(
+                manager.getOntology(IRI.create("http://example.org/upper")))),
+                "its document leads to the local copy, through the catalog");
+    }
+
     /** An import by its published address, which a mapper - a catalog - sends to a local copy. */
     @Test
     void anImportMappedToALocalCopyIsReadFromIt(@TempDir File folder) throws Exception {

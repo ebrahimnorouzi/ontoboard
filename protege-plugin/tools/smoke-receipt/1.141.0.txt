@@ -1,0 +1,80 @@
+OntoBoard 1.141.0 - host smoke receipt
+
+"Write as OWL..." sends the terms the sentence names, and the 1.140.0 review's findings are
+fixed. Each change has a test that failed first:
+- The terms a sentence names, by name or label, are added as chips and sent with it. They stay
+  for later turns like any chip. While the assistant is busy, the button is disabled, and no chip
+  is added.
+- An axiom is read as written first. Quotes are put back around names only if that fails, and
+  never around a label that holds a comma. A "<" starts an IRI only when a ">" follows it with no
+  space in between.
+- An add-axiom with "with:" is refused, with the reason, instead of losing its second axiom.
+- A token with no letter or digit is never reported as an unknown name.
+- Benchmark: a text-to-axiom answer passes only when it is equivalent to the held-back axiom; an
+  answer the reasoner cannot handle scores as not entailed, instead of ending the run; every
+  answer is written to replies.jsonl as soon as it arrives; "asked" is reported. The cases send
+  the same chips "Write as OWL..." would add. Only the text-to-axiom lines changed when the cases
+  were regenerated.
+- A key with invisible characters is redacted in both forms: as typed, and as the client sends
+  it.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.140.0.jar moved to ~/Documents/ontoboard-jar-backup and this jar the only
+ontoboard-*.jar in plugins; Protege 5.5.0 is the throwaway copy. Each run was given
+pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project. The OWL API and JRE
+versions below were read from each install's owlapi-osgidistribution.jar and jre/release.
+
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 666f8e7d9bd2fb0d79a3a836f9740cc15d419cdce7d8a0c5bef1f596465ee1a9, built by
+mvn -o clean package in a copy of the tree. Both installs hold this exact jar. Its unit suite
+ran on Java 11:
+- 3,242 tests, 0 failures, 0 errors, 3 skipped (3,225 in 1.140.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- The bundle's Import-Package is identical to 1.140.0's (262 entries).
+
+There is no live benchmark number for this version. Two runs against the local model (Ollama,
+qwen2.5:7b-instruct, CPU only) were void. In the first, all 13 calls timed out after 300 s
+without a byte; in the second, 12 of 13 did:
+- The first run shared the CPU with a review's probes and a build.
+- During the second, the host CPU ran at about half its base clock. One recorded request, sent
+  alone, got no first token in 15 minutes.
+In the 1.140.0 run, on the same host earlier that evening, every call answered, each within 2 to
+9 minutes. The void runs are kept in private/release/1.141.0/live-qwen2.5-7b-void/.
+
+The runs still showed two things, now carried to 1.142.0:
+- One case cannot be passed. In unsatisfiable-text-to-axiom-01, the held-back axiom is the one
+  that makes its class unsatisfiable, so even that axiom scores as unsafe. The only answer
+  received was exactly that axiom, and it scored as a fail; it failed the same way in 1.140.0.
+  So 1.140.0's 3/13 was 3 of the 12 cases a right answer could pass.
+- The chips make a text-to-axiom request 10 to 60 % longer (MWO: from about 1,900 to 2,800
+  tokens). On a CPU-only model that adds minutes before the first byte. When the 300 s read
+  timeout is met, the message says the server "stopped answering before the reply was
+  complete", although nothing had arrived.
+
+A fresh-context review of 1.141.0 found no Critical issue. It confirmed three things:
+- Each case's request is byte-identical to what "Write as OWL..." sends, chips included.
+- Every case but L1 passes with its own axiom, also with every quote taken out.
+- The equivalence rule is sound where the ontology has general axioms.
+It found five Important issues, and by their effect two of its Minor ones were raised to
+Important. All seven go to 1.142.0, each with a test:
+- The chips "Write as OWL..." adds pile up. On MWO, the third sentence and then every request
+  is refused, and chips are added even when nothing is sent.
+- In the repair task, an answer the reasoner cannot handle still ends a whole run.
+- When an axiom cannot be read either way, the card names part of a label that exists, not the
+  name that is missing.
+- Annotation properties count as names, so 'license' in MWO never becomes a chip, while an
+  annotation property can.
+- A role file is redacted for key-shaped text only, so a known key of another shape could be
+  saved into the project.
+- A safety check that runs out of time scores as unsafe, with no error.
+- A run truncates replies.jsonl at the start, so running again into a finished run's folder
+  loses its answers.
+This version is therefore not one to release; 1.142.0 is its successor.

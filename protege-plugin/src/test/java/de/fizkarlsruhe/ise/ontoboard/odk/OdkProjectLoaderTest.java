@@ -18,10 +18,11 @@ class OdkProjectLoaderTest {
     private static final String CC0 =
             "https://creativecommons.org/publicdomain/zero/1.0/";
 
+    /** A project as New ODK project makes it: ODK's seed. */
     private static File scaffold(Path dir) {
         OdkProjectConfig config = new OdkProjectConfig("mwo", "Materials Workflow Ontology",
                 "", "http://purl.obolibrary.org/obo/mwo.owl", CC0, dir.toFile());
-        OdkScaffold.create(config);
+        SeededProject.create(config);
         return config.getProjectRoot();
     }
 
@@ -128,10 +129,13 @@ class OdkProjectLoaderTest {
         assertTrue(OdkProjectLoader.looksLikeOdkProject(scaffold(dir)));
     }
 
+    /** The targets are read from the project's Makefile, which is ODK's: its names. */
     @Test
     void offersMakefileTargetsWhenAMakefileIsPresent(@TempDir Path dir) {
         OdkProjectLoader.Detected found = OdkProjectLoader.detect(scaffold(dir));
-        assertTrue(OdkProjectLoader.availableTargets(found).contains("report"));
-        assertTrue(OdkProjectLoader.availableTargets(found).contains("reason"));
+        assertTrue(OdkProjectLoader.availableTargets(found).contains("test"));
+        assertTrue(OdkProjectLoader.availableTargets(found).contains("prepare_release"));
+        assertTrue(!OdkProjectLoader.availableTargets(found).contains("reason"),
+                "a target of the Makefile OntoBoard wrote up to 1.135, not of ODK's");
     }
 }

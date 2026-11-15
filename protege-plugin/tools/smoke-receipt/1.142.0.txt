@@ -1,0 +1,58 @@
+OntoBoard 1.142.0 - host smoke receipt
+
+The Settings tab fits its column, saving conversations asks where they go, and three findings
+from 1.141.0 are fixed. Each change has a test that failed first:
+- Settings: the maintainer could not see "Save conversations in this project". Long labels made
+  the column 1,433 px wide in a view of about 400 px, and the box was drawn past the right
+  edge. Now everything wraps at the column's width, the wheel scrolls by lines, and "This
+  project" sits under the model settings, in view without scrolling.
+- Ticking "Save conversations in this project" asks what happens in git:
+  - Keep private: assistant/.gitignore keeps the files out of git.
+  - Release with the project: git sees them, and they go in when you commit. OntoBoard commits
+    nothing itself.
+  - Cancel: nothing is written.
+  The line under the box shows the choice, and Change... asks again. With saving switched on
+  and no choice made, the files stay out of git, and if the rule cannot be written nothing is
+  saved. Tests ask a real git which files it ignores.
+- "Write as OWL..." adds one sentence's chips at a time: the next sentence's replace them, none
+  are added when nothing is sent, and those that do not fit a local model's context are left
+  out instead of refusing the request. "Remove all" removes every chip but the selected term.
+  A sentence that was not sent is offered again.
+- A model server that sends nothing for 5 minutes is reported as sending nothing, with what to
+  do, instead of "stopped answering before the reply was complete".
+- Benchmark: a text-to-axiom case is made only if its own held-back axiom passes. The
+  unsatisfiable fixture's case, which no right answer could pass, is gone: 12 cases.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.5.0 is the throwaway copy, with this jar
+the only ontoboard-*.jar in plugins, given pizzabfo-edit.owl from a fresh local clone of the
+pizza-bfo test project.
+
+  2026-11-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+  Protege 5.6.9: not yet run. The maintainer had it open, so it was not installed there.
+
+The self-test reported "opened, [SchemaCanvasView, AssistantView] built without throwing, and
+closed again".
+
+The jar is sha256 ec91f224dc28b4b0e5128dba49eef955aa1c610ad8661e806d364d425073801e, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,282 tests, 0 failures, 0 errors, 3 skipped (3,242 in 1.141.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- The bundle's Import-Package is identical to 1.141.0's (262 entries).
+
+Saving conversations was also run end to end, outside Protege. The real Settings panel, session
+and recorder ran in two real git repositories, with a scripted model:
+- Keep private: git status lists the conversation as ignored, by assistant/.gitignore.
+- Release: git lists it as a new file.
+- Both files hold the whole conversation, and a key in the model's answer is in neither.
+Nobody has yet clicked through it in a Protege window.
+
+No live benchmark was run: the host's CPU still runs at about half its clock.
+
+Not fixed here, and moved to 1.143.0: the rest of the 1.141.0 review. A role file is redacted
+for key-shaped text only. An answer the reasoner cannot handle still ends a repair run. An
+unreadable axiom's card names part of an existing label. Annotation properties count as names
+for chips. A safety check that runs out of time scores as unsafe with no error. A run truncates
+replies.jsonl. The role-file one falls under the maintainer's key rule, so this version is
+not one to release.

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -243,6 +244,58 @@ class ProjectScriptsTest {
                 plan.asCommandLine());
         assertTrue(plan.asCommandLine().contains("-w /work/src/ontology"),
                 "the working directory the project's own wrapper uses: " + plan.asCommandLine());
+    }
+
+    /**
+     * A script that says {@code sh run.sh make ...} - a release script does, line after line -
+     * cannot start Docker from inside the container. For that run the project's run.sh is
+     * covered by one that runs what it is given, and the image is the one chosen for the project.
+     */
+    @Test
+    void inTheContainerAScriptGetsAPassThroughRunSh(@TempDir File root) throws Exception {
+        File ontology = projectWith(root, "release.sh", "sh run.sh make prepare_release\n");
+        Files.write(new File(ontology, "run.sh").toPath(),
+                "#!/bin/sh\n".getBytes(StandardCharsets.UTF_8));
+        File stub = new File(root, "run-passthrough.sh");
+        ProjectScripts.Script script = ProjectScripts.in(ontology).get(0);
+
+        ScriptRun.Plan plan = ScriptRun.planFor(script, ontology, "docker", null, false,
+                Collections.<String>emptyList(), "obolibrary/odkfull:v1.6.1",
+                OdkContainer.Host.unknown(), stub);
+
+        assertEquals(ScriptRun.Route.IN_CONTAINER, plan.getRoute());
+        assertTrue(plan.getCommand().contains(stub.getAbsolutePath().replace('\\', '/')
+                + ":/work/src/ontology/run.sh:ro"), plan.asCommandLine());
+        assertTrue(plan.getCommand().contains("obolibrary/odkfull:v1.6.1"),
+                plan.asCommandLine());
+        assertEquals("/work/src/scripts/release.sh",
+                plan.getCommand().get(plan.getCommand().size() - 1));
+    }
+
+    /** A runtime makes what it is asked to mount over: a project without run.sh gains none. */
+    @Test
+    void aProjectWithoutRunShGetsNothingMountedOverIt(@TempDir File root) throws Exception {
+        File ontology = projectWith(root, "x.sh", "#!/bin/sh\n");
+        ProjectScripts.Script script = ProjectScripts.in(ontology).get(0);
+
+        ScriptRun.Plan plan = ScriptRun.planFor(script, ontology, "docker", null, false,
+                Collections.<String>emptyList(), "obolibrary/odkfull:v1.6.1",
+                OdkContainer.Host.unknown(), new File(root, "run-passthrough.sh"));
+
+        assertEquals(ScriptRun.Route.IN_CONTAINER, plan.getRoute());
+        assertFalse(plan.asCommandLine().contains("run.sh:ro"), plan.asCommandLine());
+    }
+
+    /** Without an image on the machine the container is no route: nothing is downloaded. */
+    @Test
+    void withoutAnImageTheContainerIsNoRoute(@TempDir File root) throws Exception {
+        File ontology = projectWith(root, "x.sh", "#!/bin/sh\n");
+        ProjectScripts.Script script = ProjectScripts.in(ontology).get(0);
+
+        ScriptRun.Plan plan = ScriptRun.planFor(script, ontology, "docker", null, true,
+                Collections.<String>emptyList(), null, OdkContainer.Host.unknown(), null);
+
+        assertEquals(ScriptRun.Route.HOST, plan.getRoute());
     }
 
     /** With nothing at all, the refusal says what to install rather than failing later. */

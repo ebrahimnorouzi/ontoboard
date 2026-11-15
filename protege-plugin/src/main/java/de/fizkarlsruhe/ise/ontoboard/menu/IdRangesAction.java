@@ -231,7 +231,12 @@ public class IdRangesAction extends OntoBoardAction {
         for (IdRanges.Range range : ranges.getRanges()) {
             mine |= range.getAllocatedTo().equalsIgnoreCase(me);
         }
-        if (!mine) {
+        // ODK's seed: two ranges waiting for a name. Allocating a block here would add a third
+        // beside them, so the advice is the board's question instead (1.153.0).
+        String unclaimed = TermMinter.unclaimedNote(ranges, me);
+        if (unclaimed != null) {
+            result.warn(unclaimed);
+        } else if (!mine) {
             result.warn("Nothing is allocated to '" + me + "', which is the name this plugin "
                     + "would mint under - so creating a term will be refused. Run this again and "
                     + "choose '" + ALLOCATE + "'.");

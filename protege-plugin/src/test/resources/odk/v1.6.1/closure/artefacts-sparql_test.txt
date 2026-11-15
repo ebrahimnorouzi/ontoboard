@@ -1,0 +1,7 @@
+Makefile
+arte-edit.owl
+arte.Makefile
+reports
+sparql_test
+tmp/arte-preprocess.owl
+tmp/merged-arte-edit.ofn

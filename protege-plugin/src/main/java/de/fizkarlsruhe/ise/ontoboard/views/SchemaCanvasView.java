@@ -4441,10 +4441,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <p>Add selected, Add all, Find and Inferences stay visible. Inferences is a mode with a visible
      * consequence on the diagram, and a mode you can forget you are in must not be hidden in a menu.
+     *
+     * <p><b>Since 1.136.0 the bar wraps.</b> The assistant column took a third of the tab's width
+     * beside the board (the maintainer's choice, so a proposal's preview stays in view), and 777px
+     * in one row no longer fits a 1440px window. {@code JToolBar}'s own {@code BoxLayout} would lay
+     * the rest out past the edge, unpainted, as above; {@link
+     * de.fizkarlsruhe.ise.ontoboard.canvas.WrapLayout} moves it onto a second row and reports the
+     * height of both, so {@code BorderLayout.NORTH} makes room for them.
      */
     private JToolBar buildToolBar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
+        bar.setLayout(new de.fizkarlsruhe.ise.ontoboard.canvas.WrapLayout(
+                java.awt.FlowLayout.LEFT, 4, 2));
 
         // FOCUS, where Add selected and Add all were: since 1.131.0 a board shows every term, so
         // there is nothing to add - and on a board of hundreds, what a reader needs instead is to
@@ -5134,6 +5143,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         definition.addActionListener(a -> editDefinition(iri));
                         menu.add(definition);
                     }
+
+                    // The board is where a person sees which terms a question is about, so this
+                    // is where they hand one to the assistant (1.136.0). It joins the context
+                    // chips in this window's assistant column; nothing is sent until they ask.
+                    JMenuItem toAssistant = new JMenuItem("Add to assistant context");
+                    boolean canAdd = de.fizkarlsruhe.ise.ontoboard.assistant.host
+                            .AssistantSessions.canAdd(getOWLEditorKit());
+                    toAssistant.setEnabled(canAdd);
+                    toAssistant.setToolTipText(canAdd
+                            ? "Send this term with the next questions to the assistant."
+                            : "Open the Assistant column first.");
+                    toAssistant.addActionListener(a -> de.fizkarlsruhe.ise.ontoboard.assistant
+                            .host.AssistantSessions.addTerm(getOWLEditorKit(), IRI.create(iri)));
+                    menu.add(toAssistant);
                 }
 
                 if (onEdge) {
@@ -6708,7 +6731,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         : (kind == EntityFactory.Kind.INDIVIDUAL ? " - an individual of "
                                 : " - a subclass of ") + DisplayLabels.forEntity(ontology,
                                         getOWLModelManager().getOWLDataFactory().getOWLClass(parent)))
-                        + ":\n\n" + minter.describe(),
+                        // On lines of its own: the dialog does not wrap, and the sentence
+                        // about ODK's placeholder ranges made it wider than a screen.
+                        + ":\n\n" + TermMinter.onLines(minter.describe(), 90),
                 parent == null ? "New " + what : kind == EntityFactory.Kind.INDIVIDUAL
                         ? "New individual" : "New subclass", JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
@@ -6730,6 +6755,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         + ".\nMake another " + what + " with the same name?",
                 "Name already used", JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        minter = afterClaimingARange(minter, what);
+        if (minter == null) {
             return;
         }
         IRI iri;
@@ -6917,6 +6946,42 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * The minter to make the new {@code term} with, once this editor has claimed one of ODK's
+     * placeholder ID ranges if the project still has only those; or null when they cancelled,
+     * or the claim could not be written - and then nothing was written and nothing is made.
+     *
+     * <p>Asked here, after the name and before the identifier, so that cancelling the name never
+     * touches the ranges file. What to ask and what to write are {@link TermMinter}'s; this only
+     * shows the question.
+     */
+    private TermMinter afterClaimingARange(TermMinter minter, String term) {
+        if (!minter.needsClaim()) {
+            return minter;
+        }
+        List<String> placeholders = TermMinter.claimable(minter.getRanges());
+        String[] choices = new String[placeholders.size()];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
+        }
+        Object chosen = JOptionPane.showInputDialog(this,
+                TermMinter.onLines(TermMinter.claimQuestion(editorName(),
+                        minter.getRangesFile().getName(), term), 90),
+                "Which range is yours?", JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+        if (chosen == null) {
+            return null;
+        }
+        try {
+            return minter.claim(placeholders.get(java.util.Arrays.asList(choices).indexOf(chosen)));
+        } catch (java.io.IOException | RuntimeException cannotClaim) {
+            JOptionPane.showMessageDialog(this, "Could not write your name into "
+                    + minter.getRangesFile().getName() + ": " + cannotClaim.getMessage()
+                    + "\n\nNothing was written, and no " + term + " was made.",
+                    "Range not claimed", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+    }
+
+    /**
      * Who is minting, for matching against the ID ranges.
      *
      * <p>The collaboration display name when one is configured, since that is the name a team has
@@ -7054,7 +7119,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // the ranges is that nobody mints outside their block". A project can therefore have
             // its classes inside its scheme and its properties outside it, which is worse than
             // either policy applied consistently.
-            TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
+            TermMinter minter = afterClaimingARange(
+                    TermMinter.forOntologyFile(currentOntologyFile, editorName()), "property");
+            if (minter == null) {
+                return;
+            }
             IRI propertyIri;
             try {
                 propertyIri = minter.mintFor(ontology, choice.getNewPropertyName());

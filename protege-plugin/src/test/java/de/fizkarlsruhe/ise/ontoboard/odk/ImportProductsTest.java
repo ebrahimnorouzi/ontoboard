@@ -539,6 +539,60 @@ class ImportProductsTest {
         assertFalse(row.willRebuild());
     }
 
+    /**
+     * A module declared to be kept as it is - ODK's custom, and no mirror - is frozen: ODK's
+     * refresh does not touch it, and nothing is missing. It is how OntoBoard declares an
+     * import it keeps whole.
+     */
+    @Test
+    void aModuleDeclaredToBeKeptAsItIsIsFrozen(@TempDir File root) throws Exception {
+        projectHolding(root, "whole");
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: whole\n"
+                        + "      module_type: custom\n      mirror_type: no_mirror\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.FROZEN, row.getVerdict());
+        assertFalse(row.willRebuild());
+        assertFalse(row.termListIsRead(), "its term list is not what makes it");
+    }
+
+    /** A custom module that has a mirror is their own rule's to build, as before. */
+    @Test
+    void aCustomModuleWithAMirrorIsNotFrozen(@TempDir File root) throws Exception {
+        projectHolding(root, "bespoke");
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: bespoke\n"
+                        + "      module_type: custom\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.REFUSED, row.getVerdict());
+    }
+
+    /** A pattern from the library is still called a pattern once it is declared. */
+    @Test
+    void aDeclaredPatternIsStillCalledAPattern(@TempDir File root) throws Exception {
+        File imports = new File(root, ImportModules.IMPORTS_DIRECTORY);
+        assertTrue(imports.mkdirs());
+        Files.write(new File(imports, "componency_import.owl").toPath(),
+                "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(imports, "componency_terms.txt").toPath(),
+                ("# Source: http://www.ontologydesignpatterns.org/cp/owl/componency.owl\n"
+                        + "# Pattern: componency\nhttp://example.org/A\n")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: componency\n"
+                        + "      module_type: custom\n      mirror_type: no_mirror\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.PATTERN, row.getVerdict());
+        assertFalse(row.willRebuild(), "nothing downloads a pattern");
+        assertEquals("pattern library", row.describeDeclaration(), "not \"custom\"");
+    }
+
     /** The declaration's order is kept, and the undeclared ones come after it. */
     @Test
     void declaredComeFirstInTheProjectsOrder(@TempDir File root) throws Exception {
@@ -628,14 +682,17 @@ class ImportProductsTest {
      * for its one MIREOT import.
      */
     @Test
-    void aMireotExtractionIsDeclaredCustomAndSaysWhy() {
+    void aMireotImportIsDeclaredFrozen() {
         ImportProducts.Declaration declaration = ImportProducts.declarationFor(
                 "swo", "https://example.org/swo.owl", TermExtract.Method.MIREOT);
 
+        assertEquals(java.util.Arrays.asList("id", "mirror_from", "module_type", "mirror_type"),
+                new java.util.ArrayList<String>(declaration.getFields().keySet()));
+        assertEquals("https://example.org/swo.owl", declaration.getFields().get("mirror_from"));
         assertEquals("custom", declaration.getFields().get("module_type"));
-        assertNull(declaration.getFields().get("module_type_slme"));
-        assertNotNull(declaration.getCaveat());
-        assertTrue(declaration.getCaveat().contains("Makefile"), declaration.getCaveat());
+        assertEquals("no_mirror", declaration.getFields().get("mirror_type"));
+        assertFalse(String.valueOf(declaration.getCaveat()).contains("Makefile"),
+                "kept as it is, nothing for make to stop on");
     }
 
     /** A declaration this writes is one this reads back the same way. */
@@ -678,14 +735,109 @@ class ImportProductsTest {
 
     /** A MIREOT declaration reads back as refused, which is honest about what make will do. */
     @Test
-    void aMireotDeclarationReadsBackAsRefused() {
+    void aSourceThatIsAFileOfThisMachineIsDeclaredFrozen() {
+        ImportProducts.Declaration declaration = ImportProducts.declarationForImport("local",
+                "file:/C:/somewhere/local.owl", TermExtract.Method.BOT);
+
+        // What the import guard declares - an import the edit file itself reads from an
+        // address, which the person chose to keep - keeps that address, a file's too.
+        assertEquals("file:/C:/somewhere/local.owl", ImportProducts.declarationFor("local",
+                "file:/C:/somewhere/local.owl", TermExtract.Method.BOT).getFields()
+                .get("mirror_from"));
+        // Anything else is declared for an import as it is declared otherwise.
+        assertEquals(ImportProducts.declarationFor("swo", "https://example.org/swo.owl",
+                TermExtract.Method.STAR).getFields(), ImportProducts.declarationForImport("swo",
+                "https://example.org/swo.owl", TermExtract.Method.STAR).getFields());
+
+        // No mirror_from: a path of this machine means nothing on any other.
+        assertEquals(java.util.Arrays.asList("id", "module_type", "mirror_type"),
+                new java.util.ArrayList<String>(declaration.getFields().keySet()));
+        assertEquals("custom", declaration.getFields().get("module_type"));
+        assertEquals("no_mirror", declaration.getFields().get("mirror_type"));
+        assertTrue(declaration.getCaveat().contains("a file on this machine"),
+                declaration.getCaveat());
+    }
+
+    /** Why a MIREOT import is kept as it is, is said too - as a remark, not as a fault. */
+    @Test
+    void whyAMireotImportIsKeptAsItIsIsSaid() {
+        String why = ImportProducts.declarationFor("swo", "https://example.org/swo.owl",
+                TermExtract.Method.MIREOT).getCaveat();
+
+        assertTrue(why.contains("MIREOT"), why);
+        assertFalse(why.contains("will stop"), "nothing stops on it any more: " + why);
+    }
+
+    /** What ODK fetches itself is declared for ODK to build, as before. */
+    @Test
+    void aSourceOnTheWebIsDeclaredForOdkToBuild() {
+        ImportProducts.Declaration declaration = ImportProducts.declarationFor("swo",
+                "https://example.org/swo.owl", TermExtract.Method.BOT);
+
+        assertEquals("slme", declaration.getFields().get("module_type"));
+        assertEquals("https://example.org/swo.owl", declaration.getFields().get("mirror_from"));
+        assertNull(declaration.getFields().get("mirror_type"));
+        assertNull(declaration.getCaveat());
+    }
+
+    @Test
+    void aMireotDeclarationReadsBackAsFrozen(@TempDir File root) throws Exception {
         String yaml = OdkYaml.appendBlockTo("import_group:\n  products: []\n",
                 "import_group.products",
                 ImportProducts.declarationFor("swo", null, TermExtract.Method.MIREOT).getFields());
+        projectHolding(root, "swo");
 
         ImportProducts.Product read = ImportProducts.declaredIn(yaml).get(0);
         assertFalse(read.isRebuildable());
-        assertTrue(read.getRefusal().contains("custom"), read.getRefusal());
+        assertEquals(ImportProducts.Verdict.FROZEN, ImportProducts.audit(
+                ImportProducts.declaredIn(yaml), ImportModules.modulesIn(root), root).get(0)
+                .getVerdict());
+    }
+
+    /**
+     * A project of OntoBoard's older layout is declared into as 1.135.2 did: its Makefile
+     * is OntoBoard's own, and its Refresh imports builds a module again from the source
+     * the declaration names - a file of this machine too.
+     */
+    @Test
+    void inTheOlderLayoutASourceIsDeclaredAsItAlwaysWas() {
+        ImportProducts.Declaration local = ImportProducts.declarationAsBefore("local",
+                "file:/C:/somewhere/local.owl", TermExtract.Method.BOT);
+        assertEquals("file:/C:/somewhere/local.owl", local.getFields().get("mirror_from"));
+        assertEquals("slme", local.getFields().get("module_type"));
+        assertEquals("BOT", local.getFields().get("module_type_slme"));
+        assertNull(local.getFields().get("mirror_type"));
+        assertNull(local.getCaveat());
+
+        ImportProducts.Declaration mireot = ImportProducts.declarationAsBefore("swo",
+                "https://example.org/swo.owl", TermExtract.Method.MIREOT);
+        assertEquals(java.util.Arrays.asList("id", "mirror_from", "module_type"),
+                new java.util.ArrayList<String>(mireot.getFields().keySet()));
+        assertEquals("custom", mireot.getFields().get("module_type"));
+        assertTrue(mireot.getCaveat().contains("will stop on it"), mireot.getCaveat());
+
+        ImportProducts.Declaration usual = ImportProducts.declarationAsBefore("iao",
+                "http://purl.obolibrary.org/obo/iao.owl", TermExtract.Method.STAR);
+        assertEquals(java.util.Arrays.asList("id", "module_type", "module_type_slme"),
+                new java.util.ArrayList<String>(usual.getFields().keySet()),
+                "the address ODK fetches from anyway is left out");
+        assertEquals("STAR", usual.getFields().get("module_type_slme"));
+    }
+
+    /** Kept as it is: custom, and no mirror - nothing of ODK's builds it or fetches for it. */
+    @Test
+    void aProductKeptAsItIsIsToldFromOneThatIsBuilt() {
+        List<ImportProducts.Product> products = ImportProducts.declaredIn(
+                "import_group:\n  products:\n"
+                        + "    - id: kept\n      module_type: custom\n"
+                        + "      mirror_type: no_mirror\n"
+                        + "    - id: built\n      module_type: slme\n"
+                        + "    - id: ownrule\n      module_type: custom\n");
+
+        assertTrue(ImportProducts.isKeptAsItIs(products.get(0)));
+        assertFalse(ImportProducts.isKeptAsItIs(products.get(1)), "ODK builds it");
+        assertFalse(ImportProducts.isKeptAsItIs(products.get(2)),
+                "custom with a mirror: a rule of the project's own builds it");
     }
 
     /** The module type reads as one line, with the SLME parameters only when they apply. */

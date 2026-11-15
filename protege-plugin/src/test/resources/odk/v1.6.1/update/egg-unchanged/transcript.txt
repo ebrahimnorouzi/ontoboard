@@ -1,0 +1,34 @@
+INFO:root:Applying templates
+INFO:root:  Unpacking: ../../_dynamic_workflows
+INFO:root:  Unpacking into: ../../.github/workflows/qc.yml
+INFO:root:  Unpacking: ../../_dynamic_sparql
+INFO:root:  Unpacking into: ../../src/sparql/eggboil_terms.sparql
+INFO:root:  Unpacking into: ../../src/sparql/owldef-self-reference-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/iri-range-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/label-with-iri-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/multiple-replaced_by-violation.sparql
+INFO:root:  Unpacking: ../../_dynamic_documentation
+INFO:root:  Unpacking: ../../_dynamic_files
+INFO:root:Applying templates
+INFO:root:Applying templates
+INFO:root:  Compiling: /tools/templates/src/ontology/run.sh.jinja2 -> ../../src/ontology/run.sh
+INFO:root:  Compiling: /tools/templates/src/ontology/Makefile.jinja2 -> ../../src/ontology/Makefile
+INFO:root:Applying templates
+INFO:root:  Copying: /tools/templates/src/sparql/preprocess-module.ru -> ../../src/sparql/preprocess-module.ru
+INFO:root:  Copying: /tools/templates/src/sparql/synonyms.sparql -> ../../src/sparql/synonyms.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/edges.sparql -> ../../src/sparql/edges.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/simple-seed.sparql -> ../../src/sparql/simple-seed.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/class-count-by-prefix.sparql -> ../../src/sparql/class-count-by-prefix.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/subsets-labeled.sparql -> ../../src/sparql/subsets-labeled.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/xrefs.sparql -> ../../src/sparql/xrefs.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/obsoletes.sparql -> ../../src/sparql/obsoletes.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/terms.sparql -> ../../src/sparql/terms.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/basic-report.sparql -> ../../src/sparql/basic-report.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/postprocess-module.ru -> ../../src/sparql/postprocess-module.ru
+INFO:root:Applying templates
+INFO:root:  Compiling: /tools/templates/src/sparql/README.md.jinja2 -> ../../src/sparql/README.md
+INFO:root:Applying templates
+INFO:root:RUNNING: robot odk:import -i eggboil-edit.owl --exclusive true convert -f ofn -o eggboil-edit.owl
+INFO:root:OUT: 
+WARNING: This file should be manually migrated: mkdocs.yaml
+Ontology repository update successfully completed.

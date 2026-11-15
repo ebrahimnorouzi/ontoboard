@@ -1,0 +1,4 @@
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/eggboil-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-eggboil-edit.ofn

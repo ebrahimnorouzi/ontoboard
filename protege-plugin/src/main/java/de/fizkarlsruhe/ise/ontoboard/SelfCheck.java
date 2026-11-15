@@ -39,8 +39,9 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
  * startup, in the host, and writes the answer to {@code protege.log}, where
  * {@code tools/smoke.ps1} asserts it.
  *
- * <p>Cheap on purpose: a three-axiom ontology held in memory, no file and no network, so the cost to
- * a user opening Protege is milliseconds. This is a smoke check, not a test suite - it covers the
+ * <p>Cheap on purpose: a three-axiom ontology held in memory and no network, so the cost to a user
+ * opening Protege is milliseconds. One check writes two small files to a temporary folder and
+ * removes them, because ROBOT's command line works on files. This is a smoke check, not a test suite - it covers the
  * ROBOT paths whose in-bundle behaviour cannot be established any other way, not the 21 menu items.
  *
  * <p>No Protege types and no Swing, so it is testable directly - though a green test here proves
@@ -238,6 +239,7 @@ public final class SelfCheck {
 
         checks.add(menuClassesResolve());
         checks.add(patternLibraryReadable());
+        checks.add(robotCommandLineRuns());
 
         try {
             // What Download... needs, loaded here rather than on the first click. The bundle
@@ -250,6 +252,64 @@ public final class SelfCheck {
         }
 
         return new Result(checks);
+    }
+
+    /**
+     * ROBOT's command line, and ODK's ROBOT plugin, run here, under Felix.
+     *
+     * <p>Without Docker a build is ROBOT command lines run in this JVM
+     * ({@link de.fizkarlsruhe.ise.ontoboard.odk.OdkRobot}). On a classpath that is tested. In a
+     * bundle it rests on things no test can show: that {@code robot-command} and ODK's plugin,
+     * which are nested jars, load; that ROBOT's cast of the root logger meets the host's logback
+     * and not a second copy of the class - with a logback of its own in the bundle every command
+     * failed there; and that Protege logs afterwards at the level it logged at before, which
+     * ROBOT would otherwise leave at ERROR.
+     *
+     * <p>The one check here that touches the disk: ROBOT's commands read and write files. Two
+     * small ones, in a temporary folder that is removed again.
+     */
+    private static Check robotCommandLineRuns() {
+        String name = "robot command line runs";
+        File folder = null;
+        try {
+            folder = Files.createTempDirectory("ontoboard-selfcheck").toFile();
+            File in = new File(folder, "in.ofn");
+            File out = new File(folder, "out.ofn");
+            Files.write(in.toPath(), ("Prefix(:=<https://example.org/selfcheck/>)\n"
+                    + "Ontology(<https://example.org/selfcheck/in.owl>\n"
+                    + "Declaration(Class(:A))\nDeclaration(Class(:B))\nSubClassOf(:A :B)\n)\n")
+                    .getBytes(StandardCharsets.UTF_8));
+            String levelBefore = de.fizkarlsruhe.ise.ontoboard.odk.OdkRobot.hostLogLevel();
+            de.fizkarlsruhe.ise.ontoboard.odk.OdkRobot.Result ran =
+                    de.fizkarlsruhe.ise.ontoboard.odk.OdkRobot.run(Arrays.asList("merge",
+                            "--input", in.getAbsolutePath(), "odk:normalize", "--add-source",
+                            "true", "convert", "--format", "ofn", "--output",
+                            out.getAbsolutePath()));
+            String levelAfter = de.fizkarlsruhe.ise.ontoboard.odk.OdkRobot.hostLogLevel();
+            if (!ran.ok()) {
+                return new Check(name, false, ran.failure());
+            }
+            if (!out.isFile() || out.length() == 0) {
+                return new Check(name, false, "merge, odk:normalize and convert ran and wrote "
+                        + "nothing");
+            }
+            if (levelBefore == null || !levelBefore.equals(levelAfter)) {
+                return new Check(name, false, "the line ran, and the log level went from "
+                        + levelBefore + " to " + levelAfter);
+            }
+            return new Check(name, true, "merge, odk:normalize and convert ran in this JVM; the "
+                    + "log level is " + levelAfter + " as before");
+        } catch (Exception | LinkageError cannot) {
+            return new Check(name, false, describe(cannot));
+        } finally {
+            if (folder != null) {
+                File[] left = folder.listFiles();
+                for (File file : left == null ? new File[0] : left) {
+                    file.delete();
+                }
+                folder.delete();
+            }
+        }
     }
 
     /**

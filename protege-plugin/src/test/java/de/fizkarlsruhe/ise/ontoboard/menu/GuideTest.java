@@ -1,8 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -52,6 +55,46 @@ class GuideTest {
                 }
             }
         }
+    }
+
+    /**
+     * A project OntoBoard 1.135 or before made is not set up for this version: Build and
+     * Release say so when they are asked. The guide is what somebody opens first, and it
+     * showed such a project's first step as done. It is the step to do, and its button
+     * carries the project over.
+     */
+    @Test
+    void aProjectOfTheOlderLayoutIsCarriedOverFirst(@TempDir File temp) throws Exception {
+        File edit = de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject.of1352(
+                new File(temp, "eggboil"));
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        List<Guide.Step> steps = Guide.steps(Guide.Start.PROJECT, facts);
+        Map<String, Guide.State> states = Guide.progress(steps, facts);
+
+        Guide.Step first = steps.get(0);
+        assertEquals("project", first.getId());
+        assertEquals(Guide.State.NEXT, states.get("project"), "not set up for this version");
+        assertEquals("Update project files...", first.getActionLabel());
+        assertTrue(first.getAction().endsWith(".UpdateProjectAction"), first.getAction());
+        assertTrue(first.getWhat().startsWith("This project was made by OntoBoard 1.135 or "
+                + "before"), first.getWhat());
+        assertTrue(first.getWhat().endsWith("Until then, Build and Release do not run on "
+                + "it."), first.getWhat());
+        assertEquals(10, steps.size(), "the rest of the path is the same");
+        assertEquals(Guide.steps(Guide.Start.PROJECT).get(1).getTitle(),
+                steps.get(1).getTitle());
+
+        // An ODK project, and nothing open at all, have the steps they had.
+        File odk = de.fizkarlsruhe.ise.ontoboard.odk.SeededProject.in(new File(temp, "new"));
+        Guide.Facts odkFacts = Guide.factsOf(odk, null);
+        List<Guide.Step> odkSteps = Guide.steps(Guide.Start.PROJECT, odkFacts);
+        assertEquals(Guide.State.DONE, Guide.progress(odkSteps, odkFacts).get("project"));
+        assertEquals("Open existing ODK project...", odkSteps.get(0).getActionLabel());
+        assertEquals("New ODK project...", Guide.steps(Guide.Start.NEW,
+                Guide.factsOf(null, null)).get(0).getActionLabel());
+        assertEquals("New ODK project...", Guide.steps(Guide.Start.NEW, null).get(0)
+                .getActionLabel());
     }
 
     /** With nothing open, the first step is the one to do, and Build is never finished. */
@@ -131,5 +174,168 @@ class GuideTest {
 
         assertTrue(!facts.hasRequirements, "an empty question table is not requirements");
         assertEquals(0, facts.ownTests, "the template is not a test");
+    }
+
+    /**
+     * In an ODK project a test of one's own is a question - a .rq file in src/sparql - or a
+     * check the configuration lists, with its file. ODK's own checks and the label check
+     * are not one, and nor is a check file that no list names.
+     */
+    @Test
+    void inAnOdkProjectTheTestsAreTheListedChecks(@TempDir File temp) throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            target.getParentFile().mkdirs();
+            Files.write(target.toPath(), file.getValue());
+        }
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        File yaml = new File(root, "src/ontology/eggboil-odk.yaml");
+        String config = de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.config("eggboil");
+        write(yaml, config);
+        write(new File(root, "src/sparql/check_labels-violation.sparql"), "SELECT * {}");
+        write(new File(root, "src/sparql/check_labels.rq"), "SELECT * {}");
+        write(new File(root, "src/sparql/other-violation.sparql"), "SELECT * {}");
+
+        assertEquals(0, Guide.factsOf(edit, null).ownTests,
+                "ODK's own, the label check in either form, and a check nobody lists");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config, "dc-properties");
+        write(yaml, config);
+        write(new File(root, "src/sparql/dc-properties-violation.sparql"), "SELECT * {}");
+        assertEquals(0, Guide.factsOf(edit, null).ownTests, "one of ODK's own checks");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config, "no_file_yet");
+        write(yaml, config);
+        assertEquals(0, Guide.factsOf(edit, null).ownTests, "listed, with no file");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config,
+                "every_dataset_has_part");
+        write(yaml, config);
+        write(new File(root, "src/sparql/every_dataset_has_part-violation.sparql"),
+                "SELECT * {}");
+        Guide.Facts facts = Guide.factsOf(edit, null);
+        assertEquals(1, facts.ownTests, "a question's check");
+        assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
+                .get("tests"));
+
+        write(new File(root, "src/sparql/every_egg_is_boiled.rq"), "SELECT * {}");
+        assertEquals(2, Guide.factsOf(edit, null).ownTests, "and a question");
+    }
+
+    /** A question alone is a test of one's own: what Write a test from a question writes. */
+    @Test
+    void inAnOdkProjectAQuestionIsATestOfOnesOwn(@TempDir File temp) throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            target.getParentFile().mkdirs();
+            Files.write(target.toPath(), file.getValue());
+        }
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        assertEquals(0, Guide.factsOf(edit, null).ownTests);
+
+        write(new File(root, "src/sparql/every_egg_is_boiled.rq"), "SELECT * {}");
+
+        Guide.Facts facts = Guide.factsOf(edit, null);
+        assertEquals(1, facts.ownTests);
+        assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
+                .get("tests"));
+    }
+
+    /**
+     * A project ODK released has git tags {@code v<version>} and no releases/ folder. Its
+     * releases count, and what the guide says it counts is true of it.
+     */
+    @Test
+    void theGuideCountsTaggedReleases(@TempDir File root) throws Exception {
+        assumeTrue(ProcessRunner.isAvailable(ProcessRunner.real(), "git", "--version"),
+                "git is not installed");
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        write(edit, "<rdf:RDF/>");
+        git(root, "init", "-q");
+        for (String version : new String[] {"1.0.0", "1.1.0"}) {
+            write(new File(root, "demo.owl"), "Ontology(<https://example.org/demo.owl>\n"
+                    + "Annotation(<http://www.w3.org/2002/07/owl#versionInfo> \"" + version
+                    + "\"))\n");
+            git(root, "add", "-f", "demo.owl");
+            git(root, "commit", "-q", "-m", "release(" + version + ")");
+            git(root, "tag", "-a", "v" + version, "-m", "demo " + version);
+        }
+
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        assertFalse(new File(root, "releases").exists());
+        assertEquals(2, facts.releases);
+        Map<String, Guide.State> states = Guide.progress(Guide.steps(Guide.Start.NEW), facts);
+        assertEquals(Guide.State.DONE, states.get("release"));
+        assertEquals(Guide.State.DONE, states.get("history"));
+        for (Guide.Step step : Guide.steps(Guide.Start.NEW)) {
+            if (step.getId().equals("release") || step.getId().equals("history")) {
+                assertFalse(step.getDoneWhen().contains("releases/")
+                        && !step.getDoneWhen().contains("tag"), step.getDoneWhen());
+            }
+        }
+    }
+
+    private static Guide.Step step(Guide.Start start, String id) {
+        for (Guide.Step step : Guide.steps(start)) {
+            if (step.getId().equals(id)) {
+                return step;
+            }
+        }
+        throw new AssertionError("no step " + id);
+    }
+
+    /**
+     * Task O26: what the guide says reads true for the ODK project OntoBoard 1.153.0 makes and
+     * runs. Where the files are; what Build's test runs - ODK's test, in ODK's container or by
+     * OntoBoard itself, asking the project's questions with its imports; and what a release
+     * leaves: a commit and a tag v&lt;version&gt;, and a copy under releases/ only in projects
+     * that keep that folder.
+     */
+    @Test
+    void theGuidesSentencesReadTrueForAnOdkProject() {
+        Guide.Step project = step(Guide.Start.NEW, "project");
+        assertTrue(project.getWhat().contains("-edit.owl")
+                && project.getWhat().contains("-odk.yaml"), project.getWhat());
+        assertFalse(project.getWhat().contains("release folder"),
+                "a new project has no releases/ until its first release: " + project.getWhat());
+        assertTrue(project.getInstead().contains("(ODK) itself writes"), project.getInstead());
+
+        Guide.Step file = step(Guide.Start.FILE, "project");
+        assertTrue(file.getWhat().contains("Start from"),
+                "New ODK project starts from the open file: " + file.getWhat());
+        assertFalse(file.getWhat().contains("Merge ontologies"), file.getWhat());
+
+        Guide.Step tests = step(Guide.Start.NEW, "tests");
+        assertTrue(tests.getInstead().contains("make test")
+                && tests.getInstead().contains("with its imports"), tests.getInstead());
+        assertTrue(tests.getDoneWhen().contains(".rq") && tests.getDoneWhen().contains("-odk.yaml"),
+                tests.getDoneWhen());
+
+        Guide.Step build = step(Guide.Start.NEW, "build");
+        assertTrue(build.getInstead().contains("ODK's container")
+                && build.getInstead().contains("OntoBoard itself"), build.getInstead());
+        assertFalse(build.getInstead().contains("no Docker"),
+                "Docker is used where its image is: " + build.getInstead());
+
+        Guide.Step release = step(Guide.Start.NEW, "release");
+        assertTrue(release.getWhat().contains("commit") && release.getWhat().contains("tag")
+                && release.getWhat().contains("v1.0.0"), release.getWhat());
+        assertTrue(release.getWhat().contains("releases/1.0.0/")
+                && release.getWhat().contains("keeps its releases there"),
+                "the copy, only where the folder is kept: " + release.getWhat());
+    }
+
+    private static void git(File root, String... arguments) throws Exception {
+        java.util.List<String> command = new java.util.ArrayList<String>(java.util.Arrays.asList(
+                "git", "-c", "user.name=Test", "-c", "user.email=test@example.org", "-c",
+                "core.autocrlf=false"));
+        command.addAll(java.util.Arrays.asList(arguments));
+        ProcessRunner.Outcome outcome = ProcessRunner.real().run(root, command, 1, null);
+        assertTrue(outcome.isSuccess(), command + ": " + outcome.getOutput());
     }
 }

@@ -1,0 +1,51 @@
+make IMP=true MIR=true PAT=false IMP_LARGE=true clean all_imports
+make[1]: Entering directory '/tmp/odk/evidence-eggboil/src/ontology'
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   eggboil.owl   eggboil-full.owl  tmp/merged-eggboil-edit.ofn tmp/eggboil-preprocess.owl
+curl -L http://purl.obolibrary.org/obo/iao.owl --create-dirs -o tmp/iao-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/iao-download.owl -o tmp/mirror-iao.owl
+mkdir -p mirror
+if [ -f tmp/mirror-iao.owl ]; then if cmp -s tmp/mirror-iao.owl mirror/iao.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-iao.owl mirror/iao.owl; fi; fi
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/eggboil-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-eggboil-edit.ofn
+robot --catalog catalog-v001.xml query --input tmp/merged-eggboil-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+mkdir -p tmp/plugins
+if [ -f ../../plugins/kgcl.jar ]; then        \
+	ln ../../plugins/kgcl.jar tmp/plugins/kgcl.jar ;         \
+elif [ -f /tools/robot-plugins/kgcl.jar ]; then \
+	cp /tools/robot-plugins/kgcl.jar tmp/plugins/kgcl.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/odk.jar ]; then        \
+	ln ../../plugins/odk.jar tmp/plugins/odk.jar ;         \
+elif [ -f /tools/robot-plugins/odk.jar ]; then \
+	cp /tools/robot-plugins/odk.jar tmp/plugins/odk.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/sssom.jar ]; then        \
+	ln ../../plugins/sssom.jar tmp/plugins/sssom.jar ;         \
+elif [ -f /tools/robot-plugins/sssom.jar ]; then \
+	cp /tools/robot-plugins/sssom.jar tmp/plugins/sssom.jar ;  \
+fi
+robot --catalog catalog-v001.xml annotate --input mirror/iao.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	         --force true --copy-ontology-annotations true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri https://example.org/eggboil \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri https://example.org/eggboil/eggboil/imports/iao_import.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/imports/iao_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/iao_import.owl.tmp.owl && mv imports/iao_import.owl.tmp.owl imports/iao_import.owl
+make[1]: Leaving directory '/tmp/odk/evidence-eggboil/src/ontology'

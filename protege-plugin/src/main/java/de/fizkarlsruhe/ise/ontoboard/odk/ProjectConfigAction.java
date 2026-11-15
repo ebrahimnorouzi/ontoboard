@@ -53,7 +53,12 @@ public class ProjectConfigAction extends ProtegeOWLAction {
     public void actionPerformed(ActionEvent event) {
         File yaml;
         try {
-            yaml = OdkProjectSettings.yamlIn(ontologyDirectory());
+            File directory = ontologyDirectory();
+            String why = whyNoConfiguration(directory);
+            if (why != null) {
+                throw new IllegalStateException(why);
+            }
+            yaml = OdkBuildSettings.yamlIn(directory);
         } catch (RuntimeException notFound) {
             JOptionPane.showMessageDialog(getOWLWorkspace(), notFound.getMessage(),
                     "No project configuration", JOptionPane.INFORMATION_MESSAGE);
@@ -353,12 +358,46 @@ public class ProjectConfigAction extends ProtegeOWLAction {
             what.append(changed.isEmpty() ? "" : ", and ").append(session.structuralEdits)
                     .append(session.structuralEdits == 1 ? " list change" : " list changes");
         }
+        final String saved = what.append(" to ").append(yaml.getName()).append(".").toString();
+        final File editFile = editFileOrNull();
+        if (editFile != null && OdkRelease.isOdkProject(editFile)) {
+            // An ODK project's Makefile, catalog and import declarations are written from
+            // this file: they follow it now, as Update project files writes them, and the
+            // message says what came of that.
+            de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.afterConfigChange(getOWLWorkspace(),
+                    getOWLModelManager(), editFile, new java.util.function.Consumer<
+                            de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.Done>() {
+                        @Override
+                        public void accept(
+                                de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.Done synced) {
+                            JOptionPane.showMessageDialog(getOWLWorkspace(),
+                                    ProjectWizard.wrapped(saved + "\n\n" + synced.said()),
+                                    "Project configuration",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    });
+            return;
+        }
         JOptionPane.showMessageDialog(getOWLWorkspace(),
-                what.append(" to ").append(yaml.getName())
-                        .append(".\n\nODK reads this file when it regenerates the repository, so "
-                                + "run the project's own update step for it to take effect.")
-                        .toString(),
+                saved + "\n\nODK reads this file when it regenerates the repository, so "
+                        + "run the project's own update step for it to take effect.",
                 "Project configuration", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** The file the open ontology is saved in; null when it is saved in none. */
+    private File editFileOrNull() {
+        try {
+            org.semanticweb.owlapi.model.OWLOntology ontology =
+                    getOWLModelManager().getActiveOntology();
+            org.semanticweb.owlapi.model.IRI document = ontology == null ? null
+                    : getOWLModelManager().getOWLOntologyManager()
+                            .getOntologyDocumentIRI(ontology);
+            java.net.URI uri = document == null ? null : document.toURI();
+            return uri != null && "file".equalsIgnoreCase(uri.getScheme())
+                    ? new File(uri).getAbsoluteFile() : null;
+        } catch (RuntimeException notAFile) {
+            return null;
+        }
     }
 
     /**
@@ -411,10 +450,33 @@ public class ProjectConfigAction extends ProtegeOWLAction {
     }
 
     /**
+     * Why there is no configuration to edit in a directory, or null when there is the
+     * one: none means the ontology is not in a project, and two cannot be chosen between.
+     */
+    static String whyNoConfiguration(File ontologyDirectory) {
+        int found = 0;
+        File[] files = ontologyDirectory == null ? null : ontologyDirectory.listFiles();
+        for (File file : files == null ? new File[0] : files) {
+            if (file.isFile() && file.getName().endsWith("-odk.yaml")) {
+                found++;
+            }
+        }
+        if (found == 1) {
+            return null;
+        }
+        String where = ontologyDirectory == null ? "no folder"
+                : ontologyDirectory.getAbsolutePath();
+        return found == 0 ? "There is no *-odk.yaml in " + where + ", so this ontology is "
+                + "not in an ODK project and has no project configuration to edit."
+                : "There are " + found + " *-odk.yaml files in " + where + ", so which of "
+                        + "them configures this project cannot be decided. Leave one.";
+    }
+
+    /**
      * The directory the open ontology is saved in, which is where its configuration lives.
      *
      * <p>The configuration sits beside the edit file in {@code src/ontology}, so this is the
-     * directory to search - the same one {@code OdkProjectSettings} reads from, through the
+     * directory to search - the same one {@link OdkBuildSettings} reads from, through the
      * same method, so the editor cannot end up showing a different file from the one the rest
      * of the plugin uses.
      */

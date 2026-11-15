@@ -93,35 +93,23 @@ class PatternIndexTest {
 
         List<String> stale = new ArrayList<String>();
         List<String> unreachable = new ArrayList<String>();
-        Map<String, String> secondRows = null;
         for (Map.Entry<String, String> row : shippedRows.entrySet()) {
-            if (row.getValue().equals(rebuiltRows.get(row.getKey()))) {
+            String rebuiltRow = rebuiltRows.get(row.getKey());
+            if (row.getValue().equals(rebuiltRow)) {
                 continue;
             }
-            if (!importsThatDidNotLoad(new File(patterns, row.getKey())).isEmpty()) {
-                unreachable.add(row.getKey());
-                continue;
-            }
-            // Every import loaded for this check - but this check is its own load, and the
-            // rebuild above was another. A server that failed one and answered the other changes a
-            // row with nothing in the repository changed: on CI, smarthome-situation lost three SSN
-            // terms when its import's own import, SmartHome_Property.owl on the same server, did
-            // not answer. So one more rebuild before the row is called stale: a row that matches it
-            // was the network, not the index.
-            if (secondRows == null) {
-                secondRows = rowsById(PatternIndex.buildFrom(patterns).replace("\r\n", "\n"));
-            }
-            if (row.getValue().equals(secondRows.get(row.getKey()))) {
-                unreachable.add(row.getKey());
-            } else {
+            String verdict = verdict(patterns, row.getKey(), row.getValue(), rebuiltRow);
+            if (STALE.equals(verdict)) {
                 stale.add(row.getKey());
+            } else if (verdict != null) {
+                unreachable.add(row.getKey() + " (" + verdict + ")");
             }
         }
 
         if (!unreachable.isEmpty()) {
             System.out.println("PatternIndexTest: " + unreachable.size() + " of "
-                    + shippedRows.size() + " rows were not compared because their pattern's "
-                    + "imports could not be fetched: " + unreachable);
+                    + shippedRows.size() + " rows differ from the rebuild because an import was "
+                    + "not fetched, not because the index is stale: " + unreachable);
         }
         String firstOne = stale.isEmpty() ? ""
                 : firstDifference(shippedRows.get(stale.get(0)), rebuiltRows.get(stale.get(0)));
@@ -129,6 +117,167 @@ class PatternIndexTest {
                 "patterns/index.tsv is stale for these, and their imports all loaded, so the "
                         + "network is not the reason. Regenerate it with PatternIndex.buildFrom. "
                         + firstOne);
+    }
+
+    /** What {@link #verdict} says of a row the directories no longer give. */
+    static final String STALE = "stale";
+
+    /** The terms column, the last of a row: see PatternIndex.buildFrom. */
+    private static final int TERMS = 9;
+
+    /**
+     * Why a shipped row differs from the rebuilt one: {@link #STALE}, or why the network and not
+     * the index is the difference.
+     *
+     * <p>Judged by one load of the pattern, the way the index loads it: if that load could not
+     * fetch an import, the row is not compared; if it fetched every one, its terms are what the
+     * row must hold, and every other column must be what the rebuild gave. The imports were
+     * checked by a load of their own, and the row then compared with a second rebuild - three
+     * fetches, any of which a flaky server could fail: on CI (Linux, 2026-11-09) the rebuild and
+     * the second rebuild missed SmartHome_Property.owl while the check between them fetched it,
+     * and an unchanged row was called stale.
+     */
+    static String verdict(File patterns, String id, String shippedRow, String rebuiltRow) {
+        Loaded loaded = load(new File(new File(patterns, id), "pattern.owl"));
+        if (!loaded.importsAllLoaded()) {
+            return "not compared: its import did not load (" + loaded.missingImports() + ")";
+        }
+        String[] shipped = shippedRow.split("\t", -1);
+        String[] rebuilt = rebuiltRow == null ? new String[0] : rebuiltRow.split("\t", -1);
+        if (shipped.length != TERMS + 1 || rebuilt.length != TERMS + 1
+                || !shipped[TERMS].equals(loaded.terms())) {
+            return STALE;
+        }
+        for (int column = 0; column < TERMS; column++) {
+            if (!shipped[column].equals(rebuilt[column])) {
+                return STALE;
+            }
+        }
+        return "the rebuild missed an import, and a load that fetched them all gives this row";
+    }
+
+    /** A pattern's load, the way the index loads it, and the imports that load could not fetch. */
+    static final class Loaded {
+        private final List<String> missing;
+        private final String terms;
+
+        Loaded(List<String> missing, String terms) {
+            this.missing = missing;
+            this.terms = terms;
+        }
+
+        boolean importsAllLoaded() {
+            return missing.isEmpty();
+        }
+
+        List<String> missingImports() {
+            return missing;
+        }
+
+        /** The terms column this load gives; null when the file could not be read. */
+        String terms() {
+            return terms;
+        }
+    }
+
+    /**
+     * Loads a pattern as {@link PatternIndex#buildFrom} does, and says what did not load: its
+     * own imports and its imports' imports, which is where a terms column comes from. Found on
+     * CI: smarthome-situation's own import, SmartHome_FeatureOfInterest.owl, loaded while the
+     * SmartHome_Property.owl it imports from the same server did not, and the rebuild lost three
+     * SSN terms that file declares. A document the parser rejects counts as not loaded too.
+     */
+    static Loaded load(File owl) {
+        List<String> missing = new ArrayList<String>();
+        org.semanticweb.owlapi.model.OWLOntology ontology;
+        try {
+            ontology = PatternIndex.load(owl);
+        } catch (java.io.IOException couldNotRead) {
+            missing.add(owl.getName() + ": " + couldNotRead.getMessage());
+            return new Loaded(missing, null);
+        }
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        for (org.semanticweb.owlapi.model.OWLOntology loaded : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLImportsDeclaration declared
+                    : loaded.getImportsDeclarations()) {
+                if (manager.getImportedOntology(declared) == null) {
+                    missing.add(declared.getIRI().toString());
+                }
+            }
+        }
+        return new Loaded(missing, PatternIndex.termsOf(ontology));
+    }
+
+    /** A pattern folder as the index reads one: metadata.json, and a pattern.owl importing one. */
+    private static File patternImporting(File patterns, String id, String imported)
+            throws java.io.IOException {
+        File folder = new File(patterns, id);
+        assertTrue(folder.mkdirs());
+        Files.write(new File(folder, "metadata.json").toPath(), ("{\"name\": \"Test " + id
+                + "\", \"pattern_iri\": \"http://example.org/" + id + "\"}")
+                        .getBytes(StandardCharsets.UTF_8));
+        File owl = new File(folder, "pattern.owl");
+        Files.write(owl.toPath(), ("<?xml version=\"1.0\"?>\n"
+                + "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+                + "    xmlns:owl=\"http://www.w3.org/2002/07/owl#\">\n"
+                + "  <owl:Ontology rdf:about=\"http://example.org/" + id + "\">\n"
+                + (imported == null ? "" : "    <owl:imports rdf:resource=\"" + imported
+                        + "\"/>\n")
+                + "  </owl:Ontology>\n"
+                + "  <owl:Class rdf:about=\"http://example.org/" + id + "#Thing\"/>\n"
+                + "</rdf:RDF>\n").getBytes(StandardCharsets.UTF_8));
+        return owl;
+    }
+
+    /** CI on Linux, 2026-11-09: an import the index's load could not fetch is no stale row. */
+    @Test
+    void aPatternWhoseImportDidNotLoadIsNotCalledStale(@org.junit.jupiter.api.io.TempDir File dir)
+            throws Exception {
+        File pattern = patternImporting(dir, "p", "http://localhost:9/nowhere.owl");
+
+        Loaded loaded = load(pattern);
+
+        assertFalse(loaded.importsAllLoaded());
+        assertEquals(java.util.Collections.singletonList("http://localhost:9/nowhere.owl"),
+                loaded.missingImports());
+        String row = rowsById(PatternIndex.buildFrom(dir)).get("p");
+        assertTrue(!STALE.equals(verdict(dir, "p", row + " http://example.org/p#Extra", row)));
+    }
+
+    /**
+     * The same CI run: the rebuild missed an import, the check of the imports - a load of its
+     * own - fetched it, and a second rebuild missed it again, so the row was called stale though
+     * the index had not changed. A row is judged by one load: the one whose terms it compares.
+     * Here that load and the old check resolve a relative import differently, as the network did
+     * between them on CI: the old check from the file's own folder, the index from a folder that
+     * is the same on every machine.
+     */
+    @Test
+    void aRowIsJudgedByTheLoadWhoseTermsItCompares(@org.junit.jupiter.api.io.TempDir File dir)
+            throws Exception {
+        File pattern = patternImporting(dir, "p", "imported.owl");
+        Files.write(new File(pattern.getParentFile(), "imported.owl").toPath(),
+                ("<?xml version=\"1.0\"?>\n"
+                        + "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+                        + "    xmlns:owl=\"http://www.w3.org/2002/07/owl#\">\n"
+                        + "  <owl:Ontology rdf:about=\"http://example.org/imported\"/>\n"
+                        + "</rdf:RDF>\n").getBytes(StandardCharsets.UTF_8));
+        String row = rowsById(PatternIndex.buildFrom(dir)).get("p");
+
+        String verdict = verdict(dir, "p", row + " http://example.org/p#Extra", row);
+
+        assertTrue(!STALE.equals(verdict), verdict);
+        assertTrue(verdict.contains("imported.owl"), verdict);
+    }
+
+    /** A row whose imports all loaded and that still differs is stale, network or not. */
+    @Test
+    void aRowWhoseImportsAllLoadedAndThatDiffersIsStale(@org.junit.jupiter.api.io.TempDir File dir)
+            throws Exception {
+        patternImporting(dir, "p", null);
+        String row = rowsById(PatternIndex.buildFrom(dir)).get("p");
+
+        assertEquals(STALE, verdict(dir, "p", row + " http://example.org/p#Extra", row));
     }
 
     /** The index, as a map from a pattern id to its whole line. Comments and blanks dropped. */
@@ -142,50 +291,6 @@ class PatternIndexTest {
             rows.put(tab < 0 ? line : line.substring(0, tab), line);
         }
         return rows;
-    }
-
-    /**
-     * The imports this pattern declares - directly, or through one of its imports - that an OWL
-     * API load could not resolve.
-     *
-     * <p>Asked of the file rather than of the network: an import that resolves to a document the
-     * parser rejects is as unusable as one that times out, and both are reasons the signature a
-     * rebuild sees is not the signature the index was built from.
-     *
-     * <p>Through its imports as well, because that is where a terms column comes from. Found on
-     * CI: smarthome-situation's own import, SmartHome_FeatureOfInterest.owl, loaded while the
-     * SmartHome_Property.owl it imports from the same server did not, and the rebuild lost three
-     * SSN terms that file declares. Checking only the pattern's own declarations, the test
-     * called that a stale index.
-     */
-    private static List<String> importsThatDidNotLoad(File folder) {
-        List<String> missing = new ArrayList<String>();
-        File owl = new File(folder, "pattern.owl");
-        if (!owl.isFile()) {
-            return missing;
-        }
-        org.semanticweb.owlapi.model.OWLOntologyManager manager =
-                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
-        try {
-            org.semanticweb.owlapi.model.OWLOntology ontology =
-                    manager.loadOntologyFromOntologyDocument(
-                            new org.semanticweb.owlapi.io.FileDocumentSource(owl),
-                            new org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration()
-                                    .setMissingImportHandlingStrategy(
-                                            org.semanticweb.owlapi.model
-                                                    .MissingImportHandlingStrategy.SILENT));
-            for (org.semanticweb.owlapi.model.OWLOntology loaded : ontology.getImportsClosure()) {
-                for (org.semanticweb.owlapi.model.OWLImportsDeclaration declared
-                        : loaded.getImportsDeclarations()) {
-                    if (manager.getImportedOntology(declared) == null) {
-                        missing.add(declared.getIRI().toString());
-                    }
-                }
-            }
-        } catch (Exception couldNotRead) {        // NOPMD - the reason is the answer
-            missing.add(owl.getName() + ": " + couldNotRead.getClass().getSimpleName());
-        }
-        return missing;
     }
 
     /**

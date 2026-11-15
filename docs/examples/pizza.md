@@ -38,9 +38,10 @@ that dotted edge → *Why is this inferred?...* to see the axioms behind it.
 
 ## 5. Run the project's checks
 
-*OntoBoard → Check and test → SPARQL...* → *Run this project's checks (src/sparql)*. Each check
-is a question the ontology must answer - every pizza has a base, every pizza has a price - and
-each says pass or FAIL.
+*OntoBoard → Check and test → SPARQL...* → *Run this project's checks (src/sparql)*. It asks
+ODK's checks and the project's questions - what the ontology must answer: every pizza has a base,
+every pizza has a price - and each says pass or FAIL. *OntoBoard → Build and release → Build...*
+→ `test` asks the same as part of ODK's own test, with the reasoner and the quality report.
 
 ## 6. Look back
 

@@ -1,0 +1,76 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < eggboil-odk.yaml | sha256sum | cut -c1-64)" = "8a5a8b7d2e2f0c8698940dd146c9113a5d914b7cd9da41d128e55ef029ec30b6" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f eggboil-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error eggboil-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/eggboil-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/eggboil-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-eggboil-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-eggboil-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-eggboil-edit.ofn -l true  --fail-on ERROR --print 5 -o reports/eggboil-edit.owl-obo-report.tsv
+curl -L http://purl.obolibrary.org/obo/iao.owl --create-dirs -o tmp/iao-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/iao-download.owl -o tmp/mirror-iao.owl
+mkdir -p mirror
+if [ -f tmp/mirror-iao.owl ]; then if cmp -s tmp/mirror-iao.owl mirror/iao.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-iao.owl mirror/iao.owl; fi; fi
+robot --catalog catalog-v001.xml query --input tmp/merged-eggboil-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+mkdir -p tmp/plugins
+if [ -f ../../plugins/kgcl.jar ]; then        \
+	ln ../../plugins/kgcl.jar tmp/plugins/kgcl.jar ;         \
+elif [ -f /tools/robot-plugins/kgcl.jar ]; then \
+	cp /tools/robot-plugins/kgcl.jar tmp/plugins/kgcl.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/odk.jar ]; then        \
+	ln ../../plugins/odk.jar tmp/plugins/odk.jar ;         \
+elif [ -f /tools/robot-plugins/odk.jar ]; then \
+	cp /tools/robot-plugins/odk.jar tmp/plugins/odk.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/sssom.jar ]; then        \
+	ln ../../plugins/sssom.jar tmp/plugins/sssom.jar ;         \
+elif [ -f /tools/robot-plugins/sssom.jar ]; then \
+	cp /tools/robot-plugins/sssom.jar tmp/plugins/sssom.jar ;  \
+fi
+robot --catalog catalog-v001.xml annotate --input mirror/iao.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	         --force true --copy-ontology-annotations true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri https://example.org/eggboil \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri https://example.org/eggboil/eggboil/imports/iao_import.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/imports/iao_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/iao_import.owl.tmp.owl && mv imports/iao_import.owl.tmp.owl imports/iao_import.owl
+robot --catalog catalog-v001.xml merge --input tmp/eggboil-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://example.org/eggboil/eggboil/eggboil-full.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil-full.owl --annotation owl:versionInfo 1.0.0 --output eggboil-full.owl.tmp.owl && mv eggboil-full.owl.tmp.owl eggboil-full.owl
+robot --catalog catalog-v001.xml annotate --input eggboil-full.owl --ontology-iri https://example.org/eggboil/eggboil.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o eggboil.owl.tmp.owl && mv eggboil.owl.tmp.owl eggboil.owl
+robot --catalog catalog-v001.xml merge -i eggboil.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_eggboil.owl.txt || { cat reports/validate_profile_owl2dl_eggboil.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/eggboil-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+check-rdfxml  eggboil.owl
+check-rdfxml  eggboil-full.owl
+make copy_release_files
+make[1]: Entering directory '/tmp/odk/evidence-eggboil/src/ontology'
+rsync -R   eggboil.owl   eggboil-full.owl   ../..
+make[1]: Leaving directory '/tmp/odk/evidence-eggboil/src/ontology'
+rm -f   eggboil.owl   eggboil-full.owl  tmp/merged-eggboil-edit.ofn tmp/eggboil-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"

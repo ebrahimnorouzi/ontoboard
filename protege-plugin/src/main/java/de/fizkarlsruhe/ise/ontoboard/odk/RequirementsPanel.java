@@ -51,26 +51,49 @@ public final class RequirementsPanel extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setOpaque(false);
 
+        JScrollPane scroll = new JScrollPane(body,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setPreferredSize(SHOWN);
+        // The rows do not scroll sideways: a row's text is as wide as what is shown has room
+        // for, beside the bar the rows scroll down with and the row's own disc.
+        int text = cssWidthOf(SHOWN.width - scroll.getVerticalScrollBar().getPreferredSize().width
+                - DISC - GAP - SLACK);
+
         body.add(section("What you can do"));
         for (Toolchain.Capability capability : report.getCapabilities()) {
             body.add(row(capability.isAvailable() ? GREEN : AMBER,
-                    capability.getName(), capability.getHow(), ""));
+                    capability.getName(), capability.getHow(), "", text));
         }
 
         body.add(Box.createVerticalStrut(14));
         body.add(section("What is installed"));
         for (Toolchain.Tool tool : report.getTools()) {
             body.add(row(colourFor(tool.getState()), tool.getName(), tool.getDetail(),
-                    tool.getRemedy()));
+                    tool.getRemedy(), text));
         }
-
-        JScrollPane scroll = new JScrollPane(body,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.setPreferredSize(new Dimension(620, 420));
         add(scroll, BorderLayout.CENTER);
+    }
+
+    /** What is shown of the rows at a time, across and down. */
+    private static final Dimension SHOWN = new Dimension(620, 420);
+    /** The disc's width, the gap between it and the text, and a little room to spare. */
+    private static final int DISC = 8;
+    private static final int GAP = 8;
+    private static final int SLACK = 4;
+
+    /**
+     * A width in pixels as the {@code px} of Swing's HTML that comes out that wide. Swing does
+     * not take a px for a pixel - it takes it for 1.3, unless a look and feel says otherwise -
+     * so it is measured here, not assumed: a row that asked for 520px was 676 pixels wide in a
+     * window that shows some 600, and was cut off.
+     */
+    private static int cssWidthOf(int pixels) {
+        int hundred = new JLabel("<html><body style='width:100px'>x</body></html>")
+                .getPreferredSize().width;
+        return hundred > 0 ? pixels * 100 / hundred : pixels;
     }
 
     private static Color colourFor(Toolchain.State state) {
@@ -90,7 +113,8 @@ public final class RequirementsPanel extends JPanel {
     }
 
     /** One line: a coloured disc, a name, what was found, and what to do about it. */
-    private static JPanel row(Color colour, String name, String detail, String remedy) {
+    private static JPanel row(Color colour, String name, String detail, String remedy,
+            int textWidth) {
         JPanel row = new JPanel(new GridBagLayout());
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -100,14 +124,15 @@ public final class RequirementsPanel extends JPanel {
         at.gridx = 0;
         at.gridy = 0;
         at.anchor = GridBagConstraints.NORTHWEST;
-        at.insets = new Insets(2, 0, 0, 8);
+        at.insets = new Insets(2, 0, 0, GAP);
         row.add(new JLabel(new de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons.Dot(colour)), at);
 
         at.gridx = 1;
         at.weightx = 1;
         at.fill = GridBagConstraints.HORIZONTAL;
         at.insets = new Insets(0, 0, 0, 0);
-        JLabel text = new JLabel("<html><body style='width:520px'><b>" + escape(name)
+        JLabel text = new JLabel("<html><body style='width:" + textWidth + "px'><b>"
+                + escape(name)
                 + "</b> &mdash; " + escape(detail)
                 + (remedy.isEmpty() ? ""
                         : "<br><span style='color:#5A6470'>" + escape(remedy) + "</span>")

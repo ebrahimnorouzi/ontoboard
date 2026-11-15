@@ -1,0 +1,5 @@
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   froz.obo  froz.owl   froz-base.obo  froz-base.owl   froz-full.obo  froz-full.owl  tmp/merged-froz-edit.ofn tmp/froz-preprocess.owl

@@ -1,0 +1,63 @@
+OntoBoard 1.149.0 - host smoke receipt
+
+The fresh review of 1.148.0 is acted on, with three deferred findings of the 1.147.0 review in
+the same code and three deferred minors whose cost falls on the person. Four reviewers read the
+code, one area each, and an independent checker reproduced each serious finding and tried to
+refute it. Three agents fixed keys, the clone's exclude rules and the role editor, each
+test-first in its own copy of the tree, and a reviewer read each diff; those reviewers found
+five more gaps, closed test-first before this build. Each change has a test that failed first:
+- Keys and saved text:
+  - A key or a password written straight after a Chinese, Japanese, Thai or Korean word, with
+    no space, is hidden. It was saved in clear in role files, conversations and exports.
+  - Ordinary text with an address in it stays whole at punctuation outside ASCII (Chinese and
+    Japanese commas, colons and brackets, curly quotes, dashes), at no-break and ideographic
+    spaces, and at ` [ { ^ ( after a port or a range of ports.
+  - A password after an e-mail user name with an apostrophe or a letter outside ASCII
+    (o'brien@..., jürgen@...), or after a user name such as 佐々木, is hidden.
+  - Benchmark models files: a field such as author or max_tokens no longer has a file refused
+    as holding a key; a key as the default of ${NAME:-...} is said to be one; a variable that
+    is set is a name, and its model runs; a long keyVariable that names no variable that is set
+    gets a word to take a key out of the file and out of git.
+- Saved conversations: when the clone's own .git/info/exclude cannot be written - read-only,
+  locked, another account's - OntoBoard now says which file, once per conversation and when
+  Save conversations is ticked. Before, it said "kept out of git", and the review's checker
+  pushed a private conversation to a shared remote end to end once a colleague had deleted the
+  shared .gitignore. A junction inside a clone pointing to a submodule's top folder, and every
+  clone along a chain of junctions, get the rules. Only a link or a junction on the way is
+  followed, so a folder whose parent cannot be listed raises no false warning.
+- Roles: a typed role text is no longer lost without a word. Picking the role already shown,
+  picking another role, New role, a reread, Save, Reset, Delete, a failed read and Save As each
+  keep it, one per project and role, and the line says where it waits. A team's role file named
+  in other capitals (Reviewer.md) is the same role: New role refuses the name, and a text typed
+  for it is saved into it.
+- Benchmark: the repair loop no longer calls an addition a removal, and tells the model why its
+  removal was refused; summary.md and the README describe validProposals and collateral as the
+  code counts them; a definition repeated with a soft hyphen or another invisible character is
+  one card; the message for an unknown action names all five actions.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.148.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 acb8e9788c73b786acf4dc58b5ccb9ffaa97f2f0d3ec4f201fe72039e7aa3449, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,491 tests, 0 failures, 0 errors, 3 skipped (3,448 in 1.148.0). The three skipped are as
+  before.
+- The recorder and redaction test classes also ran on Linux (WSL Ubuntu, Java 17, real git,
+  symbolic links): 105 tests, 103 passed, 2 skipped by their Windows-only assumptions, none
+  failed.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+
+No live benchmark was run: on this laptop one real request takes about 5 minutes, the bench's
+read timeout. A live run needs a GPU host or a smaller model.

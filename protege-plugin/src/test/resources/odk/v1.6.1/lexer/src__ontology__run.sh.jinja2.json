@@ -1,0 +1,222 @@
+[
+[
+"data",
+"#!/bin/sh\n# Wrapper script for docker.\n#\n# This is used primarily for wrapping the GNU Make workflow.\n# Instead of typing \"make TARGET\", type \"./run.sh make TARGET\".\n# This will run the make workflow within a docker container.\n#\n# The assumption is that you are working in the src/ontology folder;\n# we therefore map the whole repo (../..) to a docker volume.\n#\n# To use singularity instead of docker, please issue\n# export USE_SINGULARITY=<any-value>\n# before running this script.\n#\n# See README-editors.md for more details.\n\ncase \"$@\" in\n*update_repo*)\n    # Execute a copy of this script so that it can be overwritten\n    # during the update process\n    mkdir -p tmp\n    sed -n '/^set -e/,$p' $0 > tmp/$0\n    exec /bin/sh tmp/$0 \"$@\"\n    ;;\nesac\n\nset -e\n\n# Check for spaces in the current directory path\nfor item in $PWD ; do\n    if [ \"$item\" != \"$PWD\" ]; then\n        echo \"${0##*/}: error: repository path must not contain whitespace characters\" >&2\n        exit 1\n    fi\ndone\n\nif [ -f run.sh.conf ]; then\n    . ./run.sh.conf\nfi\n\n# Look for a GitHub token\nif [ -n \"$GH_TOKEN\" ]; then\n    :\nelif [ -f ../../.github/token.txt ]; then\n    GH_TOKEN=$(cat ../../.github/token.txt)\nelif [ -f $XDG_CONFIG_HOME/ontology-development-kit/github/token ]; then\n    GH_TOKEN=$(cat $XDG_CONFIG_HOME/ontology-development-kit/github/token)\nelif [ -f \"$HOME/Library/Application Support/ontology-development-kit/github/token\" ]; then\n    GH_TOKEN=$(cat \"$HOME/Library/Application Support/ontology-development-kit/github/token\")\nfi\n\n# SSH agent socket\n# On macOS, we cannot use $SSH_AUTH_SOCK directly,\n# we need to use a \"magic\" socket instead.\ncase \"$(uname)\" in\nDarwin)\n    ODK_SSH_AUTH_SOCKET=/run/host-services/ssh-auth.sock\n    ;;\n*)\n    ODK_SSH_AUTH_SOCKET=$SSH_AUTH_SOCK\n    ;;\nesac\nODK_SSH_BIND=\nif [ -n \"$ODK_SSH_AUTH_SOCKET\" ]; then\n    ODK_SSH_BIND=\",$ODK_SSH_AUTH_SOCKET:/run/host-services/ssh-auth.sock\"\nfi\n\nODK_IMAGE=${ODK_IMAGE:-odkfull}\nTAG_IN_IMAGE=$(echo $ODK_IMAGE | awk -F':' '{ print $2 }')\nif [ -n \"$TAG_IN_IMAGE\" ]; then\n  # Override ODK_TAG env var if IMAGE already includes a tag\n  ODK_TAG=$TAG_IN_IMAGE\n  ODK_IMAGE=$(echo $ODK_IMAGE | awk -F':' '{ print $1 }')\nfi\nODK_TAG=${ODK_TAG:-latest}\n",
+1
+],
+[
+"block",
+"if project.robot_java_args is defined and project.robot_java_args|length",
+76
+],
+[
+"data",
+"\nODK_JAVA_OPTS=${ODK_JAVA_OPTS:-",
+76
+],
+[
+"variable",
+"project.robot_java_args",
+77
+],
+[
+"data",
+"}\n",
+77
+],
+[
+"block",
+"else",
+78
+],
+[
+"data",
+"\nif [ -z \"$USE_SINGULARITY\" ]; then\n    DEFAULT_MAX_MEM=$(echo \"($(docker info --format={{.MemTotal}}) * .9) / (1024*1024*1024)\" | bc)G\nelse\n    DEFAULT_MAX_MEM=8G\nfi\nODK_JAVA_OPTS=${ODK_JAVA_OPTS:--Xmx$DEFAULT_MAX_MEM}\n",
+78
+],
+[
+"block",
+"endif",
+85
+],
+[
+"data",
+"\nODK_DEBUG=${ODK_DEBUG:-no}\n\nODK_USER_ID=${ODK_USER_ID:-",
+85
+],
+[
+"block",
+"if project.run_as_root",
+88
+],
+[
+"data",
+"0",
+88
+],
+[
+"block",
+"else",
+88
+],
+[
+"data",
+"$(id -u)",
+88
+],
+[
+"block",
+"endif",
+88
+],
+[
+"data",
+"}\nODK_GROUP_ID=${ODK_GROUP_ID:-",
+88
+],
+[
+"block",
+"if project.run_as_root",
+89
+],
+[
+"data",
+"0",
+89
+],
+[
+"block",
+"else",
+89
+],
+[
+"data",
+"$(id -g)",
+89
+],
+[
+"block",
+"endif",
+89
+],
+[
+"data",
+"}\n\n# Convert OWLAPI_* environment variables to the OWLAPI as Java options\n# See http://owlcs.github.io/owlapi/apidocs_4/org/semanticweb/owlapi/model/parameters/ConfigurationOptions.html\n# for a list of allowed options\nOWLAPI_OPTIONS_NAMESPACE=org.semanticweb.owlapi.model.parameters.ConfigurationOptions\nfor owlapi_var in $(env | sed -n s/^OWLAPI_//p) ; do\n    ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -D$OWLAPI_OPTIONS_NAMESPACE.${owlapi_var%=*}=${owlapi_var#*=}\"\ndone\n\n# Proxy settings for Java applications\n[ -z \"$HTTP_PROXY\" ] && [ -n \"$http_proxy\" ] && HTTP_PROXY=$http_proxy\nif [ -n \"$HTTP_PROXY\" ]; then\n    proxy_host=$(echo $HTTP_PROXY | sed -E 's,^https?://,,; s,:[0-9]+$,,')\n    proxy_port=$(echo $HTTP_PROXY | sed -E 's,^.*:([0-9]+)$,\\1,')\n    ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -Dhttp.proxyHost=$proxy_host\"\n    [ \"$proxy_port\" != \"$proxy_host\" ] && ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -Dhttp.proxyPort=$proxy_port\"\nfi\n[ -z \"$HTTPS_PROXY\" ] && [ -n \"$https_proxy\" ] && HTTPS_PROXY=$https_proxy\nif [ -n \"$HTTPS_PROXY\" ]; then\n    proxy_host=$(echo $HTTPS_PROXY | sed -E 's,^https?://,,; s,:[0-9]+$,,')\n    proxy_port=$(echo $HTTPS_PROXY | sed -E 's,^.*:([0-9]+)$,\\1,')\n    ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -Dhttps.proxyHost=$proxy_host\"\n    [ \"$proxy_port\" != \"$proxy_host\" ] && ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -Dhttps.proxyPort=$proxy_port\"\nfi\n[ -z \"$NO_PROXY\" ] && [ -n \"$no_proxy\" ] && NO_PROXY=$no_proxy\nif [ -n \"$NO_PROXY\" ] ; then\n    no_proxy_hosts=$(echo $NO_PROXY | tr ',' '|')\n    ODK_JAVA_OPTS=\"$ODK_JAVA_OPTS -Dhttp.nonProxyHosts=$no_proxy_hosts\"\nfi\n\nTIMECMD=\nif [ x$ODK_DEBUG = xyes ]; then\n    # If you wish to change the format string, take care of using\n    # non-breaking spaces (U+00A0) instead of normal spaces, to\n    # prevent the shell from tokenizing the format string.\n    echo \"Running obolibrary/${ODK_IMAGE}:${ODK_TAG} with '${ODK_JAVA_OPTS}' as options for ROBOT and other Java-based pipeline steps.\"\n    TIMECMD=\"/usr/bin/time -f ### DEBUG STATS ###\\nElapsed time: %E\\nPeak memory: %M kb\"\nfi\nrm -f tmp/debug.log\n\nVOLUME_BIND=$PWD/../../:/work$ODK_SSH_BIND\nWORK_DIR=/work/src/ontology\n\n# Support for OAK cache sharing\nif [ -n \"$ODK_SHARE_OAK_CACHE\" ]; then\n    case \"$ODK_SHARE_OAK_CACHE\" in\n    user)\n        # We assume the cache is in its default location; if it is not,\n        # ODK_SHARE_OAK_CACHE must point to the actual location.\n        ODK_SHARE_OAK_CACHE=\"$HOME/.data/oaklib\"\n        ;;\n    repo)\n        ODK_SHARE_OAK_CACHE=\"$PWD/tmp/oaklib\"\n        ;;\n    esac\n    [ $ODK_USER_ID -eq 0 ] && OAK_DEST=/root/.data/oaklib || OAK_DEST=/home/odkuser/.data/oaklib\n    VOLUME_BIND=\"$VOLUME_BIND,$ODK_SHARE_OAK_CACHE:$OAK_DEST\"\nfi\n\nif [ -n \"$ODK_BINDS\" ]; then\n    VOLUME_BIND=\"$VOLUME_BIND,$ODK_BINDS\"\nfi\n",
+89
+],
+[
+"block",
+"if project.use_env_file_docker is sameas True",
+152
+],
+[
+"data",
+"\n# Gather environment variables into a single file\n# (and make sure that file is deleted no matter what)\ntrap \"rm -f run.sh.env\" EXIT\ntrap \"rm -f run.sh.env; trap - INT; kill -INT $$\" INT\ncat <<EOF > run.sh.env\nROBOT_JAVA_ARGS=$ODK_JAVA_OPTS\nJAVA_OPTS=$ODK_JAVA_OPTS\nGH_TOKEN=$GH_TOKEN\nSSH_AUTH_SOCK=/run/host-services/ssh-auth.sock\nODK_USER_ID=$ODK_USER_ID\nODK_GROUP_ID=$ODK_GROUP_ID\nODK_DEBUG=$ODK_DEBUG\nEOF\n",
+152
+],
+[
+"block",
+"endif",
+166
+],
+[
+"data",
+"\nif [ -n \"$USE_SINGULARITY\" ]; then\n    ",
+166
+],
+[
+"block",
+"if project.use_external_date is sameas True",
+168
+],
+[
+"data",
+"export TODAY=$(date +%Y-%m-%d)",
+168
+],
+[
+"block",
+"endif",
+168
+],
+[
+"data",
+"\n    singularity exec --cleanenv $ODK_SINGULARITY_OPTIONS \\\n        ",
+168
+],
+[
+"block",
+"if project.use_env_file_docker is sameas True",
+170
+],
+[
+"data",
+"--env-file run.sh.env ",
+170
+],
+[
+"block",
+"else",
+170
+],
+[
+"data",
+"--env \"ROBOT_JAVA_ARGS=$ODK_JAVA_OPTS,JAVA_OPTS=$ODK_JAVA_OPTS,SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock,ODK_USER_ID=$ODK_USER_ID,ODK_GROUP_ID=$ODK_GROUP_ID,ODK_DEBUG=$ODK_DEBUG\" ",
+170
+],
+[
+"block",
+"endif",
+170
+],
+[
+"data",
+"\\\n        --bind $VOLUME_BIND \\\n        -W $WORK_DIR \\\n        docker://obolibrary/$ODK_IMAGE:$ODK_TAG $TIMECMD \"$@\"\nelse\n    BIND_OPTIONS=\"-v $(echo $VOLUME_BIND | sed 's/,/ -v /g')\"\n    docker run $ODK_DOCKER_OPTIONS $BIND_OPTIONS -w $WORK_DIR \\\n        ",
+170
+],
+[
+"block",
+"if project.use_env_file_docker is sameas True",
+177
+],
+[
+"data",
+"--env-file run.sh.env ",
+177
+],
+[
+"block",
+"else",
+177
+],
+[
+"data",
+"-e ROBOT_JAVA_ARGS=\"$ODK_JAVA_OPTS\" -e JAVA_OPTS=\"$ODK_JAVA_OPTS\" -e SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock -e ODK_USER_ID=$ODK_USER_ID -e ODK_GROUP_ID=$ODK_GROUP_ID -e ODK_DEBUG=$ODK_DEBUG ",
+177
+],
+[
+"block",
+"if project.use_external_date is sameas True",
+177
+],
+[
+"data",
+"-e TODAY=`date +%Y-%m-%d` ",
+177
+],
+[
+"block",
+"endif",
+177
+],
+[
+"block",
+"endif",
+177
+],
+[
+"data",
+"\\\n        --rm -ti obolibrary/$ODK_IMAGE:$ODK_TAG $TIMECMD \"$@\"\nfi\n\ncase \"$@\" in\n*update_repo*|*release*)\n    echo \"Please remember to update your ODK image from time to time: https://oboacademy.github.io/obook/howto/odk-update/.\"\n    ;;\nesac",
+177
+]
+]

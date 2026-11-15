@@ -1,0 +1,11 @@
+?cls	?def	?xrefs
+<http://purl.obolibrary.org/obo/LOIM_0000000>	"The class everything of this ontology is under."@en	
+<http://purl.obolibrary.org/obo/IAO_0000310>	"A collection of information content entities intended to be understood together as a whole."	
+<http://purl.obolibrary.org/obo/BFO_0000002>	"An entity that persists, endures, or continues to exist through time while maintaining its identity."	
+<http://purl.obolibrary.org/obo/BFO_0000001>		
+<http://purl.obolibrary.org/obo/BFO_0000003>	"An entity that unfolds itself in time."	
+<http://purl.obolibrary.org/obo/LOIM_0000002>	"A document that says how a dish is made."@en	
+<http://purl.obolibrary.org/obo/IAO_0000311>	"A document that is the output of a publishing process."	
+<http://purl.obolibrary.org/obo/LOIM_0000001>	"A process in which water is brought to the boil."@en	
+<http://purl.obolibrary.org/obo/BFO_0000015>	"An occurrent that has some temporal proper part and for some time has a material entity as participant."	
+<http://purl.obolibrary.org/obo/IAO_0000300>	"A document part that describes some entity."	

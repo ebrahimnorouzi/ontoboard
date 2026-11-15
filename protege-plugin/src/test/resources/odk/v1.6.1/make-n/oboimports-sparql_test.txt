@@ -1,0 +1,6 @@
+robot --catalog catalog-v001.xml convert --input obim-edit.owl --format ofn --output tmp/obim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/obim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-obim-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-obim-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports

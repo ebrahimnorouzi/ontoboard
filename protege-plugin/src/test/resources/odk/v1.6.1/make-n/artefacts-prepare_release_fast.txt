@@ -1,0 +1,103 @@
+make prepare_release IMP=false PAT=false MIR=false COMP=false
+make[1]: Entering directory '/tmp/odk/artefacts/src/ontology'
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < arte-odk.yaml | sha256sum | cut -c1-64)" = "7be42aae8dace23aedb6603e2ef4cbd8b1adf1e6d7a81aa8cbde4ab31185ee71" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f arte-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error arte-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input arte-edit.owl --format ofn --output tmp/arte-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/arte-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/arte-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-arte-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-arte-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-arte-edit.ofn -l true  --fail-on ERROR --print 5 -o reports/arte-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/arte-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/arte/arte-full.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-full.owl --annotation owl:versionInfo 1.0.0 --output arte-full.owl.tmp.owl && mv arte-full.owl.tmp.owl arte-full.owl
+robot --catalog catalog-v001.xml annotate --input arte-full.owl --ontology-iri http://purl.obolibrary.org/obo/arte.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o arte.owl.tmp.owl && mv arte.owl.tmp.owl arte.owl
+robot --catalog catalog-v001.xml merge -i arte.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_arte.owl.txt || { cat reports/validate_profile_owl2dl_arte.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/arte-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml annotate --input arte.owl --ontology-iri http://purl.obolibrary.org/obo/arte.json annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o arte.json.tmp.json &&\
+	mv arte.json.tmp.json arte.json
+robot --catalog catalog-v001.xml annotate --input arte.owl --ontology-iri http://purl.obolibrary.org/obo/arte.ttl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte.ttl --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f ttl -o arte.ttl.tmp.ttl && mv arte.ttl.tmp.ttl arte.ttl
+robot --catalog catalog-v001.xml merge --input tmp/arte-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/ARTE --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/arte/arte-base.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output arte-base.owl.tmp.owl && mv arte-base.owl.tmp.owl arte-base.owl
+robot --catalog catalog-v001.xml annotate --input arte-base.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-base.json annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-base.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o arte-base.json.tmp.json &&\
+	mv arte-base.json.tmp.json arte-base.json
+robot --catalog catalog-v001.xml annotate --input arte-base.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-base.ttl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-base.ttl --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f ttl -o arte-base.ttl.tmp.ttl && mv arte-base.ttl.tmp.ttl arte-base.ttl
+robot --catalog catalog-v001.xml annotate --input arte-full.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-full.json annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-full.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o arte-full.json.tmp.json &&\
+	mv arte-full.json.tmp.json arte-full.json
+robot --catalog catalog-v001.xml annotate --input arte-full.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-full.ttl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-full.ttl --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f ttl -o arte-full.ttl.tmp.ttl && mv arte-full.ttl.tmp.ttl arte-full.ttl
+robot --catalog catalog-v001.xml query -f csv -i tmp/merged-arte-edit.ofn --query ../sparql/arte_terms.sparql tmp/ontologyterms.txt
+robot --catalog catalog-v001.xml query -f csv -i tmp/merged-arte-edit.ofn --query ../sparql/simple-seed.sparql tmp/simple_seed.txt.tmp &&\
+cat tmp/simple_seed.txt.tmp tmp/ontologyterms.txt | sort | uniq >  tmp/simple_seed.txt &&\
+echo "http://www.geneontology.org/formats/oboInOwl#SubsetProperty" >> tmp/simple_seed.txt &&\
+echo "http://www.geneontology.org/formats/oboInOwl#SynonymTypeProperty" >> tmp/simple_seed.txt
+mkdir -p tmp/plugins
+if [ -f ../../plugins/kgcl.jar ]; then        \
+	ln ../../plugins/kgcl.jar tmp/plugins/kgcl.jar ;         \
+elif [ -f /tools/robot-plugins/kgcl.jar ]; then \
+	cp /tools/robot-plugins/kgcl.jar tmp/plugins/kgcl.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/odk.jar ]; then        \
+	ln ../../plugins/odk.jar tmp/plugins/odk.jar ;         \
+elif [ -f /tools/robot-plugins/odk.jar ]; then \
+	cp /tools/robot-plugins/odk.jar tmp/plugins/odk.jar ;  \
+fi
+mkdir -p tmp/plugins
+if [ -f ../../plugins/sssom.jar ]; then        \
+	ln ../../plugins/sssom.jar tmp/plugins/sssom.jar ;         \
+elif [ -f /tools/robot-plugins/sssom.jar ]; then \
+	cp /tools/robot-plugins/sssom.jar tmp/plugins/sssom.jar ;  \
+fi
+robot --catalog catalog-v001.xml merge --input tmp/arte-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+	relax --include-subclass-of true \
+	remove --axioms equivalent \
+	filter --term-file tmp/simple_seed.txt --select "annotations ontology anonymous self" --trim true --signature true \
+	reduce -r ELK --include-subproperties true \
+	odk:normalize --base-iri http://purl.obolibrary.org/obo --subset-decls true --synonym-decls true \
+	repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/arte/arte-simple.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-simple.owl --annotation owl:versionInfo 1.0.0 --output arte-simple.owl.tmp.owl && mv arte-simple.owl.tmp.owl arte-simple.owl
+robot --catalog catalog-v001.xml annotate --input arte-simple.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-simple.json annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-simple.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o arte-simple.json.tmp.json &&\
+	mv arte-simple.json.tmp.json arte-simple.json
+robot --catalog catalog-v001.xml annotate --input arte-simple.owl --ontology-iri http://purl.obolibrary.org/obo/arte/arte-simple.ttl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-simple.ttl --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f ttl -o arte-simple.ttl.tmp.ttl && mv arte-simple.ttl.tmp.ttl arte-simple.ttl
+check-rdfxml  arte.owl
+check-rdfxml  arte-base.owl
+check-rdfxml  arte-full.owl
+check-rdfxml  arte-simple.owl
+make copy_release_files
+make[2]: Entering directory '/tmp/odk/artefacts/src/ontology'
+rsync -R   arte.json  arte.owl  arte.ttl   arte-base.json  arte-base.owl  arte-base.ttl   arte-full.json  arte-full.owl  arte-full.ttl   arte-simple.json  arte-simple.owl  arte-simple.ttl   ../..
+make[2]: Leaving directory '/tmp/odk/artefacts/src/ontology'
+rm -f   arte.json  arte.owl  arte.ttl   arte-base.json  arte-base.owl  arte-base.ttl   arte-full.json  arte-full.owl  arte-full.ttl   arte-simple.json  arte-simple.owl  arte-simple.ttl  tmp/merged-arte-edit.ofn tmp/arte-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"
+make[1]: Leaving directory '/tmp/odk/artefacts/src/ontology'

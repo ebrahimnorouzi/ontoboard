@@ -1,0 +1,130 @@
+OntoBoard 1.153.0 - host smoke receipt
+
+Every project OntoBoard makes and runs is now an ODK project, identical to what ODK v1.6.1 itself
+writes, and OntoBoard can run ODK's targets itself, inside Protege, with nothing installed. The
+assistant, built as 1.136.0 to 1.151.0 on its own branch and never released, comes with it. See
+WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Both Protege are throwaway copies of the maintainer's
+installs, each with this jar the only ontoboard-*.jar in plugins; the installs themselves were
+only read, and the maintainer's own Protege 5.6.9 - open during the runs - keeps 1.135.2, the
+version a usability study is using. smoke.ps1 ran under Windows PowerShell 5.1, with
+-WaitSeconds 300, and opened no ontology.
+
+  2026-11-15  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 11/11  test 12/12
+  2026-11-15  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 11/11
+  2026-11-15  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 11/11  test 12/12
+
+The self-test's summary starts with the version it tested: "OntoBoard 1.153.0: 12 of 12 checks
+ran - 9 menu items, ODK's test run by OntoBoard itself and 2 tabs". Its new item, "Build (nothing
+installed)", makes a project from ODK v1.6.1's templates and runs ODK's test on it by OntoBoard
+itself - the reasoner, ODK's five checks, the quality report and the OWL profile - without
+starting any program: 1660 ms in 5.6.9, 1138 ms in 5.5.0. The OntoBoard tab is built with the
+board and the Assistant column. In 5.5.0 two other plugins of the install, cellfie 2.2.4 and
+swrltab 2.1.3, failed to install; neither is OntoBoard's.
+
+The bundle imports two packages of Protege's that 1.135.2 did not, org.protege.editor.owl.model.io
+and org.protege.editor.owl.model.library, at version 5.5.0 or later: both Protege export them
+(5.5.0 at 5.5.0, 5.6.9 at 5.6.9), and the bundle resolved in both.
+
+By hand, in an isolated copy of Protege 5.6.9 - its own home and its own preferences - with the
+first candidate of this release (sha256 8722d6c1...), which differs from this jar by the fix below
+and by the width of the container settings' program field, on a project New ODK project... made
+in ODK's container:
+
+  2026-11-15  "Which range is yours?" when the board's first new term is a property (a new
+              property in Relate to another term...): the question names the property, the name
+              goes into the first of ODK's placeholder ranges, and the property is
+              RANGECHECK_0000001. ID ranges... says the ranges are ODK's placeholders until then,
+              and nothing after. The other path, a new class, was seen in a walk of the egg guide.
+  2026-11-15  The Assistant column, with a connection to a local port nothing listens on, so that
+              nothing was sent anywhere: the conversation on screen follows a new version IRI;
+              Explain the reasoner problem... explains the class chosen, not another with the same
+              label, and drops the chip of a class that is fixed while another class is not.
+
+That check found one defect, fixed in this jar: with nothing chosen in Protege's Reasoner menu -
+as on a fresh install - Explain the reasoner problem... ran Protege's null reasoner and said the
+ontology had no problem. With the fix - the jar 8fa02275..., which differs from this one only by
+that field's width - in isolated copies of both Protege, with None chosen and two unsatisfiable
+classes:
+
+  2026-11-15  Protege 5.6.9  "Protégé Null Reasoner" running, None chosen: the column ran HermiT
+              and listed both classes
+  2026-11-15  Protege 5.5.0  the same; Protege's None has no name there and is known by its
+              identifier
+
+The jar: sha256 1aa6ee6937bc2a9f0457a1201e6a30c797688cbef54020340ab2318a1926561a, 67,916,684
+bytes, built on Windows by mvn -o -B clean package from this release's tree; it is the jar the
+smoke runs. The unit suite in that build, on Java 11: 5,667 tests, 0 failures, 0 errors, 5
+skipped - BundleConfigurationTest's two jar tests, which a clean build reaches before the jar
+exists (run against this jar afterwards, its 20 tests passed); PinchZoomTest, on a Mac only;
+KoncludeTest's executable-bit test and one SettingsPanelTest case, which need a file system with
+an executable bit or one that keeps case, and run on CI's Linux job. On the tree before the last
+two changes - four tests and that field's width - the ODK, menu and process classes on Java 8,
+Protege 5.5.0's own 1.8.0_121: 2,534 tests, 0 failures, 1 skipped (OdkRobotTest's comparison
+with obographs' own class, which Java 8 cannot load); the ODK classes with OWL API 4.5.29,
+Protege 5.6.9's: 2,164 tests, 0 failures; and the live tests, which start ODK's container
+(obolibrary/odkfull, v1.6.1) and the collaboration server: 18 tests, 0 failures, 1 skipped
+(MigrationLiveTest's case for projects named on the command line).
+
+GitHub's CI, on this release's first push, found what this machine could not: on Windows, three
+tests that expected the runner's temporary folder under its 8.3 short name, where OntoBoard
+names the long one; on Linux, the container settings 648 px wide in DejaVu Sans, past the 640 px
+their test allows, and a test that gave a check 1 ms and found HermiT done within it. The tests
+are fixed, and the settings' program field asks for 28 columns instead of 34 (583 px in DejaVu
+Sans) - the only change to the plugin since the jar the fix above was checked with.
+
+
+WHAT THIS RELEASE ADDS
+
+- New ODK project... writes ODK's own seed, every file byte for byte: the Makefile with all of
+  ODK's targets, run.sh, the CI workflow in ODK's image, ODK's checks. Where Docker or Podman runs
+  and ODK's image is on the machine, ODK's container writes it; otherwise OntoBoard renders ODK's
+  own templates, which it carries. OntoBoard adds six files of its own.
+- Build..., Release..., Refresh imports... and Update project files... run ODK's own targets, in
+  one of three ways chosen in Check requirements...: with ODK's tools installed, in ODK's
+  container, or by OntoBoard itself, which reads ODK's Makefile and runs its recipes inside
+  Protege. Docker is not needed for a project of ODK's standard shape.
+- A project's own Makefile and release script are respected. Rules of a project's own run in
+  ODK's container; OntoBoard's own engine refuses them and says why.
+- A release is ODK's release: make clean, then prepare_release, the files at the top of the
+  project, the version IRI in ODK's shape or one of three others, the commit and the tag shown
+  as git commands and run when you agree. Nothing is pushed.
+- Stop stops ODK's container: OntoBoard names each container it starts and removes it when a run
+  is stopped or out of time.
+- A failed build says what stopped it - the reasoner's finding, the check and its terms, the
+  quality report's errors, an OWL 2 DL violation - and Release says the same.
+- A project made by 1.135 or before is carried over by OntoBoard > Project > Update project
+  files...; until then Build and Release say so and change nothing.
+- Check requirements... has a row for ODK's image and a button that pulls it when asked.
+  OntoBoard never pulls by itself.
+- The first term you make on the board asks which of ODK's two placeholder ID ranges is yours,
+  and writes your name into it.
+- The Assistant column: a cloud model with your own key, or a model on your own machine through
+  Ollama. It answers questions about the selected term or the ontology, explains a reasoner
+  problem and suggests changes as cards; nothing changes until Accept, and an accepted change is
+  one Edit > Undo. docs/assistant.md says what is sent and where a key is kept.
+- Proof on two ODK repositories, a materials-science application ontology and the mid-level
+  ontology it builds on: the release files, and all import modules but one, are byte for byte
+  what ODK's container makes when run directly; the one module differs in two comment lines.
+- A review of the whole ODK work found seven defects that mattered and five smaller ones; all
+  twelve are fixed, each with a test that failed first. docs/fixed.md has every one.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The scripted runs send mouse events to the components directly, so focus, hover, drag and the
+  native file dialogs were not exercised with a real mouse on this jar.
+- Linux and macOS: not run on this jar; CI runs the unit suite on Linux and on Windows.
+- A real model: the assistant was checked with a connection that answers nothing. Its answers,
+  with a cloud model or Ollama, are what the assistant's own benchmark is for.
+- Pulling ODK's image from Check requirements...: never run on this machine, where the image was
+  present. Podman: not tried.
+- OntoBoard's own engine on a project with rules of its own: refused by design; such projects ran
+  in ODK's container, as in the proof above. ODK's 79 sample configurations are held as seeds;
+  which of their targets the engine runs is measured on nine projects, not on all 79.
+- How long each task takes: docs/measurements.md has ODK in Docker against OntoBoard, task by
+  task, five runs each way on this machine while other programs kept its processors 93% busy
+  on average - every task agreed, and OntoBoard's slowest run was faster than ODK's fastest in
+  each - but not a benchmark. The command that measures it on a quiet machine is beside it.

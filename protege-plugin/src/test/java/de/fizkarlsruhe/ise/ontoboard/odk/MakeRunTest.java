@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.util.ArrayList;
 
 /**
  * Running an ODK project's own build from inside Protege.
@@ -26,9 +27,8 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p>What is worth testing is not that {@code make} works. It is the surrounding judgement: that a
  * missing tool is reported as a setup problem rather than a broken project, that a failure points
- * at the part of a several-hundred-line transcript that explains it, and that a target which
- * rewrites the file Protege has open says so - because Protege will not notice, and somebody who
- * carries on editing will overwrite the build's output when they save.
+ * at the part of a several-hundred-line transcript that explains it. What a target rewrites of
+ * what Protege has open is read again by the action that ran it ({@code WhatARunWrote}).
  */
 class MakeRunTest {
 
@@ -178,29 +178,9 @@ class MakeRunTest {
                 () -> MakeRun.dockerCommand(null, null, "all"));
     }
 
-    /**
-     * The project's own pinned image is used, not a guess.
-     *
-     * <p>go-ontology pins {@code obolibrary/odkfull:v1.5.4} and its comment says the version must
-     * be coordinated with its pipeline; MWO's run.bat names the image with no tag. Building
-     * somebody's ontology against a different ODK than their CI uses is how a release stops being
-     * reproducible, so the pin is read rather than assumed.
-     */
-    @Test
-    void theImageIsReadFromTheProjectsOwnRunner() {
-        assertEquals("obolibrary/odkfull:v1.5.4", MakeRun.imageFrom(
-                "docker run -m 12g -v $PWD/../../:/work --rm -ti obolibrary/odkfull:v1.5.4 \"$@\""));
-        assertEquals("obolibrary/odkfull", MakeRun.imageFrom(
-                "docker run -v %cd%\\..\\..\\:/work --rm -ti obolibrary/odkfull %*"));
-        assertEquals("obolibrary/odklite:v1.4", MakeRun.imageFrom(
-                "IMAGE=odklite\ndocker run --rm obolibrary/odklite:v1.4 \"$@\""));
-        // A tagged mention beats an earlier bare one: run.sh composes $ODK_IMAGE:$ODK_TAG and
-        // often names the plain image in a comment above it.
-        assertEquals("obolibrary/odkfull:v1.6", MakeRun.imageFrom(
-                "# see obolibrary/odkfull for details\ndocker run obolibrary/odkfull:v1.6 \"$@\""));
-        assertEquals(MakeRun.DEFAULT_IMAGE, MakeRun.imageFrom("docker run something-else"));
-        assertEquals(MakeRun.DEFAULT_IMAGE, MakeRun.imageFrom(null));
-    }
+    // Which image runs a project - its own pin, the ODK that wrote its Makefile, or the pinned
+    // one - is OdkImage's to decide now, and OdkImageTest's to check: a tag written out in the
+    // project's run.sh (go-ontology's v1.5.4) is still its pin.
 
     private static ProcessRunner.Outcome failedWith(String... lines) {
         return new ProcessRunner.Outcome(2, Arrays.asList(lines), false);
@@ -444,6 +424,37 @@ class MakeRunTest {
         assertTrue(explanation.contains("-Xmx"), explanation);
     }
 
+    /**
+     * ODK's full targets fetch the project's imports. Without the network they stop in the
+     * middle of a download, and what make says last names a mirror file, not the cause. The
+     * fast targets build from the imports as they are: that is what to run instead.
+     */
+    @Test
+    void aDownloadThatFailsOffersTheFastTarget() {
+        for (String cause : new String[] {
+            "curl: (6) Could not resolve host: purl.obolibrary.org",
+            "curl: (7) Failed to connect to purl.obolibrary.org port 80: Connection refused",
+            "curl: (28) Operation timed out after 200001 milliseconds with 0 bytes received",
+            "java.net.UnknownHostException: purl.obolibrary.org",
+            "java.net.SocketTimeoutException: connect timed out"}) {
+            String explanation = MakeRun.explain("test", failedWith(
+                    "curl -L http://purl.obolibrary.org/obo/ro.owl --create-dirs -o "
+                            + "tmp/ro-download.owl --retry 4 --max-time 200", cause,
+                    "make: *** [Makefile:397: mirror-ro] Error 6"));
+
+            assertTrue(explanation.contains("test_fast"), cause + " -> " + explanation);
+            assertTrue(explanation.contains("download"), explanation);
+        }
+        assertTrue(MakeRun.explain("prepare_release", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org"))
+                .contains("prepare_release_fast"));
+        assertTrue(MakeRun.explain("refresh-imports", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org"))
+                .contains("network"), "a refresh is the download: there is no fast one");
+        assertFalse(MakeRun.explain("refresh-imports", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org")).contains("_fast"));
+    }
+
     @Test
     void aTargetThatNoLongerExistsSaysTheMakefileMayHaveChanged() {
         String explanation = MakeRun.explain("gone",
@@ -453,12 +464,69 @@ class MakeRunTest {
         assertTrue(explanation.contains("Makefile may have changed"), explanation);
     }
 
+    /**
+     * Seen live (1.153.0) on a real project whose own rules build its import modules from
+     * downloaded ontologies: test_fast, which downloads nothing, stopped with "No rule to
+     * make target 'mirror/ro.owl', needed by 'imports/ro_import.owl'" - and the result said
+     * make has no rule for 'test_fast'. The rule that is missing is the one make names.
+     */
+    @Test
+    void aMissingRuleForSomethingElseIsNotSaidOfTheTarget() {
+        String explanation = MakeRun.explain("test_fast", failedWith(
+                "make[1]: *** No rule to make target 'mirror/ro.owl', needed by "
+                        + "'imports/ro_import.owl'.  Stop.",
+                "make: *** [Makefile:116: test_fast] Error 2"));
+
+        assertEquals("make has no rule to make 'mirror/ro.owl', which "
+                + "'imports/ro_import.owl' needs, so 'test_fast' stopped. A file under mirror/ "
+                + "is an imported ontology as it was downloaded: test_fast and "
+                + "prepare_release_fast download nothing, so a project whose own rules build "
+                + "its import modules from the downloads needs test or prepare_release, "
+                + "which fetch them first.", explanation);
+        String other = MakeRun.explain("all", failedWith(
+                "make: *** No rule to make target 'x.owl', needed by 'y.owl'.  Stop."));
+        assertEquals("make has no rule to make 'x.owl', which 'y.owl' needs, so 'all' "
+                + "stopped.", other);
+    }
+
     @Test
     void qualityViolationsArePointedAtTheReport() {
         String explanation = MakeRun.explain("report",
                 failedWith("ERROR Report failed with 12 violations"));
 
         assertTrue(explanation.contains("Quality report"), explanation);
+    }
+
+    /**
+     * Seen live (1.153.0): a release that stopped at an import said "The quality report
+     * found violations the project treats as failures" - every run of ODK's prints the
+     * report's count of violations, and the words "violation" and "report" anywhere in
+     * the log were taken for the reason. The report is the reason when it stopped the run.
+     */
+    @Test
+    void aReportThatWasOnlyPrintedIsNotTheReason() {
+        String explanation = MakeRun.explain("prepare_release", failedWith(
+                "robot --catalog catalog-v001.xml report -i tmp/merged-egg-edit.ofn -l true "
+                        + "--fail-on ERROR --print 5 -o reports/egg-edit.owl-obo-report.tsv",
+                "Violations: 3", "-----------------", "ERROR:      0", "WARN:       3",
+                "INFO:       0",
+                "ERROR: You have configured measurement as a custom module;",
+                "       This rule needs to be overwritten in egg.Makefile!",
+                "make: *** [Makefile:421: imports/measurement_import.owl] Error 1"));
+
+        assertFalse(explanation.contains("quality report"), explanation);
+        assertEquals("make prepare_release failed (exit 2): make: *** [Makefile:421: "
+                + "imports/measurement_import.owl] Error 1", explanation);
+
+        String stopped = MakeRun.explain("test", failedWith(
+                "robot --catalog catalog-v001.xml report -i tmp/merged-egg-edit.ofn -l true "
+                        + "--fail-on ERROR --print 5 -o reports/egg-edit.owl-obo-report.tsv",
+                "Violations: 1", "-----------------", "ERROR:      1", "WARN:       0",
+                "INFO:       0", "", "First 1 violations:",
+                "ERROR\tmissing_label\tb\trdfs:label\t",
+                "make: *** [Makefile:230: reports/egg-edit.owl-obo-report.tsv] Error 1"));
+        assertTrue(stopped.startsWith("The quality report found 1 error: missing_label b."),
+                stopped);
     }
 
     /** An unrecognised failure must still carry make's own last word, not swallow it. */
@@ -479,44 +547,6 @@ class MakeRunTest {
 
         assertTrue(explanation.contains(String.valueOf(MakeRun.TIMEOUT_MINUTES)), explanation);
         assertTrue(explanation.contains("waiting for input"), explanation);
-    }
-
-    // ---------- Protege will not notice the file changing ----------
-
-    /**
-     * The one that costs work. A target that regenerates the open file leaves Protege holding a
-     * stale copy, and the next save overwrites what the build produced.
-     */
-    @Test
-    void aTargetThatRewritesTheOpenFileSaysSo(@TempDir File directory) throws Exception {
-        File ontology = projectWithMakefile(directory);
-
-        for (String target : new String[] {"all", "reason", "prepare_release", "release"}) {
-            String hint = MakeRun.reloadHint(target, ontology);
-            assertNotNull(hint, target + " rewrites the ontology and says nothing");
-            assertTrue(hint.contains("mwo.owl"), target + " -> " + hint);
-            assertTrue(hint.contains("will not notice"), target + " -> " + hint);
-        }
-    }
-
-    @Test
-    void anImportTargetSaysTheModulesChanged(@TempDir File directory) throws Exception {
-        String hint = MakeRun.reloadHint("imports", projectWithMakefile(directory));
-
-        assertNotNull(hint);
-        assertTrue(hint.contains("import modules"), hint);
-    }
-
-    @Test
-    void aTargetThatChangesNothingOpenSaysNothing(@TempDir File directory) throws Exception {
-        assertNull(MakeRun.reloadHint("report", projectWithMakefile(directory)));
-        assertNull(MakeRun.reloadHint("clean", projectWithMakefile(directory)));
-    }
-
-    @Test
-    void nothingToHintAboutIsNotAFailure() {
-        assertNull(MakeRun.reloadHint("all", null));
-        assertNull(MakeRun.reloadHint(null, new File("x-edit.owl")));
     }
 
     // ---------- the targets offered ----------
@@ -541,30 +571,71 @@ class MakeRunTest {
     }
 
     /**
-     * macOS ships /usr/bin/make with the Command Line Tools, so a project OntoBoard scaffolded
-     * whose Makefile is not the one this version renders fell through to the host make and died
-     * on the first robot call. With no robot to run its recipes it is not runnable, and the
-     * advice is to update the project files, after which it builds in-process again.
+     * A project OntoBoard 1.135 or before made has OntoBoard's own Makefile. Up to 1.135 its
+     * build ran inside Protege; a project is ODK's now, and such a one is carried over, not
+     * built - on every machine alike, whatever is installed on it: the older Makefile's
+     * targets are not ODK's. (macOS ships make, and a host make died on that Makefile's
+     * first robot call; with robot on the PATH it ran. Neither is offered any more.)
      */
     @Test
-    void anOntoBoardMakefileThisVersionDoesNotRenderIsNotHandedToAHostMake(@TempDir File where)
-            throws Exception {
-        OdkProjectConfig config = new OdkProjectConfig("demo", "Demo", "A demo",
-                "http://purl.obolibrary.org/obo/demo.owl",
-                "https://creativecommons.org/licenses/by/4.0/", where);
-        OdkScaffold.create(config);
-        File ontology = new File(new File(config.getProjectRoot(), "src"), "ontology");
-        File edit = new File(ontology, "demo-edit.owl");
-        java.nio.file.Files.write(new File(ontology, "Makefile").toPath(),
-                "\n# an older version wrote one more line\n".getBytes("UTF-8"),
-                java.nio.file.StandardOpenOption.APPEND);
+    void aProjectOfTheOlderLayoutIsCarriedOverNotBuilt(@TempDir File where) throws Exception {
+        File root = new File(where, "eggboil");
+        OdkMigrationTest.copy(MigrationFixtureTest.fixture("odk/migration/eggboil-1.135.2"),
+                root);
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
 
-        assertEquals(MakeRun.Route.NOT_RUNNABLE, MakeRun.routeFor(edit, runnerWith("make")));
-        String why = MakeRun.whyNotRunnable(edit, runnerWith("make"));
-        assertTrue(why.contains("Update project files"), why);
+        for (ProcessRunner.Runner machine : Arrays.asList(runnerWith(), runnerWith("make"),
+                runnerWith("make", "robot"), runnerWith("docker", "make", "robot"))) {
+            assertEquals(MakeRun.Route.NOT_RUNNABLE, MakeRun.routeFor(edit, machine));
+            assertEquals(OdkMigration.CARRY_OVER + " After that, Build runs ODK's targets on "
+                    + "it.", MakeRun.whyNotRunnable(edit, machine));
+        }
+        assertTrue(OdkMigration.CARRY_OVER.startsWith("This project was made by OntoBoard "
+                + "1.135 or before"), OdkMigration.CARRY_OVER);
+        assertTrue(OdkMigration.CARRY_OVER.contains(
+                "OntoBoard > Project > Update project files..."), OdkMigration.CARRY_OVER);
+        for (MakeRun.Route route : MakeRun.Route.values()) {
+            assertFalse(route.name().contains("PROCESS"), "the route for OntoBoard's own "
+                    + "Makefile, inside Protege, is gone: " + route);
+        }
+    }
 
-        // With robot on the PATH the Makefile can genuinely run, so it is still offered.
-        assertEquals(MakeRun.Route.MAKE_ON_PATH,
-                MakeRun.routeFor(edit, runnerWith("make", "robot")));
+    // ------------------------------------------------------------------ review of 1.153.0
+
+    /** The file of the profile check lies under reports/: that makes it no quality report. */
+    @Test
+    void aFileUnderReportsIsNotTheQualityReport() {
+        String explanation = MakeRun.explain("prepare_release", failedWith(
+                "PASS Rule ../sparql/a-violation.sparql: 0 violation(s)",
+                "PROFILE VIOLATION ERROR https://example.org/egg.owl violates profile DL",
+                "make: *** [Makefile:251: reports/validate_profile_owl2dl_egg.owl.txt] Error 1"));
+
+        assertEquals("make prepare_release failed (exit 2): make: *** [Makefile:251: "
+                + "reports/validate_profile_owl2dl_egg.owl.txt] Error 1", explanation);
+    }
+
+    /**
+     * curl says each try that failed, also when the next one went through. A download that
+     * went through is not why a build stopped much later, for something else.
+     */
+    @Test
+    void aDownloadThatWentThroughOnAnotherTryIsNotTheReason() {
+        List<String> lines = new ArrayList<String>(Arrays.asList(
+                "curl -L http://purl.obolibrary.org/obo/ro.owl --create-dirs -o "
+                        + "tmp/ro-download.owl --retry 4 --max-time 200",
+                "curl: (28) Operation timed out after 200001 milliseconds with 0 bytes received",
+                "Warning: Problem : timeout. Will retry in 1 seconds. 4 retries left.",
+                "robot convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl"));
+        for (int step = 0; step < 20; step++) {
+            lines.add("robot --catalog catalog-v001.xml extract --term-file imports/x" + step
+                    + "_terms.txt");
+        }
+        lines.add("robot --catalog catalog-v001.xml reason --input egg-edit.owl");
+        lines.add("make: *** [Makefile:240: reason_test] Error 1");
+
+        String explanation = MakeRun.explain("test", failedWith(lines.toArray(new String[0])));
+
+        assertFalse(explanation.contains("download"), explanation);
+        assertTrue(explanation.contains("reason_test"), explanation);
     }
 }

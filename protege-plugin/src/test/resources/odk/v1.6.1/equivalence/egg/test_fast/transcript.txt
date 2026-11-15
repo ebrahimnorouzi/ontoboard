@@ -1,0 +1,55 @@
+make IMP=false PAT=false COMP=false MIR=false test
+make[1]: Entering directory '/tmp/odk/egg/src/ontology'
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+if [ -f eggboil-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error eggboil-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/eggboil-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/eggboil-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-eggboil-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-eggboil-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/check_labels-violation.sparql -O reports
+PASS Rule ../sparql/owldef-self-reference-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/label-with-iri-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/multiple-replaced_by-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/check_labels-violation.sparql: 0 violation(s)
+robot --catalog catalog-v001.xml report -i tmp/merged-eggboil-edit.ofn -l true --profile profile.txt --fail-on ERROR --print 5 -o reports/eggboil-edit.owl-obo-report.tsv
+WARN: 'missing_superclass' query is missing ?value variable
+WARN: 'missing_definition' query is missing ?value variable
+Violations: 11
+-----------------
+ERROR:      0
+WARN:       8
+INFO:       3
+
+First 5 violations:
+WARN	missing_definition	definition	definition	
+WARN	missing_definition	description	definition	
+WARN	missing_definition	license	definition	
+WARN	missing_definition	title	definition	
+WARN	missing_definition	root node	definition	
+robot --catalog catalog-v001.xml merge --input tmp/eggboil-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://example.org/eggboil/eggboil/eggboil-full.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil-full.owl --annotation owl:versionInfo 1.0.0 --output eggboil-full.owl.tmp.owl && mv eggboil-full.owl.tmp.owl eggboil-full.owl
+robot --catalog catalog-v001.xml annotate --input eggboil-full.owl --ontology-iri https://example.org/eggboil/eggboil.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o eggboil.owl.tmp.owl && mv eggboil.owl.tmp.owl eggboil.owl
+robot --catalog catalog-v001.xml merge -i eggboil.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_eggboil.owl.txt || { cat reports/validate_profile_owl2dl_eggboil.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+make[1]: Leaving directory '/tmp/odk/egg/src/ontology'

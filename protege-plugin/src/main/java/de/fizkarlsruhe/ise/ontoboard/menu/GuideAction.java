@@ -143,13 +143,9 @@ public class GuideAction extends ProtegeOWLAction {
 
     /** The steps for where the user is starting, with the next one to do selected. */
     private void rebuild() {
-        List<Guide.Step> steps = Guide.steps((Guide.Start) start.getSelectedItem());
-        javax.swing.DefaultListModel<Guide.Step> model =
-                new javax.swing.DefaultListModel<Guide.Step>();
-        for (Guide.Step step : steps) {
-            model.addElement(step);
-        }
-        path.setModel(model);
+        List<Guide.Step> steps = Guide.steps((Guide.Start) start.getSelectedItem(),
+                Guide.factsOf(editFile(), activeOntology()));
+        show(steps);
         refreshProgress();
         int nextStep = 0;
         for (int at = 0; at < steps.size(); at++) {
@@ -161,12 +157,34 @@ public class GuideAction extends ProtegeOWLAction {
         path.setSelectedIndex(nextStep);
     }
 
+    /** Puts the steps into the list. */
+    private void show(List<Guide.Step> steps) {
+        javax.swing.DefaultListModel<Guide.Step> model =
+                new javax.swing.DefaultListModel<Guide.Step>();
+        for (Guide.Step step : steps) {
+            model.addElement(step);
+        }
+        path.setModel(model);
+    }
+
     private void refreshProgress() {
+        Guide.Facts facts = Guide.factsOf(editFile(), activeOntology());
+        // One step depends on the project that is open - a project made by 1.135 or before
+        // is carried over first. Once it has been, or another project is open, the step is
+        // read again; where somebody stands in the list stays.
+        List<Guide.Step> fitting = Guide.steps((Guide.Start) start.getSelectedItem(), facts);
+        if (path.getModel().getSize() == fitting.size() && !fitting.isEmpty()
+                && !fitting.get(0).getAction().equals(
+                        path.getModel().getElementAt(0).getAction())) {
+            int selected = path.getSelectedIndex();
+            show(fitting);
+            path.setSelectedIndex(selected);
+        }
         java.util.List<Guide.Step> steps = new java.util.ArrayList<Guide.Step>();
         for (int at = 0; at < path.getModel().getSize(); at++) {
             steps.add(path.getModel().getElementAt(at));
         }
-        states = Guide.progress(steps, Guide.factsOf(editFile(), activeOntology()));
+        states = Guide.progress(steps, facts);
         path.repaint();
         describe();
     }

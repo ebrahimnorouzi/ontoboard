@@ -221,14 +221,27 @@ public final class QuestionTests {
         return IRI.create(found.group(1) != null ? found.group(1) : found.group(2));
     }
 
-    /** A file name for the test from the question: {@code every_pizza_has_a_base.rq}. */
-    public static String fileNameFor(String question) {
+    /**
+     * A name for the test from the question: {@code every_pizza_has_a_base}, at most 60
+     * characters, {@code question} when no letter or digit is left. In an ODK project it is the
+     * check's name - the file {@code src/sparql/<name>-violation.sparql} and the word in the
+     * configuration's list - so it is only ever lower-case letters, digits and {@code _}.
+     */
+    public static String checkNameFor(String question) {
         String name = oneLine(question).toLowerCase(java.util.Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
         if (name.length() > 60) {
             name = name.substring(0, 60).replaceAll("_+$", "");
         }
-        return (name.isEmpty() ? "question" : name) + ".rq";
+        return name.isEmpty() ? "question" : name;
+    }
+
+    /**
+     * A file name for the test from the question, {@code every_pizza_has_a_base.rq}: where a
+     * project of OntoBoard's older layout keeps it, and runs every {@code .rq} it finds.
+     */
+    public static String fileNameFor(String question) {
+        return checkNameFor(question) + ".rq";
     }
 
     private static String oneLine(String text) {

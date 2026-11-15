@@ -119,10 +119,14 @@ class OntoBoardTabTest {
      * <p>Requiring every registered view in every tab was right while there was one tab and
      * became wrong the moment the sheet editor got its own: the canvas tab would then have
      * reset itself on every launch, for ever, hunting a view that is deliberately elsewhere.
+     *
+     * <p>Since 1.136.0 the OntoBoard tab places two of our views: the board and the assistant
+     * column. Both are therefore required, so closing the assistant brings it back on the next
+     * launch exactly as closing the board does - the maintainer's choice ("always there").
      */
     @Test
     void eachLayoutAsksForExactlyTheViewItPlaces() throws Exception {
-        assertEquals(java.util.Collections.singletonList("SchemaCanvasView"),
+        assertEquals(java.util.Arrays.asList("SchemaCanvasView", "AssistantView"),
                 ShippedLayout.viewsNamedIn(OntoBoardTab.CONFIG));
         assertEquals(java.util.Collections.singletonList("SheetEditorView"),
                 ShippedLayout.viewsNamedIn(SheetsTab.CONFIG));

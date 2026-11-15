@@ -13,6 +13,133 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A project OntoBoard made was not an ODK project, fixed in 1.153.0.** Found by having ODK
+  v1.6.1 seed a project from the very configuration OntoBoard's wizard wrote, and holding the two
+  side by side. ODK's had a Makefile of several hundred lines - `update_repo`, `refresh-imports`,
+  base and full release artefacts, ODK's four SPARQL checks - with `run.sh` beside it and a CI
+  workflow in ODK's image; OntoBoard's had a Makefile of its own, 60 lines and 8 targets calling
+  ROBOT directly, and a CI workflow that downloaded ROBOT. ODK's own commands did not exist in an
+  OntoBoard project, and on a real ODK repository *Release...* and the import refresh were
+  OntoBoard's own logic, past the project's custom Makefile and its release script: a release
+  OntoBoard made was not the release its maintainers make. Now *New ODK project...* writes ODK's
+  own seed, every file byte for byte - in ODK's container where its image is on the machine,
+  otherwise from ODK's templates, which OntoBoard carries and renders itself - and adds six files
+  of its own. *Build...*, *Release...*, *Refresh imports...* and *Update project files...* run
+  ODK's own targets: with ODK's tools installed, in ODK's container, or by OntoBoard itself, which
+  reads ODK's Makefile and runs its recipes inside Protégé with nothing to install. A project made
+  by 1.135 or before is carried over by *Update project files...*. `SeedParityTest`,
+  `SeedCorpusTest` (ODK's own 79 sample configurations), `FallbackEquivalenceTest`,
+  `ImportChainEquivalenceTest`.
+- **Stop did not stop a build in ODK's container, fixed in 1.153.0.** Found by the review of
+  1.153.0 as a suspicion, then seen: with the `docker run` that started it killed - which is
+  what *Stop* did, since 1.85.0 - the container was still up, and ODK went on building and
+  writing into the project behind a dialog that said it had been stopped. Older than this
+  version, and the very case 1.85.0 meant to close. OntoBoard now names each container it
+  starts and removes it by that name when the run is stopped, interrupted or out of time.
+  `CancellationTest.aContainerRunIsNamedSoThatItCanBeTakenAway`, and
+  `ContainerStopLiveTest`, which starts a container and stops it.
+- **The assistant's Explain the reasoner problem ran no reasoner when none was chosen, fixed in
+  1.153.0.** Found by checking the assistant column by hand in Protégé 5.6.9 before the release,
+  with an ontology that had two unsatisfiable classes: with nothing chosen in Protégé's Reasoner
+  menu - as on a fresh install - the column ran Protégé's null reasoner and said "The reasoner
+  finds no problem: the ontology is consistent and every class is satisfiable.", and a repair's
+  check ran on the same null reasoner. Protégé calls the reasoner it runs "Protégé Null Reasoner"
+  until one is started, and the column fell back to HermiT only for the name "none"; with a
+  reasoner chosen and not started it said "Running Protégé Null Reasoner…" over that reasoner's
+  work. It now goes by the reasoner chosen in the menu, under the menu's name for it, and runs
+  HermiT when none is chosen. `ProblemReasonerTest`, red first against what the column gave
+  before.
+- **Cleaning went through a link and emptied what it led to, fixed in 1.153.0.** Found by the
+  review: OntoBoard's own engine ran ODK's `clean` on `mirror/`, `tmp/` and `target/` without
+  asking where they really are, and removed a folder's contents through a link - on Windows a
+  junction - inside it. A mirror kept on another drive behind a link would have been emptied
+  by every release, which cleans first. ODK's own loop leaves such a folder alone, and so
+  does the engine now; a link is removed as the link it is. Never released.
+  `RecipeShellTest.cleanLeavesAloneAFolderThatLeadsOutOfTheProject`,
+  `rmDoesNotGoThroughALink`.
+- **A release's commit could take in more than the release, fixed in 1.153.0.** Found by the
+  review, in three forms. In a project that is a folder of a larger repository, `git add -u`
+  staged every tracked change in that repository; it is `git add -u -- .` now, and the files
+  left out are named as the project names them. A file git tracks under `tmp/` - older ODKs
+  seeded a `README.md` there - was removed by the cleaning before a release and committed as
+  deleted; it is put back first, by a command shown with the others. And a release stopped
+  after ODK had built it still copied its files to `releases/<version>/`, for which the
+  version was refused as released the next time; it writes nothing now. Never released.
+  `ReleaseRunTest.inAFolderOfALargerRepositoryOnlyTheProjectIsStagedAndNamed`,
+  `aTrackedFileThatCleaningRemovedIsPutBackAndNotCommittedAsDeleted`,
+  `OdkReleaseTest.aReleaseStoppedAfterItWasBuiltCopiesAndRecordsNothing`.
+- **A release that failed said less than a build that failed, fixed in 1.153.0.** Found by the
+  review: *Release...* explained a failed build by make's last line alone - a row of a
+  check's answer, or "The quality report found violations" for an ontology outside OWL 2 DL,
+  whose file lies under `reports/`. It says now what *Build...* says of the same run. A
+  download that failed once and went through on another try is no longer given as the reason
+  for a failure much later in the log. `OdkReleaseTest.aBuildThatStopsAtACheckSaysWhichCheckAndItsTerms`,
+  `MakeRunTest.aDownloadThatWentThroughOnAnotherTryIsNotTheReason`.
+- **A configuration change said how many files it wrote, not which, fixed in 1.153.0.** Found
+  by the review: *Project configuration...* brings the project's files in line at once, as
+  ODK's update does, and ODK's update writes ODK's files again as ODK has them - a workflow
+  or a check somebody had edited by hand among them. The files are named now.
+  `ConfigSyncTest.theFilesThatWereWrittenAgainAreNamedAsTheProjectNamesThem`.
+- **A release script that was not UTF-8 came back damaged, fixed in 1.153.0.** Found by the
+  review: OntoBoard sets the version in a project's own `release.sh` and "changes nothing
+  else in it", but read and wrote it as UTF-8, so a comment in Latin-1 lost every letter
+  that is not ASCII. The file's bytes are kept as they are now. Never released.
+  `ReleaseRunTest.aScriptKeepsEveryByteButTheVersionWhateverItsEncoding`.
+- **Three smaller ones from the same review, fixed in 1.153.0.** A base address that a
+  project's own `<id>.Makefile` sets is the one make uses, since make keeps a variable's last
+  value; OntoBoard read ODK's Makefile alone, and a version IRI of another shape than ODK's
+  would have been written under the wrong address. A version that is a released number
+  spelled another way - `1.0` after `1.0.0` - was taken for a new one. And the guard that
+  keeps the engine's recipes inside the project read a path by its slashes only, so on
+  Windows a quoted path written with backslashes was one name to it; no recipe of ODK's has
+  one. Never released. `OdkReleaseTest.aBaseTheProjectsOwnMakefileSetsIsTheOneMakeUses`,
+  `ReleaseRunTest.aVersionThatIsAnotherSpellingOfAReleasedOneIsRefused`,
+  `RecipeShellTest.aPathWrittenWithBackslashesIsHeldToTheProjectToo`.
+- **A failed build was blamed on the quality report, fixed in 1.153.0.** Found releasing the
+  egg guide's project in an isolated Protégé: the release stopped at an import module, and the
+  result said "The quality report found violations the project treats as failures". Every run
+  prints the report's count of violations, and the words "violation" and "report" anywhere in
+  the log were taken for the reason. Older than this version: 1.135.2 has it too. The report is
+  now named only when it stopped the run, with what it found; and when make has no rule for a
+  file the target needs, that file is named, not the target.
+  `MakeRunTest.aReportThatWasOnlyPrintedIsNotTheReason`,
+  `aMissingRuleForSomethingElseIsNotSaidOfTheTarget`.
+- **Two dialogs of the board were wider than the screen, fixed in 1.153.0.** Found walking the
+  egg guide: the dialog for a new subclass put its whole explanation of where the ID comes from
+  on one line, 1417 pixels wide, and the question about whose ID range to use was 1134. Older
+  than this version: 1.135.2 has the first too. Both are now broken between words.
+  `TermMinterTest.aLongSentenceIsBrokenBetweenWordsForADialog`.
+- **The Requirements window cut its rows off, fixed in 1.153.0.** Found by reading a picture of
+  the window in an isolated Protégé: every longer row ended in the middle of a sentence. A row's
+  text asked for a width of 520 px, which Swing's HTML draws about 676 pixels wide, in a window
+  that shows some 600 and does not scroll sideways. Older than this version: 1.135.2 has it too.
+  A row is now as wide as the window has room for. Two of its sentences were no longer true
+  either - that a native ODK environment means using Docker or Podman, and that make is needed
+  for a project OntoBoard did not make - and now say that nothing needs either.
+- **Turning an ontology into a repository said a file it imports could not be loaded, fixed in
+  1.153.0.** Found converting an ontology: step 1 said "1 of its imports could not be loaded" for
+  a file that was there. A file's address is `file:/C:/...` as Java writes it and `file:///C:/...`
+  as most people do; an import declared the second way was recorded under the first, and the OWL
+  API finds an import only by the address it is declared under. Older than this version, and
+  *Import terms from a list...* and *Find terms in another ontology...* read through the same
+  code. An import that is read is now given the address it is declared under.
+  `OntologySourceTest`.
+- **A release "removed" an annotation property its header no longer used, fixed in 1.153.0.**
+  Found in a conversion's release, which said "Removed: date". A release is RDF/XML, which
+  declares every annotation property it uses, the header's too; read back from its file, a
+  property that was only ever in the header counted as a published term, and a release that no
+  longer used it had "removed a term" - with *Refuse to release when a published term is gone*
+  ticked, *Release...* would have refused. The fix of 1.135.x held for ontologies in memory only.
+  `ReleaseDiffTest.aHeaderAnnotationIsNotAPublishedTermInAReleaseFileEither`.
+- **`CHANGES.md` listed a release's terms in another order each time, fixed in 1.153.0.** Found by
+  converting the same history twice: two lines of `CHANGES.md` changed places between two builds
+  of the same release, because terms were listed in the order the OWL API handed out its axioms.
+  They are listed by IRI. `ReleaseDiffTest.theTermsAreNamedInOneOrder`.
+- **An earlier version given in OWL/XML was recorded with `<Ontology>` for `<owl:Ontology>`, fixed
+  in 1.153.0.** Found running the conversion's tests on OWL API 4.5.29, Protégé 5.6.9's: that OWL
+  API hands OWL/XML's own namespace on as the ontology's default prefix, and the conversion copied
+  the prefixes it read. A default prefix that is OWL's, RDF's, RDFS's or XSD's own vocabulary is
+  left out. `OdkConversionTest.owlsOwnVocabularyIsNotMadeTheDefaultPrefix`.
 - **Zoomed out, a relation's label lay on the line beside it, fixed in 1.135.2.** Found by the
   scripted run of the egg boiling guide on 1.135.1's release jar, which measures the board after
   every task at the zoom Fit gives: after T3 "∃ concretizes" (plan to plan specification) lay on the

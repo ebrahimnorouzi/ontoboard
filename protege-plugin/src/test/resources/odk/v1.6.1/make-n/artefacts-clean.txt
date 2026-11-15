@@ -1,0 +1,5 @@
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   arte.json  arte.owl  arte.ttl   arte-base.json  arte-base.owl  arte-base.ttl   arte-full.json  arte-full.owl  arte-full.ttl   arte-simple.json  arte-simple.owl  arte-simple.ttl  tmp/merged-arte-edit.ofn tmp/arte-preprocess.owl

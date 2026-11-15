@@ -1,0 +1,60 @@
+Prefix(:=<http://purl.obolibrary.org/obo/ro.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+Prefix(oboInOwl:=<http://www.geneontology.org/formats/oboInOwl#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/ro.owl>
+<http://purl.obolibrary.org/obo/ro/releases/2026-01-01/ro.owl>
+Annotation(dcterms:license <https://creativecommons.org/publicdomain/zero/1.0/>)
+Annotation(dcterms:title "A small stand-in for a relation ontology, made for OntoBoard's tests")
+
+Declaration(Class(obo:RO_0002577))
+Declaration(ObjectProperty(obo:RO_0000056))
+Declaration(ObjectProperty(obo:RO_0000057))
+Declaration(ObjectProperty(obo:RO_0002233))
+Declaration(ObjectProperty(obo:RO_0002234))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+Declaration(AnnotationProperty(obo:RO_0001900))
+Declaration(AnnotationProperty(oboInOwl:hasExactSynonym))
+
+############################
+#   Annotation Properties
+############################
+
+AnnotationAssertion(rdfs:label obo:IAO_0000115 "definition")
+AnnotationAssertion(rdfs:label obo:RO_0001900 "temporal interpretation")
+AnnotationAssertion(rdfs:label oboInOwl:hasExactSynonym "has_exact_synonym")
+
+############################
+#   Object Properties
+############################
+
+AnnotationAssertion(obo:IAO_0000115 obo:RO_0000056 "A relation between a continuant and a process, in which the continuant is somehow involved in the process.")
+AnnotationAssertion(rdfs:label obo:RO_0000056 "participates in"@en)
+InverseObjectProperties(obo:RO_0000056 obo:RO_0000057)
+
+AnnotationAssertion(obo:IAO_0000115 obo:RO_0000057 "A relation between a process and a continuant, in which the continuant is somehow involved in the process.")
+AnnotationAssertion(obo:RO_0001900 obo:RO_0000057 "holds at all times")
+AnnotationAssertion(oboInOwl:hasExactSynonym obo:RO_0000057 "has agent or patient")
+AnnotationAssertion(rdfs:label obo:RO_0000057 "has participant"@en)
+
+AnnotationAssertion(obo:IAO_0000115 obo:RO_0002233 "p has input c iff p is a process, c is a material entity, c is a participant in p, and c is present at the start of p.")
+AnnotationAssertion(rdfs:label obo:RO_0002233 "has input"@en)
+SubObjectPropertyOf(obo:RO_0002233 obo:RO_0000057)
+
+AnnotationAssertion(rdfs:label obo:RO_0002234 "has output"@en)
+SubObjectPropertyOf(obo:RO_0002234 obo:RO_0000057)
+
+############################
+#   Classes
+############################
+
+AnnotationAssertion(obo:IAO_0000115 obo:RO_0002577 "A material entity consisting of multiple components that are causally integrated.")
+AnnotationAssertion(rdfs:label obo:RO_0002577 "system"@en)
+)

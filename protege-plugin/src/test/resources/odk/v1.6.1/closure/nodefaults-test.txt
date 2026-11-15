@@ -1,0 +1,17 @@
+Makefile
+odkversion
+plain-edit.owl
+plain-full.owl
+plain.Makefile
+plain.owl
+reason_test
+reports
+reports/plain-edit.owl-obo-report.tsv
+reports/validate_profile_owl2dl_plain.owl.txt
+robot_reports
+sparql_test
+test
+tmp
+tmp/merged-plain-edit.ofn
+tmp/plain-preprocess.owl
+validate_idranges

@@ -1,0 +1,36 @@
+Prefix(:=<http://example.org/ontoboard-fixtures/materials#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+Ontology(<http://example.org/ontoboard-fixtures/datatype-clash>
+Annotation(dcterms:title "Materials, datatype clash (OntoBoard benchmark fixture)")
+Annotation(rdfs:comment "Inconsistent because of a datatype: the melting point's range is xsd:float and a value is typed xsd:decimal, whose values are not floats in OWL 2. The pizza example's trap, small. Written for OntoBoard; CC0.")
+
+Declaration(Class(:Material))
+Declaration(Class(:Metal))
+Declaration(DataProperty(:hasMeltingPointCelsius))
+Declaration(NamedIndividual(:aluminium))
+Declaration(NamedIndividual(:copper))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+Declaration(AnnotationProperty(dcterms:title))
+
+AnnotationAssertion(rdfs:label :Material "material"@en)
+AnnotationAssertion(rdfs:label :Metal "metal"@en)
+AnnotationAssertion(rdfs:label :hasMeltingPointCelsius "has melting point in degrees Celsius"@en)
+AnnotationAssertion(rdfs:label :aluminium "aluminium"@en)
+AnnotationAssertion(rdfs:label :copper "copper"@en)
+
+AnnotationAssertion(obo:IAO_0000115 :Metal "A material whose atoms are held together by metallic bonding.")
+
+SubClassOf(:Metal :Material)
+DataPropertyRange(:hasMeltingPointCelsius xsd:float)
+
+ClassAssertion(:Metal :aluminium)
+ClassAssertion(:Metal :copper)
+DataPropertyAssertion(:hasMeltingPointCelsius :aluminium "660.3"^^xsd:decimal)
+DataPropertyAssertion(:hasMeltingPointCelsius :copper "1084.6"^^xsd:float)
+)

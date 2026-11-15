@@ -24,13 +24,22 @@
   selection. Declared identically in Protege 5.5.0 and 5.6.9 (plugin.xml:730 and :740), so it
   resolves on both hosts.
 
-  WHY NOT A THIRD COLUMN, which is the obvious arrangement and is what Protege's own per-type tabs
-  use. The canvas column cannot afford it. The toolbar was measured at 777px minimum in 1.116.0
-  after three rounds of shortening (see SchemaCanvasView's own comment: it wanted 1261px and began
-  clipping at 1030, and a 1440px window gives this column 857px). Taking the canvas from 0.72 to
-  0.52 for a details column gives the toolbar 619px in that same window - 158px short - and the
-  clipping it silently returns to is a button that is laid out past the right edge, unpainted and
-  unclickable. Stacked here instead, the canvas keeps every pixel of its width.
+  WHY THE AXIOMS PANE IS NOT A THIRD COLUMN, which is the obvious arrangement and is what
+  Protege's own per-type tabs use. The canvas column could not afford it. The toolbar was measured
+  at 777px minimum in 1.116.0 after three rounds of shortening (see SchemaCanvasView's own
+  comment: it wanted 1261px and began clipping at 1030, and a 1440px window gives this column
+  857px). Taking the canvas from 0.72 to 0.52 for a details column gives the toolbar 619px in that
+  same window - 158px short - and the clipping it silently returns to is a button that is laid out
+  past the right edge, unpainted and unclickable. Stacked here instead, the canvas keeps every
+  pixel of its width.
+
+  THE ASSISTANT IS A THIRD COLUMN (1.136.0), on the right of the board. The maintainer chose it
+  over a tab under the trees and over a window of its own, so that the board - where a proposal is
+  previewed - and Protege's views further left stay in view while the assistant is talked to. The
+  toolbar problem above was solved rather than avoided: it now wraps onto a second row
+  (canvas/WrapLayout) instead of laying buttons out past the edge. The canvas stays the widest
+  column. The assistant is in the shipped layout like the canvas, so ShippedLayout brings it back
+  when it is closed; someone who does not use it drags the divider, and the width is kept.
 
   WHY NOT org.protege.editor.owl.SelectedEntityView, the card view Protege's Entities tab uses.
   It spends its own height on an inner HSNode (0.375/0.625 for annotations over description), so
@@ -40,7 +49,7 @@
   are complements - that one edits frames, this one reads axioms - and reading is what was missing.
 -->
 <layout>
-    <VSNode splits="0.28 0.72">
+    <VSNode splits="0.22 0.48 0.30">
         <HSNode splits="0.46 0.54">
         <CNode>
             <Component label="Classes">
@@ -103,6 +112,12 @@
         <CNode>
             <Component label="Schema Canvas">
                 <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
+            </Component>
+        </CNode>
+        <!-- The assistant, alone in the right-hand column (1.136.0; see the comment above). -->
+        <CNode>
+            <Component label="Assistant">
+                <Property id="pluginId" value="${project.artifactId}.AssistantView"/>
             </Component>
         </CNode>
     </VSNode>

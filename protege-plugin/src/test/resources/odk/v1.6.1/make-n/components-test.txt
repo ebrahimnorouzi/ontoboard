@@ -1,0 +1,41 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ -f comp-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error comp-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input comp-edit.owl --format ofn --output tmp/comp-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/comp-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml merge -I https://example.org/fetched.owl \
+	 annotate --annotation owl:versionInfo 1.0.0 --output tmp/component-download-fetched.owl.owl
+touch tmp/stamp-component-fetched.owl
+if cmp -s tmp/component-download-fetched.owl.owl tmp/component-download-fetched.owl.tmp.owl ; then \
+        echo "Component identical." ; \
+else \
+        echo "Component different, updating." && \
+        cp tmp/component-download-fetched.owl.owl tmp/component-download-fetched.owl.tmp.owl && \
+        robot --catalog catalog-v001.xml annotate --input tmp/component-download-fetched.owl.owl \
+                          --ontology-iri http://purl.obolibrary.org/obo/comp/components/fetched.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/components/fetched.owl --annotation owl:versionInfo 1.0.0 \
+                          --output components/fetched.owl ; \
+fi
+touch tmp/stamp-component-fromtemplate.owl
+robot --catalog catalog-v001.xml template  \
+	 --template ../templates/first.tsv \
+	 --template ../templates/second.tsv \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/comp/components/fromtemplate.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/components/fromtemplate.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output components/fromtemplate.owl.tmp.owl && mv components/fromtemplate.owl.tmp.owl components/fromtemplate.owl
+robot --catalog catalog-v001.xml remove --input tmp/comp-preprocess.owl --select imports --trim false \
+	 merge  --input components/manual.owl  --input components/fetched.owl  --input components/fromtemplate.owl \
+	       --output tmp/merged-comp-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-comp-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-comp-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/COMP_ --base-iri http://purl.obolibrary.org/obo/comp --print 5 -o reports/comp-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/comp-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/comp/comp-full.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/comp-full.owl --annotation owl:versionInfo 1.0.0 --output comp-full.owl.tmp.owl && mv comp-full.owl.tmp.owl comp-full.owl
+robot --catalog catalog-v001.xml annotate --input comp-full.owl --ontology-iri http://purl.obolibrary.org/obo/comp.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/comp.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o comp.owl.tmp.owl && mv comp.owl.tmp.owl comp.owl
+robot --catalog catalog-v001.xml merge -i comp.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_comp.owl.txt || { cat reports/validate_profile_owl2dl_comp.owl.txt && exit 1; }
+echo "Finished running all tests successfully."

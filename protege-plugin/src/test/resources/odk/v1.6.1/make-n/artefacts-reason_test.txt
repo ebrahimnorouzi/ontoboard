@@ -1,0 +1,3 @@
+robot --catalog catalog-v001.xml convert --input arte-edit.owl --format ofn --output tmp/arte-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/arte-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl

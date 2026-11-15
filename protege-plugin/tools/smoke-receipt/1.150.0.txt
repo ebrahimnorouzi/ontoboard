@@ -1,0 +1,59 @@
+OntoBoard 1.150.0 - host smoke receipt
+
+The fresh review of 1.149.0 is acted on: seventeen findings, one confirmed by an independent
+checker, two raised by their effect, and fourteen minors, each cheap and real. Three agents fixed
+keys, the clone's exclude rules and the role editor, each test-first in its own copy of the tree,
+and a reviewer read each diff; their reviewers found six more gaps, closed test-first before this
+build. Each change has a test that failed first:
+- Keys and saved text:
+  - Text in Chinese, Japanese, Korean or Thai with an address and a port right before a word -
+    "部署在http://localhost:7200由alice@example.org负责" - stays whole again; 1.149.0 cut it to
+    "(credentials)".
+  - An address is read once for each "://", not once for each place its scheme can begin: text
+    that repeats "://" no longer takes seconds to save. Four million random texts give what the
+    earlier form gave, character for character.
+  - Benchmark models files: a key under a plural or joined field name (tokens, passwords,
+    keyvalue), after any header scheme, beside a comment, or in a field given twice is reported
+    again; a variable's reference, a special token such as <|im_end|> or a short text is no
+    longer called a key; a reference's name that looks like a key is never shown.
+- Saved conversations: every clone's exclude that cannot be written is named, the person's own
+  clone first, each by its real path and once; a clone that holds a directory symbolic link to
+  the project, which git does not go into, gets no rules and no warning; a save does about half
+  the file-system work of 1.149.0.
+- Roles: a Discard button drops a typed text and shows the role's saved text again; two roles
+  of one name are named by their files; a role file in other capitals is the same role only where
+  the file system says so - on Linux a team's Reviewer.md is no longer overwritten by one's own
+  reviewer.
+- Benchmark: the repair loop names a refused removal beside an applied one, and gives an unknown
+  action the list of actions; an addition that changes nothing counts against; a failed call no
+  longer zeroes collateral; a soft hyphen inside a word no longer fails a right definition; the
+  documents say so.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.149.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 a6ea4cc13b4ea114e6e309262940af8b69d86821938d77d940219f733c84010d, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,524 tests, 0 failures, 0 errors, 4 skipped (3,491 in 1.149.0). The fourth skip is a test of
+  a file system that keeps case, which ran and passed on Linux.
+- The role, recorder and redaction test classes also ran on Linux (WSL Ubuntu, Java 17, real
+  git, symbolic links, a virtual display); every one passed or was skipped by its own
+  Windows-only or case-ignoring assumption.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+- Against 1.149.0, over 54,840,649 lines of local text, 21 lines are redacted differently, all
+  ordinary text in this version's own tests and documents that 1.150.0 keeps whole.
+
+No live benchmark was run: on this laptop one real request takes about 5 minutes, the bench's
+read timeout. A live run needs a GPU host or a smaller model.

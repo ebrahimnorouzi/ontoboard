@@ -1,0 +1,1 @@
+make IMP=false PAT=false COMP=false MIR=false test

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+    <!-- Map import IRIs to local files in imports/ as you add them.
+         Find terms and Import terms add an entry here for every module they save,
+         and the Makefile hands this file to robot with its catalog option, so
+         those imports resolve from disk with no network. -->
+    <uri id="User Entered Import Resolution" name="https://example.org/eggboil/eggboil/imports/mini_import.owl" uri="imports/mini_import.owl"/>
+    <uri id="User Entered Import Resolution" name="https://example.org/eggboil/eggboil/imports/measurement_import.owl" uri="imports/measurement_import.owl"/>
+</catalog>

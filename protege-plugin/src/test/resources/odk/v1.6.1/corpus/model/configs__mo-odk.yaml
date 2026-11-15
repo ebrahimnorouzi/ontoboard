@@ -1,0 +1,821 @@
+allow_equivalents: asserted-only
+babelon_translation_group: null
+catalog_file: catalog-v001.xml
+ci:
+- github_actions
+components:
+  disabled: false
+  ids: null
+  products:
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: pato
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/pato/pato-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: go.owl
+    make_base: false
+    mappings: null
+    source: http://current.geneontology.org/ontology/go-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: go-plus.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/go/extensions/go-plus.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: upheno.owl
+    make_base: false
+    mappings: null
+    source: https://raw.githubusercontent.com/obophenotype/upheno/master/metazoa.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: mondo.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/mondo/mondo-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: eco.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/eco/eco-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: so.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/so.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: geno.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/geno.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: sepio.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/sepio.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: ro.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/ro.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: clo.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/clo.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: uberon.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/uberon/uberon-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: ncit.owl
+    make_base: false
+    mappings: null
+    source: null
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: fbbt.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/fbbt/fbbt-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: wbbt.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/wbbt/wbbt-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: ecto.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/ecto/ecto-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: zfa.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/zfa/zfa-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: maxo.owl
+    make_base: false
+    mappings: null
+    source: http://purl.obolibrary.org/obo/maxo/maxo-base.owl
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  - base_iris:
+    - http://purl.obolibrary.org/obo/MO
+    filename: chebi.owl
+    make_base: false
+    mappings: null
+    source: null
+    sssom_tool_options: ''
+    template_options: null
+    templates: null
+    use_mappings: false
+    use_template: false
+  rebuild_if_source_changes: true
+contact: null
+contributors: null
+create_obo_metadata: true
+creators: null
+custom_makefile_header: '
+
+  # ----------------------------------------
+
+  # More information: https://github.com/INCATools/ontology-development-kit/
+
+  '
+description: None
+documentation: null
+dosdp_tools_options: --obo-prefixes=true
+edit_format: owl
+ensure_valid_rdfxml: true
+exclude_tautologies: structural
+export_formats:
+- owl
+export_project_yaml: false
+extra_rdfxml_checks: false
+git_main_branch: main
+git_user: ''
+github_org: monarch-initiative
+gzip_main: false
+id: mo
+import_component_format: ofn
+import_group:
+  annotate_defined_by: false
+  annotation_properties:
+  - rdfs:label
+  - IAO:0000115
+  - OMO:0002000
+  base_merge_drop_equivalent_class_axioms: false
+  disabled: false
+  exclude_iri_patterns: null
+  export_obo: false
+  ids: null
+  mirror_max_time_download: 200
+  mirror_retry_download: 4
+  module_type: slme
+  module_type_slme: BOT
+  products:
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/NBO
+    description: null
+    id: nbo
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/nbo/nbo-base.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/FAO
+    description: null
+    id: fao
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/OBA
+    description: null
+    id: oba
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/PO
+    description: null
+    id: po
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/VT
+    description: null
+    id: vt
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/STATO
+    description: null
+    id: stato
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/BFO
+    description: null
+    id: bfo
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/HSAPDV
+    description: null
+    id: hsapdv
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL
+    description: null
+    id: cl
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/cl/cl-base.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/MPATH
+    description: null
+    id: mpath
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/NCBITAXON-TAXSLIM
+    description: null
+    id: ncbitaxon-taxslim
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/ncbitaxon/subsets/taxslim.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CARO
+    description: null
+    id: caro
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: null
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-EXT
+    description: null
+    id: uberon-ext
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/ext.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-ZFA
+    description: null
+    id: uberon-bridge-to-zfa
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-zfa.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-MA
+    description: null
+    id: uberon-bridge-to-ma
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-ma.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-WBBT
+    description: null
+    id: uberon-bridge-to-wbbt
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-wbbt.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-FBBT
+    description: null
+    id: uberon-bridge-to-fbbt
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-fbbt.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-FMA
+    description: null
+    id: uberon-bridge-to-fma
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-fma.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/UBERON-BRIDGE-TO-NIFSTD
+    description: null
+    id: uberon-bridge-to-nifstd
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-nifstd.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL-BRIDGE-TO-MA
+    description: null
+    id: cl-bridge-to-ma
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/cl-bridge-to-ma.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL-BRIDGE-TO-FMA
+    description: null
+    id: cl-bridge-to-fma
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/cl-bridge-to-fma.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL-BRIDGE-TO-WBBT
+    description: null
+    id: cl-bridge-to-wbbt
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/cl-bridge-to-wbbt.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL-BRIDGE-TO-FBBT
+    description: null
+    id: cl-bridge-to-fbbt
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/cl-bridge-to-fbbt.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  - annotation_properties:
+    - rdfs:label
+    - IAO:0000115
+    - OMO:0002000
+    base_iris:
+    - http://purl.obolibrary.org/obo/CL-BRIDGE-TO-ZFA
+    description: null
+    id: cl-bridge-to-zfa
+    is_large: false
+    maintenance: manual
+    make_base: false
+    mirror_from: http://purl.obolibrary.org/obo/uberon/bridge/cl-bridge-to-zfa.owl
+    mirror_type: null
+    module_type: slme
+    module_type_slme: BOT
+    rebuild_if_source_changes: true
+    robot_settings: null
+    slme_individuals: include
+    use_base: false
+    use_gzipped: false
+  rebuild_if_source_changes: true
+  release_imports: false
+  scan_signature: true
+  slme_individuals: include
+  strip_annotation_properties: true
+  use_base_merging: false
+import_pattern_ontology: false
+license: https://creativecommons.org/licenses/unspecified
+manage_import_declarations: true
+namespaces: null
+obo_format_options: --clean-obo "strict drop-untranslatable-axioms"
+owltools_memory: ''
+pattern_pipelines_group: null
+primary_release: full
+public_release: none
+public_release_assets: null
+reasoner: ELK
+release_annotate_inferred_axioms: false
+release_artefacts:
+- base
+- full
+- non-classified
+release_date: false
+release_diff: false
+release_materialize_object_properties: null
+release_use_reasoner: true
+remove_owl_nothing: false
+repo: monarch-ontology
+repo_url: ''
+robot_java_args: -Xmx8G
+robot_plugins: null
+robot_reduce_options: --include-subproperties true
+robot_relax_options: --include-subclass-of true
+robot_report:
+  custom_profile: false
+  custom_sparql_checks:
+  - owldef-self-reference
+  - iri-range
+  - label-with-iri
+  - multiple-replaced_by
+  - dc-properties
+  custom_sparql_exports:
+  - basic-report
+  - class-count-by-prefix
+  - edges
+  - xrefs
+  - obsoletes
+  - synonyms
+  ensure_owl2dl_profile: true
+  fail_on: null
+  release_reports: false
+  report_on:
+  - edit
+  sparql_test_on:
+  - edit
+  upper_ontology: null
+  use_base_iris: true
+  use_labels: true
+robot_settings: null
+robot_version: null
+run_as_root: false
+sssom_mappingset_group: null
+subset_group: null
+title: Monarch Ontology
+travis_emails: null
+uribase: http://purl.obolibrary.org/obo
+uribase_suffix: null
+use_context: false
+use_custom_import_module: false
+use_dosdps: false
+use_edit_file_imports: true
+use_env_file_docker: false
+use_external_date: false
+use_mappings: false
+use_templates: false
+use_translations: false
+workflows:
+- docs
+- qc

@@ -184,17 +184,71 @@ were not in the editor, and nothing anywhere said so.
 
 It exits 1 if a single cell changed, so it can gate a build.
 
+## The assistant benchmark
+
+The assistant's benchmark compares models on the same cases and writes a table. It has five
+tasks: explaining a reasoner problem, asking for a missing term, writing a definition,
+repairing a problem in a loop where the reasoner checks each removal, and writing a sentence as
+an axiom that the reasoner compares with the one held back. It is run the same way,
+from this classpath, with
+`de.fizkarlsruhe.ise.ontoboard.assistant.bench.AssistantBench`. The cases, the ontology snapshots
+they were made from, what each score means and how to run it are in
+[benchmarks/assistant](https://github.com/ebrahimnorouzi/ontoboard/tree/main/benchmarks/assistant).
+Keys come only from environment variables and are never written to its output.
+
+## ODK in Docker and OntoBoard, side by side
+
+The same tasks, on fresh copies of the same small projects, run two ways: with ODK's own program
+in ODK's Docker image (v1.6.1), and with OntoBoard's own code in one Java process, without a
+container - as inside Protégé. For each task the two results are compared - the files written,
+the reports, the built ontologies - and must agree: the test fails at the first line in which
+they differ.
+
+| Task | Project | ODK in Docker, s | OntoBoard, s | Agree |
+|---|---|---|---|---|
+| New project | eggboil | 11.3 (8.0-18.3) | 4.2 (1.5-5.2) | yes |
+| Update project files | egg-changed | 13.7 (12.0-29.6) | 3.0 (2.7-5.5) | yes |
+| Refresh imports | loim | 39.3 (28.1-47.0) | 7.5 (4.9-12.6) | yes |
+| Refresh one import | loim | 31.5 (21.4-36.0) | 4.0 (2.5-7.7) | yes |
+| Test, fast | egg | 73.3 (61.2-103.7) | 5.2 (3.2-9.1) | yes |
+| Test, full | egg | 56.9 (50.1-98.5) | 1.1 (1.0-6.5) | yes |
+| Release, fast | egg | 49.0 (45.6-53.1) | 1.5 (0.91-2.3) | yes |
+| Release, full | egg | 60.2 (53.4-66.9) | 2.3 (1.2-3.3) | yes |
+| Clean | egg | 1.9 (1.3-2.3) | 0.08 (0.07-0.21) | yes |
+
+Each time is the median of five runs, after one that is not counted, with the lowest and the
+highest in brackets: the wall clock from the start of a task to its end. ODK's include starting a
+container for every call; OntoBoard's do not include starting Java, which Protégé has already
+started. In every task OntoBoard's slowest run took less time than ODK's fastest.
+
+Measured on 15 November 2026 on one Windows 11 laptop with eight logical processors, Docker
+29.9.3 and Java 11, while other programs kept its processors 93% busy on average. The times say
+what that machine gave that day: on a quiet machine both columns are smaller, and the gap between
+them may be another. The projects are small fixtures, so how the two compare on a large ontology
+is not measured here. ROBOT is 1.9.8 inside OntoBoard and 1.9.10 in the image, and the imports
+were read from local files, so nothing was fetched over the network.
+
+With Docker running and ODK's image on the machine:
+
+```
+cd protege-plugin
+mvn test -Dtest=SideBySideLiveTest -Dsidebyside.runs=5
+```
+
+It writes `target/side-by-side/report.md` - this table, the machine, and what the run does not
+show - and the numbers in `target/side-by-side/results.csv`.
+
 ## The test suite
 
 ```
 mvn -B clean test
 ```
 
-2,4xx tests, 0 failures. Run headless, which is how CI runs it and where it belongs:
-
-```
-mvn -B clean test -DargLine=-Djava.awt.headless=true
-```
+5,667 tests at 1.153.0, 0 failures; a few skip themselves where the platform lacks what they
+test - a Mac's JDK, an executable bit, a file system that keeps case. The 18 live tests, which
+start ODK's container or the collaboration server, skip themselves where ODK's image or Node is
+not there. Some tests build the board's windows and need a display: CI runs the suite on Linux
+under a virtual one (`xvfb-run -a mvn -B clean test`), and on Windows as it is.
 
 ## The host
 

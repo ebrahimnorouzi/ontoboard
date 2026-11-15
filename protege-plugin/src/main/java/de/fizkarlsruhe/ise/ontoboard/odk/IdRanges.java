@@ -51,6 +51,14 @@ public final class IdRanges {
     /** {@code IAO_0000596}: how many digits the number is padded to. */
     public static final String ID_DIGITS = "http://purl.obolibrary.org/obo/IAO_0000596";
 
+    /**
+     * The names ODK v1.6.1's seed allocates its two ranges to - {@code 0} to {@code 999999} and
+     * {@code 1000000} to {@code 1999999} - for whoever starts the project to replace with theirs.
+     * In the order its template writes them.
+     */
+    public static final List<String> ODK_PLACEHOLDERS = Collections.unmodifiableList(
+            java.util.Arrays.asList("ONTOLOGY-CREATOR", "ADDITIONAL EDITOR"));
+
     /** Raised rather than returning null, because minting silently is how collisions happen. */
     public static final class NoRangeException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -556,6 +564,81 @@ public final class IdRanges {
             base = base.substring(0, lastSlash);
         }
         return base + "/" + ontologyId.trim().toUpperCase(java.util.Locale.ROOT) + "_";
+    }
+
+    /**
+     * Whether every range is still allocated to one of {@link #ODK_PLACEHOLDERS} - the file as
+     * {@code odk.py seed} writes it, before anybody has put their name in.
+     *
+     * <p>Nobody mints under a placeholder's name, so in such a project every new term was refused
+     * with "No ID range is allocated to you" until somebody edited this file by hand. This is what
+     * tells the board to ask instead. False for a file with no ranges: ODK never writes one, and
+     * there is nothing in it to claim.
+     */
+    public boolean isOdkPlaceholders() {
+        if (ranges.isEmpty()) {
+            return false;
+        }
+        for (Range range : ranges) {
+            if (!ODK_PLACEHOLDERS.contains(range.getAllocatedTo())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * {@code fileText} with the range allocated to {@code placeholder} allocated to
+     * {@code editor} instead, and not one other character changed.
+     *
+     * <p>A text edit of the one literal rather than a {@link #toManchester()} round trip. The file
+     * is ODK's and is committed: the renderer would normalise the indentation ODK's template
+     * leaves, and write LF where a Windows checkout has CRLF, so claiming a range would show in
+     * the diff as a rewrite of the whole file.
+     *
+     * @param placeholder one of {@link #ODK_PLACEHOLDERS}
+     * @param editor the name the editor mints under; it goes between quotes, so it may not hold a
+     *     quote, a backslash or a line break
+     * @throws IllegalArgumentException when the placeholder is not ODK's; when no range, or more
+     *     than one, is allocated to it - somebody has claimed it already, or the file was edited;
+     *     when the name is blank or would break the literal; or when the editor has a range already
+     * @throws NoRangeException when the text is not an ID ranges file
+     */
+    public static String claim(String fileText, String placeholder, String editor) {
+        if (!ODK_PLACEHOLDERS.contains(placeholder)) {
+            throw new IllegalArgumentException("'" + placeholder + "' is not one of ODK's "
+                    + "placeholders " + ODK_PLACEHOLDERS + ", so it is somebody's range already.");
+        }
+        String name = editor == null ? "" : editor.trim();
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("A range has to be claimed by somebody: give the "
+                    + "name you mint under.");
+        }
+        if (name.indexOf('"') >= 0 || name.indexOf('\\') >= 0 || name.indexOf('\n') >= 0
+                || name.indexOf('\r') >= 0) {
+            throw new IllegalArgumentException("'" + name + "' cannot be written into the ranges "
+                    + "file: it goes between quotes there, so it may not hold a quote, a backslash "
+                    + "or a line break.");
+        }
+        Range already = parse(fileText).rangeFor(name);
+        if (already != null) {
+            throw new IllegalArgumentException("'" + name + "' already has " + already
+                    + ", so there is no placeholder for them to claim.");
+        }
+        Matcher literal = Pattern.compile("allocatedto\\s*:\\s*\"(" + Pattern.quote(placeholder)
+                + ")\"").matcher(fileText);
+        if (!literal.find()) {
+            throw new IllegalArgumentException("No range is allocated to " + placeholder
+                    + " any more - somebody has claimed it.");
+        }
+        int start = literal.start(1);
+        int end = literal.end(1);
+        if (literal.find()) {
+            throw new IllegalArgumentException("More than one range is allocated to "
+                    + placeholder + ", so which one is yours is for the project to say, in the "
+                    + "file itself.");
+        }
+        return fileText.substring(0, start) + name + fileText.substring(end);
     }
 
     /** Everyone with a range, in file order, for a settings dialog to show. */

@@ -1,0 +1,9 @@
+# Every class should carry an rdfs:label.
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?entity WHERE {
+  ?entity a owl:Class .
+  FILTER NOT EXISTS { ?entity rdfs:label ?label }
+  FILTER (!isBlank(?entity))
+  FILTER (!STRSTARTS(STR(?entity), "http://www.w3.org/2002/07/owl#"))
+}

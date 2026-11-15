@@ -41,8 +41,9 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * already answered one pair at a time; this is the whole path in one table, with that comparison
  * underneath it for whichever row is chosen.
  *
- * <p>The versions are the ones Release keeps in {@code releases/<version>/}, so it needs nothing
- * but the project: no git, no network.
+ * <p>The versions are the project's releases ({@link ReleaseHistory#releasesOf}): the git tags
+ * {@code v<version>} ODK's release makes, and the copies OntoBoard keeps in
+ * {@code releases/<version>/}. Without git, the folders alone; no network either way.
  */
 public class HistoryAction extends ProtegeOWLAction {
 
@@ -82,11 +83,11 @@ public class HistoryAction extends ProtegeOWLAction {
         }
         File projectRoot = ReleaseAction.projectRootOf(editFile);
         String id = Release.ontologyIdFrom(editFile);
-        List<String> kept = CompareReleasesAction.releasesOf(editFile);
-        show(projectRoot, id, kept, editFile);
+        List<ReleaseHistory.Entry> kept = ReleaseHistory.releasesOf(projectRoot, id);
+        show(id, kept, editFile);
     }
 
-    private void show(final File projectRoot, final String id, final List<String> kept,
+    private void show(final String id, final List<ReleaseHistory.Entry> kept,
             final File editFile) {
         final JDialog dialog = new JDialog(
                 javax.swing.SwingUtilities.getWindowAncestor(getOWLWorkspace()),
@@ -161,7 +162,7 @@ public class HistoryAction extends ProtegeOWLAction {
         new SwingWorker<List<ReleaseHistory.Version>, String>() {
             @Override
             protected List<ReleaseHistory.Version> doInBackground() throws Exception {
-                return ReleaseHistory.of(projectRoot, id, kept, workingCopy, editFile,
+                return ReleaseHistory.of(kept, workingCopy, editFile,
                         (version, index, of) -> publish("Reading " + version + " (" + index
                                 + " of " + of + ")..."));
             }
@@ -189,8 +190,10 @@ public class HistoryAction extends ProtegeOWLAction {
                 }
                 int releases = versions.size() - 1;
                 status.setText(releases <= 0
-                        ? "No releases kept yet. Build and release > Release... keeps each one in "
-                                + "releases/<version>/, and they will be listed here."
+                        ? "No releases yet. A release is a git tag such as v1.0.0 that holds "
+                                + id + ".owl, or a copy under releases/. "
+                                + "Build and release > Release... makes one, and it will be "
+                                + "listed here."
                         : releases + " release" + (releases == 1 ? "" : "s") + ", newest first, "
                                 + "and the working copy above them. Choose one to see what "
                                 + "changed in it.");
@@ -349,12 +352,28 @@ public class HistoryAction extends ProtegeOWLAction {
         }
     }
 
-    /** Opens the chosen release in a Protege window of its own. */
+    /**
+     * Opens the chosen release in a Protege window of its own: its folder's file, or - for a
+     * release that is only a git tag - a read-only copy of what the tag holds, written outside
+     * the project ({@link ReleaseHistory.Entry#openable}).
+     */
     private void openSelected() {
         ReleaseHistory.Version version = selectedVersion();
-        if (version == null || version.isWorkingCopy() || version.getFile() == null) {
+        if (version == null || version.isWorkingCopy()) {
             return;
         }
+        File file;
+        try {
+            file = version.getRelease() != null ? version.getRelease().openable()
+                    : version.getFile();
+        } catch (java.io.IOException cannotCopy) {
+            status.setText("Could not open " + version.getName() + ": " + cannotCopy.getMessage());
+            return;
+        }
+        if (file == null) {
+            return;
+        }
+        boolean copy = version.getRelease() != null && version.getRelease().file() == null;
         try {
             org.protege.editor.core.ProtegeManager protege =
                     org.protege.editor.core.ProtegeManager.getInstance();
@@ -365,12 +384,15 @@ public class HistoryAction extends ProtegeOWLAction {
                     owl = plugin;
                 }
             }
-            if (owl == null || !protege.loadAndSetupEditorKitFromURI(owl,
-                    version.getFile().toURI())) {
-                status.setText("Protege did not open " + version.getFile().getName() + ".");
+            if (owl == null || !protege.loadAndSetupEditorKitFromURI(owl, file.toURI())) {
+                status.setText("Protege did not open " + file.getName() + ".");
                 return;
             }
-            status.setText("Opened " + version.getName() + " in a new window.");
+            status.setText(copy
+                    ? "Opened " + version.getName() + " in a new window, from a read-only copy "
+                            + "of the git tag " + version.getRelease().tag() + " in "
+                            + file.getParent() + " - not a file of the project."
+                    : "Opened " + version.getName() + " in a new window.");
         } catch (Exception cannotOpen) {
             status.setText("Could not open " + version.getName() + ": "
                     + cannotOpen.getMessage());

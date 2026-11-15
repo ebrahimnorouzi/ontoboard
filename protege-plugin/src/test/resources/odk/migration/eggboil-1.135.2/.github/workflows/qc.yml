@@ -1,0 +1,28 @@
+name: QC
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROBOT
+        run: |
+          curl -fsSL --retry 3 -o robot.jar \
+            https://github.com/ontodev/robot/releases/download/v1.9.8/robot.jar
+          printf '#!/bin/sh\nexec java -jar %s/robot.jar "$@"\n' "$PWD" | sudo tee /usr/local/bin/robot > /dev/null
+          sudo chmod +x /usr/local/bin/robot
+          robot --version
+      - name: Run QC
+        working-directory: src/ontology
+        run: make test
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-report
+          path: src/ontology/report.tsv
+          if-no-files-found: ignore

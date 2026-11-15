@@ -78,13 +78,26 @@ public final class Explanations {
         private final List<Justification> justifications;
         private final String impactSummary;
         private final List<String> unsatisfiable;
+        private final List<org.semanticweb.owlapi.model.IRI> unsatisfiableIris;
         private final boolean consistent;
 
         Result(List<Justification> justifications, String impactSummary,
-                List<String> unsatisfiable, boolean consistent) {
+                List<OWLClass> unsatisfiable, OWLOntology ontology, boolean consistent) {
             this.justifications = Collections.unmodifiableList(justifications);
             this.impactSummary = impactSummary;
-            this.unsatisfiable = Collections.unmodifiableList(unsatisfiable);
+            List<String> labels = new ArrayList<String>();
+            List<org.semanticweb.owlapi.model.IRI> iris =
+                    new ArrayList<org.semanticweb.owlapi.model.IRI>();
+            for (OWLClass bad : unsatisfiable) {
+                // forEntity, not shortNameOf: the justifications beside this list are rendered
+                // with labels, so naming the same class ImpossiblePizza here and "impossible
+                // pizza" three lines down made one class look like two. It is also the name
+                // robot explain writes.
+                labels.add(DisplayLabels.forEntity(ontology, bad));
+                iris.add(bad.getIRI());
+            }
+            this.unsatisfiable = Collections.unmodifiableList(labels);
+            this.unsatisfiableIris = Collections.unmodifiableList(iris);
             this.consistent = consistent;
         }
 
@@ -99,6 +112,14 @@ public final class Explanations {
 
         public List<String> getUnsatisfiable() {
             return unsatisfiable;
+        }
+
+        /**
+         * The same classes, in the same order, as IRIs: two classes can share a label, and the
+         * assistant explained the wrong one of two (review 1.153.0 reasoner-03).
+         */
+        public List<org.semanticweb.owlapi.model.IRI> getUnsatisfiableIris() {
+            return unsatisfiableIris;
         }
 
         public boolean isConsistent() {
@@ -121,6 +142,16 @@ public final class Explanations {
      * @throws RobotException if the reasoner or the explanation generator cannot run here
      */
     public static Result run(OWLOntology ontology, OWLReasonerFactory factory, int perClass) {
+        return run(ontology, factory, perClass, null);
+    }
+
+    /**
+     * As {@link #run(OWLOntology, OWLReasonerFactory, int)}, with the justification axioms
+     * written by {@code render} - the assistant's, which writes a literal with its type
+     * ({@code assistant/context/AssistantRendering}). Null means this class's own rendering.
+     */
+    public static Result run(OWLOntology ontology, OWLReasonerFactory factory, int perClass,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
         if (ontology == null || factory == null) {
             throw new IllegalArgumentException("an ontology and a reasoner are both required");
         }
@@ -134,27 +165,27 @@ public final class Explanations {
             if (!consistent) {
                 Set<Explanation<OWLAxiom>> found =
                         ExplainOperation.explainInconsistent(ontology, factory, wanted);
-                return new Result(describe(found, ontology), impact(found, ontology),
-                        new ArrayList<String>(), false);
+                return new Result(describe(found, ontology, render), impact(found, ontology),
+                        new ArrayList<OWLClass>(), ontology, false);
             }
 
-            List<String> unsatisfiable = new ArrayList<String>();
-            for (OWLClass bad : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
-                // forEntity, not shortNameOf: the justifications beside this list are rendered
-                // with labels, so naming the same class ImpossiblePizza here and "impossible
-                // pizza" three lines down made one class look like two. It is also the name
-                // robot explain writes.
-                unsatisfiable.add(DisplayLabels.forEntity(ontology, bad));
-            }
-            Collections.sort(unsatisfiable);
+            List<OWLClass> unsatisfiable = new ArrayList<OWLClass>(
+                    reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom());
+            // By the name shown, as before; two of one name by their IRIs, so the order is fixed.
+            Collections.sort(unsatisfiable, (a, b) -> {
+                int byName = DisplayLabels.forEntity(ontology, a)
+                        .compareTo(DisplayLabels.forEntity(ontology, b));
+                return byName != 0 ? byName : a.getIRI().compareTo(b.getIRI());
+            });
             if (unsatisfiable.isEmpty()) {
-                return new Result(new ArrayList<Justification>(), "", unsatisfiable, true);
+                return new Result(new ArrayList<Justification>(), "", unsatisfiable, ontology,
+                        true);
             }
 
             Set<Explanation<OWLAxiom>> found = ExplainOperation.explainUnsatisfiableClasses(
                     ontology, reasoner, factory, wanted);
-            return new Result(describe(found, ontology), impact(found, ontology), unsatisfiable,
-                    true);
+            return new Result(describe(found, ontology, render), impact(found, ontology),
+                    unsatisfiable, ontology, true);
         } catch (RuntimeException | LinkageError cannotExplain) {
             throw new RobotException("The explanation could not be computed: "
                     + describe(cannotExplain), cannotExplain);
@@ -200,13 +231,20 @@ public final class Explanations {
      */
     public static List<Justification> forEntailment(OWLOntology ontology,
             OWLReasonerFactory factory, OWLAxiom entailment, int max) {
+        return forEntailment(ontology, factory, entailment, max, null);
+    }
+
+    /** As the four-argument form, with the axioms written by {@code render} (null: this class's). */
+    public static List<Justification> forEntailment(OWLOntology ontology,
+            OWLReasonerFactory factory, OWLAxiom entailment, int max,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
         if (ontology == null || factory == null || entailment == null) {
             throw new IllegalArgumentException(
                     "an ontology, a reasoner factory and an entailment are all required");
         }
         try {
             return describe(ExplainOperation.explain(entailment, ontology, factory,
-                    max < 1 ? 1 : max), ontology);
+                    max < 1 ? 1 : max), ontology, render);
         } catch (RuntimeException | LinkageError cannotExplain) {
             throw new RobotException("The explanation could not be computed: "
                     + describe(cannotExplain), cannotExplain);
@@ -237,17 +275,20 @@ public final class Explanations {
      * between runs cannot be worked through one row at a time.
      */
     private static List<Justification> describe(Set<Explanation<OWLAxiom>> found,
-            OWLOntology ontology) {
-        ManchesterOWLSyntaxOWLObjectRendererImpl renderer = renderer(ontology);
+            OWLOntology ontology,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
+        final ManchesterOWLSyntaxOWLObjectRendererImpl renderer = renderer(ontology);
+        java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> writer =
+                render != null ? render : object -> tidy(renderer.render(object));
         List<Justification> justifications = new ArrayList<Justification>();
         for (Explanation<OWLAxiom> explanation : found) {
             List<String> axioms = new ArrayList<String>();
             for (OWLAxiom axiom : explanation.getAxioms()) {
-                axioms.add(tidy(renderer.render(axiom)));
+                axioms.add(writer.apply(axiom));
             }
             Collections.sort(axioms);
-            justifications.add(new Justification(
-                    tidy(renderer.render(explanation.getEntailment())), axioms));
+            justifications.add(new Justification(writer.apply(explanation.getEntailment()),
+                    axioms));
         }
         Collections.sort(justifications, new Comparator<Justification>() {
             @Override

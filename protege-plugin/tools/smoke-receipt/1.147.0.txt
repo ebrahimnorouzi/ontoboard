@@ -1,0 +1,55 @@
+OntoBoard 1.147.0 - host smoke receipt
+
+The fresh review of 1.146.0 is acted on, and so are three minor items deferred from 1.145.0.
+Four reviewers read the code, one area each. An independent checker reproduced each serious
+finding and tried to refute it; the one beyond the checkers was reproduced by its own failing
+test. Two agents fixed keys and the role editor, each test-first in its own copy of the tree, and
+a reviewer read each diff: both found one more gap, closed before the merge. Each change has a
+test that failed first:
+- Keys:
+  - A password in an address is hidden again when it, or its user name, holds ; , ( ) ' or a
+    letter such as u-umlaut or the euro sign (1.146.0 had narrowed this too far).
+  - GitLab and sk- keys are recognised by shape again when their body holds a capital letter or
+    a digit; 1.146.0 asked for a digit and missed about 1 in 30 GitLab tokens.
+  - A key typed in Settings no longer follows a second preset, or a kind change that rewrites the
+    address, to another provider. A preset names a new connection after itself, numbered when the
+    name is taken, and a new connection cannot be saved over a saved one.
+  - Renaming a connection on the same host keeps its key.
+  - The benchmark's models check no longer refuses an ordinary variable name, or one written as
+    $NAME, $env:NAME and the like, with a false "holds a key".
+- Roles: a role text typed for one ontology stays with it when another ontology becomes active,
+  and comes back when it is active again. Before, Save wrote it over the other project's
+  committed role, and Reset and Delete removed that file. The role line names the ontology's
+  folder.
+- Saved conversations: a junction inside a clone that points out of it gets the clone's exclude
+  rules again.
+- Saving the ontology updates only the project's parts of the assistant: it no longer re-applies
+  the connection, which could stop an answer in progress, and the column shows the role used.
+- A chip name too long for the column is shortened, so its x stays in reach.
+- Benchmark: a definition repeated with other spacing is one card, and the documents say exactly
+  which cards count.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.146.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 78028fd1ec41a025679c28bbd3a8830e6bf088df1e7fc9265facdf0e2e5de15f, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,432 tests, 0 failures, 0 errors, 3 skipped (3,407 in 1.146.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+
+No live benchmark was run: on this laptop one real request takes about 5 minutes, the bench's
+read timeout (host checks for 1.144.0 to 1.146.0). A live run needs a GPU host or a smaller
+model.

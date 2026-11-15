@@ -1,0 +1,9 @@
+make IMP=true MIR=true PAT=false IMP_LARGE=true clean all_imports
+make[1]: Entering directory '/tmp/odk/components/src/ontology'
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   comp.obo  comp.owl   comp-base.obo  comp-base.owl   comp-full.obo  comp-full.owl  tmp/merged-comp-edit.ofn tmp/comp-preprocess.owl
+make[1]: Nothing to be done for 'all_imports'.
+make[1]: Leaving directory '/tmp/odk/components/src/ontology'

@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -35,13 +36,26 @@ import javax.swing.table.DefaultTableModel;
  * summary, table, log, timing, files - because a saved report missing the warnings is the
  * half-truth this is meant to avoid.
  *
- * <p>Swing, so untested; every decision it renders is made in {@link OperationResult}, which is.
+ * <p>Swing; every decision it renders is made in {@link OperationResult}, which is tested, and
+ * what a decision looks like at the dialog's own size in {@code DialogDesignProofTest}.
  */
 public final class ResultDialog {
 
     private static final Color GOOD = new Color(0x2E, 0x7D, 0x32);
     private static final Color WARN = new Color(0xB0, 0x6C, 0x00);
     private static final Color BAD = new Color(0xC6, 0x28, 0x28);
+
+    /** How many written files are named above the log; more are counted there and listed in it. */
+    static final int FILES_NAMED = 3;
+
+    /** What the log keeps of the panel's height: its tab and a handful of lines. */
+    private static final int LOG_KEEPS = 120;
+
+    /** The tallest the panel grows to keep the log that room; a laptop screen still holds it. */
+    private static final int TALLEST = 560;
+
+    /** The room a scroll bar beside the header takes, so that it does not cut the text. */
+    private static final int SCROLL_BAR = 20;
 
     private ResultDialog() {
     }
@@ -70,10 +84,30 @@ public final class ResultDialog {
      */
     static JPanel buildContent(OperationResult result) {
         JPanel content = new JPanel(new BorderLayout(0, 8));
-        content.add(header(result), BorderLayout.NORTH);
+        Component header = header(result);
+        // The dialog cannot be resized, so what the header takes the log loses - and what is
+        // pushed out of the panel cannot be reached. A long sentence above the log makes the
+        // panel taller instead: a release's result showed no log at all (1.153.0, live run).
+        // Past what a laptop screen holds, it is the sentence that scrolls, not the log that
+        // goes.
+        int usual = result.hasTable() ? 460 : 260;
+        int room = TALLEST - 8 - LOG_KEEPS;
+        int headerHeight = header.getPreferredSize().height;
+        boolean scrolled = headerHeight > room;
+        int width = (result.hasTable() ? 680 : 520) + (scrolled ? SCROLL_BAR : 0);
+        if (scrolled) {
+            JScrollPane pane = new JScrollPane(header,
+                    JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+                    JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            pane.setBorder(BorderFactory.createEmptyBorder());
+            pane.setPreferredSize(new Dimension(width, room));
+            content.add(pane, BorderLayout.NORTH);
+        } else {
+            content.add(header, BorderLayout.NORTH);
+        }
         content.add(body(result), BorderLayout.CENTER);
-        content.setPreferredSize(new Dimension(result.hasTable() ? 680 : 520,
-                result.hasTable() ? 460 : 260));
+        content.setPreferredSize(new Dimension(width, Math.min(TALLEST,
+                Math.max(usual, Math.min(headerHeight, room) + 8 + LOG_KEEPS))));
         return content;
     }
 
@@ -95,10 +129,18 @@ public final class ResultDialog {
         summary.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
         header.add(summary);
 
-        if (!result.getFiles().isEmpty()) {
+        List<File> wrote = result.getFiles();
+        if (!wrote.isEmpty()) {
+            // A release writes a dozen files. Named one a line they took the panel; the first
+            // two are named here and all of them at the end of the log.
+            boolean all = wrote.size() <= FILES_NAMED;
             StringBuilder written = new StringBuilder("<html><body style='width:390px'>Wrote: ");
-            for (File file : result.getFiles()) {
+            for (File file : all ? wrote : wrote.subList(0, FILES_NAMED - 1)) {
                 written.append("<br>").append(escape(file.getAbsolutePath()));
+            }
+            if (!all) {
+                written.append("<br>and ").append(wrote.size() - (FILES_NAMED - 1))
+                        .append(" more - all are listed at the end of the log");
             }
             JLabel files = new JLabel(written.append("</body></html>").toString());
             files.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -116,8 +158,16 @@ public final class ResultDialog {
         }
         // Always a log tab, even when empty: an absent tab leaves the user wondering whether
         // there was a log they are not being shown.
-        JTextArea log = new JTextArea(result.getLog().isEmpty()
+        StringBuilder logged = new StringBuilder(result.getLog().isEmpty()
                 ? "Nothing was logged." : String.join("\n", result.getLog()));
+        if (result.getFiles().size() > FILES_NAMED) {
+            logged.append("\n\nWrote:");
+            for (File file : result.getFiles()) {
+                logged.append('\n').append(file.getAbsolutePath());
+            }
+        }
+        JTextArea log = new JTextArea(logged.toString());
+        log.setCaretPosition(0);
         log.setEditable(false);
         log.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         tabs.addTab("Log (" + result.getLog().size() + ")", new JScrollPane(log));
@@ -140,7 +190,27 @@ public final class ResultDialog {
         for (List<String> row : result.getRows()) {
             model.addRow(row.toArray(new Object[0]));
         }
-        JTable table = new JTable(model);
+        JTable table = new JTable(model) {
+            private static final long serialVersionUID = 1L;
+
+            /**
+             * A cell too long for its column is cut, and the dialog cannot be made wider:
+             * pointed at, such a cell says its whole text. One that fits says nothing.
+             */
+            @Override
+            public String getToolTipText(MouseEvent pointer) {
+                int row = rowAtPoint(pointer.getPoint());
+                int column = columnAtPoint(pointer.getPoint());
+                if (row < 0 || column < 0) {
+                    return null;
+                }
+                Object value = getValueAt(row, column);
+                Component shown = prepareRenderer(getCellRenderer(row, column), row, column);
+                boolean cut = shown.getPreferredSize().width
+                        > getCellRect(row, column, false).width;
+                return cut && value != null ? value.toString() : null;
+            }
+        };
         table.setAutoCreateRowSorter(true);
         table.setFillsViewportHeight(true);
         return table;

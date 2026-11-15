@@ -1,0 +1,17 @@
+[
+[
+"data",
+"For new term requests, please provide the following information:\n\n## Preferred term label\n\n(e.g., Asplenia)\n\n## Synonyms\n\n(e.g., Absent spleen)\n\n## Textual definition\n\nthe definition should be understandable even for non-specialists. Include a PubMed ID to refer to any relevant article that provides additional information about the suggested term.\n\n## Suggested parent term\n\nPlease look in the hierarchy in a browser such as [OLS](http://www.ebi.ac.uk/ols/ontologies/",
+1
+],
+[
+"variable",
+"project.id",
+17
+],
+[
+"data",
+")\n\n## Attribution\n\nIf you would like a nanoattribution, please indicate your ORCID id",
+17
+]
+]
