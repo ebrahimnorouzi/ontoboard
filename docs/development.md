@@ -192,7 +192,8 @@ de.fizkarlsruhe.ise.ontoboard
 ├── model/      OWL -> canvas projection, labels
 ├── axiom/      entity creation, OWLAx edge axioms, axiom removal
 ├── layout/     sidecar persistence
-├── odk/        project wizard and ODK scaffolding
+├── odk/        ODK projects: the wizard, ODK's seed from its bundled templates (odk/seed),
+│               OntoBoard's own engine for ODK's Makefile (odk/make), build, release, update
 └── robot/      in-process ROBOT operations
 ```
 

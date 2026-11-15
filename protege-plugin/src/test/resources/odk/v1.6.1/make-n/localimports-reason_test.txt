@@ -1,0 +1,3 @@
+robot --catalog catalog-v001.xml convert --input loim-edit.owl --format ofn --output tmp/loim-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/loim-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl

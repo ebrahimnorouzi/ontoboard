@@ -1,0 +1,5 @@
+Makefile
+loim-edit.owl
+loim.Makefile
+reason_test
+tmp/loim-preprocess.owl

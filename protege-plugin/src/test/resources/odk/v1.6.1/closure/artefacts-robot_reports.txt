@@ -1,0 +1,8 @@
+Makefile
+arte-edit.owl
+arte.Makefile
+reports
+reports/arte-edit.owl-obo-report.tsv
+robot_reports
+tmp/arte-preprocess.owl
+tmp/merged-arte-edit.ofn

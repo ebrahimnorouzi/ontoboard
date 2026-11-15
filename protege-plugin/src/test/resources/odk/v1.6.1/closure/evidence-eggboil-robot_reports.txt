@@ -1,0 +1,8 @@
+Makefile
+eggboil-edit.owl
+eggboil.Makefile
+reports
+reports/eggboil-edit.owl-obo-report.tsv
+robot_reports
+tmp/eggboil-preprocess.owl
+tmp/merged-eggboil-edit.ofn

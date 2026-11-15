@@ -10,7 +10,6 @@ import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms;
 import de.fizkarlsruhe.ise.ontoboard.odk.ModuleRebuild;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermList;
 import java.io.File;
@@ -216,8 +215,54 @@ public class ImportTermsAction extends OntoBoardAction {
 
     private volatile boolean askNothing = false;
 
+    /**
+     * Set with the form, in an ODK project: the person has changes that are not saved and
+     * chose to import all the same, so the project's files follow the configuration later.
+     */
+    private volatile boolean bringInLineLater = false;
+
     @Override
     protected boolean configure() {
+        return chosenWithTheForm() && savedWhereTheFilesFollow();
+    }
+
+    /**
+     * In an ODK project an import ends with the project's files brought in line with its
+     * configuration: ODK's update rewrites the edit file on disk, and Protege reads it
+     * again from there. Changes that are not saved would be lost, so they are asked about
+     * here, before anything runs - also where Find terms adds without the form.
+     */
+    private boolean savedWhereTheFilesFollow() {
+        bringInLineLater = false;
+        if (outcome != Outcome.SAVE_AND_IMPORT || !SaveFirst.isNeeded(getOWLModelManager())) {
+            return true;
+        }
+        File editFile;
+        try {
+            editFile = fileOf(getOWLModelManager().getActiveOntology());
+        } catch (RuntimeException notSaved) {
+            editFile = null;
+        }
+        if (editFile == null
+                || !de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile)) {
+            return true;
+        }
+        SaveFirst.Answer answer = SaveFirst.ask(getOWLWorkspace(), getOWLModelManager(),
+                "The ontology has changes that are not saved yet. After the import the "
+                        + "project's files are brought in line with its configuration - the "
+                        + "Makefile, the catalog and the edit file's imports - and the edit "
+                        + "file is read again from disk, so they would be lost.",
+                "Save and import", "Import, and bring the files in line later",
+                "Cannot import");
+        if (answer == SaveFirst.Answer.CANCELLED) {
+            return false;
+        }
+        bringInLineLater = answer == SaveFirst.Answer.NOT_SAVED;
+        return true;
+    }
+
+    /** The form, or what Find terms settled without it. */
+    private boolean chosenWithTheForm() {
         if (askNothing) {
             sourceText = seededSource;
             termsText = seededTerms;
@@ -406,10 +451,13 @@ public class ImportTermsAction extends OntoBoardAction {
                         projectRootFor(ontology), TermExtract.shortNameOf(source),
                         patternBeingImported(), sourceText)
                 : moduleNameFor(projectRootFor(ontology), source, sourceText);
-        IRI moduleIri = TermExtract.moduleIriIn(
-                ontology.getOntologyID().getOntologyIRI().isPresent()
-                        ? ontology.getOntologyID().getOntologyIRI().get() : null, source,
-                moduleName);
+        IRI moduleIri = odkModuleIri(ontology, moduleName);
+        if (moduleIri == null) {
+            moduleIri = TermExtract.moduleIriIn(
+                    ontology.getOntologyID().getOntologyIRI().isPresent()
+                            ? ontology.getOntologyID().getOntologyIRI().get() : null, source,
+                    moduleName);
+        }
         // A module already on disk keeps the IRI it declares: the one its import statement and
         // catalog entry already use. A newly made-up IRI would name neither.
         if (outcome != Outcome.ADD_AXIOMS) {
@@ -682,8 +730,7 @@ public class ImportTermsAction extends OntoBoardAction {
             }
         }
         try {
-            extracted.getModule().getOWLOntologyManager()
-                    .saveOntology(extracted.getModule(), IRI.create(target.toURI()));
+            writeModule(extracted.getModule(), target);
         } catch (Exception cannotSave) {
             return result.failed("Could not write " + target.getAbsolutePath() + ": "
                     + cannotSave.getMessage()).build();
@@ -703,12 +750,28 @@ public class ImportTermsAction extends OntoBoardAction {
         // made exactly that state for itself, scaffolding `products: []` and then never adding to
         // it. 1.99.0 started reporting it; this stops causing it.
         //
-        // EXCEPT FOR A PATTERN, which is not refreshed from anywhere: the only mirror_from there
-        // was to give it was the library's working copy on this machine, a file: path that went
-        // into the committed configuration and resolved on no other.
-        if (patternBeingImported() == null) {
-            declareProduct(result, ontology, source, sourceIri);
+        // A PATTERN is declared as kept as it is (custom, no mirror): it is not refreshed from
+        // anywhere - importing it again is what changes it - and the only mirror_from there
+        // was to give it was the library's working copy on this machine, a file: path that
+        // resolved on no other.
+        //
+        // AND NOT AT ALL, in an ODK project, for a module that is saved and nothing else: a
+        // declared product is an import there - ODK's update writes it into the edit file.
+        File editFile = fileOf(ontology);
+        boolean odk = editFile != null
+                && de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile);
+        boolean declared = false;
+        if (odk && !andImport && ImportProducts.named(ImportProducts.declaredIn(
+                editFile.getAbsoluteFile().getParentFile()), moduleName(source)) == null) {
+            result.note("No product was declared for it in the project's configuration: ODK's "
+                    + "update writes a declared product into the edit file as an import, and "
+                    + "this was to save the module and do nothing else.");
+        } else if (odk || patternBeingImported() == null) {
+            declared = declareProduct(result, ontology, source, sourceIri,
+                    patternBeingImported() != null, odk);
         } else {
+            // The older layout, as ever: its Makefile is OntoBoard's own, and nothing in
+            // it is refreshed from a pattern.
             result.note("Not declared in import_group.products: a pattern from the library is "
                     + "changed by importing it again, so nothing needs to download it.");
         }
@@ -720,20 +783,260 @@ public class ImportTermsAction extends OntoBoardAction {
         }
 
         if (!andImport) {
+            // Nothing else - but a module this ontology imports already is open in Protege,
+            // which holds what the file held before and would ask about the newer file.
+            WhatARunWrote.Done again = protegeReadsAgain().readAgain(
+                    java.util.Collections.singletonList(target));
+            if (!again.read().isEmpty()) {
+                result.note("This ontology imports that module already, so Protege has read "
+                        + "it again from the file.");
+            }
+            for (String why : again.notRead()) {
+                result.warn(why);
+            }
             return result.summary("Wrote a module of " + counted(extracted.getAxiomCount(), "axiom")
                     + ". Nothing else was changed.").build();
         }
 
+        if (odk) {
+            return importedIntoAnOdkProject(extracted, result, ontology, moduleIri, source,
+                    requestedTerms, target, editFile, declared);
+        }
+        wireUp(result, ontology, moduleIri, target, false);
+        result.note("Imported as " + moduleIri);
+        return result.summary(moduleSummary(extracted.getAxiomCount(),
+                extracted.getRequested() - extracted.getMissing().size())).build();
+    }
+
+    /**
+     * How an import ends in an ODK project: the project's files follow its configuration, and
+     * ODK builds the module.
+     *
+     * <p>What a person does by hand there is three steps: the product into the configuration,
+     * ODK's update ({@code update_repo}), ODK's refresh of that import. The first is done by
+     * now. The second is {@link ConfigSync}: the Makefile learns the product, and the catalog
+     * entry and the edit file's import are ODK's own - so where it ran, nothing is wired up
+     * here by hand. The third is ODK's own {@code refresh-<id>}: the module in the project is
+     * then what ODK's refresh builds from the term list, not what OntoBoard extracted, and
+     * the next refresh or release changes it only where its source has changed.
+     *
+     * <p>Where a step cannot run, what was done before it stands, and the result says what
+     * brings the rest: OntoBoard's own extraction is a module that works, wired up by hand
+     * as in a project of the older layout.
+     *
+     * @param declared whether the product was written into the configuration just now
+     */
+    private OperationResult importedIntoAnOdkProject(TermExtract.Result extracted,
+            OperationResult.Builder result, OWLOntology ontology, IRI moduleIri,
+            OWLOntology source, java.util.List<IRI> requestedTerms, File target, File editFile,
+            boolean declared) {
+        ConfigSync.Done synced = null;
+        if (declared) {
+            boolean unsaved = bringInLineLater
+                    || getOWLModelManager().getDirtyOntologies().contains(ontology);
+            synced = ConfigSync.run(getOWLWorkspace(), getOWLModelManager(), editFile, unsaved
+                    ? de.fizkarlsruhe.ise.ontoboard.odk.OdkSync.later("The ontology has changes "
+                            + "that are not saved, and bringing the project's files in line "
+                            + "rewrites the edit file and reads it again, so that was left for "
+                            + "now")
+                    : ConfigSync.wayFor(editFile));
+            ConfigSync.tell(result, synced);
+        }
+        if (synced != null && synced.inLine()) {
+            // ODK's update wrote the catalog entry and the import, and Protege read the edit
+            // file again with them. What it has open of the module's own file - from an import
+            // that was there before - is brought up to the file as well.
+            for (String why : protegeReadsAgain().readAgain(
+                    java.util.Collections.singletonList(target)).notRead()) {
+                result.warn(why);
+            }
+        } else {
+            // Nothing changed in the configuration, or the files could not follow it now.
+            wireUp(result, ontology, moduleIri, target, true);
+        }
+        java.util.List<IRI> found = new ArrayList<IRI>(requestedTerms);
+        found.removeAll(extracted.getMissing());
+        int built = builtByOdk(result, editFile, moduleName(source), found, target,
+                synced == null || synced.inLine());
+        int axioms = built < 0 ? extracted.getAxiomCount() : built;
+        result.note("Imported as " + moduleIri);
+        return result.summary(moduleSummary(axioms,
+                extracted.getRequested() - extracted.getMissing().size())).build();
+    }
+
+    /**
+     * Has ODK's own target build the module of an import ODK builds, and reads it to see that
+     * the terms asked for are in it.
+     *
+     * @param found  the terms asked for that the source has
+     * @param inLine whether the project's files are what its configuration asks for: ODK's
+     *               Makefile knows the import only then
+     * @return the axioms of the module ODK built; -1 where ODK did not build it, and the
+     *         module is still what was extracted here
+     */
+    private int builtByOdk(OperationResult.Builder result, File editFile, String id,
+            java.util.List<IRI> found, File module, boolean inLine) {
+        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
+        java.util.List<ImportProducts.Product> declaredNow =
+                ImportProducts.declaredIn(ontologyDirectory);
+        ImportProducts.Product product = ImportProducts.named(declaredNow, id);
+        if (product == null || ImportProducts.isKeptAsItIs(product)) {
+            // Nothing of ODK's builds this module: it is what was extracted here, and stays so.
+            return -1;
+        }
+        String goal = "refresh-" + id;
+        String instead = " The module is OntoBoard's own extraction of the terms for now; "
+                + "OntoBoard > Reuse > Refresh imports... has ODK build it.";
+        if (!inLine) {
+            // Said with what was said of the files: ODK's Makefile does not know the import.
+            result.note("The module is OntoBoard's own extraction of the terms for now; once "
+                    + "the project's files are in line, "
+                    + "OntoBoard > Reuse > Refresh imports... has ODK build it.");
+            return -1;
+        }
+        if (BackgroundRun.abandoned()) {
+            result.warn("ODK's own " + goal + " was not run - you stopped waiting." + instead);
+            return -1;
+        }
+        OdkImportsRoute route = OdkImportsRoute.detect(editFile);
+        if (route.way().refusal() != null) {
+            result.warn("ODK's own " + goal + " was not run: "
+                    + route.way().refusal().replace("\n\n", " ") + instead);
+            return -1;
+        }
+        OdkImportsForm.Ran ran = OdkImportsForm.refresh(editFile,
+                OdkImportsForm.asked(declaredNow, id, true, ontologyDirectory),
+                java.util.Collections.<String>emptyList(),
+                route.odk(editFile, new java.util.function.BooleanSupplier() {
+                    @Override
+                    public boolean getAsBoolean() {
+                        return BackgroundRun.abandoned();
+                    }
+                }), protegeReadsAgain());
+        for (String why : ran.readAgain().notRead()) {
+            result.warn(why);
+        }
+        if (!ran.isOk()) {
+            result.warn("ODK's own " + goal + " did not build the module, run "
+                    + route.way().who() + ": " + ran.failure() + instead);
+            java.util.List<String> said = ran.transcript();
+            result.note("What it said, at the end:");
+            for (String line : said.subList(Math.max(0, said.size() - 12), said.size())) {
+                result.note("  " + line);
+            }
+            return -1;
+        }
+        if (route.imageNote() != null) {
+            result.warn(route.imageNote());
+        }
+        result.note("Then ODK's own " + goal + " built the module, " + route.way().who()
+                + ": it is what ODK's refresh builds from the term list.");
+        try {
+            OWLOntology built = OntologySource.loadLeavingOutMissingImports(
+                    OWLManager.createOWLOntologyManager(), IRI.create(module.toURI()));
+            for (IRI missing : notIn(built, found)) {
+                result.warn(missing + " was asked for and is not in the module ODK built. ODK "
+                        + "builds it from the source its product declares ("
+                        + product.getSource() + "), with the method and the settings the "
+                        + "configuration gives the import - which may not be the ontology the "
+                        + "term was found in here.");
+            }
+            return built.getAxiomCount();
+        } catch (RuntimeException unreadable) {
+            result.warn("The module ODK built could not be read to check it for the terms "
+                    + "asked for: " + said(unreadable) + ".");
+            return -1;
+        }
+    }
+
+    /**
+     * Writes the module to its file.
+     *
+     * <p>Where Protege has an ontology open from that file - an import that is there
+     * already, getting more terms - the file is written beside it first and then, in one
+     * step on the dispatch thread, put in place and its new time noted with Protege.
+     * Protege looks at the files it has open about half a second after its window comes
+     * to the front, on that same thread, and asks about one that is newer than the time
+     * it noted. Find terms closes its dialog and this then writes at once: the look fell
+     * between the write and the note that used to follow the patch, and Protege asked
+     * to reload a module OntoBoard was just bringing up to date (seen in a running
+     * 5.6.9). On the dispatch thread the two cannot be told apart by it.
+     */
+    private void writeModule(OWLOntology module, final File target) throws Exception {
+        final OWLOntology open = openFrom(target);
+        if (open == null) {
+            module.getOWLOntologyManager().saveOntology(module, IRI.create(target.toURI()));
+            return;
+        }
+        final File beside = new File(target.getAbsoluteFile().getParentFile(),
+                target.getName() + ".ontoboard-writing");
+        try {
+            module.getOWLOntologyManager().saveOntology(module, IRI.create(beside.toURI()));
+            String failure = onDispatchThread(new Step() {
+                @Override
+                public void take() throws Exception {
+                    java.nio.file.Files.move(beside.toPath(), target.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    noteItsFileTime(open);
+                }
+            });
+            if (failure != null) {
+                throw new IOException(failure);
+            }
+        } finally {
+            java.nio.file.Files.deleteIfExists(beside.toPath());
+        }
+    }
+
+    /** Of the terms asked for, those a module does not mention - in the order asked. */
+    static java.util.List<IRI> notIn(OWLOntology module, java.util.List<IRI> asked) {
+        java.util.List<IRI> missing = new ArrayList<IRI>();
+        for (IRI term : asked) {
+            if (!module.containsEntityInSignature(term)) {
+                missing.add(term);
+            }
+        }
+        return missing;
+    }
+
+    /** Whether a catalog serves this import from this place already. */
+    static boolean serves(File catalog, IRI moduleIri, String path) {
+        if (!catalog.isFile()) {
+            return false;
+        }
+        try {
+            String served = Catalog.entryFor(new String(java.nio.file.Files.readAllBytes(
+                    catalog.toPath()), java.nio.charset.StandardCharsets.UTF_8),
+                    moduleIri.toString());
+            return served != null
+                    && served.replace('\\', '/').equals(path.replace('\\', '/'));
+        } catch (IOException unreadable) {
+            return false;
+        }
+    }
+
+    /**
+     * Wires a module up as an import by OntoBoard's own hand: the catalog entry, the module
+     * into Protege's manager, the import statement.
+     *
+     * @param unlessServed true to leave alone a catalog that serves the module from its place
+     *                     already: in an ODK project the catalog is ODK's own, as its update
+     *                     writes it, and writing it again here would put it out of line
+     */
+    private void wireUp(OperationResult.Builder result, OWLOntology ontology, IRI moduleIri,
+            File target, boolean unlessServed) {
         // The catalog entry is not optional. Without it the import resolves only in this session,
         // because the module's IRI has never been published anywhere - and the person who made
         // the module never sees the failure.
         File ontologyFile = fileOf(ontology);
         if (ontologyFile != null && ontologyFile.getParentFile() != null) {
             File catalog = new File(ontologyFile.getParentFile(), "catalog-v001.xml");
+            String path = relativePath(ontologyFile.getParentFile(), target);
             try {
-                Catalog.addEntry(catalog, moduleIri.toString(),
-                        relativePath(ontologyFile.getParentFile(), target));
-                result.wrote(catalog);
+                if (!(unlessServed && serves(catalog, moduleIri, path))) {
+                    Catalog.addEntry(catalog, moduleIri.toString(), path);
+                    result.wrote(catalog);
+                }
             } catch (IOException cannotWrite) {
                 result.warn("Wrote the module but could not update " + catalog.getAbsolutePath()
                         + ": " + cannotWrite.getMessage() + ". The import will resolve in this "
@@ -784,10 +1087,6 @@ public class ImportTermsAction extends OntoBoardAction {
                     .setActiveOntologiesStrategy(
                             getOWLModelManager().getActiveOntologiesStrategy()));
         }
-
-        result.note("Imported as " + moduleIri);
-        return result.summary(moduleSummary(extracted.getAxiomCount(),
-                extracted.getRequested() - extracted.getMissing().size())).build();
     }
 
     /**
@@ -955,42 +1254,65 @@ public class ImportTermsAction extends OntoBoardAction {
      * import is ordinary - it is how a term list grows - and a second product with the same id
      * would give ODK two rules for one module.
      */
-    private void declareProduct(OperationResult.Builder result, OWLOntology ontology,
-            OWLOntology source, IRI sourceIri) {
+    private boolean declareProduct(OperationResult.Builder result, OWLOntology ontology,
+            OWLOntology source, IRI sourceIri, boolean pattern, boolean odk) {
         File projectRoot = projectRootFor(ontology);
         File editFile = fileOf(ontology);
         if (projectRoot == null || editFile == null) {
-            return;
+            return false;
         }
         File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
         File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);
         if (yaml == null) {
             // Not an ODK project, or not one with a configuration - nothing to declare into, and
             // nothing wrong with that. The module still works through the catalog.
-            return;
+            return false;
         }
 
         String id = moduleName(source);
         if (ImportProducts.named(ImportProducts.declaredIn(ontologyDirectory), id) != null) {
             result.note(id + " is already declared in import_group.products, so the list was "
                     + "left alone.");
-            return;
+            return false;
         }
 
-        ImportProducts.Declaration declaration = ImportProducts.declarationFor(id,
-                sourceIri == null ? null : sourceIri.toString(), method);
+        java.util.LinkedHashMap<String, String> fields;
+        String caveat;
+        if (pattern) {
+            fields = ImportProducts.frozen(id);
+            caveat = null;
+        } else {
+            // An ODK project: what ODK cannot fetch or build is kept as it is. The older
+            // layout: as 1.135.2 declared it, which its own Refresh imports reads.
+            String from = sourceIri == null ? null : sourceIri.toString();
+            ImportProducts.Declaration declaration = odk
+                    ? ImportProducts.declarationForImport(id, from, method)
+                    : ImportProducts.declarationAsBefore(id, from, method);
+            fields = declaration.getFields();
+            caveat = declaration.getCaveat();
+        }
+        // The older layout's custom is a rule to write by hand, as it always said.
+        boolean keptAsItIs = odk && "custom".equals(fields.get("module_type"));
         try {
             String before = new String(java.nio.file.Files.readAllBytes(yaml.toPath()),
                     java.nio.charset.StandardCharsets.UTF_8);
-            String after = OdkYaml.appendBlockTo(before, "import_group.products",
-                    declaration.getFields());
+            // Also into a configuration without import_group - every project ODK's seed makes.
+            String after = ImportProducts.withProduct(before, fields);
             OdkBuildSettings.writeIfUnchanged(yaml, before, after);
             result.wrote(yaml);
-            result.note("Declared " + id + " in import_group.products, so `make refresh-imports` "
-                    + "rebuilds it: " + describe(declaration.getFields()));
-            if (declaration.getCaveat() != null) {
-                result.warn(declaration.getCaveat());
+            result.note("Declared " + id + " in import_group.products" + (keptAsItIs
+                    ? ", kept as it is: " : ", so `make refresh-imports` rebuilds it: ")
+                    + describe(fields));
+            if (odk) {
+                // Why it is kept as it is: a remark, not a fault - nothing stops on it.
+                result.note(caveat != null ? caveat : pattern ? "A pattern is not refreshed "
+                        + "from anywhere: ODK's refresh leaves its module alone, and "
+                        + "importing the pattern again is what changes it." : null);
+            } else if (caveat != null) {
+                // The older layout's: make does stop on it there.
+                result.warn(caveat);
             }
+            return true;
         } catch (RuntimeException cannotEdit) {
             result.warn("Wrote the module and its term list, but could not add " + id + " to "
                     + "import_group.products: " + cannotEdit.getMessage() + ". Until it is "
@@ -1002,6 +1324,26 @@ public class ImportTermsAction extends OntoBoardAction {
                     + "declared there, ODK's IMPORTS list has no entry for it and "
                     + "`make refresh-imports` will not rebuild it.");
         }
+        return false;
+    }
+
+    /**
+     * Where ODK's update puts the import of a product called {@code name} - its ONTBASE, then
+     * {@code imports/<name>_import.owl} - for an ODK project whose Makefile says its ONTBASE
+     * plainly; else null. A new module declares that IRI, so that it is the module the edit
+     * file is made to import.
+     */
+    private IRI odkModuleIri(OWLOntology ontology, String name) {
+        File editFile = fileOf(ontology);
+        if (editFile == null || name == null
+                || OdkBuildSettings.yamlIn(editFile.getAbsoluteFile().getParentFile()) == null
+                || !de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile)) {
+            return null;
+        }
+        String ontbase = de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Facts.of(editFile)
+                .ontbase();
+        return ontbase == null ? null : IRI.create(ontbase + "/imports/" + name
+                + "_import.owl");
     }
 
     /** The declaration on one line, so the result says what went into the file. */

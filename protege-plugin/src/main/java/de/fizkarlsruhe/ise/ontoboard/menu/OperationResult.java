@@ -65,6 +65,23 @@ public final class OperationResult {
         this.when = builder.when;
     }
 
+    /**
+     * This result as a builder, to say more after an action built it: everything it holds,
+     * its status and its time. The result itself stays as it is.
+     */
+    public Builder toBuilder() {
+        Builder more = new Builder(operation);
+        more.status = status;
+        more.summary = summary;
+        more.columns.addAll(columns);
+        more.rows.addAll(rows);
+        more.log.addAll(log);
+        more.files.addAll(files);
+        more.millis = millis;
+        more.when = when;
+        return more;
+    }
+
     public static Builder of(String operation) {
         return new Builder(operation);
     }

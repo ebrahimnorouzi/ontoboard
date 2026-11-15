@@ -1,0 +1,65 @@
+INFO:root:Applying templates
+INFO:root:  Unpacking: ../../_dynamic_workflows
+INFO:root:  Unpacking into: ../../.github/workflows/qc.yml
+INFO:root:  Unpacking: ../../_dynamic_sparql
+INFO:root:  Unpacking into: ../../src/sparql/eggboil_terms.sparql
+INFO:root:  Unpacking into: ../../src/sparql/owldef-self-reference-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/iri-range-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/label-with-iri-violation.sparql
+INFO:root:  Unpacking into: ../../src/sparql/multiple-replaced_by-violation.sparql
+INFO:root:  Unpacking: ../../_dynamic_documentation
+INFO:root:  Unpacking: ../../_dynamic_files
+INFO:root:  Unpacking into: ../../src/ontology/imports/ro_import.owl
+INFO:root:  Unpacking into: ../../src/ontology/imports/utensils_import.owl
+INFO:root:  Unpacking into: ../../src/ontology/imports/ro_terms.txt
+INFO:root:  Unpacking into: ../../src/ontology/imports/utensils_terms.txt
+INFO:root:Applying templates
+INFO:root:Applying templates
+INFO:root:  Compiling: /tools/templates/src/ontology/run.sh.jinja2 -> ../../src/ontology/run.sh
+INFO:root:  Compiling: /tools/templates/src/ontology/README-editors.md.jinja2 -> ../../src/ontology/README-editors.md
+INFO:root:  Compiling: /tools/templates/src/ontology/Makefile.jinja2 -> ../../src/ontology/Makefile
+INFO:root:Applying templates
+INFO:root:  Copying: /tools/templates/src/sparql/preprocess-module.ru -> ../../src/sparql/preprocess-module.ru
+INFO:root:  Copying: /tools/templates/src/sparql/synonyms.sparql -> ../../src/sparql/synonyms.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/edges.sparql -> ../../src/sparql/edges.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/simple-seed.sparql -> ../../src/sparql/simple-seed.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/class-count-by-prefix.sparql -> ../../src/sparql/class-count-by-prefix.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/subsets-labeled.sparql -> ../../src/sparql/subsets-labeled.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/xrefs.sparql -> ../../src/sparql/xrefs.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/obsoletes.sparql -> ../../src/sparql/obsoletes.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/terms.sparql -> ../../src/sparql/terms.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/basic-report.sparql -> ../../src/sparql/basic-report.sparql
+INFO:root:  Copying: /tools/templates/src/sparql/postprocess-module.ru -> ../../src/sparql/postprocess-module.ru
+INFO:root:Applying templates
+INFO:root:  Compiling: /tools/templates/src/sparql/README.md.jinja2 -> ../../src/sparql/README.md
+INFO:root:Applying templates
+INFO:root:RUNNING: robot odk:import -i eggboil-edit.owl --exclusive true --add https://example.org/eggboil/eggboil/imports/ro_import.owl --add https://example.org/eggboil/eggboil/imports/utensils_import.owl convert -f ofn -o eggboil-edit.owl
+INFO:root:OUT: org.semanticweb.owlapi.model.UnloadableImportException: Could not load imported ontology: <https://example.invalid/whole.owl> Cause: /tmp/odk/egg/src/ontology/whole.owl (No such file or directory)
+Use the -vvv option to show the stack trace.
+Use the --help option to see usage information.
+
+Traceback (most recent call last):
+  File "/tools/odk.py", line 1511, in <module>
+    cli()
+  File "/usr/local/lib/python3.12/dist-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/click/core.py", line 1697, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tools/odk.py", line 1365, in update
+    update_import_declarations(project)
+  File "/tools/odk.py", line 1196, in update_import_declarations
+    runcmd(cmd)
+  File "/tools/odk.py", line 1505, in runcmd
+    raise Exception('Failed: {}'.format(cmd))
+Exception: Failed: robot odk:import -i eggboil-edit.owl --exclusive true --add https://example.org/eggboil/eggboil/imports/ro_import.owl --add https://example.org/eggboil/eggboil/imports/utensils_import.owl convert -f ofn -o eggboil-edit.owl

@@ -569,7 +569,7 @@ rather than rhetorical:
    `CITATION.cff` / `codemeta.json` / `.zenodo.json` metadata that gets
    harvested, and into the documentation. The project also already tells users
    to give ontologies absolute `https://w3id.org/<id>` IRIs
-   (`docs/testing-collaboration-locally.md`), scaffolds ODK projects that need a
+   (`docs/testing-collaboration-locally.md`), creates ODK projects that need a
    base IRI, and bundles 162 design patterns - so if OntoBoard ever mints IRIs
    of its own (pattern IRIs, provenance annotation properties, a project base
    IRI it suggests by default), they belong under this namespace. **Say that in

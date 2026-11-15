@@ -145,6 +145,29 @@ class QuestionTestsTest {
                 QuestionTests.fileNameFor("Does every pizza have a base?"));
     }
 
+    /**
+     * In an ODK project the test is a check, and the check's name - the file name without its
+     * ending, and a word in ODK's Makefile - comes from the question's words the same way.
+     */
+    @Test
+    void aQuestionsCheckIsNamedFromItsWords() {
+        assertEquals("does_every_dataset_have_a_part",
+                QuestionTests.checkNameFor("Does every dataset have a part?"));
+        assertEquals("question", QuestionTests.checkNameFor("  ?! "));
+        assertEquals("question", QuestionTests.checkNameFor(null));
+        String long71 = "Is every one of the seventy characters of this long question kept in it";
+        assertEquals("is_every_one_of_the_seventy_characters_of_this_long_question",
+                QuestionTests.checkNameFor(long71), "at most 60 characters");
+        String cutAtASpace = "Is every one of the seventy characters of this long questio nobody asks";
+        assertEquals("is_every_one_of_the_seventy_characters_of_this_long_questio",
+                QuestionTests.checkNameFor(cutAtASpace), "and no '_' left at the end");
+        for (String question : new String[] {"Does every pizza have a base?", "  ?! ", long71,
+                cutAtASpace, "2 + 2 = 4?"}) {
+            assertEquals(QuestionTests.checkNameFor(question) + ".rq",
+                    QuestionTests.fileNameFor(question), question);
+        }
+    }
+
     /** A failed build tells a question's test from the label check by the query it wrote (1.135.1). */
     @Test
     void everyTemplateIsReadBackFromTheQueryItWrote() {

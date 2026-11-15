@@ -1,0 +1,24 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ -f plain-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error plain-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input plain-edit.owl --format ofn --output tmp/plain-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/plain-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/plain-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-plain-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-plain-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-plain-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/PLAIN_ --base-iri http://purl.obolibrary.org/obo/plain --print 5 -o reports/plain-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/plain-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/plain/plain-full.owl annotate -V http://purl.obolibrary.org/obo/plain/releases/1.0.0/plain-full.owl --annotation owl:versionInfo 1.0.0 --output plain-full.owl.tmp.owl && mv plain-full.owl.tmp.owl plain-full.owl
+robot --catalog catalog-v001.xml annotate --input plain-full.owl --ontology-iri http://purl.obolibrary.org/obo/plain.owl annotate -V http://purl.obolibrary.org/obo/plain/releases/1.0.0/plain.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o plain.owl.tmp.owl && mv plain.owl.tmp.owl plain.owl
+robot --catalog catalog-v001.xml merge -i plain.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_plain.owl.txt || { cat reports/validate_profile_owl2dl_plain.owl.txt && exit 1; }
+echo "Finished running all tests successfully."

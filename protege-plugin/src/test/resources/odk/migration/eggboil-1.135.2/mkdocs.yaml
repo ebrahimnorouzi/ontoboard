@@ -1,0 +1,9 @@
+site_name: Test kitchen ontology
+theme: readthedocs
+
+# Add a page by putting it in docs/ and naming it here. Anything not listed
+# is still published, but is reachable only by its URL.
+nav:
+  - Home: index.md
+  - Editing: editing.md
+  - Releases: release.md

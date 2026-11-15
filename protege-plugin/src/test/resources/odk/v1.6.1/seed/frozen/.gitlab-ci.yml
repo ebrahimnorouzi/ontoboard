@@ -1,0 +1,16 @@
+# Basic ODK workflow to run ontology QC checks
+ontology_qc:
+  stage: test
+  image: obolibrary/odkfull:v1.6.1
+  # Controls when the job will run.
+  rules:
+    # Run on merge request pipelines when a merge request is open for the branch.
+    # Run on branch pipelines for main when a merge request is not open for the branch.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Script defines a sequence of tasks that will be executed as part of the job
+  script:
+    - cd src/ontology
+    - make ROBOT_ENV='ROBOT_JAVA_ARGS=-Xmx6G' test IMP=false PAT=false

@@ -22,10 +22,26 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(10, result.getChecks().size(), "expected ten checks: " + result.getChecks());
+        assertEquals(11, result.getChecks().size(), "expected eleven checks: "
+                + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
+    }
+
+    /**
+     * Without Docker a build is ROBOT command lines run in Protege's own JVM. Whether ROBOT's
+     * command layer and ODK's plugin - nested jars - load there, whether ROBOT's cast of the
+     * root logger meets Protege's logback, and whether Protege still logs as before afterwards,
+     * only a running Protege can say; so it says so at startup.
+     */
+    @Test
+    void theCommandLineCheckRunsALineWithOdksPluginAndLeavesTheLogAlone() {
+        SelfCheck.Check line = checkNamed("robot command line runs");
+
+        assertTrue(line.isPassed(), line.toString());
+        assertTrue(line.getDetail().contains("odk:normalize"), line.getDetail());
+        assertTrue(line.getDetail().contains("log level"), line.getDetail());
     }
 
     /** The rule count is the check most likely to drift, so it is stated and asserted. */
@@ -153,7 +169,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 10/10", result.summary());
+        assertEquals("OntoBoard self-check: PASS 11/11", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The ODK ROBOT plugin, as a Maven artifact for OntoBoard's build.
+
+  odk-robot-plugin-0.3.1.jar beside this file is, byte for byte, the jar that the ODK v1.6.1
+  image carries as /tools/robot-plugins/odk.jar
+  (sha256 35f8ea55185bebd0c3c6bef17620975803aeb98d095d99cc2b75182bdd705312). It is not on Maven
+  Central, which is why it is kept here; OdkRobotTest checks the checksum.
+
+  Its own pom depends on org.obolibrary.robot:robot-command:1.9.7. That dependency is left out
+  here on purpose: OntoBoard's pom declares robot-command itself, at the version of its ROBOT.
+
+  Source: https://github.com/INCATools/odk-robot-plugin, tag odk-robot-plugin-0.3.1.
+  Licence: BSD-3-Clause, Copyright (c) 2025 The Authors; the text is in the bundle as
+  odk/LICENSE-ODK-ROBOT-PLUGIN.txt and named in the NOTICE.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.incenp</groupId>
+  <artifactId>odk-robot-plugin</artifactId>
+  <version>0.3.1</version>
+  <packaging>jar</packaging>
+  <name>ODK ROBOT plugin</name>
+  <url>https://github.com/INCATools/odk-robot-plugin</url>
+  <licenses>
+    <license>
+      <name>BSD-3-Clause</name>
+    </license>
+  </licenses>
+</project>

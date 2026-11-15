@@ -1,0 +1,60 @@
+Prefix(:=<http://purl.obolibrary.org/obo/loim/imports/bfo_import.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/loim/imports/bfo_import.owl>
+<http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/bfo_import.owl>
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(Class(obo:BFO_0000001))
+Declaration(Class(obo:BFO_0000002))
+Declaration(Class(obo:BFO_0000003))
+Declaration(Class(obo:BFO_0000015))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+Declaration(AnnotationProperty(dcterms:license))
+Declaration(AnnotationProperty(dcterms:title))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: obo:IAO_0000115 (definition)
+
+AnnotationAssertion(rdfs:label obo:IAO_0000115 "definition")
+
+
+
+############################
+#   Classes
+############################
+
+# Class: obo:BFO_0000001 (entity)
+
+AnnotationAssertion(rdfs:label obo:BFO_0000001 "entity"@en)
+
+# Class: obo:BFO_0000002 (continuant)
+
+AnnotationAssertion(obo:IAO_0000115 obo:BFO_0000002 "An entity that persists, endures, or continues to exist through time while maintaining its identity.")
+AnnotationAssertion(rdfs:label obo:BFO_0000002 "continuant"@en)
+SubClassOf(obo:BFO_0000002 obo:BFO_0000001)
+DisjointClasses(obo:BFO_0000002 obo:BFO_0000003)
+
+# Class: obo:BFO_0000003 (occurrent)
+
+AnnotationAssertion(obo:IAO_0000115 obo:BFO_0000003 "An entity that unfolds itself in time.")
+AnnotationAssertion(rdfs:label obo:BFO_0000003 "occurrent"@en)
+SubClassOf(obo:BFO_0000003 obo:BFO_0000001)
+
+# Class: obo:BFO_0000015 (process)
+
+AnnotationAssertion(obo:IAO_0000115 obo:BFO_0000015 "An occurrent that has some temporal proper part and for some time has a material entity as participant.")
+AnnotationAssertion(rdfs:label obo:BFO_0000015 "process"@en)
+SubClassOf(obo:BFO_0000015 obo:BFO_0000003)
+
+
+)

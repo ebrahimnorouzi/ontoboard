@@ -1,0 +1,10 @@
+# Terms extracted into measurement_import.owl
+# Source: https://ontoboard.org/patterns/pmdco-measurement-and-setpoint.owl
+# Pattern: pmdco-measurement-and-setpoint
+# From OntoBoard's pattern library, so nothing downloads it and Refresh
+# imports leaves it alone. To change what the module contains, use
+# OntoBoard > Reuse > Pattern library... and import the pattern again.
+# One term per line.
+http://purl.obolibrary.org/obo/BFO_0000019
+http://purl.obolibrary.org/obo/IAO_0000109
+http://purl.obolibrary.org/obo/OBI_0000070

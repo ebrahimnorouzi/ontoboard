@@ -1,0 +1,21 @@
+ODK's templates, as OntoBoard bundles them.
+
+Source: /tools/templates of the ODK image, copied by
+  protege-plugin/tools/odk-goldens/extract_templates.py
+
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+ODK_VERSION:  v1.6.1
+ROBOT:        ROBOT version 1.9.10
+ODK tag:      v1.6.1 (commit 3e46f08e8a96de0fcc4fa8e7581d39e8f6b7563f) of https://github.com/INCATools/ontology-development-kit
+Read on:      2026-11-11
+Files:        28 (14 templates, 14 copied as they are)
+Against tag:  identical to the tag's 27 template files; only in the image: src/ontology/profile.txt
+
+Licence: BSD-3-Clause, Copyright (c) 2015, Gene Ontology Consortium - LICENSE-ODK.txt.
+src/ontology/profile.txt is ROBOT 1.9.10's report_profile.txt (BSD-3-Clause, ontodev/robot).
+
+Do not edit these files and do not let git convert their line endings (.gitattributes
+marks them -text): OntoBoard renders ODK's seed from them, byte for byte.

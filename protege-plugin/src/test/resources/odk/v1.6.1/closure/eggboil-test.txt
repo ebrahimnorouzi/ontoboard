@@ -1,0 +1,17 @@
+Makefile
+eggboil-edit.owl
+eggboil-full.owl
+eggboil.Makefile
+eggboil.owl
+odkversion
+reason_test
+reports
+reports/eggboil-edit.owl-obo-report.tsv
+reports/validate_profile_owl2dl_eggboil.owl.txt
+robot_reports
+sparql_test
+test
+tmp
+tmp/eggboil-preprocess.owl
+tmp/merged-eggboil-edit.ofn
+validate_idranges

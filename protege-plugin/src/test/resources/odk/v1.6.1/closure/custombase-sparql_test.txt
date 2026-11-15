@@ -1,0 +1,7 @@
+Makefile
+reports
+shop-edit.owl
+shop.Makefile
+sparql_test
+tmp/merged-shop-edit.ofn
+tmp/shop-preprocess.owl

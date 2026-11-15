@@ -1,0 +1,53 @@
+make prepare_release IMP=false PAT=false MIR=false COMP=false
+make[1]: Entering directory '/tmp/odk/frozen/src/ontology'
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < froz-odk.yaml | sha256sum | cut -c1-64)" = "153388de2a5eec8ee5307c387049acc8dcfe750b2df3ca12e8a05080d238387f" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f froz-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error froz-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input froz-edit.owl --format ofn --output tmp/froz-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/froz-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/froz-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-froz-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-froz-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-froz-edit.ofn -l true --profile profile.txt --fail-on ERROR --print 5 -o reports/froz-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/froz-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://example.org/froz/froz/froz-full.owl annotate -V https://example.org/froz/froz/releases/1.0.0/froz-full.owl --annotation owl:versionInfo 1.0.0 --output froz-full.owl.tmp.owl && mv froz-full.owl.tmp.owl froz-full.owl
+robot --catalog catalog-v001.xml annotate --input froz-full.owl --ontology-iri https://example.org/froz/froz.owl annotate -V https://example.org/froz/froz/releases/1.0.0/froz.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o froz.owl.tmp.owl && mv froz.owl.tmp.owl froz.owl
+robot --catalog catalog-v001.xml merge -i froz.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_froz.owl.txt || { cat reports/validate_profile_owl2dl_froz.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/froz-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml convert --input froz.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o froz.obo
+robot --catalog catalog-v001.xml merge --input tmp/froz-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri https://example.org/froz/FROZ --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri https://example.org/froz/froz/froz-base.owl annotate -V https://example.org/froz/froz/releases/1.0.0/froz-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output froz-base.owl.tmp.owl && mv froz-base.owl.tmp.owl froz-base.owl
+robot --catalog catalog-v001.xml convert --input froz-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o froz-base.obo
+robot --catalog catalog-v001.xml convert --input froz-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o froz-full.obo
+check-rdfxml  froz.owl
+check-rdfxml  froz-base.owl
+check-rdfxml  froz-full.owl
+make copy_release_files
+make[2]: Entering directory '/tmp/odk/frozen/src/ontology'
+rsync -R   froz.obo  froz.owl   froz-base.obo  froz-base.owl   froz-full.obo  froz-full.owl   ../..
+make[2]: Leaving directory '/tmp/odk/frozen/src/ontology'
+rm -f   froz.obo  froz.owl   froz-base.obo  froz-base.owl   froz-full.obo  froz-full.owl  tmp/merged-froz-edit.ofn tmp/froz-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"
+make[1]: Leaving directory '/tmp/odk/frozen/src/ontology'

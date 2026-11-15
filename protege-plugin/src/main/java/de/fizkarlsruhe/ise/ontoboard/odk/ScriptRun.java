@@ -129,6 +129,30 @@ public final class ScriptRun {
     public static Plan planFor(ProjectScripts.Script script, File ontologyDirectory,
             String runtime, File activationScript, boolean interpreterOnPath,
             List<String> arguments) {
+        return planFor(script, ontologyDirectory, runtime, activationScript, interpreterOnPath,
+                arguments, MakeRun.DEFAULT_IMAGE, OdkContainer.Host.unknown(), null);
+    }
+
+    /**
+     * The same, for a caller that is going to run the command: in the image chosen for the
+     * project, on the machine as it is, and with a pass-through {@code run.sh}.
+     *
+     * <p>The two shorter forms decide the route and nothing else - they name the image without
+     * a tag and know nothing of the machine. Whatever is actually run comes from this one.
+     *
+     * @param image            the ODK image, with its tag, that is on this machine
+     *                         ({@link OdkImage#forProject}); null when none is, and then the
+     *                         container is no route, because a runtime given an image it does
+     *                         not have downloads it
+     * @param host             the machine ({@link OdkContainer.Host#detect})
+     * @param passThroughRunSh {@link OdkContainer#passThroughStub()}, mounted over the project's
+     *                         run.sh so that a script saying {@code sh run.sh make ...} runs make
+     *                         where it stands; null to mount nothing
+     */
+    public static Plan planFor(ProjectScripts.Script script, File ontologyDirectory,
+            String runtime, File activationScript, boolean interpreterOnPath,
+            List<String> arguments, String image, OdkContainer.Host host,
+            File passThroughRunSh) {
         List<String> extra = arguments == null
                 ? java.util.Collections.<String>emptyList() : arguments;
         if (script == null || !script.isRunnable()) {
@@ -137,14 +161,19 @@ public final class ScriptRun {
         }
         String inContainer = ProjectScripts.containerPathOf(script.getFile(), ontologyDirectory);
 
-        if (runtime != null && !runtime.trim().isEmpty() && inContainer != null) {
+        if (runtime != null && !runtime.trim().isEmpty() && image != null
+                && inContainer != null) {
             List<String> inside = new ArrayList<String>(
                     Arrays.asList(script.getInterpreter(), inContainer));
             inside.addAll(extra);
-            return new Plan(Route.IN_CONTAINER,
-                    MakeRun.containerCommandFor(runtime, ontologyDirectory,
-                            MakeRun.imageFor(ontologyDirectory), inside),
-                    null);
+            List<String> command = MakeRun.containerCommandFor(runtime, ontologyDirectory,
+                    image, host, inside);
+            // Only over a run.sh that is there: a runtime asked to mount over a file that is
+            // not makes one, and that one would be left in the project.
+            if (passThroughRunSh != null && new File(ontologyDirectory, "run.sh").isFile()) {
+                command = OdkContainer.withPassThroughRunSh(command, passThroughRunSh);
+            }
+            return new Plan(Route.IN_CONTAINER, command, null);
         }
 
         if (activationScript != null) {

@@ -1,0 +1,17 @@
+[
+[
+"data",
+"These notes are for the EDITORS of ",
+1
+],
+[
+"variable",
+"project.id",
+1
+],
+[
+"data",
+"\n\nThis project was created using the [ontology development kit](https://github.com/INCATools/ontology-development-kit). See the site for details.\n\nFor more details on ontology management, please see the \n[OBO Academy Tutorials](https://oboacademy.github.io/obook/), the\n[OBO tutorial](https://github.com/jamesaoverton/obo-tutorial) or the [Gene Ontology Editors Tutorial](https://go-protege-tutorial.readthedocs.io/en/latest/)\n\nThis documentation has been superceded by the ODK automatic documentation, which you can\nactivate by adding:\n\n```\ndocumentation:\n  documentation_system: mkdocs\n```\n\nto your Makefile and running:\n\n```\nsh run.sh make update_repo\n```\n(Unix)\n\n```\nrun.bat make update_repo\n```\n(Windows)",
+1
+]
+]

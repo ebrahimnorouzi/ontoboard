@@ -117,7 +117,7 @@ public final class RuleRunner {
                 continue;
             }
             try {
-                findings.addAll(violations(model, name, rule.getValue(), sparql));
+                findings.addAll(violations(model, name, rule.getValue(), sparql, false));
             } catch (RuntimeException cannotRun) {
                 // One unparseable or unsupported query must not cost the other 31.
                 skipped.add(new Skipped(name, String.valueOf(cannotRun.getMessage())));
@@ -126,8 +126,36 @@ public final class RuleRunner {
         return new Outcome(findings, skipped);
     }
 
+    /**
+     * Every row each rule's query returned, with the terms it bound as ROBOT's report reads them
+     * ({@link QualityFinding#getBound()}): no row left out - not even one without
+     * {@code ?entity} - and none sorted: rule by rule in the order of {@code severities}, a
+     * rule's rows in the order its query gave them. For a caller that reads the rows as ROBOT's
+     * report reads them. A rule that cannot be run is left out, as {@link #run} leaves it out.
+     */
+    public static List<QualityFinding> rows(OWLOntology ontology,
+            Map<String, String> severities) {
+        List<QualityFinding> rows = new ArrayList<QualityFinding>();
+        if (ontology == null || severities == null || severities.isEmpty()) {
+            return rows;
+        }
+        Model model = OntologyDataset.modelOf(ontology);
+        for (Map.Entry<String, String> rule : severities.entrySet()) {
+            String sparql = ReportQueries.queryFor(rule.getKey());
+            if (sparql == null) {
+                continue;
+            }
+            try {
+                rows.addAll(violations(model, rule.getKey(), rule.getValue(), sparql, true));
+            } catch (RuntimeException cannotRun) {
+                // Left out, as runWithDetail leaves it out of its findings.
+            }
+        }
+        return rows;
+    }
+
     private static List<QualityFinding> violations(Model model, String rule, String severity,
-            String sparql) {
+            String sparql, boolean everyRow) {
         List<QualityFinding> found = new ArrayList<QualityFinding>();
         Query query = QueryFactory.create(sparql);
         QueryExecution execution = QueryExecutionFactory.create(query, model);
@@ -136,7 +164,7 @@ public final class RuleRunner {
             while (results.hasNext()) {
                 QuerySolution row = results.next();
                 String subject = text(row, ENTITY);
-                if (subject.isEmpty()) {
+                if (subject.isEmpty() && !everyRow) {
                     // All 33 of ROBOT's queries SELECT ?entity, but SPARQL does not guarantee it
                     // is bound in every row, and a blank node renders as nothing useful. Without a
                     // subject there is nothing for a curator to open, so such a row is not a
@@ -144,12 +172,23 @@ public final class RuleRunner {
                     continue;
                 }
                 found.add(new QualityFinding(QualityFinding.Severity.of(severity), rule, subject,
-                        message(row)));
+                        message(row), text(row, PROPERTY), text(row, VALUE),
+                        new QualityFinding.Bound(bound(row, ENTITY), bound(row, PROPERTY),
+                                bound(row, VALUE))));
             }
         } finally {
             execution.close();
         }
         return found;
+    }
+
+    /**
+     * A term of the row as ROBOT's report reads it ({@code getQueryResultOrNull}): what Jena's
+     * {@code RDFNode.toString()} makes of it, null when the row left it unbound.
+     */
+    private static String bound(QuerySolution row, String variable) {
+        RDFNode node = row.get(variable);
+        return node == null ? null : node.toString();
     }
 
     /** What is wrong, in the terms the query bound. */

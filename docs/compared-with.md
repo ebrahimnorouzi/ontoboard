@@ -17,7 +17,8 @@ against the papers' claims.
 | Draws a diagram | yes, editable | no | yes, read-only | yes, read-only | no | no |
 | Edits the ontology | yes | yes, as text | no | no | yes | yes, as text |
 | Unit of collaboration | axiom | character | — | — | revision | file |
-| ODK project scaffolding | yes | no | no | no | no | by hand |
+| ODK project, as ODK itself writes it | yes | no | no | no | no | by hand |
+| ODK's own build and release without Docker | yes | no | no | no | no | with ODK's tools installed |
 | ROBOT in-process | yes | no | no | no | no | as a CLI |
 | Spreadsheet (ROBOT template) editing | yes | no | no | no | no | in a spreadsheet app |
 | Pattern library | 162 patterns | no | no | no | no | no |

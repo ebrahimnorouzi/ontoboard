@@ -134,6 +134,14 @@ public final class TermMinter {
         return READ.size();
     }
 
+    /** How many times a tagged release's file was read from git. For tests. */
+    static int tagFilesRead() {
+        return TAG_FILES_READ.get();
+    }
+
+    private static final java.util.concurrent.atomic.AtomicInteger TAG_FILES_READ =
+            new java.util.concurrent.atomic.AtomicInteger();
+
     /**
      * The {@code *-idranges.owl} beside {@code ontologyFile}, or null.
      *
@@ -175,6 +183,117 @@ public final class TermMinter {
         return ranges;
     }
 
+    /** The {@code -idranges.owl} minted from, or null when naming from the typed name. */
+    public File getRangesFile() {
+        return rangesFile;
+    }
+
+    /**
+     * Whether this editor has to claim one of ODK's placeholder ranges before the first term.
+     *
+     * <p>ODK seeds a project's ranges allocated to {@code ONTOLOGY-CREATOR} and
+     * {@code ADDITIONAL EDITOR}, for the people who start it to put their names in. Nobody mints
+     * under a placeholder, so every new term in such a project was refused until somebody edited
+     * the file by hand; the board asks instead. Only while every range is a placeholder: once one
+     * carries a name the project has begun allocating, and a further editor is given a range the
+     * way that project gives them - ID ranges... - and told so when minting is refused.
+     */
+    public boolean needsClaim() {
+        return isNumeric() && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
+    }
+
+    /** The placeholders the question offers, in the file's order; none unless all are. */
+    public static List<String> claimable(IdRanges ranges) {
+        Set<String> placeholders = new java.util.LinkedHashSet<String>();
+        if (ranges != null && ranges.isOdkPlaceholders()) {
+            for (IdRanges.Range range : ranges.getRanges()) {
+                placeholders.add(range.getAllocatedTo());
+            }
+        }
+        return new ArrayList<String>(placeholders);
+    }
+
+    /**
+     * One answer to the question, with what comes with it:
+     * {@code ONTOLOGY-CREATOR: 0 to 999999 (EGGBOIL_0000000 to EGGBOIL_0999999)} - the numbers
+     * as the file states them, and the identifiers a user will see on the board.
+     */
+    public static String claimChoice(IdRanges ranges, String placeholder) {
+        IdRanges.Range range = ranges == null ? null : ranges.rangeFor(placeholder);
+        if (range == null) {
+            return placeholder;
+        }
+        return placeholder + ": " + range.getLower() + " to " + range.getUpper() + " ("
+                + localPart(ranges.iriFor(range.getLower())) + " to "
+                + localPart(ranges.iriFor(range.getUpper())) + ")";
+    }
+
+    private static String localPart(String iri) {
+        return iri.substring(Math.max(iri.lastIndexOf('/'), iri.lastIndexOf('#')) + 1);
+    }
+
+    /**
+     * The question asked before the first term, for a dialog titled "Which range is yours?".
+     *
+     * <p>It says what Cancel does, because Cancel does nothing at all - no name is written and
+     * no term is made - and a dialog that closes without a word otherwise reads as a failure.
+     *
+     * @param term what is being made: "class", "individual", "property"
+     */
+    public static String claimQuestion(String editor, String rangesFileName, String term) {
+        return "This project's ID ranges are still the two placeholders ODK seeds a project with,"
+                + " allocated to nobody yet. Which range is yours?\n\n"
+                + "OntoBoard writes \"" + editor + "\" into the one you choose, in "
+                + rangesFileName + ", and makes the new " + term + " from it. Commit "
+                + rangesFileName + " so that nobody else claims the same range.\n\n"
+                + "Cancel writes nothing and makes no " + term + ".";
+    }
+
+    /**
+     * What ID ranges... says of a file whose ranges are all ODK's placeholders, or null for any
+     * other. Its usual advice - allocate a block to yourself - would add a third range beside the
+     * two that are waiting for a name.
+     */
+    public static String unclaimedNote(IdRanges ranges, String editor) {
+        if (ranges == null || !ranges.isOdkPlaceholders()) {
+            return null;
+        }
+        return "These are the placeholders ODK seeds a project with - "
+                + String.join(" and ", claimable(ranges)) + " - allocated to nobody yet. The "
+                + "first new term you make on the board asks which one is yours and writes \""
+                + editor + "\" into it.";
+    }
+
+    /**
+     * Writes this editor's name into the range allocated to {@code placeholder} and returns the
+     * minter that mints from it.
+     *
+     * <p>The file is read again first, so the claim is made on it as it is now: a range somebody
+     * else has claimed since is refused by {@link IdRanges#claim}, not written over. It is read
+     * strictly as UTF-8, so that writing it back gives every other byte as it was; a file that is
+     * not UTF-8 is refused rather than rewritten.
+     *
+     * @throws IllegalStateException when this editor has nothing to claim
+     * @throws IllegalArgumentException when {@link IdRanges#claim} refuses
+     * @throws IOException when the file cannot be read as UTF-8, or written
+     */
+    public TermMinter claim(String placeholder) throws IOException {
+        if (!needsClaim()) {
+            throw new IllegalStateException("'" + editor + "' has nothing to claim: "
+                    + (isNumeric() ? "the ranges in " + rangesFile.getName() + " are not all "
+                            + "ODK's placeholders, or one is theirs already"
+                            : "this project has no ID ranges") + ".");
+        }
+        String before = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(Files.readAllBytes(rangesFile.toPath())))
+                .toString();
+        String after = IdRanges.claim(before, placeholder, editor);
+        Files.write(rangesFile.toPath(), after.getBytes(StandardCharsets.UTF_8));
+        return new TermMinter(Style.NUMERIC, IdRanges.parse(after), editor, rangesFile);
+    }
+
     /**
      * One line describing what will happen, for a dialog to show before the user commits.
      *
@@ -185,6 +304,12 @@ public final class TermMinter {
         if (!isNumeric()) {
             return "New terms are named from what you type - 'tensile test' becomes TensileTest,"
                     + " labelled 'tensile test' - in the namespace this ontology's terms use.";
+        }
+        if (needsClaim()) {
+            return "New terms get numeric identifiers, with what you type as the label. This "
+                    + "project's ID ranges are still ODK's placeholders - "
+                    + String.join(" and ", claimable(ranges)) + " - so OntoBoard first asks which "
+                    + "one is yours and writes \"" + editor + "\" into it.";
         }
         IdRanges.Range mine = ranges.rangeFor(editor);
         if (mine == null) {
@@ -232,6 +357,13 @@ public final class TermMinter {
      * match that is not really an identifier costs one unused number; a miss would hand an
      * identifier out twice. Each file is read again only when it changes.
      *
+     * <p>The releases are those {@link ReleaseHistory#releasesOf} lists: the git tags ODK's release
+     * makes as well as the folders under {@code releases/}. Every {@code .owl} in every folder is
+     * read, as before; of a release that is only a tag, {@code <id>.owl} as the tag holds it. That
+     * file is read from git once a session - git names it by its content, so it cannot change
+     * unnoticed - and which tags there are and which hold the file is asked of git again only
+     * when the repository's tags have changed ({@link ReleaseTags}).
+     *
      * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
      *     the project root that file's directory belongs to
      */
@@ -241,10 +373,7 @@ public final class TermMinter {
         if (directory == null || ranges == null || ranges.getIdPrefix().isEmpty()) {
             return released;
         }
-        File[] versions = new File(projectRootAbove(directory), "releases").listFiles();
-        if (versions == null) {
-            return released;
-        }
+        File root = projectRootAbove(directory);
         String prefix = ranges.getIdPrefix();
         int cut = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf('#')) + 1;
         String local = prefix.substring(cut);
@@ -253,7 +382,8 @@ public final class TermMinter {
         Pattern identifier = Pattern.compile(local.isEmpty()
                 ? Pattern.quote(prefix) + "([0-9]+)"
                 : "(?<![A-Za-z0-9])" + Pattern.quote(local) + "([0-9]+)");
-        for (File version : versions) {
+        File[] versions = new File(root, "releases").listFiles();
+        for (File version : versions == null ? new File[0] : versions) {
             File[] files = version.isDirectory() ? version.listFiles() : null;
             if (files == null) {
                 continue;
@@ -266,7 +396,54 @@ public final class TermMinter {
                 }
             }
         }
+        String id = idOf(rangesFile);
+        if (id != null) {
+            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id)) {
+                // A folder that holds the file was read above.
+                if (release.tag() != null && release.file() == null) {
+                    for (String digits : numbersIn(release, identifier)) {
+                        released.add(prefix + digits);
+                    }
+                }
+            }
+        }
         return released;
+    }
+
+    /** The ontology's id, from its {@code <id>-idranges.owl}; null when the name has none. */
+    private static String idOf(File rangesFile) {
+        String name = rangesFile.getName();
+        String suffix = "-idranges.owl";
+        return name.toLowerCase(Locale.ROOT).endsWith(suffix) && name.length() > suffix.length()
+                ? name.substring(0, name.length() - suffix.length()) : null;
+    }
+
+    /**
+     * The numbers a tagged release's file holds: read from git the first time, remembered by the
+     * file's blob id - what git names it by, from its content - for the rest of the session.
+     */
+    private static Set<String> numbersIn(ReleaseHistory.Entry release, Pattern identifier) {
+        String key = "git blob " + release.blob() + '|' + identifier.pattern();
+        Set<String> found = READ.get(key);
+        if (found != null) {
+            return found;
+        }
+        byte[] held;
+        try {
+            TAG_FILES_READ.incrementAndGet();
+            held = release.bytes();
+        } catch (IOException unreadable) {
+            // Not remembered, so the next new term tries again.
+            return new HashSet<String>();
+        }
+        found = new HashSet<String>();
+        // As for a file: a byte that is not UTF-8 is replaced, never thrown on.
+        Matcher match = identifier.matcher(new String(held, StandardCharsets.UTF_8));
+        while (match.find()) {
+            found.add(match.group(1));
+        }
+        READ.put(key, Collections.unmodifiableSet(found));
+        return found;
     }
 
     /**

@@ -1,0 +1,1035 @@
+package de.fizkarlsruhe.ise.ontoboard.odk;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.OWLImportsDeclaration;
+import org.semanticweb.owlapi.model.OWLOntology;
+
+/**
+ * ROBOT's command line, and ODK's ROBOT plugin, run inside this JVM.
+ *
+ * <p>Without Docker, OntoBoard runs ODK's recipes itself, and a recipe is a ROBOT command line:
+ * {@code robot merge --input ... reason ... annotate ... --output ...}. Run through ROBOT's own
+ * command layer the line means what it means in ODK's container; re-expressed as calls of
+ * ROBOT's operations it would mean what somebody thought it meant.
+ *
+ * <p>The one thing that must not happen is ROBOT ending the JVM, which is Protégé with
+ * somebody's unsaved work in it. {@code report}, {@code verify} and the plugin's
+ * {@code check-align} do that when they find something; {@code --help} does it always.
+ */
+class OdkRobotTest {
+
+    private static final String PREFIXES = "Prefix(:=<https://example.org/e/>)\n"
+            + "Prefix(owl:=<http://www.w3.org/2002/07/owl#>)\n"
+            + "Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)\n"
+            + "Prefix(dcterms:=<http://purl.org/dc/terms/>)\n"
+            + "Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n";
+
+    /** A header that ROBOT's report has nothing to say about: title, description, licence. */
+    private static final String DESCRIBED = "Annotation(dcterms:title \"Eggs\")\n"
+            + "Annotation(dcterms:description \"Boiling eggs\")\n"
+            + "Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)\n";
+
+    private static File ontology(File folder, String name, String iri, String body)
+            throws IOException {
+        File file = new File(folder, name);
+        Files.write(file.toPath(), (PREFIXES + "Ontology(<" + iri + ">\n" + body + ")\n")
+                .getBytes(StandardCharsets.UTF_8));
+        return file;
+    }
+
+    private static File file(File folder, String name, String text) throws IOException {
+        File file = new File(folder, name);
+        Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
+        return file;
+    }
+
+    private static OWLOntology load(File file) throws Exception {
+        return OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(file);
+    }
+
+    private static String path(File file) {
+        return file.getAbsolutePath();
+    }
+
+    // ------------------------------------------------------------------ a chain
+
+    @Test
+    void aChainRunsWithoutAProcess(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        File b = ontology(temp, "b.ofn", "https://example.org/e/b.owl",
+                "Declaration(Class(:Pan))\n");
+        File out = new File(temp, "out.owl");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("merge", "--input", path(a),
+                "--input", path(b), "annotate", "--ontology-iri", "https://example.org/e/m.owl",
+                "convert", "--format", "ofn", "--output", path(out)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertNull(result.failure());
+        OWLOntology merged = load(out);
+        assertEquals("https://example.org/e/m.owl",
+                merged.getOntologyID().getOntologyIRI().get().toString());
+        assertEquals(2, merged.getClassesInSignature().size());
+    }
+
+    /** ODK's {@code ROBOT} variable is {@code robot --catalog <file>}: the option leads. */
+    @Test
+    void theCatalogOptionLeadsTheChainAsInOdksMakefile(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        File catalog = file(temp, "catalog-v001.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" "
+                + "standalone=\"no\"?>\n<catalog prefer=\"public\" "
+                + "xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n</catalog>\n");
+        File out = new File(temp, "out.ofn");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("--catalog", path(catalog),
+                "convert", "--input", path(a), "--format", "ofn", "--output", path(out)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertTrue(out.isFile());
+    }
+
+    @Test
+    void whatGoesWrongIsAFailureThatSaysWhat(@TempDir File temp) {
+        File missing = new File(temp, "not-there.owl");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("convert", "--input", path(missing),
+                "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+
+        assertFalse(result.ok());
+        assertTrue(result.failure().contains("not-there.owl"), result.failure());
+    }
+
+    // ------------------------------------------------------------------ the host's logging
+
+    /**
+     * On every command ROBOT sets the level of the root logger - ERROR, unless asked otherwise.
+     * In Protege that logger is Protege's: after one build it would log errors only, until
+     * restarted. The level is left as it was found, whichever it was, and also when the line
+     * fails.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"DEBUG", "INFO", "WARN", "ERROR"})
+    void theHostsLogLevelIsLeftAsItWas(String level, @TempDir File temp) throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.toLevel(level));
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("convert", "--input", path(a),
+                    "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+            OdkRobot.Result failed = OdkRobot.run(Arrays.asList("convert", "--input",
+                    path(new File(temp, "missing.owl")), "--format", "ofn", "--output",
+                    path(new File(temp, "out2.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            assertFalse(failed.ok());
+            assertEquals(level, root.getLevel().toString());
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * ROBOT logs "Subcommand Timing: convert took 0.05 seconds" at WARN for every command. On
+     * its own command line nobody sees that, because it logs errors only. Protege logs from INFO
+     * up, to its log file and its console - and the console is where a run's transcript is
+     * taken from - so every build would carry a line of it per command. For the length of a
+     * run ROBOT's own loggers say what they say on the command line: errors.
+     */
+    @Test
+    void robotsOwnChatterStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger robots = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger("org.obolibrary.robot");
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.classic.Level robotsBefore = robots.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("merge", "--input", path(a),
+                    "convert", "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertFalse(event.getLoggerName().startsWith("org.obolibrary.robot"),
+                        "ROBOT logged into the host's log: " + event.getLevel() + " "
+                                + event.getFormattedMessage());
+            }
+            assertFalse(String.join("\n", ran.output()).contains("Subcommand Timing"),
+                    ran.output().toString());
+            assertEquals(robotsBefore, robots.getLevel(), "and its loggers are as they were");
+            assertEquals("INFO", root.getLevel().toString());
+            // Asking what the level is changes nothing either: the self-check asks twice.
+            assertEquals("INFO", OdkRobot.hostLogLevel());
+            assertEquals(robotsBefore, robots.getLevel());
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+            robots.setLevel(robotsBefore);
+        }
+    }
+
+    /**
+     * A reasoner says what it is doing as it goes - "Property Saturation Initialization",
+     * "Taxonomy Construction" - at INFO, and Protege logs from INFO up, to a console the run's
+     * transcript is taken from: the first build inside a Protege carried forty such lines for
+     * one call of the reasoner. On ROBOT's own command line nobody sees them, because there
+     * everything logs errors only. So for the length of a run, what the run's own thread logs
+     * is what ROBOT's command line lets through - whichever logger it is. Afterwards the thread
+     * logs as before.
+     */
+    @Test
+    void whatARunLogsBelowErrorStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:BoiledEgg))\n"
+                        + "SubClassOf(:BoiledEgg :Egg)\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("reason", "--input", path(a),
+                    "--reasoner", "ELK", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertTrue(event.getLevel().isGreaterOrEqual(ch.qos.logback.classic.Level.ERROR),
+                        "logged by the run: " + event.getLevel() + " " + event.getLoggerName()
+                                + " " + event.getFormattedMessage());
+            }
+            assertEquals(java.util.Collections.<String>emptyList(), ran.output(),
+                    "a reasoner call that finds nothing says nothing, as in ODK's own log");
+
+            org.slf4j.LoggerFactory.getLogger("after.the.run").info("said after the run");
+            assertEquals(1, seen.list.size(), "after the run the thread logs as before");
+            assertEquals("said after the run", seen.list.get(0).getFormattedMessage());
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * The OWL API's OBO writer logs every axiom OBO cannot say as an error, with the stack of
+     * where it stood - "MASKING ERROR", it calls it itself. ODK's own log has none of it:
+     * ROBOT in ODK's container converts the same ontology without a word. Inside Protege the
+     * release of a real ontology carried 104 of them at 76 lines each, and its transcript was
+     * cut after 4000 lines of nothing else (1.153.0, live run).
+     */
+    @Test
+    void whatTheOboWriterMasksStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        // What OBO has no words for: only this or that, of a property.
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:Pan))\nDeclaration(Class(:Pot))\n"
+                        + "Declaration(ObjectProperty(:boiledIn))\n"
+                        + "SubClassOf(:Egg ObjectAllValuesFrom(:boiledIn "
+                        + "ObjectUnionOf(:Pan :Pot)))\n");
+        File obo = new File(temp, "out.obo");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("convert", "--input", path(a),
+                    "--check", "false", "-f", "obo", "--clean-obo",
+                    "strict drop-untranslatable-axioms", "-o", path(obo)));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            assertTrue(obo.isFile(), "the OBO file is written");
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertFalse(event.getFormattedMessage().contains("MASKING"),
+                        "logged by the run: " + event.getLevel() + " " + event.getLoggerName()
+                                + " " + event.getFormattedMessage());
+            }
+            assertEquals(java.util.Collections.<String>emptyList(), ran.output(),
+                    "the conversion says nothing, as in ODK's own log");
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * Errors are what ROBOT's command line lets through, and one of them is how anybody learns
+     * what is wrong with an ontology: when the reasoner finds classes that can have no members,
+     * ROBOT logs which, as errors, and fails. Those lines are in the run's output - and so in a
+     * build's log - as they are in ODK's.
+     */
+    @Test
+    void whatRobotLogsAsAnErrorIsInTheOutput(@TempDir File temp) throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:Stone))\n"
+                        + "Declaration(Class(:StoneEgg))\nDisjointClasses(:Egg :Stone)\n"
+                        + "SubClassOf(:StoneEgg :Egg)\nSubClassOf(:StoneEgg :Stone)\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("reason", "--input", path(a),
+                    "--reasoner", "ELK", "--output", path(new File(temp, "out.ofn"))));
+
+            assertFalse(ran.ok(), "a class that can have no members fails ROBOT's reason");
+            String said = String.join("\n", ran.output());
+            assertTrue(said.contains("unsatisfiable"), said);
+            assertTrue(said.contains("https://example.org/e/StoneEgg"),
+                    "which class it is: " + said);
+            assertFalse(said.contains("Taxonomy Construction"),
+                    "and the reasoner's own progress is still not in it: " + said);
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * A line that asks ROBOT to say more - {@code -v}, {@code -vv}, {@code -vvv} - gets what
+     * ROBOT says for it: with {@code -v} the warnings, and ROBOT's own line on how long each
+     * command took is one.
+     */
+    @Test
+    void aLineThatAsksForMoreGetsWhatRobotSaysForIt(@TempDir File temp) throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result quiet = OdkRobot.run(Arrays.asList("convert", "--input", path(a),
+                    "--format", "ofn", "--output", path(new File(temp, "quiet.ofn"))));
+            OdkRobot.Result verbose = OdkRobot.run(Arrays.asList("-v", "convert", "--input",
+                    path(a), "--format", "ofn", "--output", path(new File(temp, "said.ofn"))));
+
+            assertTrue(quiet.ok(), String.valueOf(quiet.failure()));
+            assertTrue(verbose.ok(), String.valueOf(verbose.failure()));
+            assertFalse(String.join("\n", quiet.output()).contains("Subcommand Timing"),
+                    quiet.output().toString());
+            assertTrue(String.join("\n", verbose.output()).contains("Subcommand Timing"),
+                    "with -v ROBOT says how long the command took: " + verbose.output());
+            assertEquals("INFO", root.getLevel().toString(), "and the host logs as it did");
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * Only the run's own thread is held to what ROBOT's command line lets through. Protege's
+     * other threads - a reasoner somebody started, the editor itself - log as they did, also
+     * while a build runs.
+     *
+     * <p>Seen from inside the run: the appender is told of ROBOT's timing line (the line asks
+     * for {@code -v}) on the run's thread, while the run is still going, and has another thread
+     * log at INFO then.
+     */
+    @Test
+    void whatOtherThreadsLogDuringARunIsNotHeldBack(@TempDir File temp) throws Exception {
+        final ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        final List<String> seen = java.util.Collections.synchronizedList(
+                new java.util.ArrayList<String>());
+        ch.qos.logback.core.UnsynchronizedAppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>
+                during = new ch.qos.logback.core.UnsynchronizedAppenderBase<ch.qos.logback
+                        .classic.spi.ILoggingEvent>() {
+                    private boolean asked;
+
+                    @Override
+                    protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                        seen.add(event.getLevel() + " " + event.getFormattedMessage());
+                        if (!asked && event.getFormattedMessage().contains("Subcommand Timing")) {
+                            asked = true;
+                            Thread other = new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    org.slf4j.LoggerFactory.getLogger("another.thread")
+                                            .info("said by another thread meanwhile");
+                                }
+                            });
+                            other.start();
+                            try {
+                                other.join(10_000);
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                };
+        during.setContext(root.getLoggerContext());
+        during.start();
+        root.addAppender(during);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("-v", "convert", "--input",
+                    path(a), "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            assertTrue(seen.contains("INFO said by another thread meanwhile"), seen.toString());
+            assertFalse(String.join("\n", ran.output()).contains("another thread"),
+                    "and it is not in the run's transcript: " + ran.output());
+        } finally {
+            root.detachAppender(during);
+            root.setLevel(before);
+        }
+    }
+
+    // ------------------------------------------------------------------ what would end the JVM
+
+    @ParameterizedTest
+    @ValueSource(strings = {"--help", "-h", "--version", "help", "version"})
+    void whatMakesRobotExitIsRefused(String argument) {
+        assertThrows(IllegalArgumentException.class,
+                () -> OdkRobot.run(Arrays.asList("merge", argument)));
+        assertThrows(IllegalArgumentException.class,
+                () -> OdkRobot.run(Arrays.asList(argument)));
+    }
+
+    /** {@code annotate -V <iri>} is the version IRI, not ROBOT's {@code --version}. */
+    @Test
+    void theVersionIriOfAnnotateIsNotTheVersionFlag(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        File out = new File(temp, "out.ofn");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("annotate", "--input", path(a), "-V",
+                "https://example.org/e/releases/1.0.0/a.owl", "--annotation", "owl:versionInfo",
+                "1.0.0", "convert", "--format", "ofn", "--output", path(out)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertEquals("https://example.org/e/releases/1.0.0/a.owl",
+                load(out).getOntologyID().getVersionIRI().get().toString());
+    }
+
+    @Test
+    void aFailingVerifyDoesNotEndTheJvm(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        File query = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File passing = file(temp, "nothing-violation.sparql",
+                "SELECT ?x WHERE { ?x a <https://example.org/e/NoSuchType> }\n");
+        File reports = new File(temp, "reports");
+        assertTrue(reports.mkdirs());
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                "--queries", path(query), path(passing), "--output-dir", path(reports)));
+
+        // Still here: with ROBOT's own default the line above ends the JVM.
+        assertFalse(result.ok());
+        assertTrue(result.failure().contains("check_labels-violation"), result.failure());
+        assertFalse(result.failure().contains("nothing-violation"), result.failure());
+        assertTrue(new File(reports, "check_labels-violation.csv").isFile(),
+                "ROBOT's own record of the rows is kept");
+        assertTrue(String.join("\n", result.output()).contains("https://example.org/e/Egg"),
+                "the row is in what ROBOT printed: " + result.output());
+    }
+
+    /**
+     * ROBOT says a line per query, with the query's path as it was given: PASS, or FAIL and the
+     * rows. ODK's transcript reads {@code PASS Rule ../sparql/...: 0 violation(s)} from that.
+     */
+    @Test
+    void verifySaysWhatRobotSaysForEachRule(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        File failing = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File passing = file(temp, "nothing-violation.sparql",
+                "SELECT ?x WHERE { ?x a <https://example.org/e/NoSuchType> }\n");
+        String given = temp.getAbsolutePath() + File.separator + "sub/../nothing-violation.sparql";
+        assertTrue(new File(temp, "sub").mkdirs());
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                "--queries", given, path(failing), "--output-dir", path(new File(temp, "r"))));
+
+        assertFalse(result.ok());
+        assertTrue(result.output().contains("PASS Rule " + given + ": 0 violation(s)"),
+                result.output().toString());
+        assertTrue(result.output().contains("FAIL Rule " + path(failing) + ": 1 violation(s)"),
+                result.output().toString());
+        assertTrue(passing.isFile());
+    }
+
+    @Test
+    void aVerifyThatFindsNothingIsOkAndLeavesNoStaleResult(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File query = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File reports = new File(temp, "reports");
+        assertTrue(reports.mkdirs());
+        // What an earlier, failing run left: ROBOT only ever writes this file, never removes it.
+        file(reports, "check_labels-violation.csv", "entity\nhttps://example.org/e/Old\n");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                "--queries", path(query), "-O", path(reports)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertFalse(new File(reports, "check_labels-violation.csv").exists(),
+                "a result that is no longer true is not left lying");
+    }
+
+    @Test
+    void aFailingReportDoesNotEndTheJvm(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl", DESCRIBED
+                + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        File report = new File(temp, "report.tsv");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("report", "--input", path(a),
+                "--fail-on", "ERROR", "--print", "5", "--output", path(report)));
+
+        assertFalse(result.ok());
+        assertTrue(result.failure().contains("missing_label"), result.failure());
+        assertTrue(result.failure().contains("ERROR"), result.failure());
+        assertTrue(report.isFile(), "the report is written, as make would leave it");
+    }
+
+    /** {@code --fail-on} is honoured as ROBOT honours it: a warning does not fail at ERROR. */
+    @Test
+    void aReportFailsAtTheLevelAskedFor(@TempDir File temp) throws Exception {
+        // Labelled, described and licensed; no definition, which ROBOT's profile warns about.
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl", DESCRIBED
+                + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File report = new File(temp, "report.tsv");
+
+        OdkRobot.Result atError = OdkRobot.run(Arrays.asList("report", "--input", path(a),
+                "--fail-on", "ERROR", "--output", path(report)));
+        OdkRobot.Result atWarn = OdkRobot.run(Arrays.asList("report", "--input", path(a),
+                "--fail-on", "WARN", "--output", path(report)));
+        OdkRobot.Result never = OdkRobot.run(Arrays.asList("report", "--input", path(a),
+                "--fail-on", "none", "--output", path(report)));
+
+        assertTrue(atError.ok(), String.valueOf(atError.failure()));
+        assertFalse(atWarn.ok());
+        assertTrue(atWarn.failure().contains("missing_definition"), atWarn.failure());
+        assertTrue(never.ok(), String.valueOf(never.failure()));
+    }
+
+    /** What cannot be judged afterwards is not run: a report with nowhere to write. */
+    @Test
+    void aReportOrVerifyWithoutItsOutputIsRefused(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        File query = file(temp, "q-violation.sparql", "SELECT ?x WHERE { ?x a ?y }\n");
+
+        assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(Arrays.asList("report",
+                "--input", path(a), "--fail-on", "ERROR")));
+        assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(Arrays.asList("verify",
+                "--input", path(a), "--queries", path(query))));
+    }
+
+    /**
+     * ROBOT reads a path that does not start at a root against the JVM's working folder, which
+     * for Protégé is wherever it was started from. A recipe's paths are the project's.
+     */
+    @Test
+    void aPathThatIsNotAbsoluteIsRefused(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+
+        assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(Arrays.asList("convert",
+                "--input", path(a), "--format", "ofn", "--output", "out.ofn")));
+        assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(Arrays.asList("convert",
+                "-i", "a.ofn", "--format", "ofn", "-o", path(new File(temp, "out.ofn")))));
+        assertFalse(new File("out.ofn").exists());
+    }
+
+    // ------------------------------------------------------------------ asked before anything runs
+
+    /**
+     * {@code whyNot} is asked of every line of a target before any of them runs, so it finds what
+     * {@code run} would refuse without running a command, reading an input or writing a file -
+     * none of the paths here exist.
+     */
+    @Test
+    void whyNotIsNullForALineThatRuns(@TempDir File temp) {
+        assertNull(OdkRobot.whyNot(Arrays.asList("--catalog", path(new File(temp, "c.xml")),
+                "merge", "--input", path(new File(temp, "a.ofn")), "reason", "--reasoner", "ELK",
+                "annotate", "-V", "https://example.org/e/1.0/a.owl", "convert", "--format", "ofn",
+                "--output", path(new File(temp, "out.ofn")))));
+        assertFalse(new File(temp, "out.ofn").exists());
+    }
+
+    @Test
+    void whyNotNamesACommandRobotDoesNotHave(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("merge", "--input",
+                path(new File(temp, "a.ofn")), "frobnicate"));
+
+        assertNotNull(why);
+        assertTrue(why.contains("frobnicate"), why);
+    }
+
+    @Test
+    void whyNotNamesExpand(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("expand", "--input",
+                path(new File(temp, "a.ofn"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("'expand'"), why);
+    }
+
+    /** What ROBOT's own parser rejects: an option without its value, one it does not know. */
+    @Test
+    void whyNotSaysWhatRobotsParserRejects(@TempDir File temp) {
+        String missing = OdkRobot.whyNot(Arrays.asList("convert", "--input"));
+        String unknown = OdkRobot.whyNot(Arrays.asList("convert", "--input",
+                path(new File(temp, "a.ofn")), "--frobnicate", "x"));
+
+        assertNotNull(missing);
+        assertNotNull(unknown);
+        assertTrue(unknown.contains("--frobnicate"), unknown);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"--help", "-h", "--version", "help", "version"})
+    void whyNotNamesWhatWouldEndTheJvm(String argument) {
+        String why = OdkRobot.whyNot(Arrays.asList("merge", argument));
+
+        assertNotNull(why);
+        assertTrue(why.contains(argument), why);
+    }
+
+    @Test
+    void whyNotNamesJsonOnJava8(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("convert", "--input",
+                path(new File(temp, "a.ofn")), "--output", path(new File(temp, "a.json"))));
+
+        if (System.getProperty("java.specification.version").startsWith("1.")) {
+            assertNotNull(why);
+            assertTrue(why.contains("Java 11"), why);
+        } else {
+            assertNull(why);
+        }
+    }
+
+    @Test
+    void whyNotNamesAReportWithoutAnOutput(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("report", "--input",
+                path(new File(temp, "a.ofn")), "--fail-on", "ERROR"));
+
+        assertNotNull(why);
+        assertTrue(why.contains("--output"), why);
+    }
+
+    @Test
+    void whyNotNamesARelativePath(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("convert", "--input", "a.ofn", "--output",
+                path(new File(temp, "out.ofn"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("a.ofn") && why.contains("absolute"), why);
+    }
+
+    /** What robot query does not run here (OdkRobotQueryTest has each of them). */
+    @Test
+    void whyNotNamesWhatQueryDoesNotRun(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("query", "--input",
+                path(new File(temp, "a.ofn")), "--update", path(new File(temp, "u.ru"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("--update"), why);
+    }
+
+    /** Asking changes the host's logging no more than running does. */
+    @Test
+    void whyNotLeavesTheHostsLogLevelAlone(@TempDir File temp) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.whyNot(Arrays.asList("merge", "--input", path(new File(temp, "a.ofn"))));
+
+            assertEquals("INFO", root.getLevel().toString());
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    // ------------------------------------------------------------------ ODK's plugin
+
+    @Test
+    void odksPluginIsThere() {
+        assertTrue(OdkRobot.hasOdkPlugin());
+    }
+
+    /** ODK's update keeps the edit file's imports as the configuration lists them. */
+    @Test
+    void odkImportRewritesTheImports(@TempDir File temp) throws Exception {
+        File edit = ontology(temp, "edit.ofn", "https://example.org/e/e.owl",
+                "Import(<https://example.org/e/imports/old_import.owl>)\n"
+                + "Declaration(Class(:Egg))\n");
+        // As in a project: the catalog says where an import is, so nothing is fetched.
+        ontology(temp, "old_import.owl", "https://example.org/e/imports/old_import.owl",
+                "Declaration(Class(:Old))\n");
+        File catalog = file(temp, "catalog-v001.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" "
+                + "standalone=\"no\"?>\n<catalog prefer=\"public\" "
+                + "xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
+                + "  <uri name=\"https://example.org/e/imports/old_import.owl\" "
+                + "uri=\"old_import.owl\"/>\n</catalog>\n");
+        File out = new File(temp, "out.ofn");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("--catalog", path(catalog),
+                "odk:import", "--input", path(edit),
+                "--exclusive", "true", "--add", "https://example.org/e/imports/ro_import.owl",
+                "--add", "https://example.org/e/imports/iao_import.owl", "convert", "--format",
+                "ofn", "--output", path(out)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        Set<String> imports = new TreeSet<String>();
+        for (OWLImportsDeclaration declaration : OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(new org.semanticweb.owlapi.io.FileDocumentSource(
+                        out), new org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration()
+                                .setMissingImportHandlingStrategy(org.semanticweb.owlapi.model
+                                        .MissingImportHandlingStrategy.SILENT))
+                .getImportsDeclarations()) {
+            imports.add(declaration.getIRI().toString());
+        }
+        assertEquals(new TreeSet<String>(Arrays.asList(
+                "https://example.org/e/imports/iao_import.owl",
+                "https://example.org/e/imports/ro_import.owl")), imports);
+    }
+
+    /** Every release file of ODK's goes through {@code odk:normalize}. */
+    @Test
+    void odkNormalizeRuns(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File out = new File(temp, "out.ofn");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("odk:normalize", "--input", path(a),
+                "--add-source", "true", "convert", "--format", "ofn", "--output", path(out)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertEquals(1, load(out).getClassesInSignature().size());
+    }
+
+    /**
+     * ROBOT's report as a table: its five columns, ROBOT's own rule names, and the property and
+     * value its query bound - without --labels each a CURIE by ROBOT's own prefixes, or the IRI
+     * where none of them fits (OdkRobotReportTest has the rest).
+     */
+    @Test
+    void theReportIsWrittenAsRobotsTable(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl", DESCRIBED
+                + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n"
+                + "AnnotationAssertion(rdfs:label :Egg \"Ei\")\n");
+        File report = new File(temp, "report.tsv");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("report", "--input", path(a),
+                "--fail-on", "none", "--print", "5", "--output", path(report)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        List<String> rows = Files.readAllLines(report.toPath(), StandardCharsets.UTF_8);
+        assertEquals("Level\tRule Name\tSubject\tProperty\tValue", rows.get(0));
+        boolean found = false;
+        for (String row : rows) {
+            found |= row.startsWith("ERROR\tmultiple_labels\thttps://example.org/e/Egg\t"
+                    + "rdfs:label\t");
+        }
+        assertTrue(found, "two labels on one class is ROBOT's multiple_labels: " + rows);
+        assertTrue(String.join("\n", result.output()).contains("Violations: "),
+                result.output().toString());
+    }
+
+    /** ROBOT's verify and report look at the ontology itself, not at what it imports. */
+    @Test
+    void whatAnImportSaysIsNotVerified(@TempDir File temp) throws Exception {
+        ontology(temp, "imported.owl", "https://example.org/e/imports/imported.owl",
+                "Declaration(Class(:Imported))\n"
+                + "AnnotationAssertion(rdfs:comment :Imported \"no label, in an import\")\n");
+        File edit = ontology(temp, "edit.ofn", "https://example.org/e/e.owl",
+                "Import(<https://example.org/e/imports/imported.owl>)\n"
+                + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File catalog = file(temp, "catalog-v001.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" "
+                + "standalone=\"no\"?>\n<catalog prefer=\"public\" "
+                + "xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
+                + "  <uri name=\"https://example.org/e/imports/imported.owl\" "
+                + "uri=\"imported.owl\"/>\n</catalog>\n");
+        File query = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File reports = new File(temp, "reports");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("--catalog", path(catalog), "verify",
+                "--input", path(edit), "--queries", path(query), "--output-dir", path(reports)));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+    }
+
+    /**
+     * What needs a part of the OWL API that Protege's does not have says so, by name. (query
+     * needed it too, and runs on OntoBoard's engine now: OdkRobotQueryTest.)
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"expand"})
+    void aCommandThatCannotRunHereSaysSo(String command, @TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList(command, "--input", path(a)));
+
+        assertFalse(result.ok());
+        assertTrue(result.failure().contains("'" + command + "'"), result.failure());
+        assertTrue(result.failure().contains("is not run inside Protege"), result.failure());
+        // What OntoBoard does not do is said here; who else does it, the engine adds.
+        assertFalse(result.failure().contains("container"), result.failure());
+    }
+
+    /** A line ends at the command that fails, as the process would: what follows is not run. */
+    @Test
+    void afterAFailureTheRestOfTheLineIsNotRun(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        File query = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File after = new File(temp, "after.ofn");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                "--queries", path(query), "--output-dir", path(new File(temp, "reports")),
+                "convert", "--format", "ofn", "--output", path(after)));
+
+        assertFalse(result.ok());
+        assertFalse(after.exists(), "convert stood after the verify that failed");
+    }
+
+    // ------------------------------------------------------------------ Java 8 (Protege 5.5)
+
+    private static final String FORMAT = "org/geneontology/obographs/owlapi/"
+            + "OboGraphJsonDocumentFormat.class";
+
+    private static byte[] bytesOf(java.net.URL url) throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        try (java.io.InputStream in = url.openStream()) {
+            byte[] chunk = new byte[4096];
+            for (int n = in.read(chunk); n >= 0; n = in.read(chunk)) {
+                out.write(chunk, 0, n);
+            }
+        }
+        return out.toByteArray();
+    }
+
+    /** A class file's version: 52 is Java 8, 55 is Java 11. */
+    private static int majorOf(byte[] classFile) {
+        return ((classFile[6] & 0xff) << 8) | (classFile[7] & 0xff);
+    }
+
+    /**
+     * Of every ontology it saves, ROBOT asks whether its format is obographs' JSON format - and
+     * obographs is compiled for Java 11. Protege 5.5 runs Java 8, where that question alone
+     * ended every save ("has been compiled by a more recent version of the Java Runtime"), so
+     * no ROBOT command line could write a file there. OntoBoard therefore carries that one
+     * class itself, compiled for Java 8, and its own classes are looked in first.
+     */
+    @Test
+    void theClassRobotAsksEverySaveAboutIsOneJava8CanLoad() throws Exception {
+        List<java.net.URL> found = java.util.Collections.list(
+                getClass().getClassLoader().getResources(FORMAT));
+
+        assertEquals(2, found.size(), "OntoBoard's own and obographs': " + found);
+        assertTrue(found.get(0).toString().contains("/target/classes/"),
+                "OntoBoard's is found first, as in the bundle, whose class path starts with "
+                        + "its own classes: " + found);
+        assertEquals(52, majorOf(bytesOf(found.get(0))), "compiled for Java 8");
+        assertEquals(55, majorOf(bytesOf(found.get(1))), "obographs' own is Java 11 - when it "
+                + "no longer is, OntoBoard's copy can go");
+    }
+
+    /**
+     * The twin answers what the original answers, so that nothing can tell them apart: the
+     * same parent, the same interface, the same one method, the same key. Checked against the
+     * original itself, loaded from obographs' jar - which takes a Java that can load it.
+     */
+    @Test
+    void thatClassIsTheOriginalInEverythingButItsJavaVersion() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeFalse(
+                System.getProperty("java.specification.version").startsWith("1."),
+                "Java 8 cannot load obographs' own class to compare with");
+        List<java.net.URL> found = java.util.Collections.list(
+                getClass().getClassLoader().getResources(FORMAT));
+        final byte[] original = bytesOf(found.get(1));
+        Class<?> theirs = new ClassLoader(getClass().getClassLoader()) {
+            Class<?> define() {
+                return defineClass("org.geneontology.obographs.owlapi.OboGraphJsonDocumentFormat",
+                        original, 0, original.length);
+            }
+        }.define();
+        Class<?> ours = Class.forName("org.geneontology.obographs.owlapi."
+                + "OboGraphJsonDocumentFormat");
+
+        assertFalse(ours == theirs);
+        assertEquals(theirs.getSuperclass(), ours.getSuperclass());
+        assertEquals(Arrays.asList(theirs.getInterfaces()), Arrays.asList(ours.getInterfaces()));
+        assertEquals(theirs.getModifiers(), ours.getModifiers());
+        Set<String> theirMethods = new TreeSet<String>();
+        for (java.lang.reflect.Method method : theirs.getDeclaredMethods()) {
+            theirMethods.add(method.toGenericString());
+        }
+        Set<String> ourMethods = new TreeSet<String>();
+        for (java.lang.reflect.Method method : ours.getDeclaredMethods()) {
+            ourMethods.add(method.toGenericString());
+        }
+        assertEquals(theirMethods, ourMethods);
+        assertEquals(theirs.getDeclaredFields().length, ours.getDeclaredFields().length);
+        assertEquals(theirs.getDeclaredConstructors().length,
+                ours.getDeclaredConstructors().length);
+        Object their = theirs.getDeclaredConstructor().newInstance();
+        Object our = ours.getDeclaredConstructor().newInstance();
+        assertEquals(theirs.getMethod("getKey").invoke(their),
+                ours.getMethod("getKey").invoke(our));
+        assertEquals("OboGraphs JSON Syntax", ours.getMethod("getKey").invoke(our));
+    }
+
+    /**
+     * Writing JSON itself is obographs' work and stays Java 11's. Where Java can, ROBOT writes
+     * it; on Java 8 the line is refused before it runs, saying what it needs.
+     */
+    @Test
+    void jsonIsWrittenWhereJavaCanAndRefusedByNameWhereItCannot(@TempDir File temp)
+            throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        final File out = new File(temp, "a.json");
+        final List<String> byName = Arrays.asList("convert", "--input", path(a), "--output",
+                path(out));
+        final List<String> byFormat = Arrays.asList("convert", "--input", path(a), "--format",
+                "JSON", "--output", path(new File(temp, "a.out")));
+
+        if (System.getProperty("java.specification.version").startsWith("1.")) {
+            IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                    () -> OdkRobot.run(byName));
+            assertTrue(refused.getMessage().contains("Java 11"), refused.getMessage());
+            assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(byFormat));
+            assertFalse(out.exists());
+        } else {
+            OdkRobot.Result result = OdkRobot.run(byName);
+            assertTrue(result.ok(), String.valueOf(result.failure()));
+            assertTrue(new String(Files.readAllBytes(out.toPath()), StandardCharsets.UTF_8)
+                    .contains("https://example.org/e/Egg"));
+        }
+    }
+
+    @Test
+    void whetherJsonCanBeWrittenIsAskedOfTheJavaVersion() {
+        assertNull(OdkRobot.whyNoJson("11"));
+        assertNull(OdkRobot.whyNoJson("17"));
+        assertNull(OdkRobot.whyNoJson("25"));
+        String why = OdkRobot.whyNoJson("1.8");
+        assertTrue(why.contains("Java 11") && why.contains("Java 8"), why);
+        assertTrue(why.contains("JSON"), why);
+    }
+
+    /** A command ODK's templates do not use is not one OntoBoard runs. */
+    @Test
+    void aCommandThatIsNotOneOfThemIsAFailure(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("odk:no-such-command", "--input",
+                path(a)));
+
+        assertFalse(result.ok());
+        assertTrue(result.failure().contains("odk:no-such-command"), result.failure());
+    }
+
+    /** The plugin in the bundle is the jar ODK's image carries, not a build of somebody's. */
+    @Test
+    void thePluginJarIsTheOneOdkShips() throws Exception {
+        File jar = new File(System.getProperty("basedir", "."), "local-repo/org/incenp/"
+                + "odk-robot-plugin/" + OdkPin.ROBOT_PLUGIN_VERSION + "/odk-robot-plugin-"
+                + OdkPin.ROBOT_PLUGIN_VERSION + ".jar");
+        StringBuilder hex = new StringBuilder();
+        for (byte b : MessageDigest.getInstance("SHA-256").digest(
+                Files.readAllBytes(jar.toPath()))) {
+            hex.append(String.format("%02x", b));
+        }
+
+        assertEquals("35f8ea55185bebd0c3c6bef17620975803aeb98d095d99cc2b75182bdd705312",
+                hex.toString());
+        assertEquals(hex.toString(), OdkPin.ROBOT_PLUGIN_SHA256);
+    }
+
+    /** Two runs at once would each take the other's output for its own. */
+    @Test
+    void runsDoNotMixTheirOutput(@TempDir File temp) throws Exception {
+        final File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        final File query = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        final List<OdkRobot.Result> results =
+                java.util.Collections.synchronizedList(new java.util.ArrayList<OdkRobot.Result>());
+        Thread[] threads = new Thread[3];
+        for (int i = 0; i < threads.length; i++) {
+            final File reports = new File(temp, "reports" + i);
+            assertTrue(reports.mkdirs());
+            threads[i] = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    results.add(OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                            "--queries", path(query), "--output-dir", path(reports))));
+                }
+            });
+            threads[i].start();
+        }
+        for (Thread thread : threads) {
+            thread.join();
+        }
+
+        assertEquals(3, results.size());
+        for (OdkRobot.Result result : results) {
+            assertFalse(result.ok());
+            assertEquals(1, String.join("\n", result.output()).split("https://example.org/e/Egg",
+                    -1).length - 1, "one run's row, once: " + result.output());
+        }
+    }
+}

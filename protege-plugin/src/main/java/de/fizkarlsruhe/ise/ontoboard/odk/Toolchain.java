@@ -18,8 +18,8 @@ import java.util.Locale;
  *
  * <p>Two layers, deliberately. {@link Tool} is what is installed - a fact about the machine.
  * {@link Capability} is what the user can do - which is what they actually want to know, and is
- * never a single tool: building an ODK repository needs any one of a native ODK environment,
- * Docker, or Podman, and building a scaffolded project needs nothing at all.
+ * never a single tool: building an ODK project needs nothing at all, since OntoBoard runs ODK's
+ * targets itself, and takes a native ODK environment, Docker or Podman where one is there.
  *
  * <p>Nothing here is cached. A probe costs a handful of process launches, the answer changes when
  * somebody starts Docker Desktop, and a cached "not installed" that outlives the install is worse
@@ -108,10 +108,16 @@ public final class Toolchain {
     public static final class Report {
         private final List<Tool> tools;
         private final List<Capability> capabilities;
+        private final OdkImagePull image;
 
         Report(List<Tool> tools, List<Capability> capabilities) {
+            this(tools, capabilities, null);
+        }
+
+        Report(List<Tool> tools, List<Capability> capabilities, OdkImagePull image) {
             this.tools = tools;
             this.capabilities = capabilities;
+            this.image = image;
         }
 
         public List<Tool> getTools() {
@@ -123,6 +129,14 @@ public final class Toolchain {
         }
 
         /**
+         * ODK's image as the probe found it, with its row and whether its pull is offered;
+         * null in a report that was not probed.
+         */
+        public OdkImagePull getImage() {
+            return image;
+        }
+
+        /**
          * This report with one more tool row and the same capabilities. No capability is added
          * for the row: someone who never sets up a model can still do everything the toolchain
          * offers, and {@link #isEverythingAvailable} must keep saying so.
@@ -130,7 +144,7 @@ public final class Toolchain {
         public Report plus(Tool tool) {
             List<Tool> more = new ArrayList<Tool>(tools);
             more.add(tool);
-            return new Report(more, capabilities);
+            return new Report(more, capabilities, image);
         }
 
         /** True when everything the user could want to do, they can do. */
@@ -216,12 +230,17 @@ public final class Toolchain {
                         "not configured",
                         isWindows()
                                 ? "Not available on Windows - ODK supports native environments on "
-                                        + "Linux and macOS only. Use Docker or Podman here."
-                                : "Install the odk-core Python package "
-                                        + "('python -m pip install odk-core'), run "
-                                        + "'odk install /path/to/env', then point OntoBoard at "
-                                        + "that directory with the Choose button."));
+                                        + "Linux and macOS only. Not needed either: OntoBoard "
+                                        + "builds an ODK project itself, or in a container."
+                                : "Not needed: OntoBoard builds an ODK project itself, or in a "
+                                        + "container. To have one all the same, install the "
+                                        + "odk-core Python package ('python -m pip install "
+                                        + "odk-core'), run 'odk install /path/to/env', then "
+                                        + "point OntoBoard at that directory with Set native ODK "
+                                        + "environment... below."));
 
+        // Docker and Podman are for ODK's own container, which nothing needs: OntoBoard runs
+        // ODK's targets itself. Each row says so where the program is missing.
         boolean dockerThere = ProcessRunner.isAvailable(runner, "docker", "--version");
         boolean dockerWorks = dockerThere && ProcessRunner.isAvailable(runner, "docker", "info");
         tools.add(new Tool("Docker",
@@ -231,9 +250,11 @@ public final class Toolchain {
                                 : "not found",
                 dockerWorks ? ""
                         : dockerThere
-                                ? "Start Docker Desktop and wait until it reports that it is "
-                                        + "running."
-                                : "https://www.docker.com/products/docker-desktop/"));
+                                ? "Only for ODK's own container: start Docker Desktop and wait "
+                                        + "until it reports that it is running. Until then "
+                                        + NOT_NEEDED_RUNS + "."
+                                : "Not needed: " + NOT_NEEDED_RUNS + ". For ODK's own "
+                                        + "container: https://www.docker.com/products/docker-desktop/"));
 
         boolean podmanThere = ProcessRunner.isAvailable(runner, "podman", "--version");
         boolean podmanWorks = podmanThere && ProcessRunner.isAvailable(runner, "podman", "info");
@@ -243,18 +264,41 @@ public final class Toolchain {
                         : podmanThere ? "installed, but not responding"
                                 : "not found",
                 podmanWorks || dockerWorks ? ""
-                        : "An alternative to Docker Desktop, with the same command line: "
+                        : "Not needed: " + NOT_NEEDED_RUNS + ". An alternative to Docker "
+                                + "Desktop for ODK's own container, with the same command line: "
                                 + "https://podman.io/"));
+
+        // What OntoBoard will run ODK's targets in, by the person's settings: the program may be
+        // one they chose, or one found where the two are usually installed.
+        String program = OdkRoute.runtime(runner);
+        OdkRoute.Use use = OdkRoute.use();
+        boolean off = use == OdkRoute.Use.NEVER_CONTAINER;
+        tools.add(new Tool("Container for ODK's targets",
+                program != null || off ? State.PRESENT : State.ABSENT,
+                program != null ? program + " answers" + (OdkRoute.containerProgram() != null
+                        ? " - the program chosen in the settings" : "")
+                        : off ? "not used: the setting is \"" + use.label() + "\"" : "none",
+                program != null || off ? ""
+                        : OdkRoute.whyNoContainer(runner)
+                                + (OdkRoute.mayRunWithoutContainer(use)
+                                        ? " Without one, " + NOT_NEEDED_RUNS + "." : "")));
+
+        // ODK's image: which one is here, asked of that program - never fetched from here; Check
+        // requirements offers the pull, and runs it when the person says yes.
+        OdkImagePull image = OdkImagePull.of(program,
+                program == null ? null : OdkImage.probe(program, runner), use);
+        tools.add(image.row());
 
         boolean make = ProcessRunner.isAvailable(runner, "make", "--version");
         tools.add(new Tool("GNU make", make ? State.PRESENT : State.ABSENT,
                 make ? "on the PATH" : "not found",
+                // ODK's Makefile is read and run by OntoBoard itself; a make of the machine's
+                // own runs only one that is not ODK's. (The Makefile OntoBoard wrote up to
+                // 1.135 is not run at all any more: such a project is carried over.)
                 make ? ""
-                        : isWindows()
-                                ? "'choco install make' or 'scoop install make'. Only needed for "
-                                        + "a project OntoBoard did not scaffold."
-                                : "Install it with your package manager - 'apt install make' or "
-                                        + "'brew install make'."));
+                        : "Only needed to run a Makefile that is not ODK's: "
+                                + (isWindows() ? "'choco install make' or 'scoop install make'."
+                                        : "'apt install make' or 'brew install make'.")));
 
         boolean shell = ProcessRunner.isAvailable(runner, "sh", "--version");
         tools.add(new Tool("POSIX shell", shell ? State.PRESENT : State.ABSENT,
@@ -273,8 +317,11 @@ public final class Toolchain {
 
         tools.add(javaTool());
 
-        return new Report(tools, capabilities(nativeEnv != null, dockerWorks, podmanWorks, make));
+        return new Report(tools, capabilities(nativeEnv != null, program, use, make), image);
     }
+
+    /** Why a container program is not needed, as the end of a sentence. */
+    private static final String NOT_NEEDED_RUNS = "OntoBoard runs ODK's targets itself";
 
     /** The JRE this plugin is running in, which is always present by construction. */
     private static Tool javaTool() {
@@ -290,8 +337,8 @@ public final class Toolchain {
      * not found" means nothing to somebody who has Docker; "Build an ODK repository: yes, through
      * Docker" means something to everybody.
      */
-    static List<Capability> capabilities(boolean nativeEnv, boolean docker, boolean podman,
-            boolean make) {
+    static List<Capability> capabilities(boolean nativeEnv, String containerProgram,
+            OdkRoute.Use use, boolean make) {
         List<Capability> list = new ArrayList<Capability>();
 
         // Everything the plugin does itself. Stated because users ask, and because the honest
@@ -300,32 +347,37 @@ public final class Toolchain {
                 "Built in - ROBOT runs inside Protege, with nothing to install"));
 
         list.add(new Capability("Create a new ODK project", true,
-                "Built in - the scaffold is written directly, with nothing to install"));
+                "Built in - the files ODK's own seed writes, from ODK's templates inside "
+                        + "OntoBoard, with nothing to install"));
 
-        list.add(new Capability("Build a project OntoBoard scaffolded", true,
-                "Built in - the generated targets run inside Protege, with nothing to install"));
-
+        // An ODK project needs no container: OntoBoard runs ODK's own recipes itself. A
+        // container, where one answers, is ODK's own way and is taken first; only somebody
+        // who settled "always in a container" and has none cannot build now. (A project
+        // OntoBoard 1.135 made becomes an ODK project with Update project files.)
+        String odk = "Build an ODK project";
+        String inImage = "Through " + (OdkRoute.isPodman(containerProgram) ? "Podman" : "Docker")
+                + ", in the project's own ODK image";
         if (nativeEnv) {
-            list.add(new Capability("Build an existing ODK repository", true,
+            list.add(new Capability(odk, true,
                     "Through the native ODK environment, with no container"));
-        } else if (docker) {
-            list.add(new Capability("Build an existing ODK repository", true,
-                    "Through Docker, in the project's own ODK image"));
-        } else if (podman) {
-            list.add(new Capability("Build an existing ODK repository", true,
-                    "Through Podman, in the project's own ODK image"));
+        } else if (containerProgram != null && !OdkRoute.mayRunWithoutContainer(use)) {
+            list.add(new Capability(odk, true, inImage + ", and only there: OntoBoard's "
+                    + "setting for ODK's targets is \"" + use.label() + "\""));
+        } else if (containerProgram != null) {
+            list.add(new Capability(odk, true, inImage + " - and by OntoBoard itself where "
+                    + "that image is not on the machine"));
+        } else if (!OdkRoute.mayRunWithoutContainer(use)) {
+            list.add(new Capability(odk, false, "Not now: OntoBoard's setting for ODK's "
+                    + "targets is \"" + use.label() + "\", and no container program answers. "
+                    + "Start one, or change the setting."));
         } else {
-            list.add(new Capability("Build an existing ODK repository", false,
-                    isWindows()
-                            ? "Needs Docker or Podman. ODK's own tools are Linux and macOS only, "
-                                    + "so on Windows a container is the only route - that is "
-                                    + "ODK's requirement, not OntoBoard's."
-                            : "Needs a native ODK environment, Docker, or Podman. The native "
-                                    + "environment is the only one of the three with no "
-                                    + "container: see the odk-core row above."));
+            list.add(new Capability(odk, true, "By OntoBoard itself, with nothing to install: "
+                    + "ODK's own Makefile and recipes run inside Protege. A rule a project "
+                    + "adds in its own makefile is make's to run - in ODK's container, or "
+                    + "with ODK's tools installed."));
         }
 
-        if (!nativeEnv && !docker && !podman && make) {
+        if (!nativeEnv && containerProgram == null && make) {
             list.add(new Capability("Run a plain Makefile that is not an ODK one", true,
                     "With make from your PATH"));
         }

@@ -1,0 +1,17 @@
+Makefile
+arte-edit.owl
+arte-full.owl
+arte.Makefile
+arte.owl
+odkversion
+reason_test
+reports
+reports/arte-edit.owl-obo-report.tsv
+reports/validate_profile_owl2dl_arte.owl.txt
+robot_reports
+sparql_test
+test
+tmp
+tmp/arte-preprocess.owl
+tmp/merged-arte-edit.ofn
+validate_idranges

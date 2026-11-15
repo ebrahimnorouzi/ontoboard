@@ -1,5 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
@@ -229,5 +231,236 @@ class DialogDesignProofTest {
         assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
         assertTrue(distinctColours(image) > 8,
                 "the result panel rendered as " + distinctColours(image) + " colours");
+    }
+
+    // ---------------------------------------------------------------- the log stays on screen
+
+    /** How much of the panel's height the log needs for its tab and a handful of lines. */
+    private static final int LOG_NEEDS = 110;
+
+    private static <T extends java.awt.Component> T find(java.awt.Container in, Class<T> type) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (type.isInstance(child)) {
+                return type.cast(child);
+            }
+            if (child instanceof java.awt.Container) {
+                T deeper = find((java.awt.Container) child, type);
+                if (deeper != null) {
+                    return deeper;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void labelTexts(java.awt.Container in, StringBuilder into) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JLabel) {
+                into.append(((javax.swing.JLabel) child).getText()).append('\n');
+            }
+            if (child instanceof java.awt.Container) {
+                labelTexts((java.awt.Container) child, into);
+            }
+        }
+    }
+
+    /** A release of an ODK project: twelve files written, a transcript of a hundred lines. */
+    private static OperationResult aReleasesResult(List<File> files) {
+        OperationResult.Builder result = OperationResult.of("Release");
+        result.note("Project: C:\\Users\\somebody\\Documents\\ontologies\\eggboil");
+        for (int line = 0; line < 100; line++) {
+            result.note("robot --catalog catalog-v001.xml merge --input line-" + line + ".owl");
+        }
+        for (File file : files) {
+            result.wrote(file);
+        }
+        return result.summary("Released eggboil 1.0.0: 6 files at the top of the project, a "
+                + "copy under releases/1.0.0, committed and tagged v1.0.0 on main. Nothing was "
+                + "pushed - when you are ready, in a terminal: git push --follow-tags").build();
+    }
+
+    private static List<File> twelveFiles() {
+        List<File> files = new java.util.ArrayList<File>();
+        File root = new File("C:\\Users\\somebody\\Documents\\ontologies\\eggboil");
+        for (String folder : new String[] {"", "releases/1.0.0/"}) {
+            for (String name : new String[] {"eggboil.obo", "eggboil.owl", "eggboil-base.obo",
+                "eggboil-base.owl", "eggboil-full.obo", "eggboil-full.owl"}) {
+                files.add(new File(root, folder + name));
+            }
+        }
+        return files;
+    }
+
+    /**
+     * The result dialog cannot be resized, so what is pushed out of it cannot be reached. A
+     * release writes a dozen files; listed one a line above the log, they took the whole panel
+     * and the transcript of the build was not on screen at all - seen in a live run of
+     * 1.153.0's Release, where only "Save report..." still led to it.
+     */
+    @Test
+    void aResultThatWroteManyFilesStillShowsItsLog() throws Exception {
+        List<File> files = twelveFiles();
+        JPanel content = ResultDialog.buildContent(aReleasesResult(files));
+        BufferedImage image = render(content);
+        ImageIO.write(image, "PNG", new File(designDirectory(), "result-dialog-release.png"));
+
+        javax.swing.JTabbedPane tabs = find(content, javax.swing.JTabbedPane.class);
+        assertTrue(tabs.getHeight() >= LOG_NEEDS, "the log has " + tabs.getHeight()
+                + " px of the panel's " + content.getHeight());
+        assertTrue(content.getPreferredSize().height <= 560, "and the panel still fits a "
+                + "laptop screen: " + content.getPreferredSize().height + " px");
+
+        // Every file is still named somewhere a person can read it.
+        StringBuilder shown = new StringBuilder();
+        labelTexts(content, shown);
+        String log = find(tabs, javax.swing.JTextArea.class).getText();
+        for (File file : files) {
+            assertTrue(shown.toString().contains(file.getAbsolutePath())
+                    || log.contains(file.getAbsolutePath()), file + " is named nowhere");
+        }
+        assertTrue(shown.toString().contains(files.get(0).getAbsolutePath()),
+                "the first file is still above the log, where it was");
+        // And the dialog stays the size it has for every other result: a dozen paths are
+        // counted above the log, not stacked there.
+        assertTrue(shown.toString().contains("and 10 more"), shown.toString());
+        assertTrue(content.getPreferredSize().height <= 300, "the panel is "
+                + content.getPreferredSize().height + " px high");
+    }
+
+    /** Up to three files are listed as they always were, and the log is not added to. */
+    @Test
+    void aFewFilesAreListedAsBefore() {
+        List<File> files = twelveFiles().subList(0, 3);
+        OperationResult result = aReleasesResult(files);
+        JPanel content = ResultDialog.buildContent(result);
+        render(content);
+
+        StringBuilder shown = new StringBuilder();
+        labelTexts(content, shown);
+        for (File file : files) {
+            assertTrue(shown.toString().contains(file.getAbsolutePath()), file.toString());
+        }
+        assertTrue(find(content, javax.swing.JTextArea.class).getText()
+                .equals(String.join("\n", result.getLog())), "the log is the log");
+    }
+
+    /**
+     * A failure's sentence can be long - it says what happened, what is on disk and what to
+     * do. The panel grows for it instead of taking the log's room.
+     */
+    @Test
+    void aLongSummaryStillLeavesTheLogItsRoom() {
+        JPanel content = ResultDialog.buildContent(aFailureOf(12));
+        render(content);
+
+        javax.swing.JTabbedPane tabs = find(content, javax.swing.JTabbedPane.class);
+        assertTrue(tabs.getHeight() >= LOG_NEEDS, "the log has " + tabs.getHeight()
+                + " px of the panel's " + content.getHeight() + "; above it "
+                + content.getComponent(0).getClass().getSimpleName() + " of "
+                + content.getComponent(0).getHeight() + " px");
+        assertTrue(content.getHeight() > 260, "the panel grew for it: " + content.getHeight());
+        assertTrue(content.getPreferredSize().height <= 560,
+                content.getPreferredSize().height + " px");
+        assertTrue(content.getComponent(0) instanceof JPanel, "and nothing needs scrolling");
+    }
+
+    /**
+     * Past what a laptop screen holds the panel grows no further: then it is the sentence that
+     * scrolls, and the log still has its room.
+     */
+    @Test
+    void aSummaryLongerThanTheScreenScrollsAndTheLogStays() {
+        JPanel content = ResultDialog.buildContent(aFailureOf(60));
+        render(content);
+
+        javax.swing.JTabbedPane tabs = find(content, javax.swing.JTabbedPane.class);
+        assertTrue(tabs.getHeight() >= LOG_NEEDS, "the log has " + tabs.getHeight()
+                + " px of the panel's " + content.getHeight());
+        assertTrue(content.getPreferredSize().height <= 560,
+                content.getPreferredSize().height + " px");
+        assertTrue(content.getComponent(0) instanceof javax.swing.JScrollPane,
+                "the sentence scrolls: " + content.getComponent(0).getClass().getSimpleName());
+    }
+
+    /** A failed result whose reason is this many sentences long. */
+    private static OperationResult aFailureOf(int sentences) {
+        StringBuilder reason = new StringBuilder();
+        for (int i = 0; i < sentences; i++) {
+            reason.append("The release was built, and then something about it was not as it "
+                    + "should be, which this sentence explains at length. ");
+        }
+        return OperationResult.of("Release").note("a line of the log")
+                .failed(reason.toString()).build();
+    }
+
+    /**
+     * The git commands of a release, shown before they run. The line that adds the release's
+     * files is long - six names, twelve with more formats - and has to be on screen whole:
+     * seen cut off at the dialog's edge in a live run, behind a sideways scroll bar.
+     */
+    @Test
+    void theGitCommandsOfAReleaseAreOnScreenWithoutScrollingSideways() throws Exception {
+        String commands = "The release is built. To record it, these git commands run in\n"
+                + "C:\\Users\\somebody\\Documents\\ontologies\\eggboil\non branch main:\n\n"
+                + "git add -u\ngit add -f -- eggboil.obo eggboil.owl eggboil.json eggboil.ttl "
+                + "eggboil-base.obo eggboil-base.owl eggboil-base.json eggboil-base.ttl "
+                + "eggboil-full.obo eggboil-full.owl eggboil-full.json eggboil-full.ttl\n"
+                + "git add -- releases/1.0.0\ngit commit -m \"release(1.0.0)\"\n"
+                + "git tag -a v1.0.0 -m \"eggboil 1.0.0\"\n\nNothing is pushed.";
+        javax.swing.JScrollPane scroll = ReleaseAction.commandsShown(commands);
+        JPanel holder = new JPanel(new java.awt.BorderLayout());
+        holder.add(scroll);
+        BufferedImage image = render(holder);
+        ImageIO.write(image, "PNG", new File(designDirectory(), "release-git-question.png"));
+
+        javax.swing.JTextArea text = find(scroll, javax.swing.JTextArea.class);
+        assertTrue(text.getWidth() <= scroll.getViewport().getWidth(), "the text is "
+                + text.getWidth() + " px wide in a view of " + scroll.getViewport().getWidth());
+        assertTrue(text.getText().contains("eggboil-full.ttl\ngit add -- releases/1.0.0"),
+                "the commands themselves are unchanged: a wrapped line is still one line");
+    }
+
+    // ---------------------------------------------------------------- a cut cell can be read
+
+    /**
+     * The dialog cannot be resized, so a cell too long for its column stays cut - a state of
+     * Update project files was, in both hosts (1.153.0, live run), and nothing showed the
+     * rest. Pointed at, a cut cell says its whole text; one that fits says nothing twice.
+     */
+    @Test
+    void aCellThatIsCutSaysItsWholeTextWhenPointedAt() {
+        String cut = "changes: its import declarations are brought in line with the "
+                + "configuration";
+        OperationResult result = OperationResult.of("Update project files")
+                .columns("File", "State")
+                .row("src/ontology/Makefile", "changes")
+                .row("src/ontology/eggboil-edit.owl", cut)
+                .summary("2 files would change.")
+                .build();
+        JPanel content = ResultDialog.buildContent(result);
+        render(content);
+        javax.swing.JTable table = find(content, javax.swing.JTable.class);
+        java.awt.Rectangle cell = table.getCellRect(1, 1, false);
+        assertTrue(cell.width > 100 && table.prepareRenderer(table.getCellRenderer(1, 1), 1, 1)
+                .getPreferredSize().width > cell.width, "the cell is laid out, and too narrow "
+                        + "for its text: " + cell);
+
+        assertEquals(cut, table.getToolTipText(over(table, 1, 1)));
+        assertNull(table.getToolTipText(over(table, 0, 1)), "a state that fits");
+        assertNull(table.getToolTipText(over(table, 0, 0)), "a path that fits");
+        assertNull(table.getToolTipText(at(table, 10, table.getRowHeight() * 2 + 30)),
+                "below the last row");
+    }
+
+    private static java.awt.event.MouseEvent over(javax.swing.JTable table, int row,
+            int column) {
+        java.awt.Rectangle cell = table.getCellRect(row, column, false);
+        return at(table, cell.x + 4, cell.y + 4);
+    }
+
+    /** The pointer over a place of a table that is on no screen: its place there is given. */
+    private static java.awt.event.MouseEvent at(javax.swing.JTable table, int x, int y) {
+        return new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_MOVED,
+                0L, 0, x, y, x, y, 0, false, java.awt.event.MouseEvent.NOBUTTON);
     }
 }

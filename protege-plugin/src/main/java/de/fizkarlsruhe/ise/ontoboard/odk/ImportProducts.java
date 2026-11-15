@@ -348,6 +348,13 @@ public final class ImportProducts {
         NO_SOURCE,
 
         /**
+         * Declared to be kept as it is: {@code module_type: custom} with
+         * {@code mirror_type: no_mirror}. ODK's refresh leaves such a module alone, and
+         * nothing about it is missing: it is how an import that is kept whole is declared.
+         */
+        FROZEN,
+
+        /**
          * On disk, and in no product.
          *
          * <p>ODK's {@code IMPORTS} list comes from {@code import_group.products}, so nothing
@@ -415,10 +422,12 @@ public final class ImportProducts {
 
         /** How to describe the declaration in a column. */
         public String describeDeclaration() {
-            if (product != null) {
-                return product.describeModuleType();
+            // A pattern is one whether or not a product is declared for its module: the
+            // declaration says "custom", which is how it is kept, not what it is.
+            if (verdict == Verdict.PATTERN) {
+                return "pattern library";
             }
-            return verdict == Verdict.PATTERN ? "pattern library" : "NOT DECLARED";
+            return product != null ? product.describeModuleType() : "NOT DECLARED";
         }
 
         /**
@@ -471,7 +480,11 @@ public final class ImportProducts {
             ImportModules.Module module = ImportModules.moduleFor(projectRoot, product.getId());
             String source = product.getSource();
             Verdict verdict;
-            if (needsTermList(product) && !module.isRebuildable()) {
+            if (isFrozen(product)) {
+                // A pattern is declared this way too, and is still called a pattern.
+                verdict = recordedPatternIn(module) != null ? Verdict.PATTERN
+                        : Verdict.FROZEN;
+            } else if (needsTermList(product) && !module.isRebuildable()) {
                 verdict = Verdict.NO_TERM_LIST;
             } else if (!product.isRebuildable()) {
                 verdict = Verdict.REFUSED;
@@ -491,6 +504,19 @@ public final class ImportProducts {
                     recordedPatternIn(module) != null ? Verdict.PATTERN : Verdict.UNDECLARED));
         }
         return rows;
+    }
+
+    /**
+     * Whether the product is declared to be kept as it is - custom, and no mirror: nothing
+     * of ODK's builds its module or fetches anything for it.
+     */
+    public static boolean isKeptAsItIs(Product product) {
+        return isFrozen(product);
+    }
+
+    /** Whether the product is declared to be kept as it is: custom, and no mirror. */
+    private static boolean isFrozen(Product product) {
+        return "custom".equalsIgnoreCase(product.getModuleType()) && !product.isMirrored();
     }
 
     /**
@@ -541,7 +567,10 @@ public final class ImportProducts {
             return fields;
         }
 
-        /** Why this declaration will not build as written, or null when it will. */
+        /**
+         * What to know of this declaration that its fields do not say - why the module is
+         * kept as it is, where ODK does not build it; null where ODK builds it as declared.
+         */
         public String getCaveat() {
             return caveat;
         }
@@ -585,10 +614,63 @@ public final class ImportProducts {
         }
 
         if (method == null || method == TermExtract.Method.MIREOT) {
-            // ODK has no module_type that means MIREOT, so there is nothing truthful to write
-            // that `make` would act on. custom is ODK's own word for "the rule is hand-written",
-            // which is exactly the situation - and what a real project does: NFDIcore declares its
-            // MIREOT import as custom and writes the extract command in its own Makefile.
+            // ODK has no module_type that means MIREOT. Declared as kept as it is - custom, and
+            // no mirror - like a pattern's module: ODK's refresh leaves it (a custom module's
+            // rule has no prerequisites, so a module on disk is up to date and its error rule
+            // never runs), the default test and release do not stop on it, and importing the
+            // terms again is what builds it again. mirror_from stays as the record of where it
+            // came from.
+            fields.put("module_type", "custom");
+            fields.put("mirror_type", NO_MIRROR);
+            return new Declaration(fields, "ODK has no module type that means MIREOT, so "
+                    + id + " is declared as kept as it is: ODK's refresh leaves the module "
+                    + "alone, and importing the terms again is what builds it again.");
+        }
+        fields.put("module_type", DEFAULT_MODULE_TYPE);
+        fields.put("module_type_slme", method.getLabel());
+        return new Declaration(fields, null);
+    }
+
+    /**
+     * The declaration of what Import terms has just extracted, in an ODK project: as
+     * {@link #declarationFor}, except for a source that is a file of this machine.
+     */
+    public static Declaration declarationForImport(String id, String source,
+            TermExtract.Method method) {
+        // A file of this machine is an address on no other: written into the configuration,
+        // ODK's refresh would stop on it everywhere else - on the next person's machine and
+        // in continuous integration. Kept as it is instead, like a pattern's module, and no
+        // path goes into a file that is committed.
+        if (source != null && source.trim().toLowerCase(java.util.Locale.ROOT)
+                .startsWith("file:")) {
+            return new Declaration(frozen(id), id + " was taken from a file on this machine, "
+                    + "which is an address on no other, so it is declared as kept as it is: "
+                    + "ODK's refresh leaves the module alone, and importing the terms again "
+                    + "is what builds it again. Where the source has an address on the web, "
+                    + "import from that address and ODK refreshes the module itself.");
+        }
+        return declarationFor(id, source, method);
+    }
+
+    /**
+     * The declaration of an extraction in a project of OntoBoard's older layout, as
+     * 1.135.2 wrote it: the source it was taken from, a file of this machine too - that
+     * layout's own Refresh imports builds the module again from it - and a MIREOT
+     * extraction as {@code custom} with the source, said to need a rule of the project's
+     * own. {@link #declarationFor} is what an ODK project gets.
+     */
+    public static Declaration declarationAsBefore(String id, String source,
+            TermExtract.Method method) {
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+        String standard = OBO_BASE + "/" + id + ".owl";
+        if (source != null && !source.isEmpty() && !standard.equals(source)) {
+            fields.put("mirror_from", source);
+        }
+        if (method == null || method == TermExtract.Method.MIREOT) {
+            // custom is ODK's own word for "the rule is hand-written", which is what a
+            // MIREOT extraction is to a Makefile.
             fields.put("module_type", "custom");
             return new Declaration(fields, "ODK has no module_type for a MIREOT extraction, so "
                     + "this was declared as module_type: custom - ODK's own word for a rule that "
@@ -600,6 +682,121 @@ public final class ImportProducts {
         fields.put("module_type", DEFAULT_MODULE_TYPE);
         fields.put("module_type_slme", method.getLabel());
         return new Declaration(fields, null);
+    }
+
+    /**
+     * A product ODK keeps as it is: ODK's Makefile does not build its module and fetches nothing
+     * for it ({@code module_type: custom}, {@code mirror_type: no_mirror}).
+     */
+    public static java.util.LinkedHashMap<String, String> frozen(String id) {
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+        fields.put("module_type", "custom");
+        fields.put("mirror_type", NO_MIRROR);
+        return fields;
+    }
+
+    /**
+     * The configuration with one more import product.
+     *
+     * <p>Added to {@code import_group.products} where the configuration has that list. A project
+     * that imports nothing has no {@code import_group} at all - ODK's seed writes none - so the
+     * group and its list are written where they are missing: the group at the end of the file, a
+     * list under a group that has none where the group ends, at the indent its own keys have.
+     * Nothing else in the file is touched, and its line endings are kept.
+     *
+     * @param fields the product's keys and values in the order they are written; the first goes
+     *     on the line with the dash
+     * @throws OdkYaml.UnreadableException when the group is written in a way that is not added
+     *     to: on one line, or with a {@code products} key that holds no list
+     */
+    public static String withProduct(String yaml,
+            java.util.LinkedHashMap<String, String> fields) {
+        // A file whose every line break is a Windows one is edited with Unix ones and turned
+        // back, so that what is added has the file's own.
+        boolean windows = yaml.contains("\r\n") && !yaml.replace("\r\n", "").contains("\n");
+        String text = windows ? yaml.replace("\r\n", "\n") : yaml;
+        String added;
+        String group = OdkYaml.kindOf(text, "import_group");
+        String list = OdkYaml.kindOf(text, PRODUCTS);
+        if ("list".equals(list)) {
+            added = OdkYaml.appendBlockTo(text, PRODUCTS, fields);
+        } else if (group == null) {
+            added = text + (text.isEmpty() || text.endsWith("\n") ? "" : "\n")
+                    + "import_group:\n  products:\n" + blockOf("    ", fields);
+        } else if ("mapping".equals(group) && list == null) {
+            added = withListUnder(text, fields);
+        } else if (list != null) {
+            throw new OdkYaml.UnreadableException("'" + PRODUCTS + "' is there and holds no "
+                    + "list, so a product cannot be added to it.");
+        } else {
+            throw new OdkYaml.UnreadableException("'import_group' is there and is not written "
+                    + "as a group of keys over several lines, so a product cannot be added to "
+                    + "it.");
+        }
+        return windows ? added.replace("\n", "\r\n") : added;
+    }
+
+    /**
+     * The text with a {@code products} list as the last lines of its {@code import_group}: after
+     * the last line of the group that says something, at the indent the group's keys have.
+     */
+    private static String withListUnder(String text,
+            java.util.LinkedHashMap<String, String> fields) {
+        List<String> lines = new ArrayList<String>(java.util.Arrays.asList(text.split("\n", -1)));
+        int group = -1;
+        for (int at = 0; at < lines.size() && group < 0; at++) {
+            if (lines.get(at).matches("import_group\\s*:\\s*(#.*)?")) {
+                group = at;
+            }
+        }
+        if (group < 0) {
+            throw new OdkYaml.UnreadableException("'import_group' is there and is not written "
+                    + "as a group of keys over several lines, so a product cannot be added to "
+                    + "it.");
+        }
+        String indent = null;
+        int last = group;
+        for (int at = group + 1; at < lines.size(); at++) {
+            String line = lines.get(at);
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String body = line.replaceAll("^[ \\t]+", "");
+            if (body.length() == line.length()) {
+                break;
+            }
+            if (indent == null) {
+                indent = line.substring(0, line.length() - body.length());
+            }
+            last = at;
+        }
+        if (indent == null) {
+            indent = "  ";
+        }
+        String block = indent + "products:\n" + blockOf(indent + "  ", fields);
+        lines.addAll(last + 1, java.util.Arrays.asList(
+                block.substring(0, block.length() - 1).split("\n", -1)));
+        if (last + 1 + block.split("\n").length == lines.size()) {
+            // The group's last line was the file's last and had no line break: what is added
+            // ends with one.
+            lines.add("");
+        }
+        return String.join("\n", lines);
+    }
+
+    /** An item of a block list: the first field on the line with the dash. */
+    private static String blockOf(String indent,
+            java.util.LinkedHashMap<String, String> fields) {
+        StringBuilder block = new StringBuilder();
+        boolean first = true;
+        for (java.util.Map.Entry<String, String> field : fields.entrySet()) {
+            block.append(indent).append(first ? "- " : "  ").append(field.getKey()).append(": ")
+                    .append(OdkYaml.scalarFor(field.getValue())).append('\n');
+            first = false;
+        }
+        return block.toString();
     }
 
     /** The product with this id, or null. */

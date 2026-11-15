@@ -1,0 +1,5 @@
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   loim.obo  loim.owl   loim-base.obo  loim-base.owl   loim-full.obo  loim-full.owl  tmp/merged-loim-edit.ofn tmp/loim-preprocess.owl

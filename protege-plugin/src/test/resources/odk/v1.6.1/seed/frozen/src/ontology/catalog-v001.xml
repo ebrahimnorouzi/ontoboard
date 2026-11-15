@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <group id="odk-managed-catalog" prefer="public">
+    <uri name="https://example.org/froz/froz/imports/measurement_import.owl" uri="imports/measurement_import.owl"/>
+    <uri name="https://example.org/froz/froz/imports/dataset_import.owl" uri="imports/dataset_import.owl"/>
+    <uri name="https://example.org/froz/froz/imports/handmade_import.owl" uri="imports/handmade_import.owl"/>
+    <uri name="https://example.org/froz/froz/imports/mini_import.owl" uri="imports/mini_import.owl"/>
+  </group>
+</catalog>

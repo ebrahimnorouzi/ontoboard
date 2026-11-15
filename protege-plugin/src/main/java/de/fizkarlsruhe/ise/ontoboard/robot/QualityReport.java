@@ -198,6 +198,29 @@ public final class QualityReport {
     }
 
     /**
+     * Every row of every rule's query, as ROBOT's report reads them: each with the terms it
+     * bound ({@link QualityFinding#getBound()}), none sorted and none left out - no
+     * {@code --base-iri}, no row dropped for want of an entity. For OntoBoard's stand-in for
+     * ROBOT's {@code report} command, which reads the rows as ROBOT does; {@link #run} is what
+     * the Quality report shows.
+     *
+     * @param options the profile, as for {@link #run}; nothing else of them is read
+     * @throws QualityReportException if ROBOT's rules cannot be run
+     */
+    public static List<QualityFinding> rows(OWLOntology ontology, Map<String, String> options) {
+        try {
+            return RuleRunner.rows(ontology, severitiesFor(options));
+        } catch (RobotException cannotRun) {
+            throw new QualityReportException(cannotRun.getMessage(), cannotRun);
+        } catch (LinkageError incompatible) {
+            throw new QualityReportException("ROBOT could not run against this Protege's OWL API: "
+                    + incompatible.getMessage() + ".", incompatible);
+        } catch (RuntimeException failure) {
+            throw new QualityReportException(failure);
+        }
+    }
+
+    /**
      * The rule-to-severity map this run should use.
      *
      * <p>A project's own {@code profile.txt} wins when one is configured, so the plugin and that

@@ -201,6 +201,12 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      * because an ontology can be handed about between managers.
      */
     protected File fileOf(OWLOntology ontology) {
+        return fileOf(getOWLModelManager(), ontology);
+    }
+
+    /** {@link #fileOf(OWLOntology)}, for whoever holds Protege's model manager. */
+    static File fileOf(org.protege.editor.owl.model.OWLModelManager models,
+            OWLOntology ontology) {
         if (ontology == null) {
             return null;
         }
@@ -208,9 +214,7 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         if (own != null) {
             return own;
         }
-        return getOWLModelManager() == null
-                ? null
-                : fileFrom(getOWLModelManager().getOWLOntologyManager(), ontology);
+        return models == null ? null : fileFrom(models.getOWLOntologyManager(), ontology);
     }
 
     /**
@@ -236,6 +240,201 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         } catch (RuntimeException notAFile) {
             return null;
         }
+    }
+
+    /** Something to do that may fail. */
+    protected interface Step {
+        void take() throws Exception;
+    }
+
+    /** Does it on the dispatch thread and waits; why it failed, or null. */
+    protected static String onDispatchThread(final Step step) {
+        final String[] failure = new String[1];
+        Runnable work = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    step.take();
+                } catch (Exception | LinkageError cannot) {
+                    failure[0] = said(cannot);
+                }
+            }
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            work.run();
+            return failure[0];
+        }
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(work);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "the wait for it was interrupted";
+        } catch (java.lang.reflect.InvocationTargetException thrown) {
+            return said(thrown.getCause() == null ? thrown : thrown.getCause());
+        }
+        return failure[0];
+    }
+
+    /**
+     * Has Protege read an ontology again from its file, its own way
+     * ({@code OWLModelManager.reload}: what is open is patched to what the file now holds),
+     * on the dispatch thread - and brings Protege's record of the file's time up to date.
+     *
+     * <p>Protege's reload tells its listeners that a file was read only after a patch that
+     * changed something ({@code OntologyReloader.reload}, read in 5.5.0 and 5.6.9). A file
+     * that was written again as it was leaves the record at the old time, and the next
+     * time Protege's window comes to the front it asks about an ontology that "has
+     * changed outside of Protege" (seen in a running 5.6.9 after a refresh that built the
+     * same modules again). {@code OntologySourcesManager.ignoreUpdates} is what Protege's
+     * own question calls for the files it is told to leave: it notes their time.
+     *
+     * @return why it did not work, or null when it did
+     */
+    static String readAgainFromItsFile(final org.protege.editor.owl.model.OWLModelManager models,
+            final OWLOntology open) {
+        return onDispatchThread(new Step() {
+            @Override
+            public void take() throws Exception {
+                models.reload(open);
+                noteItsFileTime(models, open);
+            }
+        });
+    }
+
+    /** {@link #readAgainFromItsFile(org.protege.editor.owl.model.OWLModelManager, OWLOntology)}, here. */
+    protected String readAgainFromItsFile(OWLOntology open) {
+        return readAgainFromItsFile(getOWLModelManager(), open);
+    }
+
+    /**
+     * Brings Protege's record of the time of an ontology's file up to date: for a file that
+     * OntoBoard wrote while what Protege holds was patched to match it, or that Protege
+     * has just read again. Without it Protege asks, the next time its window comes to the
+     * front, about an ontology that "has changed outside of Protege". On the dispatch
+     * thread, where Protege's own question does the same.
+     */
+    static void noteItsFileTime(org.protege.editor.owl.model.OWLModelManager models,
+            OWLOntology open) {
+        Object sources = models.get(org.protege.editor.owl.model.io.OntologySourcesManager.ID);
+        if (sources instanceof org.protege.editor.owl.model.io.OntologySourcesManager) {
+            ((org.protege.editor.owl.model.io.OntologySourcesManager) sources)
+                    .ignoreUpdates(java.util.Collections.singleton(open));
+        }
+    }
+
+    /** {@link #noteItsFileTime(org.protege.editor.owl.model.OWLModelManager, OWLOntology)}, here. */
+    protected void noteItsFileTime(OWLOntology open) {
+        noteItsFileTime(getOWLModelManager(), open);
+    }
+
+    /** The ontology Protege has open from this file; null when it has none from it. */
+    protected OWLOntology openFrom(File file) {
+        java.nio.file.Path asked = file.getAbsoluteFile().toPath().normalize();
+        for (java.util.Map.Entry<OWLOntology, File> one
+                : openFromFiles(getOWLModelManager()).entrySet()) {
+            if (one.getValue().getAbsoluteFile().toPath().normalize().equals(asked)) {
+                return one.getKey();
+            }
+        }
+        return null;
+    }
+
+    /** What Protege has open from a file, in its order, each with that file. */
+    private static java.util.Map<OWLOntology, File> openFromFiles(
+            org.protege.editor.owl.model.OWLModelManager models) {
+        java.util.Map<OWLOntology, File> open = new java.util.LinkedHashMap<OWLOntology, File>();
+        for (OWLOntology loaded : new java.util.ArrayList<OWLOntology>(models.getOntologies())) {
+            File file = fileOf(models, loaded);
+            if (file != null) {
+                open.put(loaded, file);
+            }
+        }
+        return open;
+    }
+
+    /**
+     * The files of the ontologies Protege has open, as they are now: taken before a run of
+     * ODK's make, to tell afterwards which of them it wrote.
+     */
+    protected de.fizkarlsruhe.ise.ontoboard.odk.FileStamps stampsOfWhatIsOpen() {
+        return de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(
+                openFromFiles(getOWLModelManager()).values());
+    }
+
+    /**
+     * Protege, asked to read again the files a run wrote: each ontology it has open from
+     * one of them is read again its own way ({@link #readAgainFromItsFile}); one with
+     * changes that are not saved is not ({@link WhatARunWrote}).
+     */
+    static ReadsAgain readsAgain(final org.protege.editor.owl.model.OWLModelManager models) {
+        return new ReadsAgain() {
+            @Override
+            public WhatARunWrote.Done readAgain(java.util.List<File> written) {
+                java.util.Map<OWLOntology, File> open = openFromFiles(models);
+                WhatARunWrote.Plan<OWLOntology> plan = WhatARunWrote.plan(open,
+                        new java.util.HashSet<OWLOntology>(models.getDirtyOntologies()),
+                        written);
+                java.util.List<File> read = new java.util.ArrayList<File>();
+                java.util.List<String> notRead =
+                        new java.util.ArrayList<String>(plan.notRead());
+                for (OWLOntology one : plan.toRead()) {
+                    // From the plan, not from the map: reading an ontology again can
+                    // change its ID - ODK's build of a module has a version IRI with the
+                    // day in it - and a hash map then no longer finds it (seen live: a
+                    // NullPointerException at the end of Build's full test).
+                    File file = plan.fileOf(one);
+                    String failure = readAgainFromItsFile(models, one);
+                    if (failure == null) {
+                        read.add(file);
+                    } else {
+                        notRead.add(WhatARunWrote.notReadAgain(file, failure));
+                    }
+                }
+                return new WhatARunWrote.Done(read, notRead);
+            }
+        };
+    }
+
+    /** {@link #readsAgain(org.protege.editor.owl.model.OWLModelManager)}, here. */
+    protected ReadsAgain protegeReadsAgain() {
+        return readsAgain(getOWLModelManager());
+    }
+
+    /**
+     * After a run of ODK's make: Protege reads again what it has open of the files the
+     * run wrote, and the result says so.
+     *
+     * @param before what Protege had open, stamped before the run
+     * @return whether the result was told anything
+     */
+    protected boolean readAgainWhatWasWritten(
+            de.fizkarlsruhe.ise.ontoboard.odk.FileStamps before,
+            OperationResult.Builder result) {
+        java.util.List<File> written = before.now().writtenSince(before);
+        if (written.isEmpty()) {
+            return false;
+        }
+        WhatARunWrote.Done done = protegeReadsAgain().readAgain(written);
+        if (done.said() != null) {
+            result.note(done.said());
+        }
+        for (String why : done.notRead()) {
+            result.warn(why);
+        }
+        return done.said() != null || !done.notRead().isEmpty();
+    }
+
+    /** A failure in its own words, down to the cause that says something. */
+    protected static String said(Throwable failure) {
+        Throwable at = failure;
+        while (at.getCause() != null && at.getCause() != at
+                && (at.getMessage() == null || at.getMessage().trim().isEmpty()
+                        || at.getMessage().equals(at.getCause().toString()))) {
+            at = at.getCause();
+        }
+        String message = at.getMessage() == null || at.getMessage().trim().isEmpty()
+                ? at.getClass().getSimpleName() : at.getMessage().trim();
+        return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;
     }
 
     protected void applyOnEventThread(final java.util.List<OWLOntologyChange> changes) {

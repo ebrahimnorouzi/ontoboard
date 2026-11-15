@@ -1,0 +1,6 @@
+# Terms extracted into unused_import.owl
+# Source: https://example.org/unused.owl
+# One term per line. This file is what makes the module rebuildable:
+# edit it and re-run the import to change what the module contains.
+https://example.org/unused/UNUSED_0000001 # stove
+https://example.org/unused/UNUSED_0000002 # pan

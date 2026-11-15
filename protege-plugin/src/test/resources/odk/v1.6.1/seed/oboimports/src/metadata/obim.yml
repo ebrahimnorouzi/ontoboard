@@ -1,0 +1,28 @@
+# PURL configuration for http://purl.obolibrary.org/obo/obim
+
+idspace: OBIM
+base_url: /obo/obim
+
+products:
+- obim.owl: https://raw.githubusercontent.com/example-org/obim/main/obim.owl
+- obim.obo: https://raw.githubusercontent.com/example-org/obim/main/obim.obo
+
+term_browser: ontobee
+example_terms:
+- OBIM_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com/example-org/obim/v
+
+- prefix: /tracker/
+  replacement: https://github.com/example-org/obim/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/OBIM?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com/example-org/obim/main/
+

@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.e2e.PizzaOntology;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.RecordedProject;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,7 +20,6 @@ import org.semanticweb.owlapi.model.OWLOntology;
 /** SPARQL over the open ontology, and over an ODK project's own committed checks. */
 class SparqlQueryTest {
 
-    private static final String CC0 = "https://creativecommons.org/publicdomain/zero/1.0/";
 
     /** Every value in one column, across all rows. */
     private static List<String> column(SparqlQuery.Answer answer, String name) {
@@ -80,25 +78,27 @@ class SparqlQueryTest {
     }
 
     /**
-     * The scaffold's own check runs, and this is the gap that closes.
-     *
-     * <p>OntoBoard writes {@code src/sparql/check_labels.rq} and a {@code sparql_test} target that
-     * runs it, and until now nothing in the plugin could run the file it had just written.
+     * The checks of a project of the older layout are found and run: the label check
+     * OntoBoard 1.135 wrote into every project, and a test written from a question. (When
+     * this was written, OntoBoard wrote {@code src/sparql/check_labels.rq} and nothing in
+     * the plugin could run the file it had just written.)
      */
     @Test
-    void theScaffoldsOwnCheckIsFoundAndRun(@TempDir File dir) throws Exception {
-        OdkProjectConfig config = new OdkProjectConfig("demo", "Demo", "",
-                "http://example.org/demo.owl", CC0, dir);
-        OdkScaffold.create(config);
+    void theChecksOfAProjectOfTheOlderLayoutAreFoundAndRun(@TempDir File dir)
+            throws Exception {
+        File root = new File(dir, "eggboil");
+        RecordedProject.of1352(root);
 
-        List<File> checks = SparqlQuery.checksIn(config.getProjectRoot());
-        assertFalse(checks.isEmpty(), "the scaffold writes src/sparql/check_labels.rq");
+        List<File> checks = SparqlQuery.checksIn(root);
+        assertEquals(2, checks.size(), checks.toString());
         assertEquals("check_labels.rq", checks.get(0).getName());
+        assertEquals("every_dataset_has_part.rq", checks.get(1).getName());
 
         List<SparqlQuery.Check> results = SparqlQuery.verify(PizzaOntology.v2(), checks);
-        assertEquals(1, results.size());
-        assertEquals(null, results.get(0).getFailure(),
-                "the scaffold's own check must at least parse and run");
+        assertEquals(2, results.size());
+        for (SparqlQuery.Check result : results) {
+            assertEquals(null, result.getFailure(), "each must at least parse and run");
+        }
     }
 
     /**
@@ -165,6 +165,53 @@ class SparqlQueryTest {
                         + "SELECT ?c WHERE { ?c a owl:Class . FILTER(!isBlank(?c)) }");
 
         assertTrue(answer.size() > 0);
+    }
+
+    /**
+     * ODK asks its own checks of the edit file with its imports taken out. Asked that way
+     * here, a query sees what the ontology says itself and nothing of what it imports -
+     * so that the dialog's answer is the one ODK's test will give.
+     */
+    @Test
+    void askedOfTheOntologyAloneAQueryDoesNotSeeTheImports(@TempDir File dir)
+            throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        org.semanticweb.owlapi.model.IRI a =
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/A");
+        OWLOntology imported = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/imported.owl"));
+        manager.addAxiom(imported, factory.getOWLAnnotationAssertionAxiom(
+                factory.getRDFSLabel(), a, factory.getOWLLiteral("a")));
+        OWLOntology own = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/own.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(own,
+                factory.getOWLImportsDeclaration(org.semanticweb.owlapi.model.IRI.create(
+                        "https://example.org/imported.owl"))));
+        manager.addAxiom(own, factory.getOWLSubClassOfAxiom(factory.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/B")),
+                factory.getOWLClass(a)));
+        String labelled = "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+                + "SELECT ?x WHERE { ?x rdfs:label \"a\" }";
+
+        assertEquals(1, SparqlQuery.run(own, labelled).size(), "with its imports");
+        assertEquals(0, SparqlQuery.runAlone(own, labelled).size(), "by itself");
+        assertEquals(1, SparqlQuery.runAlone(own, "PREFIX rdfs: "
+                + "<http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?x WHERE { ?x "
+                + "rdfs:subClassOf <https://example.org/A> }").size(),
+                "what it says itself is there");
+        assertEquals(0, SparqlQuery.runAlone(own, "PREFIX owl: "
+                + "<http://www.w3.org/2002/07/owl#>\nSELECT ?x WHERE { ?o owl:imports ?x }")
+                .size(), "ODK takes the import declarations out as well");
+
+        File check = new File(dir, "labelled-violation.sparql");
+        java.nio.file.Files.write(check.toPath(),
+                labelled.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertTrue(SparqlQuery.verifyAlone(own, java.util.Collections.singletonList(check))
+                .get(0).isPassed());
+        assertFalse(SparqlQuery.verify(own, java.util.Collections.singletonList(check))
+                .get(0).isPassed());
     }
 
     @Test

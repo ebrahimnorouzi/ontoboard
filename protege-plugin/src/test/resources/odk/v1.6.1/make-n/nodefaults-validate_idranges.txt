@@ -1,0 +1,3 @@
+if [ -f plain-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error plain-idranges.owl ; \
+fi

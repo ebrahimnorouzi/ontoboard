@@ -6755,6 +6755,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
             return;
         }
+        minter = afterClaimingARange(minter, what);
+        if (minter == null) {
+            return;
+        }
         IRI iri;
         try {
             iri = minter.mintFor(ontology, name);
@@ -6940,6 +6944,41 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * The minter to make the new {@code term} with, once this editor has claimed one of ODK's
+     * placeholder ID ranges if the project still has only those; or null when they cancelled,
+     * or the claim could not be written - and then nothing was written and nothing is made.
+     *
+     * <p>Asked here, after the name and before the identifier, so that cancelling the name never
+     * touches the ranges file. What to ask and what to write are {@link TermMinter}'s; this only
+     * shows the question.
+     */
+    private TermMinter afterClaimingARange(TermMinter minter, String term) {
+        if (!minter.needsClaim()) {
+            return minter;
+        }
+        List<String> placeholders = TermMinter.claimable(minter.getRanges());
+        String[] choices = new String[placeholders.size()];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
+        }
+        Object chosen = JOptionPane.showInputDialog(this,
+                TermMinter.claimQuestion(editorName(), minter.getRangesFile().getName(), term),
+                "Which range is yours?", JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+        if (chosen == null) {
+            return null;
+        }
+        try {
+            return minter.claim(placeholders.get(java.util.Arrays.asList(choices).indexOf(chosen)));
+        } catch (java.io.IOException | RuntimeException cannotClaim) {
+            JOptionPane.showMessageDialog(this, "Could not write your name into "
+                    + minter.getRangesFile().getName() + ": " + cannotClaim.getMessage()
+                    + "\n\nNothing was written, and no " + term + " was made.",
+                    "Range not claimed", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+    }
+
+    /**
      * Who is minting, for matching against the ID ranges.
      *
      * <p>The collaboration display name when one is configured, since that is the name a team has
@@ -7077,7 +7116,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // the ranges is that nobody mints outside their block". A project can therefore have
             // its classes inside its scheme and its properties outside it, which is worse than
             // either policy applied consistently.
-            TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
+            TermMinter minter = afterClaimingARange(
+                    TermMinter.forOntologyFile(currentOntologyFile, editorName()), "property");
+            if (minter == null) {
+                return;
+            }
             IRI propertyIri;
             try {
                 propertyIri = minter.mintFor(ontology, choice.getNewPropertyName());

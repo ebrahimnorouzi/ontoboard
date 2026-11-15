@@ -1,0 +1,23 @@
+id: shop
+title: "Shop ontology"
+description: "An ontology of a shop, with its own namespace"
+uribase: https://w3id.org/shop
+license: https://creativecommons.org/publicdomain/zero/1.0/
+contact: jane@example.org
+git_main_branch: master
+namespaces:
+  - https://w3id.org/shop/SHOP_
+  - https://w3id.org/shop/terms/
+robot_report:
+  use_labels: FALSE
+  fail_on: WARN
+  use_base_iris: TRUE
+  report_on:
+    - edit
+    - shop.owl
+  custom_sparql_checks:
+    - owldef-self-reference
+    - dc-properties
+    - iri-range-advanced
+  custom_sparql_exports:
+    - basic-report

@@ -1,0 +1,71 @@
+Prefix(:=<http://purl.obolibrary.org/obo/loim.owl#>)
+Prefix(dce:=<http://purl.org/dc/elements/1.1/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/loim.owl>
+Import(<http://purl.obolibrary.org/obo/loim/imports/bfo_import.owl>)
+Import(<http://purl.obolibrary.org/obo/loim/imports/iao_import.owl>)
+Import(<http://purl.obolibrary.org/obo/loim/imports/ro_import.owl>)
+Annotation(dcterms:description "An ontology that uses terms of three others, for the tests of the import chain")
+Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)
+Annotation(dcterms:title "Local imports test ontology")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/BFO_0000015>))
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000310>))
+Declaration(Class(<http://purl.obolibrary.org/obo/LOIM_0000000>))
+Declaration(Class(<http://purl.obolibrary.org/obo/LOIM_0000001>))
+Declaration(Class(<http://purl.obolibrary.org/obo/LOIM_0000002>))
+Declaration(ObjectProperty(<http://purl.obolibrary.org/obo/RO_0002233>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/IAO_0000115>))
+Declaration(AnnotationProperty(dcterms:description))
+Declaration(AnnotationProperty(dcterms:license))
+Declaration(AnnotationProperty(dcterms:title))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: dcterms:description (description)
+
+AnnotationAssertion(rdfs:label dcterms:description "description")
+
+# Annotation Property: dcterms:license (license)
+
+AnnotationAssertion(rdfs:label dcterms:license "license")
+
+# Annotation Property: dcterms:title (title)
+
+AnnotationAssertion(rdfs:label dcterms:title "title")
+
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/LOIM_0000000> (root node)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/LOIM_0000000> "The class everything of this ontology is under."@en)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/LOIM_0000000> "root node"@en)
+
+# Class: <http://purl.obolibrary.org/obo/LOIM_0000001> (boiling)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/LOIM_0000001> "A process in which water is brought to the boil."@en)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/LOIM_0000001> "boiling"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/LOIM_0000001> <http://purl.obolibrary.org/obo/BFO_0000015>)
+SubClassOf(<http://purl.obolibrary.org/obo/LOIM_0000001> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/RO_0002233> <http://purl.obolibrary.org/obo/LOIM_0000000>))
+
+# Class: <http://purl.obolibrary.org/obo/LOIM_0000002> (recipe)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/LOIM_0000002> "A document that says how a dish is made."@en)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/LOIM_0000002> "recipe"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/LOIM_0000002> <http://purl.obolibrary.org/obo/IAO_0000310>)
+
+
+)

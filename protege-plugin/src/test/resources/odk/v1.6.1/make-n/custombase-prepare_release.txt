@@ -1,0 +1,51 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < shop-odk.yaml | sha256sum | cut -c1-64)" = "e30faf463295a6e88640b7fc77724bf74b0530ebb94d8356e8bdbe3280608594" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f shop-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error shop-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input shop-edit.owl --format ofn --output tmp/shop-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/shop-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/shop-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-shop-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-shop-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/dc-properties-violation.sparql ../sparql/iri-range-advanced-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-shop-edit.ofn   --fail-on WARN --base-iri https://w3id.org/shop/SHOP_ --base-iri https://w3id.org/shop/terms/ --print 5 -o reports/shop-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/shop-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://w3id.org/shop/shop/shop-full.owl annotate -V https://w3id.org/shop/shop/releases/1.0.0/shop-full.owl --annotation owl:versionInfo 1.0.0 --output shop-full.owl.tmp.owl && mv shop-full.owl.tmp.owl shop-full.owl
+robot --catalog catalog-v001.xml annotate --input shop-full.owl --ontology-iri https://w3id.org/shop/shop.owl annotate -V https://w3id.org/shop/shop/releases/1.0.0/shop.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o shop.owl.tmp.owl && mv shop.owl.tmp.owl shop.owl
+robot --catalog catalog-v001.xml report -i shop.owl   --fail-on WARN --base-iri https://w3id.org/shop/SHOP_ --base-iri https://w3id.org/shop/terms/ --print 5 -o reports/shop.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge -i shop.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_shop.owl.txt || { cat reports/validate_profile_owl2dl_shop.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/shop-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv
+robot --catalog catalog-v001.xml convert --input shop.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o shop.obo
+robot --catalog catalog-v001.xml merge --input tmp/shop-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri https://w3id.org/shop/SHOP_ --base-iri https://w3id.org/shop/terms/ --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri https://w3id.org/shop/shop/shop-base.owl annotate -V https://w3id.org/shop/shop/releases/1.0.0/shop-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output shop-base.owl.tmp.owl && mv shop-base.owl.tmp.owl shop-base.owl
+robot --catalog catalog-v001.xml convert --input shop-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o shop-base.obo
+robot --catalog catalog-v001.xml convert --input shop-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o shop-full.obo
+check-rdfxml  shop.owl
+check-rdfxml  shop-base.owl
+check-rdfxml  shop-full.owl
+make copy_release_files
+make[1]: Entering directory '/tmp/odk/custombase/src/ontology'
+rsync -R   shop.obo  shop.owl   shop-base.obo  shop-base.owl   shop-full.obo  shop-full.owl   ../..
+make[1]: Leaving directory '/tmp/odk/custombase/src/ontology'
+rm -f   shop.obo  shop.owl   shop-base.obo  shop-base.owl   shop-full.obo  shop-full.owl  tmp/merged-shop-edit.ofn tmp/shop-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"

@@ -19,21 +19,19 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   Rules layer and Enter for a sibling. Still open, roughly in the order they were asked for:
     - *Check this ontology* without a project - the reasoner, the quality report and a label
       check on a loose `.owl` file. Today Build needs a project.
-    - Help beside each key in *Project configuration…*, and a button there for *Update project
-      files…*.
-    - An ODK release with `base`, `full` and `simple` files under one version IRI; *Release…*
-      writes one file (merged or not).
+    - Help beside each key in *Project configuration…*. (A button there for *Update project
+      files…* is no longer needed: since 1.153.0 a save brings the project's files in line.)
     - *History* and *Compare releases* for properties and individuals as they are for classes
-      (relabelled, redefined); and against a git tag. *History* lists only `releases/`.
+      (relabelled, redefined).
     - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
       replacement, instead of only listing what will change.
     - A button on each warning that applies its fix - an undeclared import, imports not merged.
     - A mode for adding terms to somebody else's ontology (a contributor's view), creating the
       repository on GitHub and pushing without a terminal, ODK's filter and minimal import
-      types, and a beginner mode. (The menus have been grouped by job since 1.133.0.) Since
-      1.133.0, *Turn an ontology
-      into an ODK repository…* runs `git init`, commits and tags every version, and prints the
-      two commands that publish it.
+      types when importing terms, and a beginner mode. (The menus have been grouped by job since
+      1.133.0.) Since 1.133.0, *Turn an ontology into an ODK repository…* runs `git init`,
+      commits and tags every version, and prints the two commands that publish it; since 1.153.0
+      *New ODK project…* makes the first commit too.
     - Bring to front and send to back for frames and notes on the board.
 - **Mappings, DOSDP patterns and pattern mining are not built, and the assistant edits little.**
   There is no SSSOM
@@ -51,8 +49,11 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 - **Turning an ontology into an ODK repository records earlier versions as they were
   published.** They are not rebuilt, and their imports are not turned into modules. A version
   that says no date is committed at the time of the conversion, so converting again gives a
-  different commit for it, though the same files. The project is OntoBoard's kind, the same as
-  *New ODK project…* writes - see [the thing to decide before you start](odk-workflow.md#the-thing-to-decide-before-you-start).
+  different commit for it, though the same files. The current version is released only when
+  ODK's test passes on it; otherwise the project and its history are made, and *Release...*
+  makes the release once the test passes. An import that cannot be read is taken out of the
+  edit file, by name. The project is ODK's own, the same as *New ODK project…* writes from a
+  file - see [working with ODK](odk-workflow.md#with-its-history-turn-an-ontology-into-an-odk-repository-since-11330).
 - **Find terms reads what a server sends.** A server that never answers is given up on after
   30 seconds, and one that is down cannot be read at all: load a copy instead - a downloaded file,
   or the one in the ontology's repository, whose documentation page usually links to it.
@@ -122,13 +123,11 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   `src/templates/`, `kg/templates/` and `templates/` at the project root - the first holding a
   sheet is opened, and *Project templates ▾* offers the others. Templates anywhere else are opened
   with *Open folder...*, and that choice lasts while the view is open, not across sessions.
-- **A new project is not a git repository.** *Project → New ODK project...* writes the project and
-  does not run `git init`, so *Share → Git...* refuses it and asks for `git init` - the guide's
-  last step needs that one command. *Project → Turn an ontology into an ODK repository...* does
-  initialise one, with a commit and a tag per version.
-- **What *Check requirements...* checks.** Docker, Podman, GNU make, a POSIX shell, ODK and Java.
-  Not git, the GitHub CLI, Widoco or Konclude, which *Git...*, *Pull request...*, *Documentation...*
-  and *Reason with Konclude...* need.
+- **What *Check requirements...* checks.** A native ODK environment, Docker, Podman, the program
+  ODK's container would run with, ODK's image, GNU make, a POSIX shell, ODK Core's `odk` and Java.
+  Not git, the GitHub CLI, Widoco or Konclude, which *New ODK project...* and *Release...* (for
+  their commits), *Git...*, *Pull request...*, *Documentation...* and *Reason with Konclude...*
+  need.
 - **Documentation has no changelog until the previous release is published.** Widoco builds the
   changelog by downloading the release the ontology names as `owl:priorVersion`; when nothing
   answers there it writes the rest of the page and leaves the word `null` in the changelog
@@ -159,23 +158,26 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   `*-idranges.owl`. Your name is the collaboration display name (*Share → Collaboration...*), or
   your login when none is set. Anybody without a block gets *No identifiers for you yet* until
   *Project → ID ranges...* allocates one.
-- ***Build...* runs in Protégé only when the project's Makefile is the one this OntoBoard
-  writes.** A project made by an earlier version is refused, with a message pointing to
-  *Project → Update project files...* (tick *Write the changes*), which also rewrites the other
-  generated files.
-- ***Build...* checks consistency with ELK, and so does *Release...* unless another reasoner is
-  chosen.** ELK does not reason over inverse properties, data ranges, cardinalities or negation, so
-  an ontology only a DL reasoner finds inconsistent passes both, as it does in ODK. When the
-  ontology uses them and has at most 20,000 logical axioms, both also ask HermiT, for ten seconds,
-  and warn with any class it finds can have no members; the verdict stays ELK's. For a larger
-  ontology, run HermiT, or *Check and test → Explain...*, before releasing.
+- **A project made by OntoBoard 1.135 or before is not built or released until it is carried
+  over.** Its Makefile is OntoBoard's own, and *Build...* and *Release...* say so and run nothing,
+  not even with a `make` and ROBOT the machine has. 
+  *OntoBoard > Project > Update project files...* (tick *Write the changes*) makes it an ODK project, and keeps the ontology, its
+  imports and its tests.
+- ***Build...* and *Release...* check consistency with ELK, as ODK's Makefile does.** ELK does not
+  reason over inverse properties, data ranges, cardinalities or negation, so an ontology only a DL
+  reasoner finds inconsistent passes both, as it does in ODK. When a build that reasoned with ELK
+  passes, the ontology uses them and has at most 20,000 logical axioms, HermiT is asked as well,
+  for ten seconds, and the result warns with any class it finds can have no members; the verdict
+  stays ELK's. *Release...* of an ontology in no project uses ELK unless another reasoner is
+  chosen, and asks HermiT the same way. For a larger ontology, run HermiT, or
+  *OntoBoard > Check and test > Explain...*, before releasing.
 - ***Template...* types a value only when the cell says so** (`2026-11-01T18:00:00^^xsd:dateTime`).
   It warns about an untyped value only when the property declares a datatype range, so a date
   typed without its datatype becomes a plain string, silently, under a property with no range -
   NFDIcore's *has value* among them.
-- ***Share → Git... → Commit everything* commits every file.** The `.gitignore` OntoBoard writes
-  ignores neither `build/`, where *Documentation...* writes the page, nor the board's layout file,
-  so a commit after *Documentation...* includes the generated site.
+- ***Share → Git... → Commit everything* commits every file git does not ignore.** The `.gitignore`
+  ODK's seed writes ignores neither `build/`, where *Documentation...* writes the page, nor the
+  board's layout file, so a commit after *Documentation...* includes the generated site.
 
 - **What the board draws of an ontology, measured.** On two published ontologies built on BFO,
   with every term shown and class expressions drawn (the default): every logical axiom - 921 of
@@ -252,9 +254,60 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   taken back for that. Routing only the lines a move touches would lift it, and is not built.
 - **The bundle is ~64 MB**, because ROBOT and its dependencies are embedded to run
   in-process.
-- **A repository generated by ODK itself builds outside Protégé.** A project OntoBoard made builds
-  inside Protégé with nothing installed; one whose Makefile ODK generated calls tools that exist
-  only in the ODK image, so its build runs through Docker, Podman or a native ODK install.
+- **OntoBoard's own engine runs ODK's Makefile, and nothing a project adds to it.** Without ODK's
+  container or ODK's tools installed, OntoBoard runs ODK's targets itself (since 1.153.0) - but
+  only where the Makefile is the one ODK v1.6.1 writes for the project's configuration, and only
+  targets the project's own `<id>.Makefile` changes nothing of. A rule or setting of the
+  project's own that a target reaches, a project's own `release.sh`, and a recipe line that calls
+  a program OntoBoard has no stand-in for are not run; the target is not offered, and the reason
+  names the rule and its line, or the program. The one rule of a project's own that is run is
+  OntoBoard's rule for the project's questions, as long as it stands as OntoBoard wrote it. Such
+  targets run in ODK's container (Docker or Podman, with ODK's image) or, on Linux and macOS, with
+  ODK's tools installed; a Makefile another ODK version wrote is brought to ODK v1.6.1 by
+  *Update project files...*. [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has
+  the order.
+- **Run by OntoBoard itself, ROBOT has Protégé's memory.** In ODK's container ROBOT gets the
+  project's `robot_java_args`, or nine tenths of the container's memory. OntoBoard's own engine
+  runs ROBOT inside Protégé, so a large import - refreshed by `test`, `prepare_release` or
+  *Refresh imports...* - has only the memory Protégé was started with. Raise it in Protégé's own
+  setting: for Protégé 5.6 `max_heap_size=8G` in `conf/jvm.conf` in Protégé's folder; for
+  Protégé 5.5.0 on Windows the `-Xmx` line of `Protege.l4j.ini` beside `Protege.exe`, or the
+  `-Xmx` of `run.bat` when Protégé is started with it. Then start Protégé again.
+- **Protégé asks for your ID range again whenever the project is read again.** Protégé's own ID
+  range plugin asks a user whose name is in no range of `<id>-idranges.owl` to choose one ("No Id
+  Range Found For Current User") when a project's edit file is opened, and again each time the
+  file is read again - after *Update project files...* or an import, for example, even in the
+  middle of OntoBoard's run. It is Protégé's dialog, not OntoBoard's, and every user of ODK's seed
+  meets it as it comes: choose your range in it and go on.
+- **On Protégé 5.5.0 a release made by OntoBoard itself differs from ODK's in a few lines.** How a
+  file is written is the OWL API's, and that is the host's: Protégé 5.6.9 carries OWL API 4.5.29,
+  the same as ROBOT in ODK v1.6.1's image, and Protégé 5.5.0 carries 4.5.9. On 4.5.9 an OBO
+  file's header has no `idspace:` lines and names Dublin Core properties by their whole IRIs, an
+  RDF/XML file writes `owl:versionInfo` with an explicit string datatype, and the annotations
+  within an element can come in another order. The content is the same. A project released
+  alternately on Protégé 5.5.0 without a container and in ODK's container sees those lines change
+  back and forth in its release commits.
+- **A project just made shows two small changes at its first *Update project files...*.** The
+  last line of `.gitignore` and the first two lines of the catalog: ODK v1.6.1's own update
+  writes its own seed's files that way. After that update the project's files are what ODK
+  writes, and the next update changes nothing. *Turn an ontology into an ODK repository...* runs
+  the update itself, so a converted project does not show them.
+- **ODK names the released file after the project's address.** ODK's release gives the ontology
+  the IRI `<uribase>/<id>.owl`, whatever the edit file says. An ontology adopted with another
+  address - started from a file, converted, or carried over from 1.135 - keeps its own address in
+  the edit file, and its releases carry ODK's name unless `src/ontology/<id>.Makefile` says
+  otherwise. OntoBoard warns when the two differ; look at `<id>.owl` before you publish the
+  release's tag.
+- **On Windows an import that is not RDF/XML may stay locked for a while.** The OWL API keeps a
+  file it read as an import open until Java's garbage collector comes by, unless the file is
+  RDF/XML. After a conversion or an update, a local import in Turtle or another syntax can then
+  refuse to be moved or deleted for a while; wait a moment and try again, or keep local imports in
+  RDF/XML.
+- **ODK's `.gitignore` leaves the release files out of git.** The files a release writes at the
+  top of the project - `<id>.owl`, `<id>-base.owl` and the rest - are ignored by the `.gitignore`
+  ODK's seed writes, so *Share → Git... → Commit everything* does not take them in and `git
+  status` does not show them after a build. *Release...* takes them in by name with `git add -f`,
+  as ODK's own instructions do, in the release's commit.
 
 ### What used to be here
 
@@ -266,20 +319,24 @@ Limitations should answer what the tool cannot do today.
 
 ### Not covered by tests
 
-The unit tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+The unit tests cover projection, axiom construction, layout persistence, ODK's seed, the
 report's rule execution and the OSGi configuration. Some of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
-`RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
-`OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
-that image. All are *skipped*, not failed, where Docker is absent — so a green run on a machine
+`RobotCliParityTest` compares nine more operations against the same image's `robot` command,
+`SeedLiveParityTest` has ODK v1.6.1's image seed projects and compares them with what OntoBoard
+writes from ODK's templates, and `ReleaseLiveTest` releases a new project with ODK's own container
+and git. All are *skipped*, not failed, where Docker is absent — so a green run on a machine
 without Docker proves considerably less than it looks, and now says nothing at all about whether
-this plugin agrees with ROBOT.
+this plugin agrees with ROBOT. What does run without Docker is the comparison with recordings:
+since 1.153.0 the seed is held byte for byte against ODK's own seeds, and OntoBoard's own engine
+against ODK's own runs of `test_fast`, `prepare_release_fast` and the import targets, recorded
+in ODK's image.
 
-`OdkBuildTest` earns its keep: three defects in the generated build had survived a 30-assertion
-test class and were found the first time anyone executed it — a `--` inside an XML comment in the
-catalog, which made `make` die on the first robot call; no robot invocation passing the catalog at
-all; and a release gate weaker than the CI gate. Asserting what a generated file *says* is not the
-same as running it. They cover little of the Swing UI: the toolbar, the minimap, drop handling,
+Up to 1.135 a test ran the project OntoBoard generated in that image, and found three defects in
+the generated build that had survived a 30-assertion test class — a `--` inside an XML comment in
+the catalog, which made `make` die on the first robot call; no robot invocation passing the
+catalog at all; and a release gate weaker than the CI gate. Asserting what a generated file
+*says* is not the same as running it. They cover little of the Swing UI: the toolbar, the minimap, drop handling,
 the views as Protégé hosts them and every visual choice need a display and are verified by hand.
 Treat visual behaviour as unverified after each change.
 
@@ -299,9 +356,10 @@ nothing. All 29 are now loaded *and constructed* in the host.
 
 The other half arrived in 1.40.0 and grew in 1.44.0. `tools/smoke.ps1 -SelfTest` sets
 `-Dontoboard.selftest=true`, and the startup hook then drives **nine** menu items against a
-throwaway ODK project — scaffolded by the wizard's own code into a temp directory and deleted
-afterwards — logging what each reported: Measure, Quality report, Explain, SPARQL, Export terms,
-Profile, Check imports, Refresh imports, All notes. A person can run the same thing from
+throwaway ODK project — made by *New ODK project...*'s own code from ODK's templates into a temp
+directory and deleted afterwards — logging what each reported: Measure, Quality report, Explain,
+SPARQL, Export terms, Profile, Check imports, Refresh imports, All notes. Since 1.153.0 it also
+runs ODK's `test` on that project, by OntoBoard itself, without starting any program. A person can run the same thing from
 *OntoBoard → Run self-test*; both go through one implementation, because a self-test with two
 implementations grows a version nobody runs.
 
@@ -328,7 +386,7 @@ clicking the item.
 *Transform* defaults to applying its changes and would push them through the live session's model
 manager. *Rename IRIs*, *Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub*
 and *New ODK project* write files, run `make`, or reach the network. *Compare releases* needs a
-project with dated releases, which a freshly scaffolded one has none of. The note-editing and
+project with dated releases, which a freshly made one has none of. The note-editing and
 collaboration items are Swing surfaces and nothing here opens a window.
 
 **The canvas is the exception, as of 1.74.0, and the story of how is worth the paragraph.** The

@@ -43,8 +43,10 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 ## Releases
 
 **Release**
-:   A finished version of the ontology that others can use: *Build and release → Release...*. It is
-    the edit file, reasoned, with its version recorded, kept under `releases/<version>/`.
+:   A finished version of the ontology that others can use: *Build and release → Release...*. In a
+    project it is ODK's release - the files at the top of the project, reasoned, with the version
+    stamped in - recorded as a git commit and a tag `v<version>`, and in a project OntoBoard made
+    also kept under `releases/<version>/`.
 
 **Version**
 :   The number of a release. With semantic versions, `1.4.0` then `1.5.0` means terms were added;
@@ -57,10 +59,10 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 
 **Version IRI**
 :   The permanent web address of one release, so anyone can point at exactly that version. For
-    an ontology at `https://w3id.org/myont.owl`, a semantic version is
-    `https://w3id.org/myont/1.4.0` and a dated release, as ODK names them,
-    `https://w3id.org/myont/releases/2026-11-01/myont.owl`. *Release...* makes the right one
-    for the scheme you choose.
+    an ontology at `https://w3id.org/myont.owl` in a project, ODK names a release
+    `https://w3id.org/myont/releases/1.4.0/myont.owl`, or with a date
+    `https://w3id.org/myont/releases/2026-11-01/myont.owl`; *Release...* proposes the shape the
+    last release has, and offers others such as `https://w3id.org/myont/1.4.0`.
 
 **Obsolete (deprecated)**
 :   A term that is retired but kept, marked so that users know to stop using it and what to use

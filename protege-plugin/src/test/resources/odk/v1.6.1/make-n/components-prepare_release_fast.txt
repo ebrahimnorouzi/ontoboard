@@ -1,0 +1,53 @@
+make prepare_release IMP=false PAT=false MIR=false COMP=false
+make[1]: Entering directory '/tmp/odk/components/src/ontology'
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < comp-odk.yaml | sha256sum | cut -c1-64)" = "69eaa6e8698f49d1b2e020637b831e576d5509b02ae0ad6d37998b01ca4beb9e" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f comp-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error comp-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input comp-edit.owl --format ofn --output tmp/comp-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/comp-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/comp-preprocess.owl --select imports --trim false \
+	 merge  --input components/manual.owl  --input components/fetched.owl  --input components/fromtemplate.owl \
+	       --output tmp/merged-comp-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-comp-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-comp-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/COMP_ --base-iri http://purl.obolibrary.org/obo/comp --print 5 -o reports/comp-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/comp-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/comp/comp-full.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/comp-full.owl --annotation owl:versionInfo 1.0.0 --output comp-full.owl.tmp.owl && mv comp-full.owl.tmp.owl comp-full.owl
+robot --catalog catalog-v001.xml annotate --input comp-full.owl --ontology-iri http://purl.obolibrary.org/obo/comp.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/comp.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o comp.owl.tmp.owl && mv comp.owl.tmp.owl comp.owl
+robot --catalog catalog-v001.xml merge -i comp.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_comp.owl.txt || { cat reports/validate_profile_owl2dl_comp.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/comp-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml convert --input comp.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o comp.obo
+robot --catalog catalog-v001.xml merge --input tmp/comp-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/COMP --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/comp/comp-base.owl annotate -V http://purl.obolibrary.org/obo/comp/releases/1.0.0/comp-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output comp-base.owl.tmp.owl && mv comp-base.owl.tmp.owl comp-base.owl
+robot --catalog catalog-v001.xml convert --input comp-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o comp-base.obo
+robot --catalog catalog-v001.xml convert --input comp-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o comp-full.obo
+check-rdfxml  comp.owl
+check-rdfxml  comp-base.owl
+check-rdfxml  comp-full.owl
+make copy_release_files
+make[2]: Entering directory '/tmp/odk/components/src/ontology'
+rsync -R   comp.obo  comp.owl   comp-base.obo  comp-base.owl   comp-full.obo  comp-full.owl   ../..
+make[2]: Leaving directory '/tmp/odk/components/src/ontology'
+rm -f   comp.obo  comp.owl   comp-base.obo  comp-base.owl   comp-full.obo  comp-full.owl  tmp/merged-comp-edit.ofn tmp/comp-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"
+make[1]: Leaving directory '/tmp/odk/components/src/ontology'

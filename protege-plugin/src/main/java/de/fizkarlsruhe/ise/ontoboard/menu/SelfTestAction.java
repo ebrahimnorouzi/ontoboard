@@ -395,7 +395,7 @@ public class SelfTestAction extends OntoBoardAction {
         OWLOntology scratch;
         try {
             projectRoot = scratchProject();
-            scratch = editFileOf(projectRoot);
+            scratch = withTheSample(projectRoot);
         } catch (Exception cannotBuild) {
             return result.failed(ontoBoard + ": could not build the scratch project to test "
                     + "against: " + cannotBuild.getMessage()).build();
@@ -408,9 +408,9 @@ public class SelfTestAction extends OntoBoardAction {
         underTest.put("Check and test > SPARQL...", new SparqlAction());
         underTest.put("Terms > Export terms...", new ExportAction());
         underTest.put("Check and test > Profile...", new ProfileAction());
-        // These three need a project on disk, which is why the subject is a scaffolded one rather
-        // than an ontology held in memory. They report and change nothing: Refresh imports...
-        // audits unless asked to rebuild, and the other two only read.
+        // These three need a project on disk, which is why the subject is an ODK project made
+        // here rather than an ontology held in memory. They report and change nothing: Refresh
+        // imports... audits unless asked to rebuild, and the other two only read.
         underTest.put("Reuse > Check imports", new ImportsAction());
         underTest.put("Reuse > Refresh imports...", new RefreshImportsAction());
         underTest.put("Terms > All notes", new AllNotesAction());
@@ -453,7 +453,7 @@ public class SelfTestAction extends OntoBoardAction {
                     .toFile();
             build = buildsWithNothingInstalled(buildInto);
         } catch (Exception cannotBuild) {
-            build = "could not scaffold a project to build: " + cannotBuild;
+            build = "could not make a project to build: " + cannotBuild;
         } finally {
             if (buildInto != null) {
                 deleteTree(buildInto);
@@ -496,8 +496,8 @@ public class SelfTestAction extends OntoBoardAction {
                     + "ontology.").build();
         }
         return result.summary(ontoBoard + ": " + checks + " of " + checks
-                + " checks ran - " + underTest.size() + " menu items, the in-process build and "
-                + TABS.length + " tabs. "
+                + " checks ran - " + underTest.size() + " menu items, ODK's test run by "
+                + "OntoBoard itself and " + TABS.length + " tabs. "
                 + skippedWithReasons().size()
                 + " others are not covered here - see the notes.").build();
     }
@@ -565,76 +565,141 @@ public class SelfTestAction extends OntoBoardAction {
                 + "dialog it would push them through the live session's model manager.");
         skipped.add("Not run - Rename IRIs..., Import terms..., Obsolete..., Release..., Build..., "
                 + "Git..., Open from GitHub..., New ODK project..., Compare releases...: they "
-                + "write files, run make, reach the network, or need a project with dated "
-                + "releases that a freshly scaffolded one does not have.");
+                + "write files, run make, reach the network, or need a project with releases "
+                + "that one just made does not have.");
         skipped.add("Not run - the canvas, the notes and the collaboration items: they are Swing "
                 + "surfaces, and nothing here opens a window.");
         return skipped;
     }
 
-    /**
-     * A throwaway ODK project, scaffolded by the wizard's own code.
-     *
-     * <p>A project on disk rather than an ontology in memory, because half the menu is
-     * project-aware: it looks for {@code src/ontology}, a catalog, {@code src/sparql}, release
-     * directories. An ontology with no file has no project, so those actions could only ever report
-     * "this has not been saved" - which tests nothing.
-     *
-     * <p>Scaffolded with {@link OdkScaffold} rather than assembled here, so what is tested against
-     * is the layout the wizard really produces. If the scaffold changes, this follows it.
-     */
     private static final String BUILD_ROW = "Build and release > Build (nothing installed)";
 
+    /** The target the build row runs: ODK's own test, the one Build starts with. */
+    static final String TEST = "test";
+
     /**
-     * Builds the scratch project the way Build does for a project OntoBoard scaffolded, and says
-     * what this machine has on its PATH.
+     * Makes the project the build row builds and says how it went, with what this machine has
+     * on its PATH - by OntoBoard's own engine, starting no program.
+     */
+    static String buildsWithNothingInstalled(File into) {
+        return buildsWithNothingInstalled(into, startsNothing());
+    }
+
+    /**
+     * Makes an ODK project in {@code into} as New ODK project makes one, and runs ODK's
+     * {@code test} on it with OntoBoard's own engine ({@link
+     * de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine}): ODK's Makefile and recipes, ROBOT inside
+     * this JVM, no container and no other program.
      *
-     * <p>In a project of its own, freshly scaffolded into {@code into}. The first version reused
-     * the scratch project above and failed in the host: the checks before it save their unlabelled
-     * test classes into that edit file, and report rejected them with missing_label - the build
-     * doing its job on an ontology this check never meant to hand it.
+     * <p>In a project of its own. The first version reused the scratch project the other rows
+     * run against and failed in the host: those rows save their unlabelled sample classes into
+     * that edit file, and the report rejected them with missing_label - the build doing its job
+     * on an ontology this check never meant to hand it.
+     *
+     * <p>{@code test} rather than {@code test_fast}: it is ODK's whole test and what Build starts
+     * with, and a project just made has no imports, so it fetches nothing. When the engine
+     * refuses it on a project OntoBoard has just made, that is said as the failure it is - not
+     * covered over with the fast test.
      *
      * <p>The PATH is looked at, never run: executing robot or docker to see whether they answer
      * is the very dependency this check exists to rule out. A Protege started from the Finder on
      * macOS inherits a launchd PATH of /usr/bin:/bin:/usr/sbin:/sbin, so a robot installed with a
      * package manager is invisible to it anyway - which is why the build must not need one.
+     *
+     * @param runner what the project's creation may ask to run; the self-test's starts nothing
      */
-    static String buildsWithNothingInstalled(File into) {
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
-                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("selftest",
-                        "OntoBoard self-test", "A throwaway project the self-test builds.",
-                        "http://www.ontoboard.org/selftest.owl",
-                        "https://creativecommons.org/publicdomain/zero/1.0/", into);
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
-        File editFile = new File(new File(new File(config.getProjectRoot(), "src"), "ontology"),
+    static String buildsWithNothingInstalled(File into,
+            de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner runner) {
+        File root;
+        try {
+            root = odkProject(into, runner);
+        } catch (RuntimeException cannotMake) {
+            return "could not make an ODK project to build: " + describe(cannotMake);
+        }
+        File editFile = new File(new File(new File(root, "src"), "ontology"),
                 "selftest-edit.owl");
-        String ineligible = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets
-                .whyNotEligible(editFile);
-        if (ineligible != null) {
-            return "a project OntoBoard just scaffolded does not build in-process: " + ineligible;
+        java.util.Map<String, String> noVariables = java.util.Collections.emptyMap();
+        String refused = de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.whyNot(editFile, TEST,
+                noVariables);
+        if (refused != null) {
+            return "OntoBoard's own engine does not run ODK's " + TEST + " on the project "
+                    + "OntoBoard has just made: " + refused;
         }
         long started = System.currentTimeMillis();
-        de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome;
-        try {
-            OWLOntology fresh = OWLManager.createOWLOntologyManager()
-                    .loadOntologyFromOntologyDocument(editFile);
-            outcome = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.run(editFile, fresh,
-                    de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "test");
-        } catch (Exception cannotRun) {
-            return "the in-process build threw " + cannotRun;
-        }
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome =
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.run(editFile, TEST, noVariables,
+                        new java.util.function.BooleanSupplier() {
+                            @Override
+                            public boolean getAsBoolean() {
+                                return BackgroundRun.abandoned();
+                            }
+                        });
+        long millis = System.currentTimeMillis() - started;
         if (!outcome.isOk()) {
-            return "make test, run inside Protege, failed: " + outcome.getFailure();
+            return "ODK's " + TEST + ", run by OntoBoard itself, failed: "
+                    + outcome.getFailure();
         }
+        List<String> passing = de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan
+                .passingChecks(outcome.getTranscript());
         StringBuilder tools = new StringBuilder();
         for (String tool : new String[] {"robot", "make", "docker", "podman", "odk"}) {
             String found = onPath(tool);
             tools.append(tools.length() == 0 ? "" : ", ").append(tool).append(' ')
                     .append(found == null ? "absent" : found + " (not used)");
         }
-        return "ok: test (reason, report, sparql_test, validate_profile) ran inside Protege in "
-                + (System.currentTimeMillis() - started) + " ms without starting any program; "
-                + "on this PATH: " + tools;
+        return "ok: ODK's " + TEST + " ran inside Protege, by OntoBoard itself, in " + millis
+                + " ms without starting any program, on a project made from ODK "
+                + de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin.VERSION + "'s templates - "
+                + "the reasoner, " + (passing.isEmpty() ? "no checks"
+                        : passing.size() + " checks that passed (" + String.join(", ", passing)
+                                + ")")
+                + ", the quality report and the OWL profile; on this PATH: " + tools;
+    }
+
+    /**
+     * A runner that starts nothing. Creating a project asks whether a container program answers,
+     * to seed in ODK's container when one does; the self-test answers that none does, so the
+     * project is written from ODK's templates inside OntoBoard, as on a machine with nothing
+     * installed.
+     */
+    static de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner startsNothing() {
+        return new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner() {
+            @Override
+            public de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Outcome run(
+                    File workingDirectory, List<String> command, long timeoutMinutes,
+                    de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Sink sink)
+                    throws java.io.IOException {
+                throw new java.io.IOException("The self-test starts no program: "
+                        + String.join(" ", command));
+            }
+        };
+    }
+
+    /**
+     * A throwaway ODK project in {@code into}, made by New ODK project's own code
+     * ({@link de.fizkarlsruhe.ise.ontoboard.odk.OdkCreate}): ODK's seed from the templates
+     * bundled in OntoBoard, then OntoBoard's extras; not recorded in git.
+     *
+     * <p>A project on disk rather than an ontology in memory, because half the menu is
+     * project-aware: it looks for {@code src/ontology}, a catalog, {@code src/sparql}, the
+     * configuration. An ontology with no file has no project, so those actions could only ever
+     * report "this has not been saved" - which tests nothing. Made by the code that makes a
+     * person's project, so what is tested against is what New ODK project writes.
+     *
+     * @return the project's root, {@code into/selftest}
+     */
+    static File odkProject(File into,
+            de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner runner) {
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
+                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("selftest",
+                        "OntoBoard self-test",
+                        "A throwaway project the self-test builds and deletes.",
+                        // Must end in the ontology id - OdkProjectConfig.validate enforces it,
+                        // and caught this the first time the self-test ran.
+                        "http://www.ontoboard.org/selftest.owl",
+                        "https://creativecommons.org/publicdomain/zero/1.0/", into);
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkCreate.create(config, null, runner, false);
+        return config.getProjectRoot();
     }
 
     /** Where a program is on the PATH, or null - found by looking, not by running it. */
@@ -660,26 +725,18 @@ public class SelfTestAction extends OntoBoardAction {
 
     private File scratchProject() throws Exception {
         File into = java.nio.file.Files.createTempDirectory("ontoboard-selftest").toFile();
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
-                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("selftest",
-                        "OntoBoard self-test",
-                        "A throwaway project the self-test builds and deletes.",
-                        // Must end in the ontology id - OdkProjectConfig.validate enforces it,
-                        // and caught this the first time the self-test ran.
-                        "http://www.ontoboard.org/selftest.owl",
-                        "https://creativecommons.org/publicdomain/zero/1.0/", into);
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
-        return config.getProjectRoot();
+        return odkProject(into, startsNothing());
     }
 
     /**
      * The project's edit file, with a few axioms added so the operations have something to say.
      *
-     * <p>The scaffold writes an edit file carrying metadata and no terms. A quality report over
-     * that finds nothing, which is a passing result that proves very little - so Person, Agent and
-     * a property go in, and Person deliberately carries no label.
+     * <p>ODK's seed writes an edit file carrying metadata and one root class. A quality report
+     * over that finds little, which is a passing result that proves very little - so Person,
+     * Agent and a property go in, and Person deliberately carries no label. Saved in the file's
+     * own syntax, ODK's functional one.
      */
-    private OWLOntology editFileOf(File projectRoot) throws Exception {
+    static OWLOntology withTheSample(File projectRoot) throws Exception {
         File editFile = new File(new File(new File(projectRoot, "src"), "ontology"),
                 "selftest-edit.owl");
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();

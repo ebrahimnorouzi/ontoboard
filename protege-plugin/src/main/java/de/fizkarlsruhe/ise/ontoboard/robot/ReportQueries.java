@@ -44,8 +44,7 @@ import java.util.Map;
  * {@code new IOHelper()} on the report path, and a Jena {@code Dataset} that must support
  * {@code begin}/{@code end}, which the obvious {@code DatasetFactory.create(model)} does not. It is
  * the better call if a future rule binds variables this code does not handle - all 33 of ROBOT's
- * queries are {@code SELECT DISTINCT ?entity ?property ?value} today, and {@code OdkScaffoldTest}
- * pins that.
+ * queries are {@code SELECT DISTINCT ?entity ?property ?value} today.
  *
  * <p>So ROBOT's quality report has never worked inside this plugin, on either supported Protege.
  * The failure is in {@code ~/.Protege/logs/protege.log} at 2026-08-28 under OntoBoard 1.15.0, and
@@ -60,7 +59,7 @@ import java.util.Map;
  * which is what makes the fix small.
  *
  * <p>The cost, stated plainly: a {@code robot-core} upgrade that renames a rule or moves these
- * resources breaks this where the CLI would not. {@code OdkScaffoldTest} pins the rule set against
+ * resources breaks this where the CLI would not. {@code QualityReportTest} runs every rule of
  * the bundled profile, so that breakage is a failing test rather than a silent gap. The proper fix
  * is upstream - {@code getResourceAsStream} in {@code ReportOperation} - and is not ours to ship.
  */

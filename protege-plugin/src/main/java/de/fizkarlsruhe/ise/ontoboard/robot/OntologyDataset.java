@@ -53,6 +53,23 @@ public final class OntologyDataset {
      *     the OWL API cannot write what it just read
      */
     public static Model modelOf(OWLOntology ontology) {
+        return modelOf(ontology, true);
+    }
+
+    /**
+     * The ontology by itself as a Jena model: what it says, without what it imports and
+     * without its import declarations.
+     *
+     * <p>What ODK's {@code sparql_test} asks a project's checks of: its Makefile takes the
+     * imports out of the edit file first ({@code robot remove --select imports}). A check
+     * asked of the imports closure can answer otherwise, so the checks ODK runs are asked
+     * of this.
+     */
+    public static Model modelOfItself(OWLOntology ontology) {
+        return modelOf(ontology, false);
+    }
+
+    private static Model modelOf(OWLOntology ontology, boolean withImports) {
         if (ontology == null) {
             throw new IllegalArgumentException("no ontology to query");
         }
@@ -61,7 +78,7 @@ public final class OntologyDataset {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream(1 << 20);
             // A fresh manager holding a flattened copy: saveOntology writes one ontology, and the
             // report has to see the imports closure as a single graph.
-            OWLOntology flattened = flatten(ontology);
+            OWLOntology flattened = flatten(ontology, withImports);
             flattened.getOWLOntologyManager()
                     .saveOntology(flattened, new RDFXMLDocumentFormat(), bytes);
             rdfXml = bytes.toByteArray();
@@ -80,8 +97,12 @@ public final class OntologyDataset {
         }
     }
 
-    /** The ontology with its imports closure merged in, in a manager of its own. */
-    private static OWLOntology flatten(OWLOntology ontology) throws Exception {
+    /**
+     * The ontology with its imports closure merged in - or, without the imports, what it
+     * says itself and no import declaration - in a manager of its own.
+     */
+    private static OWLOntology flatten(OWLOntology ontology, boolean withImports)
+            throws Exception {
         if (ontology.getImportsDeclarations().isEmpty()) {
             return ontology;
         }
@@ -92,7 +113,8 @@ public final class OntologyDataset {
                         ? ontology.getOntologyID().getOntologyIRI().get()
                         : org.semanticweb.owlapi.model.IRI.create(
                                 "http://www.ontoboard.org/report-subject"));
-        manager.addAxioms(merged, ontology.getAxioms(Imports.INCLUDED));
+        manager.addAxioms(merged, ontology.getAxioms(withImports ? Imports.INCLUDED
+                : Imports.EXCLUDED));
 
         // Ontology annotations are not axioms, so addAxioms does not carry them. Without this the
         // merged copy loses the ontology's own dcterms:title, description and license - and

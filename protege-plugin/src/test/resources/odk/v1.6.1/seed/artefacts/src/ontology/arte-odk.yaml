@@ -1,0 +1,16 @@
+id: arte
+title: "Artefacts test ontology"
+release_artefacts:
+  - base
+  - full
+  - simple
+primary_release: full
+export_formats:
+  - owl
+  - ttl
+  - json
+robot_report:
+  use_labels: TRUE
+  fail_on: ERROR
+  report_on:
+    - edit

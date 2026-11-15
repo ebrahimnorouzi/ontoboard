@@ -1,0 +1,24 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ -f arte-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error arte-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input arte-edit.owl --format ofn --output tmp/arte-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/arte-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/arte-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-arte-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-arte-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-arte-edit.ofn -l true  --fail-on ERROR --print 5 -o reports/arte-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/arte-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/arte/arte-full.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte-full.owl --annotation owl:versionInfo 1.0.0 --output arte-full.owl.tmp.owl && mv arte-full.owl.tmp.owl arte-full.owl
+robot --catalog catalog-v001.xml annotate --input arte-full.owl --ontology-iri http://purl.obolibrary.org/obo/arte.owl annotate -V http://purl.obolibrary.org/obo/arte/releases/1.0.0/arte.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o arte.owl.tmp.owl && mv arte.owl.tmp.owl arte.owl
+robot --catalog catalog-v001.xml merge -i arte.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_arte.owl.txt || { cat reports/validate_profile_owl2dl_arte.owl.txt && exit 1; }
+echo "Finished running all tests successfully."

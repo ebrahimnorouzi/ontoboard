@@ -1,0 +1,27 @@
+# PURL configuration for http://purl.obolibrary.org/obo/comp
+
+idspace: COMP
+base_url: /obo/comp
+
+products:
+- comp.owl: https://raw.githubusercontent.com/example-org/comp/main/comp.owl
+- comp.obo: https://raw.githubusercontent.com/example-org/comp/main/comp.obo
+
+term_browser: ontobee
+example_terms:
+- COMP_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com/example-org/comp/v
+
+- prefix: /tracker/
+  replacement: https://github.com/example-org/comp/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/COMP?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com/example-org/comp/main/
