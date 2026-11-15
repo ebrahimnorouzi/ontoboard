@@ -100,23 +100,13 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 
 ### Known constraints
 
-- **OntoBoard's own engine runs ODK's Makefile as ODK writes it, and nothing else.** Since
-  1.153.0 *Build...*, *Release...* and the import refresh run ODK's own targets, and without
-  Docker OntoBoard runs them itself, inside Protégé. It does so only where the project's
-  `Makefile` is the one ODK v1.6.1 writes for the project's configuration and the project's
-  own `<id>.Makefile` changes nothing of what the target runs. A rule of the project's own that
-  the target reaches, a setting of its own that one of ODK's recipes reads, or a Makefile
-  written by another ODK version is refused before anything runs, naming the file and the
-  line. Such a project is run in ODK's container (Docker or Podman, with ODK's image) or, on
-  Linux and macOS, with ODK's own tools installed; on Windows the container is the only other
-  way. Projects with import modules built by rules of their own are of this kind.
-- **The engine has ROBOT and the shell's commands, not ODK's other tools.** It runs the
-  shell commands ODK's recipes use, `robot`, `odk-info`, `dicer-cli` and `check-rdfxml`. A
-  recipe that calls another program of ODK's image - `dosdp-tools` (DOSDP patterns),
-  `relation-graph`, Soufflé, ODK's Python scripts - is refused before anything runs, and runs
-  in the container. The ROBOT inside
-  OntoBoard is 1.9.8; ODK v1.6.1's image has 1.9.10. On the projects compared the files they
-  write are the same; a difference between the two versions on other input is possible.
+- **The ROBOT inside OntoBoard is 1.9.8; ODK v1.6.1's image has 1.9.10.** OntoBoard's own
+  engine runs the shell commands ODK's recipes use, `robot`, and stand-ins for `odk-info`,
+  `dicer-cli` and `check-rdfxml`. On the projects compared, the files the two ROBOTs write
+  are the same; a difference between the two versions on other input is possible. A recipe
+  that calls another program of ODK's image - `dosdp-tools` (DOSDP patterns),
+  `relation-graph`, Soufflé, ODK's Python scripts - is not run by the engine: see "OntoBoard's
+  own engine runs ODK's Makefile, and nothing a project adds to it" below.
 - **Build cannot pass variables to make.** The form offers targets. A run such as
   `make test IMP=false` cannot be asked for; ODK's `test_fast` is the target that leaves the
   imports alone.
@@ -292,7 +282,9 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   names the rule and its line, or the program. The one rule of a project's own that is run is
   OntoBoard's rule for the project's questions, as long as it stands as OntoBoard wrote it. Such
   targets run in ODK's container (Docker or Podman, with ODK's image) or, on Linux and macOS, with
-  ODK's tools installed; a Makefile another ODK version wrote is brought to ODK v1.6.1 by
+  ODK's tools installed - on Windows the container is the only other way. Projects whose import
+  modules are built by rules of their own are of this kind. A Makefile another ODK version wrote
+  is brought to ODK v1.6.1 by
   *Update project files...*. [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has
   the order.
 - **Run by OntoBoard itself, ROBOT has Protégé's memory.** In ODK's container ROBOT gets the
