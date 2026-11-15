@@ -463,12 +463,69 @@ class MakeRunTest {
         assertTrue(explanation.contains("Makefile may have changed"), explanation);
     }
 
+    /**
+     * Seen live (1.153.0) on a real project whose own rules build its import modules from
+     * downloaded ontologies: test_fast, which downloads nothing, stopped with "No rule to
+     * make target 'mirror/ro.owl', needed by 'imports/ro_import.owl'" - and the result said
+     * make has no rule for 'test_fast'. The rule that is missing is the one make names.
+     */
+    @Test
+    void aMissingRuleForSomethingElseIsNotSaidOfTheTarget() {
+        String explanation = MakeRun.explain("test_fast", failedWith(
+                "make[1]: *** No rule to make target 'mirror/ro.owl', needed by "
+                        + "'imports/ro_import.owl'.  Stop.",
+                "make: *** [Makefile:116: test_fast] Error 2"));
+
+        assertEquals("make has no rule to make 'mirror/ro.owl', which "
+                + "'imports/ro_import.owl' needs, so 'test_fast' stopped. A file under mirror/ "
+                + "is an imported ontology as it was downloaded: test_fast and "
+                + "prepare_release_fast download nothing, so a project whose own rules build "
+                + "its import modules from the downloads needs test or prepare_release, "
+                + "which fetch them first.", explanation);
+        String other = MakeRun.explain("all", failedWith(
+                "make: *** No rule to make target 'x.owl', needed by 'y.owl'.  Stop."));
+        assertEquals("make has no rule to make 'x.owl', which 'y.owl' needs, so 'all' "
+                + "stopped.", other);
+    }
+
     @Test
     void qualityViolationsArePointedAtTheReport() {
         String explanation = MakeRun.explain("report",
                 failedWith("ERROR Report failed with 12 violations"));
 
         assertTrue(explanation.contains("Quality report"), explanation);
+    }
+
+    /**
+     * Seen live (1.153.0): a release that stopped at an import said "The quality report
+     * found violations the project treats as failures" - every run of ODK's prints the
+     * report's count of violations, and the words "violation" and "report" anywhere in
+     * the log were taken for the reason. The report is the reason when it stopped the run.
+     */
+    @Test
+    void aReportThatWasOnlyPrintedIsNotTheReason() {
+        String explanation = MakeRun.explain("prepare_release", failedWith(
+                "robot --catalog catalog-v001.xml report -i tmp/merged-egg-edit.ofn -l true "
+                        + "--fail-on ERROR --print 5 -o reports/egg-edit.owl-obo-report.tsv",
+                "Violations: 3", "-----------------", "ERROR:      0", "WARN:       3",
+                "INFO:       0",
+                "ERROR: You have configured measurement as a custom module;",
+                "       This rule needs to be overwritten in egg.Makefile!",
+                "make: *** [Makefile:421: imports/measurement_import.owl] Error 1"));
+
+        assertFalse(explanation.contains("quality report"), explanation);
+        assertEquals("make prepare_release failed (exit 2): make: *** [Makefile:421: "
+                + "imports/measurement_import.owl] Error 1", explanation);
+
+        String stopped = MakeRun.explain("test", failedWith(
+                "robot --catalog catalog-v001.xml report -i tmp/merged-egg-edit.ofn -l true "
+                        + "--fail-on ERROR --print 5 -o reports/egg-edit.owl-obo-report.tsv",
+                "Violations: 1", "-----------------", "ERROR:      1", "WARN:       0",
+                "INFO:       0", "", "First 1 violations:",
+                "ERROR\tmissing_label\tb\trdfs:label\t",
+                "make: *** [Makefile:230: reports/egg-edit.owl-obo-report.tsv] Error 1"));
+        assertTrue(stopped.startsWith("The quality report found 1 error: missing_label b."),
+                stopped);
     }
 
     /** An unrecognised failure must still carry make's own last word, not swallow it. */

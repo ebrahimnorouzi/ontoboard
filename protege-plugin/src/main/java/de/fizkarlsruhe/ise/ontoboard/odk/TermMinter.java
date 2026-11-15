@@ -300,6 +300,37 @@ public final class TermMinter {
      * <p>Worth showing because the two styles produce very different IRIs, and a user who expects
      * {@code #Person} and gets {@code MWO_0001000} will think something has gone wrong.
      */
+    /**
+     * A text broken into lines for a dialog that does not wrap what it shows
+     * (JOptionPane): no line longer than {@code width}, broken between words. The line
+     * breaks the text has stay, so paragraphs stay paragraphs.
+     */
+    public static String onLines(String text, int width) {
+        StringBuilder all = new StringBuilder();
+        String[] paragraphs = text.split("\n", -1);
+        for (int i = 0; i < paragraphs.length; i++) {
+            all.append(i == 0 ? "" : "\n").append(oneOnLines(paragraphs[i], width));
+        }
+        return all.toString();
+    }
+
+    private static String oneOnLines(String sentence, int width) {
+        StringBuilder lines = new StringBuilder();
+        int onThisLine = 0;
+        for (String word : sentence.split(" ")) {
+            if (onThisLine > 0 && onThisLine + 1 + word.length() > width) {
+                lines.append('\n');
+                onThisLine = 0;
+            } else if (onThisLine > 0) {
+                lines.append(' ');
+                onThisLine++;
+            }
+            lines.append(word);
+            onThisLine += word.length();
+        }
+        return lines.toString();
+    }
+
     public String describe() {
         if (!isNumeric()) {
             return "New terms are named from what you type - 'tensile test' becomes TensileTest,"

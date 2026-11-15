@@ -34,14 +34,27 @@ public final class ReleaseRun {
     // ------------------------------------------------------------------ make
 
     /**
-     * What to run for a release: {@code make prepare_release -B VERSION=...}.
+     * What a release runs first: {@code make clean}.
      *
-     * <p>{@code -B} - every target is made again - is how ODK's own instructions release
-     * ({@code sh run.sh make prepare_release -B}), and it is no nicety: ODK's {@code test}
-     * builds the ontology it validates, the very file a release puts at the top of the
-     * project, and stamps it with the day. Without -B a release made after a test finds that
-     * file up to date and takes it for its own - a release numbered 1.0.0 then carries the
-     * day as its version IRI.
+     * <p>ODK's {@code test} builds the ontology it validates, the very file a release puts
+     * at the top of the project, and stamps it with the day. A release made after a test
+     * would find that file up to date and take it for its own - a release numbered 1.0.0
+     * then carries the day as its version IRI. Cleaning takes that file away, as the
+     * release scripts of real projects do before they release.
+     *
+     * <p>Not {@code make -B}, although ODK's own instructions release that way: it makes
+     * everything again, the import modules too, and ODK's rule for a module declared
+     * custom is an error that tells the project to write its own. OntoBoard declares what
+     * it keeps as it is - a pattern, a MIREOT import, a file of this machine - as custom,
+     * so such a project could not be released at all (seen live, 1.153.0).
+     */
+    public static List<String> cleanArguments() {
+        return new ArrayList<String>(Arrays.asList("make", "clean"));
+    }
+
+    /**
+     * What to run for a release, after {@link #cleanArguments}:
+     * {@code make prepare_release VERSION=...}.
      *
      * @param shape          the version IRI's shape; ODK's own needs no further argument, any
      *                       other is handed to make as {@code ANNOTATE_ONTOLOGY_VERSION=...},
@@ -57,7 +70,7 @@ public final class ReleaseRun {
                     + "as 2026-11-11, or numbers such as 1.0.0.");
         }
         List<String> arguments = new ArrayList<String>(Arrays.asList("make",
-                refreshImports ? "prepare_release" : "prepare_release_fast", "-B",
+                refreshImports ? "prepare_release" : "prepare_release_fast",
                 "VERSION=" + version));
         String annotate = shape.annotateArgument(ontbase, version);
         if (annotate != null) {

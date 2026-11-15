@@ -50,7 +50,7 @@ class ReleaseRunTest {
 
     @Test
     void aPlainReleaseIsPrepareReleaseWithTheVersion() {
-        assertEquals(Arrays.asList("make", "prepare_release", "-B", "VERSION=1.0.0"),
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0"),
                 ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
                         EGG, true));
     }
@@ -58,7 +58,7 @@ class ReleaseRunTest {
     /** As nfdicore's script hands it to make: one more variable on the command line. */
     @Test
     void anotherShapeIsOneMoreArgument() {
-        assertEquals(Arrays.asList("make", "prepare_release", "-B", "VERSION=1.0.0",
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0",
                 "ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/1.0.0/$@"
                         + " --annotation owl:versionInfo 1.0.0"),
                 ReleaseRun.makeArguments("1.0.0",
@@ -67,7 +67,7 @@ class ReleaseRunTest {
 
     @Test
     void theFastOneWhenImportsAreNotRefreshed() {
-        assertEquals(Arrays.asList("make", "prepare_release_fast", "-B", "VERSION=1.0.0"),
+        assertEquals(Arrays.asList("make", "prepare_release_fast", "VERSION=1.0.0"),
                 ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
                         EGG, false));
     }
@@ -314,7 +314,7 @@ class ReleaseRunTest {
      */
     @Test
     void aCommandIsShownAsAShellReadsItBack() {
-        assertEquals("make prepare_release -B VERSION=1.0.0 \"ANNOTATE_ONTOLOGY_VERSION=annotate "
+        assertEquals("make prepare_release VERSION=1.0.0 \"ANNOTATE_ONTOLOGY_VERSION=annotate "
                 + "-V " + EGG + "/1.0.0/\\$@ --annotation owl:versionInfo 1.0.0\"",
                 ReleaseRun.shown(ReleaseRun.makeArguments("1.0.0",
                         VersionIriShape.of(VersionIriShape.Kind.VERSION_AND_FILE), EGG, true)));

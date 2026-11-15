@@ -115,7 +115,7 @@ class OdkReleaseFormTest {
                     return new ProcessRunner.Outcome(0,
                             Arrays.asList("../../eggboil.owl ../../eggboil-base.owl"), false);
                 }
-                if (buildFails) {
+                if (buildFails && !inContainer.contains("clean")) {
                     return new ProcessRunner.Outcome(2, Arrays.asList(
                             "make: *** [Makefile:124: reason_test] Error 1"), false);
                 }
@@ -519,7 +519,7 @@ class OdkReleaseFormTest {
         assertTrue(result.getSummary().contains("git push --follow-tags"), result.getSummary());
         String log = String.join("\n", result.getLog());
         assertTrue(log.contains("Version IRI: " + BASE + "/releases/1.0.0/eggboil.owl"), log);
-        assertTrue(log.contains("docker run --rm ... make prepare_release -B VERSION=1.0.0"), log);
+        assertTrue(log.contains("docker run --rm ... make prepare_release VERSION=1.0.0"), log);
         assertTrue(result.getFiles().contains(new File(root, "eggboil.owl")));
         assertTrue(result.getFiles().contains(new File(root, "releases/1.0.0/eggboil.owl")));
         assertNull(scriptAsRun, "no script in this project, none written");
