@@ -55,7 +55,7 @@ public final class OdkRelease {
     /** What an ODK project says of itself, read from its Makefile. */
     public static final class Facts {
         private static final Pattern ASSIGNMENT = Pattern.compile(
-                "(?m)^([A-Za-z_][A-Za-z0-9_]*)[ \\t]*[:?]?=[ \\t]*(.*?)[ \\t]*\\r?$");
+                "(?m)^([A-Za-z_][A-Za-z0-9_]*)[ \\t]*([:?]?)=[ \\t]*(.*?)[ \\t]*\\r?$");
         private static final Pattern REFERENCE =
                 Pattern.compile("\\$[({]([A-Za-z_][A-Za-z0-9_]*)[)}]");
 
@@ -96,7 +96,7 @@ public final class OdkRelease {
                         Files.readAllBytes(makefile.toPath()), StandardCharsets.UTF_8));
                 while (line.find()) {
                     if (!variables.containsKey(line.group(1))) {
-                        variables.put(line.group(1), line.group(2));
+                        variables.put(line.group(1), line.group(3));
                     }
                 }
             } catch (IOException unreadable) {
@@ -108,6 +108,25 @@ public final class OdkRelease {
                 throw new IllegalStateException("The Makefile in " + ontology.getAbsolutePath()
                         + " does not name its ontology (a line ONT= ...), so it is not one ODK "
                         + "wrote.");
+            }
+            // make keeps a variable's last value, and ODK's Makefile reads the project's own
+            // last: what that file sets is what make uses. A base read from ODK's Makefile
+            // alone put a version IRI of another shape than ODK's under the wrong address
+            // (review of 1.153.0). "?=" gives a value only to what has none.
+            File own = new File(ontology, id + ".Makefile");
+            if (own.isFile()) {
+                try {
+                    Matcher line = ASSIGNMENT.matcher(new String(
+                            Files.readAllBytes(own.toPath()), StandardCharsets.UTF_8));
+                    while (line.find()) {
+                        if (!"?".equals(line.group(2))
+                                || !variables.containsKey(line.group(1))) {
+                            variables.put(line.group(1), line.group(3));
+                        }
+                    }
+                } catch (IOException unreadable) {
+                    // What ODK's Makefile says stands.
+                }
             }
             String ontbase = expanded("ONTBASE", variables, 0);
             return new Facts(root, ontology, id,
@@ -220,6 +239,16 @@ public final class OdkRelease {
     public interface Asks {
         /** Whether to run these commands. They are shown first; that is what this is for. */
         boolean commit(ReleaseRun.Staging staging);
+
+        /**
+         * Whether the person has stopped waiting for the release. Asked once ODK has built
+         * it, before OntoBoard writes anything of its own: a release that went on to copy
+         * its files to releases/ after it was stopped left a folder nobody was told of,
+         * for which the version was refused as released the next time (review of 1.153.0).
+         */
+        default boolean stopped() {
+            return false;
+        }
     }
 
     /**
@@ -539,7 +568,8 @@ public final class OdkRelease {
                     + "committed or tagged.");
         }
         if (!built.isSuccess()) {
-            return log.failed((script == null ? MakeRun.explain(command.get(1), built)
+            return log.failed((script == null
+                    ? whyTheBuildStopped(command.get(1), built, request.editFile)
                     : whyTheScriptStopped(script, built))
                     + " Nothing was copied, committed or tagged.");
         }
@@ -566,6 +596,9 @@ public final class OdkRelease {
                     + "OntoBoard > Project > Update project files... and release again.");
         }
         log.written.addAll(assets);
+        if (asks != null && asks.stopped()) {
+            return log.failed(STOPPED_ONCE_BUILT);
+        }
 
         // Against the release before it. A term that is gone rather than obsoleted breaks every
         // ontology that imported it and tells nobody; this is the last moment to catch it
@@ -591,6 +624,12 @@ public final class OdkRelease {
             if (request.refuseRemovedTerms) {
                 return log.failed(whyTermsAreMissed(diff.removals(), last.version));
             }
+        }
+
+        // Holding two ontologies against each other takes its time on large ones: asked
+        // again, before the first file of OntoBoard's own is written.
+        if (asks != null && asks.stopped()) {
+            return log.failed(STOPPED_ONCE_BUILT);
         }
 
         // The copy that ODK's version IRIs point at, for a project that keeps one.
@@ -619,6 +658,24 @@ public final class OdkRelease {
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
         return recorded(facts, version, assets, git, asks, log, done);
+    }
+
+    /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
+    static final String STOPPED_ONCE_BUILT = "You stopped the release after ODK had built "
+            + "it. The release files are at the top of the project; nothing was copied to "
+            + "releases/, committed or tagged, so this version can still be released.";
+
+    /**
+     * Why ODK's build of a release stopped, as Build says it of the same run: the check and
+     * the terms that break it, what the reasoner found, what takes the ontology out of its
+     * profile. make's own last line is a row of a check's answer, or the file a check
+     * writes; on its own it sent people to the wrong window (review of 1.153.0).
+     */
+    private static String whyTheBuildStopped(String target, ProcessRunner.Outcome built,
+            File editFile) {
+        String runners = MakeRun.explain(target, built);
+        return built.wasCancelled() || built.timedOut() ? runners
+                : OdkTargets.whyARunFailed(target, built.getOutput(), runners, editFile, null);
     }
 
     /**
@@ -895,7 +952,8 @@ public final class OdkRelease {
                 + "one: " + named(removals.get(0)) + "."
                 : removals.size() + " terms that the " + previous + " release published are "
                         + "gone from this one, " + named(removals.get(0)) + " among them.")
-                + " ODK built the release files, but nothing was copied, committed or tagged. "
+                + " ODK built the release files and put them at the top of the project; "
+                + "nothing was copied to releases/, committed or tagged. "
                 + "Bring " + it + " back and mark " + it + " owl:deprecated with a replacement, "
                 + "so that what imported " + it + " still resolves; then release again. To "
                 + "drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
@@ -1042,8 +1100,9 @@ public final class OdkRelease {
             return new Outcome(null, log, false, null, done + ". Not committed: git status "
                     + "failed." + log.leftForLater(forLater(where), later.commands()));
         }
-        ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(), facts.id(), version,
-                assets, status);
+        ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
+                GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
+                version, assets, status);
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "

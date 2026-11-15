@@ -132,6 +132,16 @@ public final class ReleaseRun {
             return text.contains("\r\n");
         }
 
+        /**
+         * Writes the script, as {@link #withLines} gave it. The text is the file's bytes,
+         * each one character ({@link #BYTES}), so that what was not set comes back byte for
+         * byte whatever the file's encoding: read as UTF-8, a comment in Latin-1 lost every
+         * letter that is not ASCII (review of 1.153.0).
+         */
+        public void write(String changed) throws IOException {
+            Files.write(file.toPath(), changed.getBytes(BYTES));
+        }
+
         private String valueOf(Pattern line) {
             Matcher match = line.matcher(text);
             return match.find() ? match.group(3) : null;
@@ -182,6 +192,13 @@ public final class ReleaseRun {
         }
     }
 
+    /**
+     * How a release script's bytes are held as text: one character each, which no encoding
+     * the file may be in can break. What OntoBoard reads from it and sets in it - versions,
+     * the line that annotates - is ASCII.
+     */
+    static final java.nio.charset.Charset BYTES = StandardCharsets.ISO_8859_1;
+
     /** The project's {@code release.sh}, or null when it has none. */
     public static Script scriptIn(File ontologyDirectory) {
         File file = new File(ontologyDirectory, "release.sh");
@@ -189,8 +206,7 @@ public final class ReleaseRun {
             return null;
         }
         try {
-            return new Script(file,
-                    new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+            return new Script(file, new String(Files.readAllBytes(file.toPath()), BYTES));
         } catch (IOException unreadable) {
             throw new IllegalStateException(file + " could not be read: "
                     + unreadable.getMessage(), unreadable);
@@ -241,9 +257,51 @@ public final class ReleaseRun {
         } else if (releaseTags.contains(GitTags.tagFor(version))) {
             there = "the tag " + GitTags.tagFor(version) + " is there already";
         }
+        if (there == null) {
+            String same = sameNumberReleased(projectRoot, version, releaseTags);
+            if (same != null) {
+                return "Version " + version + " is the same number as " + same + ", which "
+                        + "has been released. A version is released once, under one name, so "
+                        + "the next release gets the next number.";
+            }
+        }
         return there == null ? null : "Version " + version + " has been released: " + there
                 + ". A version IRI cannot be taken back once somebody has imported it, so the "
                 + "next release gets the next number.";
+    }
+
+    /**
+     * A released version that is this number written another way - 1.0.0 for 1.0 - or null.
+     * By its folder and its tag such a version is a new one; by its number it is not, and it
+     * would be released a second time under another IRI (review of 1.153.0).
+     */
+    private static String sameNumberReleased(File projectRoot, String version,
+            List<String> releaseTags) {
+        OntologyVersion asked = OntologyVersion.parseOrNull(version);
+        if (asked == null) {
+            return null;
+        }
+        List<String> released = new ArrayList<String>();
+        File[] folders = new File(projectRoot, "releases").listFiles();
+        for (File folder : folders == null ? new File[0] : folders) {
+            String[] inside = folder.list();
+            if (inside != null && inside.length > 0) {
+                released.add(folder.getName());
+            }
+        }
+        for (String tag : releaseTags) {
+            String tagged = GitTags.versionOf(tag);
+            if (tagged != null) {
+                released.add(tagged);
+            }
+        }
+        for (String other : released) {
+            OntologyVersion is = OntologyVersion.parseOrNull(other);
+            if (is != null && !other.equals(version) && is.compareTo(asked) == 0) {
+                return other;
+            }
+        }
+        return null;
     }
 
     /**
@@ -266,14 +324,37 @@ public final class ReleaseRun {
         for (File asset : assets) {
             paths.add(relative(projectRoot, asset));
         }
+        // Nothing of this release is there (asked above), so whatever is there after a
+        // failure is this call's, and goes: a folder under releases/ says the version has
+        // been released, and the next try would be refused for it.
+        boolean wasThere = folder.exists();
         List<File> copies = new ArrayList<File>();
-        for (int i = 0; i < assets.size(); i++) {
-            File copy = new File(folder, paths.get(i).replace('/', File.separatorChar));
-            Files.createDirectories(copy.getParentFile().toPath());
-            Files.copy(assets.get(i).toPath(), copy.toPath());
-            copies.add(copy);
+        try {
+            for (int i = 0; i < assets.size(); i++) {
+                File copy = new File(folder, paths.get(i).replace('/', File.separatorChar));
+                Files.createDirectories(copy.getParentFile().toPath());
+                Files.copy(assets.get(i).toPath(), copy.toPath());
+                copies.add(copy);
+            }
+        } catch (IOException | RuntimeException failed) {
+            takeBack(folder, wasThere);
+            throw failed;
         }
         return copies;
+    }
+
+    /**
+     * Removes a release's folder after a copy that did not get through, with what the copy
+     * left in it; the folder itself stays where it was there, empty, before.
+     */
+    static void takeBack(File folder, boolean wasThere) {
+        File[] inside = folder.listFiles();
+        for (File child : inside == null ? new File[0] : inside) {
+            takeBack(child, false);
+        }
+        if (!wasThere) {
+            folder.delete();
+        }
     }
 
     /** A file's path from the project's root, with {@code /}; refused when it is not inside. */
@@ -309,6 +390,16 @@ public final class ReleaseRun {
         /** The commands, in the order they are run, each from the project's root. */
         public List<List<String>> commands() {
             return commands;
+        }
+
+        /**
+         * The files of ODK's scratch folders that git tracks and cleaning removed, which the
+         * first command puts back; empty when there are none.
+         */
+        public List<String> putBack() {
+            List<String> first = commands.get(0);
+            return "checkout".equals(first.get(1)) ? first.subList(3, first.size())
+                    : Collections.<String>emptyList();
         }
 
         /** Files git has never heard of, which the release's commit does not take in. */
@@ -376,15 +467,58 @@ public final class ReleaseRun {
      */
     public static Staging staging(File projectRoot, String ontologyId, String version,
             List<File> assets, List<String> gitStatus) {
+        return staging(projectRoot, projectRoot, ontologyId, version, assets, gitStatus);
+    }
+
+    /** ODK's scratch folders, which its {@code clean} empties: nothing in them is a release's. */
+    private static final String[] SCRATCH = {"src/ontology/tmp/", "src/ontology/mirror/",
+        "src/ontology/target/"};
+
+    /**
+     * The commit and the tag of a release of a project that may be a folder of a larger
+     * repository.
+     *
+     * <p>Everything is said from the project's root, where the commands run: {@code git add
+     * -u -- .} takes in the tracked files of the project the release changed - without the
+     * path it would take the whole repository, somebody's unrelated work with it - and git's
+     * status, which names files from the repository's top, is read back into the project's
+     * own names.
+     *
+     * <p>A release cleans first (ODK's {@code make clean}), which empties ODK's scratch
+     * folders. A file there that git tracks - {@code src/ontology/tmp/README.md}, which
+     * older ODKs seeded - would be staged as deleted and go into the release's commit; it is
+     * put back first, by a command that is shown with the others.
+     *
+     * @param repositoryRoot the top of the repository the project is in: the project's root,
+     *                       or a folder above it
+     */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus) {
         List<String> names = new ArrayList<String>();
         for (File asset : assets) {
             names.add(relative(projectRoot, asset));
         }
         String kept = "releases/" + version;
         boolean hasCopy = new File(projectRoot, kept).isDirectory();
+        String prefix = prefixOf(projectRoot, repositoryRoot);
 
         List<List<String>> commands = new ArrayList<List<String>>();
-        commands.add(Arrays.asList("git", "add", "-u"));
+        List<String> putBack = new ArrayList<String>(Arrays.asList("git", "checkout", "--"));
+        for (String line : gitStatus == null ? Collections.<String>emptyList() : gitStatus) {
+            // " D": gone from the folder and not staged as gone, which is what cleaning
+            // does to a file git tracks. A name git had to quote is left as it is.
+            if (line != null && line.length() > 3 && line.startsWith(" D ")
+                    && line.charAt(3) != '"') {
+                String path = inProject(line.substring(3).trim(), prefix);
+                if (path != null && isScratch(path)) {
+                    putBack.add(path);
+                }
+            }
+        }
+        if (putBack.size() > 3) {
+            commands.add(putBack);
+        }
+        commands.add(Arrays.asList("git", "add", "-u", "--", "."));
         List<String> add = new ArrayList<String>(Arrays.asList("git", "add", "-f", "--"));
         add.addAll(names);
         commands.add(add);
@@ -397,7 +531,12 @@ public final class ReleaseRun {
 
         GitRepo.Status status = GitRepo.parseStatus(gitStatus);
         List<String> leftOut = new ArrayList<String>();
-        for (String path : status.getUntracked()) {
+        for (String listed : status.getUntracked()) {
+            String path = inProject(listed, prefix);
+            if (path == null) {
+                // Elsewhere in the repository: not the release's to speak of.
+                continue;
+            }
             String folder = path.endsWith("/") ? path : path + "/";
             boolean added = names.contains(path) || (hasCopy && (kept + "/").startsWith(folder));
             if (!added) {
@@ -405,5 +544,42 @@ public final class ReleaseRun {
             }
         }
         return new Staging(commands, leftOut, status.getBranch());
+    }
+
+    /** The project's path from the repository's top, with a slash after it; empty at the top. */
+    private static String prefixOf(File projectRoot, File repositoryRoot) {
+        if (repositoryRoot == null) {
+            return "";
+        }
+        Path top = repositoryRoot.getAbsoluteFile().toPath().normalize();
+        Path root = projectRoot.getAbsoluteFile().toPath().normalize();
+        if (root.equals(top) || !root.startsWith(top)) {
+            return "";
+        }
+        return top.relativize(root).toString().replace(File.separatorChar, '/') + "/";
+    }
+
+    /**
+     * A path as git's status names it, as the project names it; null when it is elsewhere
+     * in the repository. A folder above the project - all of it untracked - keeps the name
+     * git gave it.
+     */
+    private static String inProject(String listed, String prefix) {
+        if (prefix.isEmpty()) {
+            return listed;
+        }
+        if (listed.startsWith(prefix)) {
+            return listed.substring(prefix.length());
+        }
+        return listed.endsWith("/") && prefix.startsWith(listed) ? listed : null;
+    }
+
+    private static boolean isScratch(String path) {
+        for (String folder : SCRATCH) {
+            if (path.startsWith(folder)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

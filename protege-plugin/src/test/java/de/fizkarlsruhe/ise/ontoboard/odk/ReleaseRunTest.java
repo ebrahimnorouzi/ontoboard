@@ -245,7 +245,7 @@ class ReleaseRunTest {
                         "?? releases/", " M src/ontology/eggboil-edit.owl", "?? notes.txt"));
 
         assertEquals(Arrays.asList(
-                Arrays.asList("git", "add", "-u"),
+                Arrays.asList("git", "add", "-u", "--", "."),
                 Arrays.asList("git", "add", "-f", "--", "eggboil.owl", "eggboil-base.owl"),
                 Arrays.asList("git", "add", "--", "releases/1.0.0"),
                 Arrays.asList("git", "commit", "-m", "release(1.0.0)"),
@@ -332,7 +332,115 @@ class ReleaseRunTest {
         String shown = ReleaseRun.staging(root, "eggboil", "1.0.0", Collections.singletonList(owl),
                 Collections.<String>emptyList()).shown();
 
-        assertEquals("git add -u\ngit add -f -- eggboil.owl\ngit commit -m \"release(1.0.0)\"\n"
+        assertEquals("git add -u -- .\ngit add -f -- eggboil.owl\ngit commit -m \"release(1.0.0)\"\n"
                 + "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", shown);
+    }
+
+    // ------------------------------------------------------------------ review of 1.153.0
+
+    /**
+     * A project that is a folder of a larger repository: only what is in the project is
+     * staged - "git add -u" without a path takes the whole repository, somebody's unrelated
+     * work with it - and what is left out is named as the project names it. git's status
+     * names files from the repository's top.
+     */
+    @Test
+    void inAFolderOfALargerRepositoryOnlyTheProjectIsStagedAndNamed(@TempDir File repository)
+            throws IOException {
+        File root = new File(repository, "ontologies/eggboil");
+        File owl = write(root, "eggboil.owl", "owl");
+        write(root, "releases/1.0.0/eggboil.owl", "owl");
+
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, repository, "eggboil", "1.0.0",
+                Collections.singletonList(owl), Arrays.asList("## main",
+                        "?? ontologies/eggboil/releases/", "?? ontologies/eggboil/notes.txt",
+                        " M ontologies/eggboil/src/ontology/eggboil-edit.owl",
+                        " M website/index.html", "?? website/draft.html"));
+
+        assertEquals(Arrays.asList("git", "add", "-u", "--", "."), staging.commands().get(0));
+        assertEquals(Collections.singletonList("notes.txt"), staging.leftOut(),
+                "releases/ is added, and what lies elsewhere in the repository is not the "
+                        + "release's to speak of");
+    }
+
+    /**
+     * A release cleans first, and ODK's clean empties tmp/, mirror/ and target/. A file there
+     * that git tracks - src/ontology/tmp/README.md, which older ODKs seeded - would be staged
+     * as deleted and go into the release's commit. It is put back first; a file that is gone
+     * anywhere else is the person's own doing and is staged as it is.
+     */
+    @Test
+    void aTrackedFileThatCleaningRemovedIsPutBackAndNotCommittedAsDeleted(@TempDir File root)
+            throws IOException {
+        File owl = write(root, "eggboil.owl", "owl");
+
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), Arrays.asList("## main",
+                        " D src/ontology/tmp/README.md", " D src/ontology/mirror/keep.txt",
+                        " D src/ontology/old-notes.md", " M src/ontology/eggboil-edit.owl"));
+
+        assertEquals(Arrays.asList("git", "checkout", "--", "src/ontology/tmp/README.md",
+                "src/ontology/mirror/keep.txt"), staging.commands().get(0));
+        assertEquals(Arrays.asList("git", "add", "-u", "--", "."), staging.commands().get(1));
+    }
+
+    /**
+     * A copy that fails part of the way leaves no folder: a folder under releases/ says the
+     * version has been released, and the next try would be refused for it.
+     */
+    @Test
+    void aCopyThatFailsLeavesNothingOfTheReleaseBehind(@TempDir File root) throws IOException {
+        final File owl = write(root, "eggboil.owl", "owl");
+        final File project = root;
+
+        assertThrows(IOException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() throws Throwable {
+                // The same file twice: the second copy finds the first in its way.
+                ReleaseRun.copyToReleases(project, "1.0.0", Arrays.asList(owl, owl));
+            }
+        });
+
+        assertFalse(new File(root, "releases/1.0.0").exists());
+        assertNull(ReleaseRun.whyNotThisVersion(root, "1.0.0", Collections.<String>emptyList()));
+    }
+
+    /**
+     * "Changes nothing else in it" holds for a script in any encoding: read as UTF-8, a
+     * comment in Latin-1 came back with every such letter replaced.
+     */
+    @Test
+    void aScriptKeepsEveryByteButTheVersionWhateverItsEncoding(@TempDir File ontology)
+            throws IOException {
+        String before = "#!/bin/sh\n# Ver\u00f6ffentlichung\nVERSION=1.0.0\nmake prepare_release\n";
+        String after = before.replace("VERSION=1.0.0", "VERSION=1.0.1");
+        for (java.nio.charset.Charset encoding : new java.nio.charset.Charset[] {
+            StandardCharsets.ISO_8859_1, StandardCharsets.UTF_8}) {
+            File file = new File(ontology, "release.sh");
+            Files.write(file.toPath(), before.getBytes(encoding));
+
+            ReleaseRun.Script script = ReleaseRun.scriptIn(ontology);
+            script.write(script.withLines("1.0.1", null, null));
+
+            assertArrayEquals(after.getBytes(encoding), Files.readAllBytes(file.toPath()),
+                    encoding.name());
+            assertEquals("1.0.1", ReleaseRun.scriptIn(ontology).version());
+        }
+    }
+
+    /** 1.0 and 1.0.0 are one number: released once, under whichever spelling (review of 1.153.0). */
+    @Test
+    void aVersionThatIsAnotherSpellingOfAReleasedOneIsRefused(@TempDir File root)
+            throws IOException {
+        write(root, "releases/1.0.0/eggboil.owl", "owl");
+
+        String byFolder = ReleaseRun.whyNotThisVersion(root, "1.0",
+                Collections.<String>emptyList());
+        String byTag = ReleaseRun.whyNotThisVersion(new File(root, "another"), "2.0",
+                Collections.singletonList("v2.0.0"));
+
+        assertTrue(byFolder != null && byFolder.contains("1.0.0"), String.valueOf(byFolder));
+        assertTrue(byTag != null && byTag.contains("2.0.0"), String.valueOf(byTag));
+        assertNull(ReleaseRun.whyNotThisVersion(root, "1.0.1", Collections.<String>emptyList()));
     }
 }

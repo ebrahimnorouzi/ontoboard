@@ -10,6 +10,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Stopping a running command.
@@ -149,5 +151,42 @@ class CancellationTest {
                 .contains("win")
                 ? Arrays.asList("cmd", "/c", "echo", "hello")
                 : Arrays.asList("echo", "hello");
+    }
+
+    // ------------------------------------------------------------------ containers (review of 1.153.0)
+
+    /**
+     * A container is not the program that asked for it. Killing "docker run" leaves the
+     * container running to its end - seen on 2026-11-15, the client gone and the container
+     * still up - so a container run is given a name, and is taken away by that name.
+     */
+    @Test
+    void aContainerRunIsNamedSoThatItCanBeTakenAway() {
+        ProcessRunner.ContainerRun run = ProcessRunner.containerRun(Arrays.asList("docker",
+                "run", "--rm", "-v", "C:/p:/work", "obolibrary/odkfull:v1.6.1", "make", "test"),
+                "ontoboard-7");
+
+        assertEquals(Arrays.asList("docker", "run", "--name", "ontoboard-7", "--rm", "-v",
+                "C:/p:/work", "obolibrary/odkfull:v1.6.1", "make", "test"), run.named());
+        assertEquals(Arrays.asList("docker", "rm", "-f", "ontoboard-7"), run.remove());
+    }
+
+    @Test
+    void aContainerThatHasANameKeepsIt() {
+        List<String> asGiven = Arrays.asList("podman", "run", "--rm", "--name", "mine", "image",
+                "true");
+
+        ProcessRunner.ContainerRun run = ProcessRunner.containerRun(asGiven, "ontoboard-7");
+
+        assertEquals(asGiven, run.named());
+        assertEquals(Arrays.asList("podman", "rm", "-f", "mine"), run.remove());
+    }
+
+    @Test
+    void whatStartsNoContainerIsLeftAsItIs() {
+        assertNull(ProcessRunner.containerRun(Arrays.asList("git", "status"), "ontoboard-7"));
+        assertNull(ProcessRunner.containerRun(Arrays.asList("docker", "image", "inspect", "x"),
+                "ontoboard-7"));
+        assertNull(ProcessRunner.containerRun(Arrays.asList("make", "test"), "ontoboard-7"));
     }
 }

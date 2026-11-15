@@ -122,4 +122,40 @@ class ConfigSyncTest {
         assertEquals(later.why(), done.said());
         assertFalse(done.needsALook());
     }
+
+    /**
+     * Which files: a count does not say that the workflow somebody edited by hand is among
+     * those ODK's update wrote again (review of 1.153.0).
+     */
+    @Test
+    void theFilesThatWereWrittenAgainAreNamedAsTheProjectNamesThem() {
+        File root = new File("/p").getAbsoluteFile();
+        OperationResult synced = OperationResult.of("Update project files")
+                .wrote(new File(root, "src/ontology/Makefile"))
+                .wrote(new File(root, ".github/workflows/qc.yml"))
+                .wrote(new File(root, "src/sparql/owldef-violation.sparql"))
+                .summary("Updated 3 files, by OntoBoard itself.").build();
+
+        ConfigSync.Done done = ConfigSync.done(itself(), synced, root);
+
+        assertTrue(done.inLine());
+        assertTrue(done.said().endsWith("Updated 3 files, by OntoBoard itself: "
+                + "src/ontology/Makefile, .github/workflows/qc.yml, "
+                + "src/sparql/owldef-violation.sparql."), done.said());
+    }
+
+    /** A long list is cut, and says how many more. */
+    @Test
+    void ofManyFilesTheFirstAreNamedAndTheRestCounted() {
+        File root = new File("/p").getAbsoluteFile();
+        OperationResult.Builder synced = OperationResult.of("Update project files");
+        for (int i = 1; i <= 9; i++) {
+            synced.wrote(new File(root, "docs/page" + i + ".md"));
+        }
+
+        ConfigSync.Done done = ConfigSync.done(itself(),
+                synced.summary("Updated 9 files, by OntoBoard itself.").build(), root);
+
+        assertTrue(done.said().endsWith("docs/page6.md and 3 more."), done.said());
+    }
 }

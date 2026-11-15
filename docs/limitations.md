@@ -100,6 +100,35 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 
 ### Known constraints
 
+- **OntoBoard's own engine runs ODK's Makefile as ODK writes it, and nothing else.** Since
+  1.153.0 *Build...*, *Release...* and the import refresh run ODK's own targets, and without
+  Docker OntoBoard runs them itself, inside Protégé. It does so only where the project's
+  `Makefile` is the one ODK v1.6.1 writes for the project's configuration and the project's
+  own `<id>.Makefile` changes nothing of what the target runs. A rule of the project's own that
+  the target reaches, a setting of its own that one of ODK's recipes reads, or a Makefile
+  written by another ODK version is refused before anything runs, naming the file and the
+  line. Such a project is run in ODK's container (Docker or Podman, with ODK's image) or, on
+  Linux and macOS, with ODK's own tools installed; on Windows the container is the only other
+  way. Projects with import modules built by rules of their own are of this kind.
+- **The engine has ROBOT and the shell's commands, not ODK's other tools.** It runs the
+  shell commands ODK's recipes use, `robot`, `odk-info`, `dicer-cli` and `check-rdfxml`. A
+  recipe that calls another program of ODK's image - `dosdp-tools` (DOSDP patterns),
+  `relation-graph`, Soufflé, ODK's Python scripts - is refused before anything runs, and runs
+  in the container. The ROBOT inside
+  OntoBoard is 1.9.8; ODK v1.6.1's image has 1.9.10. On the projects compared the files they
+  write are the same; a difference between the two versions on other input is possible.
+- **Build cannot pass variables to make.** The form offers targets. A run such as
+  `make test IMP=false` cannot be asked for; ODK's `test_fast` is the target that leaves the
+  imports alone.
+- **ODK's `test` fetches the imports again on every run.** That is ODK's Makefile, in every
+  route: a project with an import from the web needs the network for each `test`, and the
+  module is written again with the day as its version, so git shows it as changed. A release
+  runs `make clean` first, which empties `mirror/`, so a release that refreshes the imports
+  downloads every source again.
+- **A release expects the project's new files to be committed.** It stages what it changed
+  and the release files; a file git has never been told about - a new import module, a new
+  test, the board's layout file in a project made elsewhere - is asked about first, and is
+  not in the release's commit if you go on.
 - **Spreadsheets and the knowledge graph do not round-trip.** *Spreadsheets → Template...* adds the
   axioms a sheet produces to the ontology open in Protégé and never removes or updates any: run it
   again after changing a label and the graph holds both labels. Nothing links an individual back to
@@ -302,7 +331,9 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   file it read as an import open until Java's garbage collector comes by, unless the file is
   RDF/XML. After a conversion or an update, a local import in Turtle or another syntax can then
   refuse to be moved or deleted for a while; wait a moment and try again, or keep local imports in
-  RDF/XML.
+  RDF/XML. The same holds for an edit file saved in Turtle after OntoBoard itself has built
+  the project (seen in a test of 1.153.0): ROBOT reads it through the OWL API. An edit file
+  in functional syntax, which is what ODK seeds, or in RDF/XML is not held.
 - **ODK's `.gitignore` leaves the release files out of git.** The files a release writes at the
   top of the project - `<id>.owl`, `<id>-base.owl` and the rest - are ignored by the `.gitignore`
   ODK's seed writes, so *Share → Git... → Commit everything* does not take them in and `git
@@ -318,6 +349,11 @@ worth more than the fact it is gone, but they are not limitations, and a page ca
 Limitations should answer what the tool cannot do today.
 
 ### Not covered by tests
+
+For 1.153.0's ODK routes: Podman was not tried, only Docker Desktop on Windows; ODK's own
+tools installed on Linux or macOS were not tried live; OntoBoard's own engine was run live on
+Windows only, and its unit tests run on Windows and on CI's Linux. The comparison with ODK's
+container was made on small projects and two real ones, not on a large ontology.
 
 The unit tests cover projection, axiom construction, layout persistence, ODK's seed, the
 report's rule execution and the OSGi configuration. Some of them reach outside the JVM:

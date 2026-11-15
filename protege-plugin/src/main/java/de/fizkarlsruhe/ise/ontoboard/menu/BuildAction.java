@@ -278,11 +278,8 @@ public class BuildAction extends OntoBoardAction {
      */
     private static String whyItFailed(String target, List<String> transcript, String runners,
             File editFile, OWLOntology ontology) {
-        String why = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.whyItStopped(transcript,
-                editFile, ontology);
-        String at = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.stoppedAt(transcript);
-        return (why == null ? runners : why + " '" + target + "' stopped"
-                + (at == null ? "" : " at " + at) + "; the log has every line up to there.")
+        return de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.whyARunFailed(target, transcript,
+                runners, editFile, ontology)
                 + testsSaid(de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.ownAmong(
                         de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.passed(transcript)));
     }

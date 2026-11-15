@@ -483,7 +483,7 @@ class OdkReleaseFormTest {
 
         assertTrue(shown.contains(root.getAbsolutePath()), shown);
         assertTrue(shown.contains("on branch main"), shown);
-        assertTrue(shown.contains("git add -u\ngit add -f -- eggboil.owl\n"
+        assertTrue(shown.contains("git add -u -- .\ngit add -f -- eggboil.owl\n"
                 + "git commit -m \"release(1.0.0)\"\ngit tag -a v1.0.0 -m \"eggboil 1.0.0\""),
                 shown);
         assertTrue(shown.contains("notes.txt"), shown);
@@ -691,6 +691,34 @@ class OdkReleaseFormTest {
         assertFalse(explanation.contains("Nothing was run"), explanation);
         assertFalse(explanation.contains("is not something OntoBoard itself does"),
                 "fetching is something it does: " + explanation);
+    }
+
+    /** A release cleans first; the form says so, and what that takes away (review of 1.153.0). */
+    @Test
+    void theFormSaysThatAReleaseCleansFirst() {
+        for (OdkReleaseForm.Start start : new OdkReleaseForm.Start[] {start(),
+            start().withRoute(itself(null))}) {
+            String explanation = OdkReleaseForm.explanation(start);
+
+            assertTrue(explanation.contains("make clean"), explanation);
+            assertTrue(explanation.contains("tmp/") && explanation.contains("mirror/"),
+                    explanation);
+        }
+    }
+
+    /** A file cleaning removed and git tracks is put back; the question says why that command. */
+    @Test
+    void theQuestionSaysWhatTheFirstCommandPutsBack() throws IOException {
+        File owl = new File(root, "eggboil.owl");
+        write(owl, "owl");
+
+        String shown = OdkReleaseForm.confirmation(ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), Arrays.asList("## main",
+                        " D src/ontology/tmp/README.md")), root);
+
+        assertTrue(shown.contains("git checkout -- src/ontology/tmp/README.md\ngit add -u -- ."),
+                shown);
+        assertTrue(shown.contains("puts back a file that git tracks"), shown);
     }
 
     /** With ODK's own tools installed on the machine, the form names that. */

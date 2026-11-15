@@ -88,6 +88,40 @@ public final class ConfigSync {
         return OdkSync.decide(version, use, runtime, own, noContainer);
     }
 
+    /** How many of the files an update wrote are named in a sentence; the rest are counted. */
+    private static final int FILES_NAMED = 6;
+
+    /**
+     * As {@link #done(OdkSync.Way, OperationResult)}, with the files that were written
+     * named as the project names them. ODK's update writes ODK's files again as ODK has
+     * them - the workflow, the checks, the Makefile - and a count does not say that one
+     * somebody had edited by hand is among them (review of 1.153.0).
+     *
+     * @param root the project's top folder
+     */
+    static Done done(OdkSync.Way way, OperationResult synced, File root) {
+        Done done = done(way, synced);
+        if (root == null || synced == null || !done.inLine() || synced.getFiles().isEmpty()) {
+            return done;
+        }
+        java.nio.file.Path top = root.getAbsoluteFile().toPath().normalize();
+        StringBuilder names = new StringBuilder();
+        int named = 0;
+        for (File file : synced.getFiles()) {
+            if (named == FILES_NAMED) {
+                break;
+            }
+            java.nio.file.Path path = file.getAbsoluteFile().toPath().normalize();
+            names.append(named++ == 0 ? "" : ", ").append(path.startsWith(top)
+                    ? top.relativize(path).toString().replace(File.separatorChar, '/')
+                    : path.toString());
+        }
+        int more = synced.getFiles().size() - named;
+        String said = done.said();
+        return new Done(true, (said.endsWith(".") ? said.substring(0, said.length() - 1) : said)
+                + ": " + names + (more > 0 ? " and " + more + " more" : "") + ".", synced);
+    }
+
     /**
      * What to say of an update that ran, or of none.
      *
@@ -145,7 +179,7 @@ public final class ConfigSync {
             synced = OperationResult.failed(OPERATION, "The project's files could not be "
                     + "brought in line: " + OntoBoardAction.said(failed) + ".");
         }
-        return done(way, synced);
+        return done(way, synced, root);
     }
 
     /**

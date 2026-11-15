@@ -24,6 +24,7 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import de.fizkarlsruhe.ise.ontoboard.assistant.project.Links;
 
 /**
  * The recipe lines of ODK's Makefile, run without a shell.
@@ -597,5 +598,84 @@ class RecipeShellTest {
         public String folder() {
             return "/work/src/ontology";
         }
+    }
+
+    // ------------------------------------------------------------------ links (review of 1.153.0)
+
+    private static final String CLEAN = "for dir in mirror tmp target ; do reldir=$(realpath "
+            + "--relative-to=$(pwd) $dir) ; case $reldir in .*|\"\") ;; *) rm -rf $reldir/* ;; "
+            + "esac done";
+
+    /**
+     * A folder of the loop that is a link to somewhere else is left alone, as ODK's own loop
+     * leaves it: realpath says where it really is, and that is outside. Found by the review
+     * of 1.153.0 - a mirror kept elsewhere behind a link was emptied by every release, which
+     * cleans first.
+     */
+    @Test
+    void cleanLeavesAloneAFolderThatLeadsOutOfTheProject() throws Exception {
+        File elsewhere = new File(temp, "shared-mirror");
+        Files.createDirectories(elsewhere.toPath());
+        Files.write(new File(elsewhere, "big.owl").toPath(),
+                "keep".getBytes(StandardCharsets.UTF_8));
+        Links.link(file("mirror"), elsewhere);
+        write("tmp/scratch.txt", "scratch");
+
+        assertEquals(0, run(CLEAN));
+
+        assertTrue(new File(elsewhere, "big.owl").isFile(),
+                "what the link leads to is somebody's, and stays");
+        assertFalse(file("tmp/scratch.txt").exists(), "the project's own scratch is cleaned");
+    }
+
+    /** A link inside a folder that is cleaned goes as the link it is; nothing behind it does. */
+    @Test
+    void cleanTakesALinkAwayAndNotWhatItLeadsTo() throws Exception {
+        File elsewhere = new File(temp, "somebodys");
+        Files.createDirectories(elsewhere.toPath());
+        Files.write(new File(elsewhere, "theirs.txt").toPath(),
+                "keep".getBytes(StandardCharsets.UTF_8));
+        Files.createDirectories(file("tmp").toPath());
+        Links.link(file("tmp/cache"), elsewhere);
+
+        assertEquals(0, run(CLEAN));
+
+        assertTrue(new File(elsewhere, "theirs.txt").isFile());
+        assertFalse(file("tmp/cache").exists(), "the link itself is what was in tmp");
+    }
+
+    /** rm -rf of a folder that holds a link does the same. */
+    @Test
+    void rmDoesNotGoThroughALink() throws Exception {
+        File elsewhere = new File(temp, "somebodys");
+        Files.createDirectories(elsewhere.toPath());
+        Files.write(new File(elsewhere, "theirs.txt").toPath(),
+                "keep".getBytes(StandardCharsets.UTF_8));
+        write("tmp/build/a.txt", "a");
+        Links.link(file("tmp/build/linked"), elsewhere);
+
+        assertEquals(0, run("rm -rf tmp/build"));
+
+        assertTrue(new File(elsewhere, "theirs.txt").isFile());
+        assertFalse(file("tmp/build").exists());
+    }
+
+    /**
+     * On Windows a backslash parts folders as a slash does, so the guard reads it as one
+     * everywhere: quoted, such a path was one name to it and went through (review of 1.153.0).
+     */
+    @Test
+    void aPathWrittenWithBackslashesIsHeldToTheProjectToo() throws IOException {
+        File outside = new File(temp, "outside.txt");
+        Files.write(outside.toPath(), "keep".getBytes(StandardCharsets.UTF_8));
+        String up = "..\\..\\..\\outside.txt";
+
+        assertTrue(String.valueOf(whyNot("rm -f '" + up + "'")).contains("outside the project"),
+                String.valueOf(whyNot("rm -f '" + up + "'")));
+        assertTrue(String.valueOf(whyNot("echo x > '" + up + "'")).contains(
+                "outside the project"));
+        assertTrue(String.valueOf(whyNot("rm -rf '..\\..'")).contains(
+                "the project's own folder"));
+        assertTrue(outside.isFile());
     }
 }

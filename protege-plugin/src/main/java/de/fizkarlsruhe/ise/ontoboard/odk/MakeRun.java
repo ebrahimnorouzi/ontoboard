@@ -459,7 +459,7 @@ public final class MakeRun {
                     + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
                     + "Project > Project configuration... edits the key.";
         }
-        if (NO_NETWORK.matcher(transcript).find()) {
+        if (theNetworkStoppedIt(outcome.getOutput())) {
             // make's last line names a mirror file, not the cause. ODK's full targets fetch the
             // project's imports; the fast ones build from the imports as they are.
             String fast = target.equals("test") || target.equals("prepare_release")
@@ -478,14 +478,34 @@ public final class MakeRun {
         if (report != null) {
             return report;
         }
-        if (transcript.contains("violation")
-                && outcome.lastMeaningfulLine().toLowerCase(Locale.ROOT).contains("report")) {
+        // The last line's own word, not the folder ODK keeps every check's file in: the
+        // profile check's file is reports/validate_profile_..., and is no quality report.
+        if (transcript.contains("violation") && outcome.lastMeaningfulLine()
+                .toLowerCase(Locale.ROOT).replace("reports/", "").contains("report")) {
             return "The quality report found violations the project treats as failures. Run "
                     + "OntoBoard > Check and test > Quality report to see them one by one.";
         }
         String tail = outcome.lastMeaningfulLine();
         return "make " + target + " failed (exit " + outcome.getExitCode() + ")"
                 + (tail.isEmpty() ? "." : ": " + tail);
+    }
+
+    /** How far from its end a transcript's word on the network is why the run stopped. */
+    private static final int NETWORK_TAIL = 15;
+
+    /**
+     * Whether a download that failed is where the run ended: a line that says so among the
+     * transcript's last few. curl says each try that failed, also when the next one went
+     * through, so the word somewhere in a long log is no reason (review of 1.153.0).
+     */
+    private static boolean theNetworkStoppedIt(List<String> output) {
+        for (String line : output.subList(Math.max(0, output.size() - NETWORK_TAIL),
+                output.size())) {
+            if (line != null && NO_NETWORK.matcher(line.toLowerCase(Locale.ROOT)).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String joined(List<String> lines) {

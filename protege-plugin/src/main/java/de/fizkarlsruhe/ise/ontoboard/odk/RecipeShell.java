@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -321,7 +324,14 @@ final class RecipeShell {
                 if (climbs(name) > 0 || normal(name).isEmpty() || name.startsWith("/")) {
                     continue;
                 }
-                File[] inside = new File(running.folder, name).listFiles();
+                // "realpath": where the folder really is. One that is a link - a junction
+                // on Windows - to somewhere outside is outside, and ODK's loop leaves it
+                // alone; so does this one (review of 1.153.0: it was emptied).
+                File really = reallyInside(running.folder, new File(running.folder, name));
+                if (really == null) {
+                    continue;
+                }
+                File[] inside = really.listFiles();
                 for (File child : inside == null ? new File[0] : inside) {
                     // "$reldir/*": the shell's star leaves out a name that starts with a
                     // dot, and ODK keeps tmp/.gitkeep in git.
@@ -959,7 +969,9 @@ final class RecipeShell {
     private static int climbs(String path) {
         int depth = 0;
         int lowest = 0;
-        for (String part : path.split("/")) {
+        // A backslash too: on Windows it parts folders as a slash does, and a quoted path
+        // written with it was one name here, which climbs nowhere (review of 1.153.0).
+        for (String part : path.replace('\\', '/').split("/")) {
             if (part.isEmpty() || part.equals(".")) {
                 continue;
             }
@@ -972,7 +984,7 @@ final class RecipeShell {
     /** A path with its {@code .} and {@code x/..} taken out; leading {@code ..} kept. */
     private static String normal(String path) {
         List<String> parts = new ArrayList<String>();
-        for (String part : path.split("/")) {
+        for (String part : path.replace('\\', '/').split("/")) {
             if (part.isEmpty() || part.equals(".")) {
                 continue;
             }
@@ -991,7 +1003,8 @@ final class RecipeShell {
      * Makefile's ({@code ../..}); nothing outside it is touched.
      */
     static String whyNotWritten(String path) {
-        if (path.startsWith("/") || new File(path).isAbsolute() || climbs(path) > 2) {
+        if (path.startsWith("/") || path.startsWith("\\") || new File(path).isAbsolute()
+                || climbs(path) > 2) {
             return "'" + path + "' is outside the project, and a recipe run by OntoBoard's own "
                     + "engine writes and removes inside the project only";
         }
@@ -1012,10 +1025,44 @@ final class RecipeShell {
         return null;
     }
 
+    /**
+     * Where a folder of the project really is, as {@code realpath --relative-to} and ODK's
+     * {@code case} after it read it: null when it is not there, when it is the project's
+     * folder itself, when it lies outside it, or when its first step from there starts with
+     * a dot.
+     */
+    static File reallyInside(File project, File folder) {
+        try {
+            Path home = project.toPath().toRealPath();
+            Path real = folder.toPath().toRealPath();
+            if (real.equals(home) || !real.startsWith(home)) {
+                return null;
+            }
+            return home.relativize(real).getName(0).toString().startsWith(".") ? null
+                    : real.toFile();
+        } catch (IOException | RuntimeException notThere) {
+            return null;
+        }
+    }
+
+    /**
+     * Removes a file, or a folder with what is in it. A link - a junction on Windows - is
+     * removed as the link it is: what it leads to is somebody's, and is not gone into.
+     */
     private static void delete(File file) throws IOException {
-        File[] children = Files.isSymbolicLink(file.toPath()) ? null : file.listFiles();
-        for (File child : children == null ? new File[0] : children) {
-            delete(child);
+        BasicFileAttributes is;
+        try {
+            is = Files.readAttributes(file.toPath(), BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS);
+        } catch (java.nio.file.NoSuchFileException gone) {
+            return;
+        }
+        // A junction says it is a directory and "other" at once.
+        if (is.isDirectory() && !is.isOther() && !is.isSymbolicLink()) {
+            File[] children = file.listFiles();
+            for (File child : children == null ? new File[0] : children) {
+                delete(child);
+            }
         }
         Files.deleteIfExists(file.toPath());
     }
