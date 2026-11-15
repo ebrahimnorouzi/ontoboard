@@ -1179,9 +1179,13 @@ script's. It runs in ODK's container, each `sh run.sh make ...` line of it runni
 same container. A script with Windows line endings, or without a `VERSION=` line to set, is
 refused with the reason.
 
-**The run.** `make prepare_release -B VERSION=<version>`: every target made again, which is how
-ODK's own instructions release. ODK's release runs ODK's `test` first, so a release whose test
-fails is not built. Then `make -s show_release_assets` names the files the release is made of,
+**The run.** `make clean`, then `make prepare_release VERSION=<version>`. Cleaning first takes
+away what an earlier `test` built, so the release makes its own files and carries its own
+version. It is not `make -B`, which would also make every import module again: ODK's rule for
+a module the project keeps as it is - a pattern, a file of this machine - is an error, and
+such a project could not be released. `clean` empties `mirror/`, so a release that refreshes
+the imports fetches their sources again. ODK's release runs ODK's `test` first, so a release
+whose test fails is not built. Then `make -s show_release_assets` names the files the release is made of,
 which ODK writes at the top of the project - by default `<id>.owl` and `<id>.obo`, and the base
 and full variants in both. Then, in this order:
 

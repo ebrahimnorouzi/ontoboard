@@ -30,6 +30,20 @@ record for that version.
   by 1.135 or before is carried over by *Update project files...*. `SeedParityTest`,
   `SeedCorpusTest` (ODK's own 79 sample configurations), `FallbackEquivalenceTest`,
   `ImportChainEquivalenceTest`.
+- **A failed build was blamed on the quality report, fixed in 1.153.0.** Found releasing the
+  egg guide's project in an isolated Protégé: the release stopped at an import module, and the
+  result said "The quality report found violations the project treats as failures". Every run
+  prints the report's count of violations, and the words "violation" and "report" anywhere in
+  the log were taken for the reason. Older than this version: 1.135.2 has it too. The report is
+  now named only when it stopped the run, with what it found; and when make has no rule for a
+  file the target needs, that file is named, not the target.
+  `MakeRunTest.aReportThatWasOnlyPrintedIsNotTheReason`,
+  `aMissingRuleForSomethingElseIsNotSaidOfTheTarget`.
+- **Two dialogs of the board were wider than the screen, fixed in 1.153.0.** Found walking the
+  egg guide: the dialog for a new subclass put its whole explanation of where the ID comes from
+  on one line, 1417 pixels wide, and the question about whose ID range to use was 1134. Older
+  than this version: 1.135.2 has the first too. Both are now broken between words.
+  `TermMinterTest.aLongSentenceIsBrokenBetweenWordsForADialog`.
 - **The Requirements window cut its rows off, fixed in 1.153.0.** Found by reading a picture of
   the window in an isolated Protégé: every longer row ended in the middle of a sentence. A row's
   text asked for a width of 520 px, which Swing's HTML draws about 676 pixels wide, in a window
