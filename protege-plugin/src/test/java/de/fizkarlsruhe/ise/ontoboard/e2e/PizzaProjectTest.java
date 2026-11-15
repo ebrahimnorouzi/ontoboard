@@ -127,7 +127,17 @@ class PizzaProjectTest {
                 "A pizza ontology built end to end with OntoBoard, to exercise the plugin "
                         + "against ODK and ROBOT.",
                 PizzaOntology.IRI_BASE,
-                "https://creativecommons.org/publicdomain/zero/1.0/", repo.getParentFile());
+                "https://creativecommons.org/publicdomain/zero/1.0/", repo.getParentFile())
+                // The pizza exists before its project does, named http://example.org/pizza
+                // with its terms after a hash. A project that starts from nothing is refused
+                // that address - ODK names such a project's ontology <address>/pizza.owl - and
+                // one that starts from an ontology keeps the ontology's own. This is the
+                // second, as the wizard makes it when a project starts from the open ontology.
+                //
+                // Until 1.153.0 nothing here said so, and nothing failed: every tree this ran
+                // in still had the project an older OntoBoard had written under target/, so
+                // the branch below that makes one was never taken. A clean build took it.
+                .adopting();
         repo = config.getProjectRoot();
         File ontologyDir = new File(repo, "src/ontology");
         if (!new File(ontologyDir, ID + "-odk.yaml").isFile()) {
