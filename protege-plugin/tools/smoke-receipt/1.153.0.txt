@@ -20,7 +20,7 @@ The self-test's summary starts with the version it tested: "OntoBoard 1.153.0: 1
 ran - 9 menu items, ODK's test run by OntoBoard itself and 2 tabs". Its new item, "Build (nothing
 installed)", makes a project from ODK v1.6.1's templates and runs ODK's test on it by OntoBoard
 itself - the reasoner, ODK's five checks, the quality report and the OWL profile - without
-starting any program: 2096 ms in 5.6.9, 2616 ms in 5.5.0. The OntoBoard tab is built with the
+starting any program: 1660 ms in 5.6.9, 1138 ms in 5.5.0. The OntoBoard tab is built with the
 board and the Assistant column. In 5.5.0 two other plugins of the install, cellfie 2.2.4 and
 swrltab 2.1.3, failed to install; neither is OntoBoard's.
 
@@ -29,8 +29,9 @@ and org.protege.editor.owl.model.library, at version 5.5.0 or later: both Proteg
 (5.5.0 at 5.5.0, 5.6.9 at 5.6.9), and the bundle resolved in both.
 
 By hand, in an isolated copy of Protege 5.6.9 - its own home and its own preferences - with the
-first candidate of this release (sha256 8722d6c1...), which differs from this jar only by the fix
-below, on a project New ODK project... made in ODK's container:
+first candidate of this release (sha256 8722d6c1...), which differs from this jar by the fix below
+and by the width of the container settings' program field, on a project New ODK project... made
+in ODK's container:
 
   2026-11-15  "Which range is yours?" when the board's first new term is a property (a new
               property in Relate to another term...): the question names the property, the name
@@ -44,26 +45,35 @@ below, on a project New ODK project... made in ODK's container:
 
 That check found one defect, fixed in this jar: with nothing chosen in Protege's Reasoner menu -
 as on a fresh install - Explain the reasoner problem... ran Protege's null reasoner and said the
-ontology had no problem. With this jar, in isolated copies of both Protege, with None chosen and
-two unsatisfiable classes:
+ontology had no problem. With the fix - the jar 8fa02275..., which differs from this one only by
+that field's width - in isolated copies of both Protege, with None chosen and two unsatisfiable
+classes:
 
   2026-11-15  Protege 5.6.9  "Protégé Null Reasoner" running, None chosen: the column ran HermiT
               and listed both classes
   2026-11-15  Protege 5.5.0  the same; Protege's None has no name there and is known by its
               identifier
 
-The jar: sha256 8fa022754ec04ebcb910efc852fc329c8df03c49eacbace534699435fe00cbc0, 67,916,683
+The jar: sha256 1aa6ee6937bc2a9f0457a1201e6a30c797688cbef54020340ab2318a1926561a, 67,916,684
 bytes, built on Windows by mvn -o -B clean package from this release's tree; it is the jar the
-smoke runs and the check of the fix above loaded. The unit suite in that build, on Java 11: 5,667
-tests, 0 failures, 0 errors, 5 skipped - BundleConfigurationTest's two jar tests, which a clean
-build reaches before the jar exists (run against this jar afterwards, its 20 tests passed);
-PinchZoomTest, on a Mac only; KoncludeTest's executable-bit test and one SettingsPanelTest case,
-which need a file system with an executable bit or one that keeps case, and run on CI's Linux
-job. The ODK, menu and process classes on Java 8 - Protege 5.5.0's own, 1.8.0_121: 2,534 tests,
-0 failures, 1 skipped (OdkRobotTest's comparison with obographs' own class, which Java 8 cannot
-load). The ODK classes with OWL API 4.5.29, Protege 5.6.9's: 2,164 tests, 0 failures. The live
-tests, which start ODK's container (obolibrary/odkfull, v1.6.1) and the collaboration server: 18
-tests, 0 failures, 1 skipped (MigrationLiveTest's case for projects named on the command line).
+smoke runs. The unit suite in that build, on Java 11: 5,667 tests, 0 failures, 0 errors, 5
+skipped - BundleConfigurationTest's two jar tests, which a clean build reaches before the jar
+exists (run against this jar afterwards, its 20 tests passed); PinchZoomTest, on a Mac only;
+KoncludeTest's executable-bit test and one SettingsPanelTest case, which need a file system with
+an executable bit or one that keeps case, and run on CI's Linux job. On the tree before the last
+two changes - four tests and that field's width - the ODK, menu and process classes on Java 8,
+Protege 5.5.0's own 1.8.0_121: 2,534 tests, 0 failures, 1 skipped (OdkRobotTest's comparison
+with obographs' own class, which Java 8 cannot load); the ODK classes with OWL API 4.5.29,
+Protege 5.6.9's: 2,164 tests, 0 failures; and the live tests, which start ODK's container
+(obolibrary/odkfull, v1.6.1) and the collaboration server: 18 tests, 0 failures, 1 skipped
+(MigrationLiveTest's case for projects named on the command line).
+
+GitHub's CI, on this release's first push, found what this machine could not: on Windows, three
+tests that expected the runner's temporary folder under its 8.3 short name, where OntoBoard
+names the long one; on Linux, the container settings 648 px wide in DejaVu Sans, past the 640 px
+their test allows, and a test that gave a check 1 ms and found HermiT done within it. The tests
+are fixed, and the settings' program field asks for 28 columns instead of 34 (583 px in DejaVu
+Sans) - the only change to the plugin since the jar the fix above was checked with.
 
 
 WHAT THIS RELEASE ADDS
