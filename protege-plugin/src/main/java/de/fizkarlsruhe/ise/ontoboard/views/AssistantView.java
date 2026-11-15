@@ -28,7 +28,6 @@ import de.fizkarlsruhe.ise.ontoboard.assistant.ui.SettingsPanel;
 import de.fizkarlsruhe.ise.ontoboard.assistant.ui.WhatIsSentDialog;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.robot.Explanations;
-import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermSearch;
 import de.fizkarlsruhe.ise.ontoboard.sheet.TemplateDiscovery;
 import java.awt.BorderLayout;
@@ -457,21 +456,19 @@ public class AssistantView extends AbstractOWLViewComponent {
         return selected == null ? null : selected.getIRI();
     }
 
-    /** The reasoner Protégé is running, or HermiT, named, when Protégé has none chosen. */
+    /**
+     * The reasoner chosen in Protégé's Reasoner menu, or HermiT, named, when none is chosen -
+     * decided by the reasoner chosen, not by the name of the one running, which is Protégé's
+     * null reasoner until one is started ({@link ProblemReasoner}).
+     */
     private Object[] runningReasoner() {
+        ProtegeOWLReasonerInfo chosen;
         try {
-            ProtegeOWLReasonerInfo info =
-                    getOWLModelManager().getOWLReasonerManager().getCurrentReasonerFactory();
-            String name = getOWLModelManager().getOWLReasonerManager().getCurrentReasonerName();
-            OWLReasonerFactory factory = info == null ? null : info.getReasonerFactory();
-            if (factory != null && name != null && !"none".equalsIgnoreCase(name.trim())) {
-                return new Object[] {factory, name};
-            }
+            chosen = getOWLModelManager().getOWLReasonerManager().getCurrentReasonerFactory();
         } catch (RuntimeException | LinkageError unavailable) {
-            // Fall through to HermiT.
+            chosen = null;
         }
-        return new Object[] {Reasoners.Choice.HERMIT.newFactory(),
-            "HermiT (Protégé has no reasoner selected)"};
+        return de.fizkarlsruhe.ise.ontoboard.assistant.host.ProblemReasoner.of(chosen);
     }
 
     /** Runs the reasoner off the event thread, then adds the problem and asks about it. */
