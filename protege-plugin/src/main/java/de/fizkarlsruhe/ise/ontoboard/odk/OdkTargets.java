@@ -317,6 +317,22 @@ public final class OdkTargets {
         return said.isEmpty() ? null : String.join(" ", said);
     }
 
+    /**
+     * Why a target's run failed, in the sentence Build and Release show above its log: what
+     * the transcript says ({@link #whyItStopped}) and where make stopped; where it says
+     * none of that, the sentence of whoever ran the target.
+     *
+     * @param runners  what the runner says of the failure: make's last word, as a rule
+     * @param ontology as for {@link #whyItStopped}; may be null
+     */
+    public static String whyARunFailed(String target, List<String> transcript, String runners,
+            File editFile, OWLOntology ontology) {
+        String why = whyItStopped(transcript, editFile, ontology);
+        String at = stoppedAt(transcript);
+        return why == null ? runners : why + " '" + target + "' stopped"
+                + (at == null ? "" : " at " + at) + "; the log has every line up to there.";
+    }
+
     /** One failed check: its name and rule, the terms it lists, and what to do about them. */
     static String saidOf(Failed check, OWLOntology ontology) {
         // What the check's own file says first; one of ODK's says nothing, so it is said

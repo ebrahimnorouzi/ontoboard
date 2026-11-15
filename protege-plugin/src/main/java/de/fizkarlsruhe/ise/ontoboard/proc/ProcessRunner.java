@@ -116,6 +116,9 @@ public final class ProcessRunner {
                 new java.util.concurrent.atomic.AtomicReference<Process>();
         private final java.util.concurrent.atomic.AtomicBoolean cancelled =
                 new java.util.concurrent.atomic.AtomicBoolean(false);
+        /** What else has to stop with the process: the container it started. */
+        private final java.util.concurrent.atomic.AtomicReference<Runnable> also =
+                new java.util.concurrent.atomic.AtomicReference<Runnable>();
 
         /**
          * Kills the running command, now or as soon as one starts.
@@ -127,6 +130,7 @@ public final class ProcessRunner {
         public void cancel() {
             cancelled.set(true);
             destroy(current.get());
+            stopAlso(also.get());
         }
 
         public boolean isCancelled() {
@@ -135,15 +139,35 @@ public final class ProcessRunner {
 
         /** Called by the runner when a process starts. */
         void took(Process process) {
+            took(process, null);
+        }
+
+        /**
+         * @param alsoStop what has to stop with the process and does not die with it - the
+         *                 container a client started; null when there is nothing
+         */
+        void took(Process process, Runnable alsoStop) {
             current.set(process);
+            also.set(alsoStop);
             if (cancelled.get()) {
                 destroy(process);
+                stopAlso(alsoStop);
             }
         }
 
         /** Called by the runner when the process is gone. */
         void finished() {
             current.set(null);
+            also.set(null);
+        }
+
+        /** On a thread of its own: the button is pressed on the event thread. */
+        private static void stopAlso(Runnable alsoStop) {
+            if (alsoStop != null) {
+                Thread stopper = new Thread(alsoStop, "ontoboard-container-stop");
+                stopper.setDaemon(true);
+                stopper.start();
+            }
         }
 
         private static void destroy(Process process) {
@@ -183,6 +207,92 @@ public final class ProcessRunner {
         return CANCELLATION.get();
     }
 
+    /** A container run with a name, and the command that takes that container away. */
+    static final class ContainerRun {
+        private final List<String> named;
+        private final List<String> remove;
+
+        ContainerRun(List<String> named, List<String> remove) {
+            this.named = named;
+            this.remove = remove;
+        }
+
+        /** The command, with {@code --name} in it. */
+        List<String> named() {
+            return named;
+        }
+
+        /** {@code <program> rm -f <name>}: stops the container and removes it. */
+        List<String> remove() {
+            return remove;
+        }
+    }
+
+    /**
+     * A command that starts a container - {@code <program> run ... --rm ...}, as OntoBoard
+     * starts ODK's - with a name its container can be taken away by; null for any other
+     * command.
+     *
+     * <p>A container is not the program that asked for it. Killing the client, which is
+     * all that stopping a command did, leaves the container running to its end: seen on
+     * 2026-11-15 with Docker Desktop - the client gone, the container still up, ODK's
+     * target going on writing into the project behind a dialog that said it had been
+     * stopped. So the run is named, and what stops it removes the container of that name.
+     * The name is not in the command a person is shown: it changes nothing of what runs.
+     *
+     * @param name the name to give a run that has none
+     */
+    static ContainerRun containerRun(List<String> command, String name) {
+        if (command == null || command.size() < 3 || !"run".equals(command.get(1))
+                || !command.contains("--rm")) {
+            return null;
+        }
+        int own = command.indexOf("--name");
+        if (own >= 0 && own + 1 < command.size()) {
+            return new ContainerRun(command, Arrays.asList(command.get(0), "rm", "-f",
+                    command.get(own + 1)));
+        }
+        List<String> named = new ArrayList<String>(command);
+        named.add(2, name);
+        named.add(2, "--name");
+        return new ContainerRun(named, Arrays.asList(command.get(0), "rm", "-f", name));
+    }
+
+    private static final java.util.concurrent.atomic.AtomicInteger CONTAINERS =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * Takes a container away: stops it if it runs, removes it if it is there. Twice, a
+     * moment apart - a client killed while its container was being made leaves one that
+     * starts just after the first try. That there is none is no failure.
+     */
+    private static void takeAway(List<String> remove) {
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                ProcessBuilder builder = new ProcessBuilder(remove);
+                builder.redirectErrorStream(true);
+                quieten(builder.environment());
+                Process process = builder.start();
+                process.getOutputStream().close();
+                byte[] unread = new byte[1024];
+                while (process.getInputStream().read(unread) >= 0) {
+                    // Read, so that it never waits on a full pipe.
+                }
+                if (!process.waitFor(30, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                }
+                if (attempt == 0) {
+                    Thread.sleep(1500);
+                }
+            } catch (IOException cannotAsk) {
+                return;
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
     /** Told about each line as it arrives, so a long build is not a frozen dialog. */
     public interface Sink {
         void line(String text);
@@ -203,7 +313,17 @@ public final class ProcessRunner {
             @Override
             public Outcome run(File workingDirectory, List<String> command, long timeoutMinutes,
                     final Sink sink) throws IOException {
-                ProcessBuilder builder = new ProcessBuilder(command);
+                final ContainerRun container = containerRun(command, "ontoboard-"
+                        + Long.toHexString(System.nanoTime()) + "-"
+                        + CONTAINERS.incrementAndGet());
+                final Runnable takeAway = container == null ? null : new Runnable() {
+                    @Override
+                    public void run() {
+                        takeAway(container.remove());
+                    }
+                };
+                ProcessBuilder builder = new ProcessBuilder(
+                        container == null ? command : container.named());
                 if (workingDirectory != null) {
                     builder.directory(workingDirectory);
                 }
@@ -218,7 +338,7 @@ public final class ProcessRunner {
                 if (cancellation != null) {
                     // Before anything else: if the user already pressed the button while the
                     // process was starting, this kills it rather than letting it run on.
-                    cancellation.took(process);
+                    cancellation.took(process, takeAway);
                 }
                 try {
                     // The command reads nothing from us, and an open pipe is one more thing for it
@@ -262,11 +382,20 @@ public final class ProcessRunner {
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
                     process.destroyForcibly();
+                    if (takeAway != null) {
+                        Thread stopper = new Thread(takeAway, "ontoboard-container-stop");
+                        stopper.setDaemon(true);
+                        stopper.start();
+                    }
                     return done(cancellation, new Outcome(-1, snapshot(collected), false, true));
                 }
                 if (!finished) {
                     // destroyForcibly closes the pipe, which unblocks the reader at end of stream.
                     process.destroyForcibly();
+                    if (takeAway != null) {
+                        // The time is up for the container as well, not only for its client.
+                        takeAway.run();
+                    }
                     join(drain);
                     return done(cancellation, new Outcome(-1, snapshot(collected), true));
                 }

@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Collections;
 
 /**
  * Release... on a project OntoBoard 1.135 or before made.
@@ -39,5 +41,31 @@ class ReleaseOfAnOlderProjectTest {
         assertNull(ReleaseAction.carriedOverFirst(SeededProject.in(where)));
         assertNull(ReleaseAction.carriedOverFirst(loose));
         assertNull(ReleaseAction.carriedOverFirst(null));
+    }
+
+    // ------------------------------------------------------------------ review of 1.153.0
+
+    /**
+     * A release runs make clean first. Where OntoBoard itself would build, it is asked about
+     * clean before the form is shown, as it is about the release's own target: a project
+     * with a clean of its own was refused only after the form had been filled in.
+     */
+    @Test
+    void theEngineIsAskedAboutCleanBeforeTheFormIsShown(@TempDir File where) throws Exception {
+        File edit = SeededProject.in(where);
+        assertNull(ReleaseAction.whyTheEngineCannot(edit,
+                Collections.singletonMap("VERSION", "1.0.0"))[0], "ODK's own clean");
+
+        File own = new File(edit.getParentFile(), "eggboil.Makefile");
+        Files.write(own.toPath(), (new String(Files.readAllBytes(own.toPath()),
+                StandardCharsets.UTF_8) + "\nclean:\n\trm -rf build\n")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        String[] cannot = ReleaseAction.whyTheEngineCannot(edit,
+                Collections.singletonMap("VERSION", "1.0.0"));
+
+        assertTrue(cannot[0] != null && cannot[0].contains("eggboil.Makefile")
+                && cannot[0].contains("clean"), String.valueOf(cannot[0]));
+        assertEquals(cannot[0], cannot[1], "and so can neither release be built here");
     }
 }

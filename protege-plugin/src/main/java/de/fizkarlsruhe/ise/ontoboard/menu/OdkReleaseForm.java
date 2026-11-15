@@ -290,8 +290,12 @@ final class OdkReleaseForm {
                     + (annotate == null ? "it sets none of its own, so ODK's is written."
                             : annotate + ".") + git;
         }
-        String what = "the reasoner, the quality report and the project's tests run first, "
-                + "then the release files are written to the top of the project"
+        // A release cleans first, as ODK's maintainers say a release should, and that empties
+        // ODK's scratch folders: said, because the next test fetches the imports again.
+        String what = "ODK's make clean runs first and empties tmp/ and mirror/, so that "
+                + "nothing an earlier build left is taken for the release's; then the "
+                + "reasoner, the quality report and the project's tests run, and "
+                + "the release files are written to the top of the project"
                 + (ReleaseRun.keepsReleasesFolder(start.facts.root())
                         ? " and copied to releases/<version>/." : ".");
         if (start.isBuiltBy(ReleaseRoute.Kind.ITSELF)) {
@@ -494,6 +498,13 @@ final class OdkReleaseForm {
             text.append("on the branch that is checked out:\n\n");
         }
         text.append(staging.shown()).append("\n\n");
+        int putBack = staging.putBack().size();
+        if (putBack > 0) {
+            text.append("The first command puts back ").append(putBack == 1 ? "a file"
+                    : putBack + " files").append(" that git tracks in ODK's scratch folders "
+                    + "and that cleaning before the release removed, so that the commit does "
+                    + "not delete ").append(putBack == 1 ? "it" : "them").append(".\n");
+        }
         List<String> leftOut = staging.leftOut();
         if (!leftOut.isEmpty()) {
             text.append("Not taken into the commit, because git has never tracked ")
@@ -600,7 +611,7 @@ final class OdkReleaseForm {
         String text = script.withLines(version, prior, null);
         try {
             if (!text.equals(script.text())) {
-                Files.write(script.file().toPath(), text.getBytes(StandardCharsets.UTF_8));
+                script.write(text);
             }
         } catch (IOException cannotWrite) {
             return null;

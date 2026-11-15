@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.util.ArrayList;
 
 /**
  * Running an ODK project's own build from inside Protege.
@@ -597,5 +598,44 @@ class MakeRunTest {
             assertFalse(route.name().contains("PROCESS"), "the route for OntoBoard's own "
                     + "Makefile, inside Protege, is gone: " + route);
         }
+    }
+
+    // ------------------------------------------------------------------ review of 1.153.0
+
+    /** The file of the profile check lies under reports/: that makes it no quality report. */
+    @Test
+    void aFileUnderReportsIsNotTheQualityReport() {
+        String explanation = MakeRun.explain("prepare_release", failedWith(
+                "PASS Rule ../sparql/a-violation.sparql: 0 violation(s)",
+                "PROFILE VIOLATION ERROR https://example.org/egg.owl violates profile DL",
+                "make: *** [Makefile:251: reports/validate_profile_owl2dl_egg.owl.txt] Error 1"));
+
+        assertEquals("make prepare_release failed (exit 2): make: *** [Makefile:251: "
+                + "reports/validate_profile_owl2dl_egg.owl.txt] Error 1", explanation);
+    }
+
+    /**
+     * curl says each try that failed, also when the next one went through. A download that
+     * went through is not why a build stopped much later, for something else.
+     */
+    @Test
+    void aDownloadThatWentThroughOnAnotherTryIsNotTheReason() {
+        List<String> lines = new ArrayList<String>(Arrays.asList(
+                "curl -L http://purl.obolibrary.org/obo/ro.owl --create-dirs -o "
+                        + "tmp/ro-download.owl --retry 4 --max-time 200",
+                "curl: (28) Operation timed out after 200001 milliseconds with 0 bytes received",
+                "Warning: Problem : timeout. Will retry in 1 seconds. 4 retries left.",
+                "robot convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl"));
+        for (int step = 0; step < 20; step++) {
+            lines.add("robot --catalog catalog-v001.xml extract --term-file imports/x" + step
+                    + "_terms.txt");
+        }
+        lines.add("robot --catalog catalog-v001.xml reason --input egg-edit.owl");
+        lines.add("make: *** [Makefile:240: reason_test] Error 1");
+
+        String explanation = MakeRun.explain("test", failedWith(lines.toArray(new String[0])));
+
+        assertFalse(explanation.contains("download"), explanation);
+        assertTrue(explanation.contains("reason_test"), explanation);
     }
 }

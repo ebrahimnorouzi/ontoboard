@@ -402,7 +402,7 @@ class DialogDesignProofTest {
     void theGitCommandsOfAReleaseAreOnScreenWithoutScrollingSideways() throws Exception {
         String commands = "The release is built. To record it, these git commands run in\n"
                 + "C:\\Users\\somebody\\Documents\\ontologies\\eggboil\non branch main:\n\n"
-                + "git add -u\ngit add -f -- eggboil.obo eggboil.owl eggboil.json eggboil.ttl "
+                + "git add -u -- .\ngit add -f -- eggboil.obo eggboil.owl eggboil.json eggboil.ttl "
                 + "eggboil-base.obo eggboil-base.owl eggboil-base.json eggboil-base.ttl "
                 + "eggboil-full.obo eggboil-full.owl eggboil-full.json eggboil-full.ttl\n"
                 + "git add -- releases/1.0.0\ngit commit -m \"release(1.0.0)\"\n"

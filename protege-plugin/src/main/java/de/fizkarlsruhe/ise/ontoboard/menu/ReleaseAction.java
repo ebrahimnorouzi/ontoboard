@@ -190,6 +190,20 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /**
+     * Why OntoBoard itself cannot build a release of this project, asked before the form is
+     * shown: [0] the fast release, [1] the one that fetches the imports first; null where it
+     * can. As the release runs: make clean first, then the target - so a project with a
+     * clean of its own is told here, and not after the form has been filled in.
+     */
+    static String[] whyTheEngineCannot(File editFile, Map<String, String> variables) {
+        String clean = OdkEngine.whyNot(editFile, "clean", variables);
+        String fast = clean != null ? clean
+                : OdkEngine.whyNot(editFile, "prepare_release_fast", variables);
+        return new String[] {fast, fast != null ? fast
+                : OdkEngine.whyNot(editFile, "prepare_release", variables)};
+    }
+
+    /**
      * Why Release... does not release this file's project, or null: a project OntoBoard
      * 1.135 or before made is carried over first.
      */
@@ -238,9 +252,9 @@ public class ReleaseAction extends OntoBoardAction {
             Map<String, String> variables = new java.util.LinkedHashMap<String, String>();
             variables.put("VERSION",
                     OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
-            whyNotFast = OdkEngine.whyNot(editFile, "prepare_release_fast", variables);
-            whyNotFull = whyNotFast != null ? whyNotFast
-                    : OdkEngine.whyNot(editFile, "prepare_release", variables);
+            String[] cannot = whyTheEngineCannot(editFile, variables);
+            whyNotFast = cannot[0];
+            whyNotFull = cannot[1];
         }
         ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
                 container || choice == null ? null : choice.note(), script, whyNotFast,
@@ -342,6 +356,11 @@ public class ReleaseAction extends OntoBoardAction {
                     @Override
                     public boolean commit(ReleaseRun.Staging staging) {
                         return askToCommit(staging, start.facts().root());
+                    }
+
+                    @Override
+                    public boolean stopped() {
+                        return BackgroundRun.abandoned();
                     }
                 }, imageNote, protegeReadsAgain());
     }

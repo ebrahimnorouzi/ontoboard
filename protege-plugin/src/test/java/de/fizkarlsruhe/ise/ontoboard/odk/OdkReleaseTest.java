@@ -50,6 +50,9 @@ class OdkReleaseTest {
 
     private String released = owl("Egg", "Pan");
     private boolean buildFails;
+    /** What a build that fails says, where a test has something particular for it to say. */
+    private List<String> failsSaying;
+    private boolean stoppedAfterTheBuild;
     private boolean gitInstalled = true;
     private boolean commitFails;
     private boolean tagFails;
@@ -100,8 +103,9 @@ class OdkReleaseTest {
                             "../../eggboil.obo ../../eggboil.owl ../../eggboil-base.owl"), false);
                 }
                 if (buildFails && !inContainer.contains("clean")) {
-                    return new ProcessRunner.Outcome(2, Arrays.asList("robot reason ...",
-                            "make: *** [Makefile:124: reason_test] Error 1"), false);
+                    return new ProcessRunner.Outcome(2, failsSaying != null ? failsSaying
+                            : Arrays.asList("robot reason ...",
+                                    "make: *** [Makefile:124: reason_test] Error 1"), false);
                 }
                 write(new File(root, "eggboil.owl"), released);
                 write(new File(root, "eggboil.obo"), "format-version: 1.2\n");
@@ -162,6 +166,11 @@ class OdkReleaseTest {
                         asked.add(staging);
                         return sayYes;
                     }
+
+                    @Override
+                    public boolean stopped() {
+                        return stoppedAfterTheBuild;
+                    }
                 });
     }
 
@@ -187,7 +196,7 @@ class OdkReleaseTest {
         assertFalse(new File(root, "releases/1.0.0/CHANGES.md").exists(), "a first release has "
                 + "nothing to have changed from");
         assertEquals(Arrays.asList(
-                Arrays.asList("git", "add", "-u"),
+                Arrays.asList("git", "add", "-u", "--", "."),
                 Arrays.asList("git", "add", "-f", "--", "eggboil.obo", "eggboil.owl",
                         "eggboil-base.owl"),
                 Arrays.asList("git", "add", "--", "releases/1.0.0"),
@@ -297,6 +306,12 @@ class OdkReleaseTest {
         assertTrue(outcome.getFailure().contains("Timer"), outcome.getFailure());
         assertTrue(outcome.getFailure().contains("0.9.0"), outcome.getFailure());
         assertTrue(outcome.getFailure().contains("owl:deprecated"), outcome.getFailure());
+        // ODK's prepare_release has put its files at the top by then: that is said, and
+        // "nothing was copied" is said of releases/ only (review of 1.153.0).
+        assertTrue(outcome.getFailure().contains("at the top of the project"),
+                outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("nothing was copied to releases/"),
+                outcome.getFailure());
         assertFalse(new File(root, "releases/1.0.0").exists());
         assertEquals(Collections.<List<String>>emptyList(), gitRan);
         assertEquals(0, asked.size());
@@ -349,7 +364,8 @@ class OdkReleaseTest {
         // The commands to run later are lines of their own, to be copied: a sentence in a
         // dialog's label cannot be. The summary stays a sentence and says where they are.
         assertEquals(Arrays.asList("To record the release later, in " + root.getAbsolutePath()
-                + ":", "git add -u", "git add -f -- eggboil.obo eggboil.owl eggboil-base.owl",
+                + ":", "git add -u -- .",
+                "git add -f -- eggboil.obo eggboil.owl eggboil-base.owl",
                 "git add -- releases/1.0.0", "git commit -m \"release(1.0.0)\"",
                 "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
                 outcome.getLater());
@@ -919,5 +935,98 @@ class OdkReleaseTest {
         assertEquals("https://example.org/eggboil/eggboil", facts.ontbase());
         assertEquals(root.getAbsoluteFile(), facts.root().getAbsoluteFile());
         assertNotNull(facts.ontology());
+    }
+
+    // ------------------------------------------------------------------ review of 1.153.0
+
+    /**
+     * Stopped once the build is done - while the release is held against the one before, say:
+     * nothing is copied to releases/, so the version is not taken for released the next
+     * time, and nothing is asked or recorded.
+     */
+    @Test
+    void aReleaseStoppedAfterItWasBuiltCopiesAndRecordsNothing() {
+        stoppedAfterTheBuild = true;
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().startsWith("You stopped the release"),
+                outcome.getFailure());
+        assertFalse(new File(root, "releases").exists());
+        assertNull(ReleaseRun.whyNotThisVersion(root, "1.0.0", tags));
+        assertEquals(Collections.<List<String>>emptyList(), gitRan);
+        assertEquals(0, asked.size());
+    }
+
+    /**
+     * A release that stops at a check says which check and which terms, as Build says of the
+     * same run - not make's last line, which is a row of the check's answer.
+     */
+    @Test
+    void aBuildThatStopsAtACheckSaysWhichCheckAndItsTerms() {
+        buildFails = true;
+        failsSaying = Arrays.asList(
+                "robot --catalog catalog-v001.xml verify -i tmp/merged-eggboil-edit.ofn "
+                        + "--queries ../sparql/a-violation.sparql ../sparql/b-violation.sparql "
+                        + "-O reports",
+                "PASS Rule ../sparql/a-violation.sparql: 0 violation(s)",
+                "FAIL Rule ../sparql/b-violation.sparql: 1 violation(s)",
+                "term,label",
+                "https://example.org/eggboil/t1,coarse salt",
+                "make: *** [Makefile:269: sparql_test] Error 1");
+
+        String failure = release("1.0.0").getFailure();
+
+        assertTrue(failure.startsWith("b-violation.sparql: coarse salt."), failure);
+        assertTrue(failure.contains("'prepare_release' stopped at sparql_test"), failure);
+        assertTrue(failure.endsWith("Nothing was copied, committed or tagged."), failure);
+    }
+
+    /**
+     * An ontology outside OWL 2 DL is no finding of the quality report, though the file that
+     * says so lies under reports/ and the log is full of the word "violation".
+     */
+    @Test
+    void aBuildThatStopsAtTheProfileIsNotBlamedOnTheQualityReport() {
+        buildFails = true;
+        failsSaying = Arrays.asList(
+                "PASS Rule ../sparql/a-violation.sparql: 0 violation(s)",
+                "robot --catalog catalog-v001.xml validate-profile --profile DL -i "
+                        + "tmp/validate.ofn -o reports/validate_profile_owl2dl_eggboil.owl.txt "
+                        + "|| { cat reports/validate_profile_owl2dl_eggboil.owl.txt && exit 1; }",
+                "PROFILE VIOLATION ERROR https://example.org/eggboil.owl violates profile DL",
+                "OWL 2 DL Profile Report: Ontology and imports closure NOT in profile. The "
+                        + "following violations are present:",
+                "Use of undeclared class: <https://example.org/A> [SubClassOf("
+                        + "<https://example.org/A> <https://example.org/B>) in OntologyID("
+                        + "OntologyIRI(<https://example.org/eggboil.owl>))]",
+                "",
+                "make: *** [Makefile:251: reports/validate_profile_owl2dl_eggboil.owl.txt] "
+                        + "Error 1");
+
+        String failure = release("1.0.0").getFailure();
+
+        assertFalse(failure.toLowerCase().contains("quality report"), failure);
+        assertTrue(failure.startsWith("The ontology is not in OWL 2 DL"), failure);
+    }
+
+    /**
+     * make keeps a variable's last value, and ODK's Makefile reads the project's own last: a
+     * base that file sets is the base make uses, and the one a version IRI of another shape
+     * than ODK's has to be written with (review of 1.153.0: the first value was kept).
+     */
+    @Test
+    void aBaseTheProjectsOwnMakefileSetsIsTheOneMakeUses() throws IOException {
+        File own = new File(ontology, "eggboil.Makefile");
+        String text = own.isFile() ? new String(Files.readAllBytes(own.toPath()),
+                StandardCharsets.UTF_8) : "";
+
+        write(own, text + "\nONTBASE=https://w3id.org/kitchen/eggboil\n");
+        assertEquals("https://w3id.org/kitchen/eggboil", OdkRelease.Facts.of(edit).ontbase());
+
+        write(own, text + "\nONTBASE?=https://w3id.org/kitchen/eggboil\n");
+        assertEquals("https://example.org/eggboil/eggboil", OdkRelease.Facts.of(edit).ontbase(),
+                "?= gives a value only to what has none");
     }
 }
