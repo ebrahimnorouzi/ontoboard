@@ -524,6 +524,15 @@ public final class OdkRelease {
 
         ProcessRunner.Outcome built;
         try {
+            if (script == null) {
+                // What a test left behind is not taken for the release's own.
+                ProcessRunner.Outcome cleaned = ran(ReleaseRun.cleanArguments(), false, odk,
+                        log);
+                if (!cleaned.isSuccess()) {
+                    return log.failed(MakeRun.explain("clean", cleaned)
+                            + " Nothing was built, copied, committed or tagged.");
+                }
+            }
             built = ran(command, passThrough, odk, log);
         } catch (IOException cannotStart) {
             return log.failed(cannotStart.getMessage() + " Nothing was built, copied, "

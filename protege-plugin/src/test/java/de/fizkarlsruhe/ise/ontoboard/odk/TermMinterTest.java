@@ -536,4 +536,37 @@ class TermMinterTest {
                 .contains("https://example.org/DEMO_0001001"), "a release made since counts");
         assertEquals(before + 2, TermMinter.tagFilesRead(), "and only the new one was read");
     }
+
+    /**
+     * Seen live (1.153.0): the first New subclass... in a new project showed a dialog 1417
+     * pixels wide, wider than the screen. The sentence about ODK's placeholder ranges is
+     * long, and the dialog that shows it does not wrap.
+     */
+    @Test
+    void aLongSentenceIsBrokenBetweenWordsForADialog() {
+        String sentence = "New terms get numeric identifiers, with what you type as the label. "
+                + "This project's ID ranges are still ODK's placeholders - ONTOLOGY-CREATOR and "
+                + "ADDITIONAL EDITOR - so OntoBoard first asks which one is yours and writes "
+                + "\"someone\" into it.";
+
+        String shown = TermMinter.onLines(sentence, 90);
+
+        for (String line : shown.split("\n")) {
+            assertTrue(line.length() <= 90, line.length() + ": " + line);
+            assertEquals(line.trim(), line, "no space left at a line's end");
+        }
+        assertEquals(sentence, shown.replace('\n', ' '), "every word, in its order");
+        assertEquals("short", TermMinter.onLines("short", 90));
+        // The question about the ranges has paragraphs: each is broken by itself, and the
+        // empty line between two stays (the dialog was 1134 pixels wide).
+        String question = TermMinter.claimQuestion("someone", "eggboil-idranges.owl", "class");
+        String asked = TermMinter.onLines(question, 90);
+        for (String line : asked.split("\n")) {
+            assertTrue(line.length() <= 90, line.length() + ": " + line);
+        }
+        assertEquals(3, asked.split("\n\n").length, "three paragraphs, as before");
+        assertEquals(question.replace('\n', ' '), asked.replace('\n', ' '));
+        assertEquals("averyveryverylongword\nand", TermMinter.onLines("averyveryverylongword and", 5),
+                "a word longer than a line stays whole");
+    }
 }

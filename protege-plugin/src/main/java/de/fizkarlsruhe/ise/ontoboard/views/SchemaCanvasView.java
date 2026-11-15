@@ -6731,7 +6731,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         : (kind == EntityFactory.Kind.INDIVIDUAL ? " - an individual of "
                                 : " - a subclass of ") + DisplayLabels.forEntity(ontology,
                                         getOWLModelManager().getOWLDataFactory().getOWLClass(parent)))
-                        + ":\n\n" + minter.describe(),
+                        // On lines of its own: the dialog does not wrap, and the sentence
+                        // about ODK's placeholder ranges made it wider than a screen.
+                        + ":\n\n" + TermMinter.onLines(minter.describe(), 90),
                 parent == null ? "New " + what : kind == EntityFactory.Kind.INDIVIDUAL
                         ? "New individual" : "New subclass", JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
@@ -6962,7 +6964,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
         }
         Object chosen = JOptionPane.showInputDialog(this,
-                TermMinter.claimQuestion(editorName(), minter.getRangesFile().getName(), term),
+                TermMinter.onLines(TermMinter.claimQuestion(editorName(),
+                        minter.getRangesFile().getName(), term), 90),
                 "Which range is yours?", JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
         if (chosen == null) {
             return null;

@@ -388,6 +388,10 @@ public final class MakeRun {
                         + "afterwards so it picks up the new PATH.";
     }
 
+    /** make's word on a rule it does not have: the target, and what needed it. */
+    private static final java.util.regex.Pattern NO_RULE = java.util.regex.Pattern.compile(
+            "No rule to make target '([^']+)'(?:, needed by '([^']+)')?");
+
     /** What a transcript says, in lower case, when a download failed for want of the network. */
     private static final java.util.regex.Pattern NO_NETWORK = java.util.regex.Pattern.compile(
             "could not resolve host|curl: \\((?:6|7|28|35|52|56)\\)|unknownhostexception"
@@ -419,6 +423,21 @@ public final class MakeRun {
                     + "been waiting for input, which it cannot get from here.";
         }
         String transcript = joined(outcome.getOutput()).toLowerCase(Locale.ROOT);
+        java.util.regex.Matcher noRule = NO_RULE.matcher(joined(outcome.getOutput()));
+        if (noRule.find() && !noRule.group(1).equals(target)) {
+            // The rule that is missing is the one make names, which need not be the
+            // target that was asked for.
+            String missing = noRule.group(1);
+            return "make has no rule to make '" + missing + "'"
+                    + (noRule.group(2) == null ? "" : ", which '" + noRule.group(2)
+                            + "' needs") + ", so '" + target + "' stopped."
+                    + (missing.startsWith("mirror/") ? " A file under mirror/ is an "
+                            + "imported ontology as it was downloaded: test_fast and "
+                            + "prepare_release_fast download nothing, so a project whose "
+                            + "own rules build its import modules from the downloads "
+                            + "needs test or prepare_release, which fetch them first."
+                            : "");
+        }
         if (transcript.contains("no rule to make target")) {
             return "make has no rule for '" + target + "'. The Makefile may have changed since "
                     + "this list was read - reopen the dialog to read it again.";
@@ -453,7 +472,14 @@ public final class MakeRun {
                                     + "they are, or " + target + " again when the network is "
                                     + "back.");
         }
-        if (transcript.contains("violation") && transcript.contains("report")) {
+        // The report is the reason when it stopped the run: every run of ODK's prints its
+        // count of violations, whatever stops it later.
+        String report = OdkTargets.whatTheReportFound(outcome.getOutput());
+        if (report != null) {
+            return report;
+        }
+        if (transcript.contains("violation")
+                && outcome.lastMeaningfulLine().toLowerCase(Locale.ROOT).contains("report")) {
             return "The quality report found violations the project treats as failures. Run "
                     + "OntoBoard > Check and test > Quality report to see them one by one.";
         }

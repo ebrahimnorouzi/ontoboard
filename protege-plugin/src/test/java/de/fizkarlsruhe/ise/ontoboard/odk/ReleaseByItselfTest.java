@@ -108,7 +108,7 @@ class ReleaseByItselfTest {
                 + "releases/1.0.0, where ODK's version IRIs point");
         assertEquals("https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl",
                 versionIriOf(new File(root, "eggboil.owl")), "ODK's version IRI");
-        assertTrue(log.contains("$ make prepare_release_fast -B VERSION=1.0.0"), log);
+        assertTrue(log.contains("$ make prepare_release_fast VERSION=1.0.0"), log);
         assertTrue(log.contains("run by OntoBoard itself"), "the log says who ran it: " + log);
         assertTrue(log.contains("PASS Rule ../sparql/check_labels-violation.sparql"),
                 "the tests ran as part of it: " + log);
@@ -121,8 +121,8 @@ class ReleaseByItselfTest {
     /**
      * ODK's test builds the ontology it validates - the file a release puts at the top of the
      * project - and stamps it with the day. A release made afterwards must not take that file
-     * for its own: ODK's instructions release with {@code make -B}, which makes everything
-     * again. Found in 1.153.0's own work: a release numbered 1.0.0, made after a test, carried
+     * for its own: a release cleans first, which takes that file away. Found in 1.153.0's
+     * own work: a release numbered 1.0.0, made after a test, carried
      * the day as its version.
      */
     @Test
@@ -144,8 +144,56 @@ class ReleaseByItselfTest {
             assertEquals("https://example.org/eggboil/eggboil/releases/1.0.0/" + product,
                     versionIriOf(new File(root, product)), product);
         }
-        assertTrue(log.contains("$ make prepare_release_fast -B VERSION=1.0.0"),
-                "as ODK's own instructions release: " + log);
+        assertTrue(log.contains("$ make prepare_release_fast VERSION=1.0.0"),
+                log);
+        assertTrue(log.contains("$ make clean"), log);
+    }
+
+    /**
+     * Seen live (1.153.0), in the guide's own order: a pattern imported, then Release... -
+     * "ERROR: You have configured ... as a custom module; This rule needs to be overwritten".
+     * A module OntoBoard keeps as it is - a pattern, a MIREOT import, a file of this machine -
+     * is declared custom, and ODK's rule for a custom module is an error that says to write
+     * one's own. make leaves that rule alone while the module is there; a release made with
+     * {@code make -B}, which makes everything again, ran it. A release cleans first instead,
+     * as the release scripts of real projects do, and makes what is missing.
+     */
+    @Test
+    void aProjectWithAModuleKeptAsItIsIsReleased(@TempDir File where) throws Exception {
+        File frozen = new File(where, "froz");
+        for (java.util.Map.Entry<String, byte[]> file
+                : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.seedTree("frozen").entrySet()) {
+            File target = new File(frozen, file.getKey());
+            assertTrue(target.getParentFile().isDirectory() || target.getParentFile().mkdirs());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        assertTrue(new File(frozen, ".git").mkdir(), "a repository");
+        File frozenEdit = new File(frozen, "src/ontology/froz-edit.owl");
+        assertTrue(frozenEdit.isFile());
+
+        for (boolean refreshImports : new boolean[] {false, true}) {
+            OdkRelease.Outcome outcome = OdkRelease.run(new OdkRelease.Request(frozenEdit,
+                    refreshImports ? "1.1.0" : "1.0.0",
+                    VersionIriShape.of(VersionIriShape.Kind.ODK), refreshImports, true),
+                    OdkRelease.byOntoBoardItself(frozenEdit, null), git(), new OdkRelease.Asks() {
+                        @Override
+                        public boolean commit(ReleaseRun.Staging staging) {
+                            return true;
+                        }
+                    });
+
+            String log = String.join("\n", outcome.getTranscript());
+            assertTrue(!log.contains("as a custom module"), log);
+            assertTrue(log.contains("$ make clean"), log);
+            if (refreshImports) {
+                // The recorded project also has a module with a source on the web, at an
+                // address made up for it: the release gets as far as fetching that.
+                assertTrue(outcome.isOk() || outcome.getFailure().contains("mirror-handmade"),
+                        outcome.getFailure() + "\n" + log);
+            } else {
+                assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + log);
+            }
+        }
     }
 
     /**
