@@ -72,6 +72,10 @@ class TextToAxiomTest {
      * Review 1.141.0 M3, raised to Important: a safety check that ran out of time scored the gold
      * answer safe 0, pass false, with no error - on a busy machine, a right answer failed
      * silently. The check's error is now the score's.
+     *
+     * <p>A time of 0, not 1 ms: the check stops once the clock has reached its deadline, and on a
+     * fast runner HermiT answered this small ontology within the same millisecond, so the check
+     * passed (the first CI run of 1.153.0). With 0 the deadline has been reached when it looks.
      */
     @Test
     void aSafetyCheckThatRunsOutOfTimeIsTheRowsError() {
@@ -79,7 +83,7 @@ class TextToAxiomTest {
                 .timeoutMillis();
         long grace = de.fizkarlsruhe.ise.ontoboard.assistant.proposals.ProposalCheckTiming
                 .graceMillis();
-        de.fizkarlsruhe.ise.ontoboard.assistant.proposals.ProposalCheckTiming.set(1, 0);
+        de.fizkarlsruhe.ise.ontoboard.assistant.proposals.ProposalCheckTiming.set(0, 0);
         Score score;
         try {
             score = score("Margherita SubClassOf hasTopping some 'cheese topping'");

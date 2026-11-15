@@ -298,10 +298,19 @@ class ProjectFolderTest {
 
         String said = de.fizkarlsruhe.ise.ontoboard.assistant.history.ConversationRecorder
                 .excludeProblem(ProjectFolder.of(new File(junction, "pizza-edit.owl")), failed);
-        assertTrue(said.contains("could not follow " + junction.getAbsolutePath()), said);
+        assertTrue(said.contains("could not follow " + asSaid(junction)), said);
         assertTrue(said.contains("access denied"), said);
         assertFalse(said.contains("could not be put") || said.contains("could not be written"),
                 said);
+    }
+
+    /**
+     * A link's path as OntoBoard says it: its folder under its long name. GitHub's Windows
+     * runners spell the temporary folder with an 8.3 short name (C:\Users\RUNNER~1\...), and
+     * OntoBoard names where a folder is by its real, long name (C:\Users\runneradmin\...).
+     */
+    private static String asSaid(File link) throws IOException {
+        return new File(link.getParentFile().getCanonicalFile(), link.getName()).getPath();
     }
 
     /** A clone made by hand, as git makes one: its top folder. */
@@ -358,7 +367,7 @@ class ProjectFolderTest {
         Throwable[] more = failed.getSuppressed();
         assertEquals(1, more.length, java.util.Arrays.toString(more));
         assertTrue(more[0] instanceof ProjectFolder.NotFollowed, String.valueOf(more[0]));
-        assertEquals(j1.getAbsoluteFile(), ((ProjectFolder.NotFollowed) more[0]).getFolder());
+        assertEquals(new File(asSaid(j1)), ((ProjectFolder.NotFollowed) more[0]).getFolder());
     }
 
     /**

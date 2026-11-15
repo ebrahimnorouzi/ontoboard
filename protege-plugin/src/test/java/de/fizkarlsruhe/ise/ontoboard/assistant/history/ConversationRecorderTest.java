@@ -323,6 +323,15 @@ class ConversationRecorderTest {
         return exclude;
     }
 
+    /**
+     * A link's path as OntoBoard says it: its folder under its long name. GitHub's Windows
+     * runners spell the temporary folder with an 8.3 short name (C:\Users\RUNNER~1\...), and
+     * OntoBoard names where a folder is by its real, long name (C:\Users\runneradmin\...).
+     */
+    private static String asSaid(File link) throws IOException {
+        return new File(link.getParentFile().getCanonicalFile(), link.getName()).getPath();
+    }
+
     private static boolean onWindows() {
         return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT)
                 .startsWith("windows");
@@ -744,7 +753,7 @@ class ConversationRecorderTest {
         assertEquals(1, problems.size(), "once per conversation, file and reason: " + problems);
         String said = problems.get(0);
         assertTrue(said.contains(excludeB.getCanonicalPath() + " could not be written"), said);
-        assertTrue(said.contains("could not follow " + j1.getAbsolutePath() + " to where it really"
+        assertTrue(said.contains("could not follow " + asSaid(j1) + " to where it really"
                 + " is (Access is denied)"), said);
         assertFalse(said.contains("\n"), said);
     }
