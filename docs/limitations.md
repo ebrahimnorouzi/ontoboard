@@ -160,8 +160,8 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   *Project → ID ranges...* allocates one.
 - **A project made by OntoBoard 1.135 or before is not built or released until it is carried
   over.** Its Makefile is OntoBoard's own, and *Build...* and *Release...* say so and run nothing,
-  not even with a `make` and ROBOT the machine has. *OntoBoard > Project > Update project
-  files...* (tick *Write the changes*) makes it an ODK project, and keeps the ontology, its
+  not even with a `make` and ROBOT the machine has. 
+  *OntoBoard > Project > Update project files...* (tick *Write the changes*) makes it an ODK project, and keeps the ontology, its
   imports and its tests.
 - ***Build...* and *Release...* check consistency with ELK, as ODK's Makefile does.** ELK does not
   reason over inverse properties, data ranges, cardinalities or negation, so an ontology only a DL
@@ -169,8 +169,8 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   passes, the ontology uses them and has at most 20,000 logical axioms, HermiT is asked as well,
   for ten seconds, and the result warns with any class it finds can have no members; the verdict
   stays ELK's. *Release...* of an ontology in no project uses ELK unless another reasoner is
-  chosen, and asks HermiT the same way. For a larger ontology, run HermiT, or *Check and test →
-  Explain...*, before releasing.
+  chosen, and asks HermiT the same way. For a larger ontology, run HermiT, or
+  *OntoBoard > Check and test > Explain...*, before releasing.
 - ***Template...* types a value only when the cell says so** (`2026-11-01T18:00:00^^xsd:dateTime`).
   It warns about an untyped value only when the property declares a datatype range, so a date
   typed without its datatype becomes a plain string, silently, under a property with no range -

@@ -57,8 +57,8 @@ OntoBoard writes it from ODK's own templates.
 
 **Already have an ontology?** Open it, then *OntoBoard > Project > New ODK project...* and tick
 **Start from** your file: it becomes the project's edit file, its address and everything in it
-kept. With its earlier versions, *OntoBoard > Project > Turn an ontology into an ODK
-repository...* makes the project from it, in any format: each earlier version becomes a release
+kept. With its earlier versions, 
+*OntoBoard > Project > Turn an ontology into an ODK repository...* makes the project from it, in any format: each earlier version becomes a release
 and a git tag, oldest first, so the project starts with its history. Imports become modules of
 the terms you use. Every step is shown as it runs, with what it wrote.
 

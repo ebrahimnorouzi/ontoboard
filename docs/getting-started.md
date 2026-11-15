@@ -47,8 +47,8 @@ itself writes - in ODK's container where Docker or Podman and ODK's image are th
 from ODK's own templates, which OntoBoard carries, so nothing else is needed - makes it a git
 repository with a first commit where git is installed, and opens the edit file, the file you work
 in. Already have the ontology? Open it first and tick **Start from** your file in the same
-dialog. If your team already uses ODK, open its repository instead (*OntoBoard > Project > Open
-existing ODK project...*). A project made by OntoBoard 1.135 or before is carried over with
+dialog. If your team already uses ODK, open its repository instead
+(*OntoBoard > Project > Open existing ODK project...*). A project made by OntoBoard 1.135 or before is carried over with
 *OntoBoard > Project > Update project files...* before it builds.
 
 **The board shows the whole ontology.** Open the OntoBoard tab and every class, object property,

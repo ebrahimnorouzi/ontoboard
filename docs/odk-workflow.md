@@ -223,8 +223,8 @@ be given once more.
 
 ### From an ontology you already have
 
-**The open file, in *New ODK project...*.** Open the ontology, then *OntoBoard > Project > New
-ODK project...*: the box **Start from <file> - keep its address and everything in it** fills in
+**The open file, in *New ODK project...*.** Open the ontology, then
+*OntoBoard > Project > New ODK project...*: the box **Start from <file> - keep its address and everything in it** fills in
 the ID, the base IRI and the title from it. The file becomes the project's edit file byte for
 byte, under its own address whatever its shape, and the file you opened is left as it was. The
 box is not offered for a file that is a project's edit file already (`*-edit.owl`).
@@ -411,8 +411,8 @@ The full schema is ODK's: [incatools.github.io/ontology-development-kit/project-
 workflows, catalog and the edit file's imports are what ODK's update writes from this file, and
 saving it in an ODK project ends with that update: ODK's own in the project's own ODK image where
 that is on the machine, OntoBoard's for a project on ODK v1.6.1, and otherwise the file alone,
-with the sentence that the rest follows at the next *OntoBoard > Project > Update project
-files...*. A save never moves a project to another ODK version; only *Update project files...*
+with the sentence that the rest follows at the next
+*OntoBoard > Project > Update project files...*. A save never moves a project to another ODK version; only *Update project files...*
 does that, when asked.
 
 ---
@@ -718,8 +718,8 @@ yours to commit or ignore.
 ### `catalog-v001.xml` 🔶
 
 Read by *Reuse → Check imports*, which shows what each import maps to and why an unresolved one
-failed. In an ODK project it is ODK's: since 1.153.0 the entry for a module *Reuse → Import terms
-from a list…* saves is written by ODK's update, which merges it with what the catalog already
+failed. In an ODK project it is ODK's: since 1.153.0 the entry for a module
+*Reuse → Import terms from a list…* saves is written by ODK's update, which merges it with what the catalog already
 has. Only where that update cannot run now does *Import terms from a list...* add the `<uri>`
 entry itself, so the import resolves until the next *Update project files...*.
 
