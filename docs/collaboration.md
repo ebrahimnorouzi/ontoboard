@@ -17,7 +17,8 @@ development are often unpublished, and a research group should not have to send 
 somebody else's service to work on them together.
 
 If nobody wants to run one, git mode is not a downgraded fallback. It is how OBO ontologies are
-actually built, and the ODK repository the plugin scaffolds is already set up for it.
+actually built, and the ODK repository *New ODK project...* writes - since 1.153.0 a git
+repository from its first commit - is already set up for it.
 
 ---
 

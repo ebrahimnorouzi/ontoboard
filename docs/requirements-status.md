@@ -34,22 +34,22 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 | Step | Status | Where, or what is missing |
 |---|---|---|
-| Create a project without Docker | Yes | **Project → New ODK project…**. Docker is not required by the plugin at all: the generated Makefile calls `robot` directly. Docker is still the easiest way to get the full ODK toolchain, and `seed-via-docker.sh` is not run from here. |
+| Create a project without Docker | Yes | **Project → New ODK project…**. Since 1.153.0 it writes ODK v1.6.1's own seed, byte for byte: ODK writes it in its container where Docker or Podman and ODK's image are there, and otherwise OntoBoard writes the same files from ODK's templates. `seed-via-docker.sh` itself is not run from here. |
 | Open an existing ODK project | Yes | **Project → Open existing ODK project…**, and **Open from GitHub…** clones one. |
 | `<ontology>-odk.yaml` visible and editable inside Protégé | Yes | **Project → Project configuration…** reads and writes it; `OdkYaml` preserves what it does not model rather than rewriting the file. |
-| `id`, `title`, `github_org`, `repo` | Yes | In that editor, and used by the scaffold. |
-| `release_artefacts` / `primary_release` | Partly | `export_formats` is honoured by **Release…**; which *artefacts* (base, full, simple) are built is the project's own Makefile, not this menu. |
+| `id`, `title`, `github_org`, `repo` | Yes | In that editor, and used by ODK's seed and update. Since 1.153.0 saving the file ends with ODK's update, so the project's files follow it. |
+| `release_artefacts` / `primary_release` | Yes (1.153.0) | **Release…** runs ODK's own `prepare_release`, which builds the artefacts and formats the configuration names. |
 | `import_group` — declaring imports | Yes | **Reuse → Check imports**, **Reuse → Import terms from a list…**, **Reuse → Refresh imports…**, and the YAML editor. |
 | Module type BOT / TOP / STAR / custom | Yes | **Reuse → Import terms from a list…** offers the extraction method and writes the catalog entry. |
 | `robot_report` settings, `custom_profile` | Yes | **Check and test → Quality report…** uses the project's own `profile.txt` when there is one, and says which profile it used. |
-| `sh run.sh make …` targets | Partly | **Build and release → Build…** runs the targets of a project whose Makefile is the one this OntoBoard writes in-process, with nothing installed; any other Makefile needs `make` and the tools it calls. `update_repo` is modelled by **Update project files…**, which regenerates the files OntoBoard generates — it is not ODK's own `update_repo`. |
+| `sh run.sh make …` targets | Yes (1.153.0) | **Build and release → Build…** runs the targets of the project's own Makefile: with ODK's tools installed, in ODK's container where its image is there, or by OntoBoard itself inside Protégé, with nothing installed. OntoBoard itself runs ODK's recipes only - a rule the project adds in its own `<id>.Makefile` needs the container or ODK's tools. `update_repo` is **Update project files…**, ODK's own update. |
 | `src/scripts/` — run your own scripts | Yes | **Project → Run a project script…**, with arguments and the output captured. |
 | `<ontology>-idranges.owl` | Yes | **Project → ID ranges…** shows every allocation and can allocate a block. Used for minting on the canvas and, since 1.117.0, in the sheets. |
-| `profile.txt` | Yes | Generated, and read by the quality report. |
-| `catalog-v001.xml` | Yes | Generated, honoured by every `robot` call in the generated Makefile, and written to by **Reuse → Import terms from a list…**. |
-| `src/metadata` for OBO Foundry submission | No | Not generated and not checked. |
+| `profile.txt` | Yes | Written by ODK's seed, and read by ODK's report and by the quality report. |
+| `catalog-v001.xml` | Yes | Written by ODK's seed and update, honoured by every `robot` call in ODK's Makefile; an import made with **Reuse → Import terms from a list…** gets its entry from ODK's update. |
+| `src/metadata` for OBO Foundry submission | Partly | ODK's seed writes it; **Check and test → Check project metadata** compares it with the ontology, and nothing edits it. |
 | A form that returns to itself when a value is rejected | Yes | Every parameter dialog re-opens with what was typed, including the project wizard. |
-| `make` not on PATH should not be a dead end | Yes | **OntoBoard → Check requirements…** says what is missing and how to get it; several targets run in-process without `make`. |
+| `make` not on PATH should not be a dead end | Yes | **OntoBoard → Check requirements…** says what is missing and how to get it; since 1.153.0 OntoBoard runs ODK's own targets itself without `make`. |
 
 ## 3. ROBOT operations
 
@@ -74,14 +74,14 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 | Asked for | Status | Where, or what is missing |
 |---|---|---|
-| A published version distinct from the edit file | Yes | **Build and release → Release…** |
-| A dated release IRI, OBO style | Yes | `…/releases/2026-10-12/mwo.owl`, with a dated copy kept. |
+| A published version distinct from the edit file | Yes | **Build and release → Release…** - in a project, since 1.153.0, ODK's own `prepare_release`, committed and tagged `v<version>` after the git commands are shown. |
+| A dated release IRI, OBO style | Yes | `…/releases/2026-10-12/mwo.owl`, with a dated copy kept. In a project it is ODK's own shape, `<ONTBASE>/releases/<version>/<file>`, one of the shapes the Release dialog offers. |
 | **Semantic versioning, as MWO publishes** | **Yes (1.117.0)** | Choose the convention in the dialog. Semantic publishes `…/mwo/3.0.2` with `owl:versionInfo "3.0.2"` — the exact shape MWO's own `release.sh` produces — and links `owl:priorVersion` to the release before it. |
 | The convention should be the user's choice | Yes | A *Versioning* field with both. The default is read from what the ontology already declares, so releasing somebody else's project continues their history rather than starting a second one. |
-| The build should be able to do both too | Yes | The generated Makefile takes `VERSION` and `VERSION_IRI` as overrides (`make VERSION=3.0.2 VERSION_IRI=… prepare_release`), which is how MWO's `release.sh` drives it. |
-| Refuse to publish something broken | Yes | The quality report at error level, and a check that no term the last release published has vanished. |
+| The build should be able to do both too | Yes | Since 1.153.0 the release is ODK's own: `make prepare_release -B VERSION=3.0.2`, with the version IRI's shape passed as `ANNOTATE_ONTOLOGY_VERSION=…` on make's command line, the way ODK projects' release scripts pass it. A project's own `release.sh` is run instead where it has one. |
+| Refuse to publish something broken | Yes | ODK's release runs ODK's test first, and a check that no term the last release published has vanished stops it before it is committed. |
 | Release notes | Yes | `CHANGES.md` written beside the dated copy, generated from the diff. |
-| Compare two releases | Partly | **Build and release → Compare releases…** compares dated or semantic directories under `releases/`. A project that publishes by git tag and PURL without keeping a `releases/` folder — which MWO does — has nothing for it to list. |
+| Compare two releases | Yes (1.153.0) | **Build and release → Compare releases…** compares the project's releases: since 1.153.0 its git tags `v<version>` as well as the folders under `releases/`, so a project that publishes by git tag without keeping a `releases/` folder has its releases listed. |
 
 ## 5. Knowledge graphs, templates and spreadsheets
 
@@ -177,7 +177,8 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
   planned.
 - **SSSOM mappings.** The most-converged gap in the earlier review and still open.
 - **DOSDP templates.** Separate from the pattern library and not read.
-- **OBO Foundry submission metadata.** Not generated.
+- **OBO Foundry submission metadata.** ODK's seed writes `src/metadata/` since 1.153.0, and
+  *Check project metadata* compares it with the ontology; nothing edits it.
 - **Reviewing pull requests in Protégé.** See above.
 
 ## Known reports not yet re-checked

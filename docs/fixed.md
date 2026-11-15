@@ -13,6 +13,54 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A project OntoBoard made was not an ODK project, fixed in 1.153.0.** Found by having ODK
+  v1.6.1 seed a project from the very configuration OntoBoard's wizard wrote, and holding the two
+  side by side. ODK's had a Makefile of several hundred lines - `update_repo`, `refresh-imports`,
+  base and full release artefacts, ODK's four SPARQL checks - with `run.sh` beside it and a CI
+  workflow in ODK's image; OntoBoard's had a Makefile of its own, 60 lines and 8 targets calling
+  ROBOT directly, and a CI workflow that downloaded ROBOT. ODK's own commands did not exist in an
+  OntoBoard project, and on a real ODK repository *Release...* and the import refresh were
+  OntoBoard's own logic, past the project's custom Makefile and its release script: a release
+  OntoBoard made was not the release its maintainers make. Now *New ODK project...* writes ODK's
+  own seed, every file byte for byte - in ODK's container where its image is on the machine,
+  otherwise from ODK's templates, which OntoBoard carries and renders itself - and adds six files
+  of its own. *Build...*, *Release...*, *Refresh imports...* and *Update project files...* run
+  ODK's own targets: with ODK's tools installed, in ODK's container, or by OntoBoard itself, which
+  reads ODK's Makefile and runs its recipes inside Protégé with nothing to install. A project made
+  by 1.135 or before is carried over by *Update project files...*. `SeedParityTest`,
+  `SeedCorpusTest` (ODK's own 79 sample configurations), `FallbackEquivalenceTest`,
+  `ImportChainEquivalenceTest`.
+- **The Requirements window cut its rows off, fixed in 1.153.0.** Found by reading a picture of
+  the window in an isolated Protégé: every longer row ended in the middle of a sentence. A row's
+  text asked for a width of 520 px, which Swing's HTML draws about 676 pixels wide, in a window
+  that shows some 600 and does not scroll sideways. Older than this version: 1.135.2 has it too.
+  A row is now as wide as the window has room for. Two of its sentences were no longer true
+  either - that a native ODK environment means using Docker or Podman, and that make is needed
+  for a project OntoBoard did not make - and now say that nothing needs either.
+- **Turning an ontology into a repository said a file it imports could not be loaded, fixed in
+  1.153.0.** Found converting an ontology: step 1 said "1 of its imports could not be loaded" for
+  a file that was there. A file's address is `file:/C:/...` as Java writes it and `file:///C:/...`
+  as most people do; an import declared the second way was recorded under the first, and the OWL
+  API finds an import only by the address it is declared under. Older than this version, and
+  *Import terms from a list...* and *Find terms in another ontology...* read through the same
+  code. An import that is read is now given the address it is declared under.
+  `OntologySourceTest`.
+- **A release "removed" an annotation property its header no longer used, fixed in 1.153.0.**
+  Found in a conversion's release, which said "Removed: date". A release is RDF/XML, which
+  declares every annotation property it uses, the header's too; read back from its file, a
+  property that was only ever in the header counted as a published term, and a release that no
+  longer used it had "removed a term" - with *Refuse to release when a published term is gone*
+  ticked, *Release...* would have refused. The fix of 1.135.x held for ontologies in memory only.
+  `ReleaseDiffTest.aHeaderAnnotationIsNotAPublishedTermInAReleaseFileEither`.
+- **`CHANGES.md` listed a release's terms in another order each time, fixed in 1.153.0.** Found by
+  converting the same history twice: two lines of `CHANGES.md` changed places between two builds
+  of the same release, because terms were listed in the order the OWL API handed out its axioms.
+  They are listed by IRI. `ReleaseDiffTest.theTermsAreNamedInOneOrder`.
+- **An earlier version given in OWL/XML was recorded with `<Ontology>` for `<owl:Ontology>`, fixed
+  in 1.153.0.** Found running the conversion's tests on OWL API 4.5.29, Protégé 5.6.9's: that OWL
+  API hands OWL/XML's own namespace on as the ontology's default prefix, and the conversion copied
+  the prefixes it read. A default prefix that is OWL's, RDF's, RDFS's or XSD's own vocabulary is
+  left out. `OdkConversionTest.owlsOwnVocabularyIsNotMadeTheDefaultPrefix`.
 - **Zoomed out, a relation's label lay on the line beside it, fixed in 1.135.2.** Found by the
   scripted run of the egg boiling guide on 1.135.1's release jar, which measures the board after
   every task at the zoom Fit gives: after T3 "∃ concretizes" (plan to plan specification) lay on the
