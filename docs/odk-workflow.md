@@ -541,6 +541,9 @@ line, and every argument is quoted there.
 outright - and a running build, and a running git command. Before this it dismissed the dialog
 and left the work going, so stopping a forty-minute ODK build freed the window and nothing else.
 An in-process ROBOT operation still cannot be interrupted; the dialog distinguishes the two.
+Since 1.153.0 a build in ODK's container stops with it: killing the `docker run` or
+`podman run` that started a container leaves the container running, so OntoBoard names each
+container it starts and removes it by that name when the run is stopped or its time is up.
 
 **Limits.** A script gets 15 minutes rather than a build's 45 - a backstop for a runaway nobody
 is watching, since the button needs somebody in front of it. Arguments are not remembered
@@ -1198,7 +1201,7 @@ and full variants in both. Then, in this order:
 3. The git commands are shown, and run when you press **Commit and tag**:
 
     ```
-    git add -u
+    git add -u -- .
     git add -f -- <id>.owl <id>.obo <id>-base.owl ...
     git add -- releases/<version>
     git commit -m "release(<version>)"
@@ -1206,12 +1209,22 @@ and full variants in both. Then, in this order:
     ```
 
     `-f` because ODK's `.gitignore` keeps the release files out of git; adding them by name is
-    ODK's own documented way to commit them. Files git has never tracked are not swept in. With
+    ODK's own documented way to commit them. `-- .` keeps the first command to the project,
+    which matters where the project is a folder of a larger repository: without it, tracked
+    changes anywhere in that repository would go into the release's commit. Where cleaning
+    removed a file of `tmp/`, `mirror/` or `target/` that git tracks - `tmp/README.md`, which
+    older ODKs seeded - a `git checkout --` line comes first and puts it back, so that the
+    commit does not delete it. Files git has never tracked are not swept in. With
     **Not now**, or without git on the PATH, nothing is committed and the commands are at the
     end of the log to copy; a project that is not a git repository is told so. Pushing is
     yours: `git push --follow-tags`.
 
 Whatever the release rewrote that Protégé has open is read again afterwards.
+
+Stopped while ODK builds, a release ends there. Stopped once ODK has built it - while it is
+held against the release before - it writes nothing of its own: no folder under `releases/`,
+no commit, no tag, so the version can still be released. A release that fails says what
+stopped it as *Build...* says it of the same run.
 
 ### An ontology in no project
 

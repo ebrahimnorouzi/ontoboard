@@ -331,7 +331,9 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   file it read as an import open until Java's garbage collector comes by, unless the file is
   RDF/XML. After a conversion or an update, a local import in Turtle or another syntax can then
   refuse to be moved or deleted for a while; wait a moment and try again, or keep local imports in
-  RDF/XML.
+  RDF/XML. The same holds for an edit file saved in Turtle after OntoBoard itself has built
+  the project (seen in a test of 1.153.0): ROBOT reads it through the OWL API. An edit file
+  in functional syntax, which is what ODK seeds, or in RDF/XML is not held.
 - **ODK's `.gitignore` leaves the release files out of git.** The files a release writes at the
   top of the project - `<id>.owl`, `<id>-base.owl` and the rest - are ignored by the `.gitignore`
   ODK's seed writes, so *Share → Git... → Commit everything* does not take them in and `git
