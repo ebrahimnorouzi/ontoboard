@@ -309,8 +309,8 @@ pick. **Save…** still writes the conversation you see to a file of your choice
   - If a term doesn't fit the model's context length, its chip is left out, and a notice names
     it. The model can still ask for it.
   - If nothing is sent, no chip is added, and the dialog offers your sentence again.
-- **Explain the reasoner problem…** runs the reasoner Protégé is running. If Protégé has none
-  selected, it runs HermiT and says so.
+- **Explain the reasoner problem…** runs the reasoner chosen in Protégé's Reasoner menu, started
+  or not. If none is chosen there (**None**), it runs HermiT and says so.
   - If the ontology is inconsistent, the reasoner's justification is added as a chip and the
     assistant explains it.
   - If classes are unsatisfiable, you pick one first.

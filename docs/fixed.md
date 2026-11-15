@@ -38,6 +38,17 @@ record for that version.
   starts and removes it by that name when the run is stopped, interrupted or out of time.
   `CancellationTest.aContainerRunIsNamedSoThatItCanBeTakenAway`, and
   `ContainerStopLiveTest`, which starts a container and stops it.
+- **The assistant's Explain the reasoner problem ran no reasoner when none was chosen, fixed in
+  1.153.0.** Found by checking the assistant column by hand in Protégé 5.6.9 before the release,
+  with an ontology that had two unsatisfiable classes: with nothing chosen in Protégé's Reasoner
+  menu - as on a fresh install - the column ran Protégé's null reasoner and said "The reasoner
+  finds no problem: the ontology is consistent and every class is satisfiable.", and a repair's
+  check ran on the same null reasoner. Protégé calls the reasoner it runs "Protégé Null Reasoner"
+  until one is started, and the column fell back to HermiT only for the name "none"; with a
+  reasoner chosen and not started it said "Running Protégé Null Reasoner…" over that reasoner's
+  work. It now goes by the reasoner chosen in the menu, under the menu's name for it, and runs
+  HermiT when none is chosen. `ProblemReasonerTest`, red first against what the column gave
+  before.
 - **Cleaning went through a link and emptied what it led to, fixed in 1.153.0.** Found by the
   review: OntoBoard's own engine ran ODK's `clean` on `mirror/`, `tmp/` and `target/` without
   asking where they really are, and removed a folder's contents through a link - on Windows a
