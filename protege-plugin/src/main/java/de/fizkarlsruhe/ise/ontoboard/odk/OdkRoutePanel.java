@@ -33,7 +33,9 @@ public final class OdkRoutePanel extends JPanel {
             new EnumMap<OdkRoute.Use, JRadioButton>(OdkRoute.Use.class);
     private final JRadioButton findIt = new JRadioButton("Find Docker or Podman on this machine");
     private final JRadioButton thisOne = new JRadioButton("Use this program:");
-    private final JTextField path = new JTextField(34);
+    // 28 columns: the field grows with the dialog, and at 34 Linux's DejaVu Sans made the panel
+    // 648 px wide, past what fits a dialog on a small screen (the first CI run of 1.153.0).
+    private final JTextField path = new JTextField(28);
     private final JButton choose = new JButton("Choose...");
 
     /**
