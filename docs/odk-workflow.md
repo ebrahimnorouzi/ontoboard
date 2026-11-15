@@ -67,8 +67,10 @@ project files...* runs ODK's own update. Who runs them is decided each time, in 
    with ODK's ROBOT plugin, and the few other programs ODK's recipes call (`odk-info`,
    `dicer-cli`, `check-rdfxml`, `curl` and the shell's own commands) have stand-ins. No make, no
    container and no other program is started. The log reads as make's own, and *Stop* ends a run
-   between two lines. On a new project of a few classes, on one machine, ODK's `test` took 1 to 3
-   seconds this way, and 90 to 125 seconds in ODK's container on a busy machine.
+   between two lines. On a small project, on one machine busy with other work, ODK's `test` took
+   1 to 7 seconds this way and 50 to 100 seconds in ODK's container; every task's figures, and
+   the command that measures them, are in
+   [Measurements](measurements.md#odk-in-docker-and-ontoboard-side-by-side).
 
 *Update project files...* skips the first: it runs ODK v1.6.1's update in its container where
 that image is on the machine, and otherwise makes the same files itself. A release by the
