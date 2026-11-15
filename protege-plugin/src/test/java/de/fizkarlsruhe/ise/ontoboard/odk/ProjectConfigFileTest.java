@@ -22,6 +22,8 @@ class ProjectConfigFileTest {
     @Test
     void theOneConfigurationBesideTheOntologyIsEdited(@TempDir File directory) throws Exception {
         write(new File(directory, "egg-odk.yaml"));
+        // Another YAML file beside it is not a second configuration.
+        write(new File(directory, "metadata.yaml"));
 
         assertNull(ProjectConfigAction.whyNoConfiguration(directory));
         assertEquals(new File(directory, "egg-odk.yaml"), OdkBuildSettings.yamlIn(directory));

@@ -680,6 +680,39 @@ class OdkTargetsTest {
     }
 
     /**
+     * What the reasoner would find in the ontology as it is open is not why a run stopped
+     * that said nothing of it: somebody builds the saved file with a change that is not
+     * saved yet, and the run stops at a question.
+     */
+    @Test
+    void aRunThatSaidNothingOfTheReasonerIsNotExplainedByIt(@TempDir File ontologyDirectory)
+            throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create(NS + "eggboil.owl"));
+        OWLDataFactory df = manager.getOWLDataFactory();
+        OWLClass soft = df.getOWLClass(IRI.create(NS + "EGGBOIL_0004001"));
+        OWLClass hard = df.getOWLClass(IRI.create(NS + "EGGBOIL_0004002"));
+        OWLClass both = df.getOWLClass(IRI.create(NS + "EGGBOIL_0004003"));
+        label(ontology, both.getIRI(), "odd egg");
+        manager.addAxiom(ontology, df.getOWLDisjointClassesAxiom(soft, hard));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(both, soft));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(both, hard));
+        List<String> transcript = Arrays.asList(
+                "robot --catalog catalog-v001.xml reason --input tmp/egg-preprocess.owl "
+                        + "--reasoner ELK --output test.owl && rm test.owl",
+                "robot --catalog catalog-v001.xml merge --input tmp/egg-preprocess.owl verify "
+                        + "--queries ../sparql/q.rq -O reports",
+                "FAIL Rule ../sparql/q.rq: 1 violation(s)", "term", "https://example.org/t1",
+                "make: *** [egg.Makefile:14: question_test] Error 1");
+
+        String why = OdkTargets.whyItStopped(transcript,
+                new File(ontologyDirectory, "egg-edit.owl"), ontology);
+
+        assertTrue(why.startsWith("q.rq: "), why);
+        assertFalse(why.contains("can have no members"), why);
+    }
+
+    /**
      * What ELK cannot see, HermiT is asked about, and the build says so without failing.
      *
      * <p>Found by a tester: picking <i>quality of</i> for a value's relation made the class
@@ -804,6 +837,26 @@ class OdkTargetsTest {
         assertNull(OdkTargets.whyItStopped(transcript,
                 new File(ontologyDirectory, "egg-edit.owl"), null));
         assertEquals("tmp/definitions.owl", OdkTargets.stoppedAt(transcript));
+    }
+
+    /**
+     * A report that found nothing at the level it stops at did not stop the run: what
+     * failed after it - no line of ROBOT's - is make's to say.
+     */
+    @Test
+    void aReportWithNothingAtItsLevelIsNotWhyTheRunStopped() {
+        List<String> transcript = Arrays.asList(
+                "robot --catalog catalog-v001.xml report -i tmp/merged-egg-edit.ofn -l true "
+                        + "--fail-on ERROR --print 5 -o reports/egg-edit.owl-obo-report.tsv",
+                "Violations: 2", "-----------------", "ERROR:      0", "WARN:       2",
+                "INFO:       0", "", "First 2 violations:",
+                "WARN\tmissing_definition\ta\tIAO:0000115\t",
+                "WARN\tmissing_definition\tb\tIAO:0000115\t",
+                "cp ../patterns/definitions.owl tmp/definitions.owl",
+                "cp: cannot stat '../patterns/definitions.owl': No such file or directory",
+                "make: *** [Makefile:412: tmp/definitions.owl] Error 1");
+
+        assertNull(OdkTargets.whyItStopped(transcript, new File("egg-edit.owl"), null));
     }
 
     /** A run reports on several files: the report that stopped it is the last. */
