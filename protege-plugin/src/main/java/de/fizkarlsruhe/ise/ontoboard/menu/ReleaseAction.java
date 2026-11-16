@@ -168,6 +168,17 @@ public class ReleaseAction extends OntoBoardAction {
                 }
             }
             if (problems.isEmpty()) {
+                // Ruling 18: the same date again replaces that release - asked, not warned of
+                // afterwards. Cancel is the default; it releases nothing.
+                String sameDay = sameDayQuestion(projectRoot, ontologyId,
+                        OntologyVersion.parseOrNull(chosen.get(OPTION_DATE).trim()));
+                if (sameDay != null && javax.swing.JOptionPane.showOptionDialog(
+                        getOWLWorkspace(), sameDay, "A release of that date is there",
+                        javax.swing.JOptionPane.DEFAULT_OPTION,
+                        javax.swing.JOptionPane.QUESTION_MESSAGE, null,
+                        new Object[] {"Replace", "Cancel"}, "Cancel") != 0) {
+                    return false;
+                }
                 break;
             }
             StringBuilder message = new StringBuilder();
@@ -552,6 +563,25 @@ public class ReleaseAction extends OntoBoardAction {
         return "releases/ already has " + newest.getText() + ", which is newer than "
                 + releasing.getText() + ", so " + releasing.getText() + " would be published "
                 + "below a version that is already out. " + instead;
+    }
+
+    /**
+     * What a dated release asks when its date is the newest release's own (ruling 18), or null:
+     * cut again it replaces {@code releases/<date>}, as OBO's generated Makefile does - and that
+     * release may have been taken already, so it is not replaced unseen. A number is never
+     * released again ({@link #clashWithReleases}), so it asks nothing.
+     */
+    static String sameDayQuestion(File projectRoot, String ontologyId,
+            OntologyVersion releasing) {
+        if (releasing == null || releasing.getScheme() != OntologyVersion.Scheme.DATE) {
+            return null;
+        }
+        OntologyVersion newest = newestRelease(projectRoot, ontologyId, releasing.getScheme());
+        if (newest == null || releasing.compareTo(newest) != 0) {
+            return null;
+        }
+        return "Replace the " + releasing.getText() + " release? releases/" + releasing.getText()
+                + " holds a release made under that date, and somebody may already have taken it.";
     }
 
     /** The form, with whatever was typed last time already in it. */

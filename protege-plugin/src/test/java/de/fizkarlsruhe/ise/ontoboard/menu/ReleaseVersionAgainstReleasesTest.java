@@ -87,11 +87,29 @@ class ReleaseVersionAgainstReleasesTest {
         assertNull(ReleaseAction.clashWithReleases(project, "pizza", v("1.0.1")));
     }
 
+    /**
+     * OBO's generated Makefile writes releases/$(TODAY) and a second run that day replaces it:
+     * not refused. But asked first (ruling 18) - a release that may have been shared is not
+     * replaced unseen; Replace goes on, Cancel writes nothing.
+     */
     @Test
     void aDatedReleaseMayBeCutAgainOnTheSameDay(@TempDir File project) throws Exception {
-        // OBO's generated Makefile writes releases/$(TODAY) and a second run that day replaces it.
         aRelease(project, TODAY, "pizza");
         assertNull(ReleaseAction.clashWithReleases(project, "pizza", v(TODAY)));
+
+        assertEquals("Replace the " + TODAY + " release? releases/" + TODAY + " holds a release "
+                + "made under that date, and somebody may already have taken it.",
+                ReleaseAction.sameDayQuestion(project, "pizza", v(TODAY)));
+        assertNull(ReleaseAction.sameDayQuestion(project, "pizza", v("2099-01-01")),
+                "a later date asks nothing");
+    }
+
+    /** A number is never released again (it is refused above), so it asks nothing either. */
+    @Test
+    void aNumberedReleaseAsksNoSuchQuestion(@TempDir File project) throws Exception {
+        aRelease(project, "1.0.0", "pizza");
+        assertNull(ReleaseAction.sameDayQuestion(project, "pizza", v("1.0.1")));
+        assertNull(ReleaseAction.sameDayQuestion(project, "pizza", v("1.0.0")));
     }
 
     @Test
