@@ -1,0 +1,1 @@
+query --input input.ofn --update insert-data.ru --output robot.ofn

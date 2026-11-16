@@ -1,0 +1,56 @@
+Prefix(:=<https://nfdi.fiz-karlsruhe.de/ontology/test/subsets.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(nfdicore:=<https://nfdi.fiz-karlsruhe.de/ontology/>)
+Prefix(oboInOwl:=<http://www.geneontology.org/formats/oboInOwl#>)
+
+
+Ontology(<https://nfdi.fiz-karlsruhe.de/ontology/test/subsets.owl>
+
+Declaration(Class(obo:UBERON_0000061))
+Declaration(Class(<https://example.org/other/Thing>))
+Declaration(Class(nfdicore:NFDI_0000001))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/uberon/core#uberon_slim>))
+Declaration(AnnotationProperty(oboInOwl:SubsetProperty))
+Declaration(AnnotationProperty(oboInOwl:inSubset))
+Declaration(AnnotationProperty(nfdicore:core_subset))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: <http://purl.obolibrary.org/obo/uberon/core#uberon_slim> (<http://purl.obolibrary.org/obo/uberon/core#uberon_slim>)
+
+SubAnnotationPropertyOf(<http://purl.obolibrary.org/obo/uberon/core#uberon_slim> oboInOwl:SubsetProperty)
+
+# Annotation Property: nfdicore:core_subset (nfdicore:core_subset)
+
+SubAnnotationPropertyOf(nfdicore:core_subset oboInOwl:SubsetProperty)
+
+
+
+############################
+#   Classes
+############################
+
+# Class: obo:UBERON_0000061 (anatomical structure)
+
+AnnotationAssertion(oboInOwl:inSubset obo:UBERON_0000061 <http://purl.obolibrary.org/obo/uberon/core#uberon_slim>)
+AnnotationAssertion(rdfs:label obo:UBERON_0000061 "anatomical structure"@en)
+
+# Class: <https://example.org/other/Thing> (thing)
+
+AnnotationAssertion(oboInOwl:inSubset <https://example.org/other/Thing> <https://example.org/other#a_subset>)
+AnnotationAssertion(oboInOwl:inSubset <https://example.org/other/Thing> "not an IRI")
+AnnotationAssertion(rdfs:label <https://example.org/other/Thing> "thing"@en)
+
+# Class: nfdicore:NFDI_0000001 (process)
+
+AnnotationAssertion(oboInOwl:inSubset nfdicore:NFDI_0000001 nfdicore:core_subset)
+AnnotationAssertion(rdfs:label nfdicore:NFDI_0000001 "process"@en)
+
+
+)

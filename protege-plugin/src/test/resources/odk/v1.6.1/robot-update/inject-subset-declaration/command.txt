@@ -1,0 +1,1 @@
+query --input input.ofn --update inject-subset-declaration.ru --output robot.ofn

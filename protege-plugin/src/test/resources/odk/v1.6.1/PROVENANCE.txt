@@ -79,3 +79,15 @@ Jinja2 3.1.6, PyYAML 6.0.3
 Python 3.12.3
 Made on:      2026-11-16
 Command:      odk.py update, twice, in /tmp/odk/egg/src/ontology, on a copy of migration/eggboil-1.135.2 as OdkMigration.convert leaves it (MigrationConvertedWriter); recorded under migration/expected
+
+## robot-update
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+file.encoding = UTF-8
+java.version = 11.0.30
+Made on:      2026-11-16
+Command:      robot $(cat command.txt) in robot-update/<case>/, a copy of the case's folder, for preprocess-module, postprocess-module, inject-subset-declaration, inject-synonymtype-declaration, insert-data, delete-where, chain

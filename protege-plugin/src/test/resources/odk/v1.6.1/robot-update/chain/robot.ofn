@@ -1,0 +1,65 @@
+Prefix(:=<https://nfdi.fiz-karlsruhe.de/ontology/test/mirror.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<https://nfdi.fiz-karlsruhe.de/ontology/test/mirror.owl>
+Annotation(<http://purl.org/dc/elements/1.1/source> <https://nfdi.fiz-karlsruhe.de/ontology/test/releases/2026-04-09/mirror.owl>)
+
+Declaration(Class(<http://purl.obolibrary.org/obo/BFO_0000001>))
+Declaration(Class(<http://purl.obolibrary.org/obo/UBERON_0000061>))
+Declaration(Class(<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/OMO_0003000>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/uberon/core#uberon_slim>))
+Declaration(AnnotationProperty(<http://purl.org/dc/elements/1.1/source>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/title>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#SubsetProperty>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#SynonymTypeProperty>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#hasExactSynonym>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#hasSynonymType>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#inSubset>))
+Declaration(AnnotationProperty(<https://nfdi.fiz-karlsruhe.de/ontology/core_subset>))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: <http://purl.obolibrary.org/obo/OMO_0003000> (<http://purl.obolibrary.org/obo/OMO_0003000>)
+
+SubAnnotationPropertyOf(<http://purl.obolibrary.org/obo/OMO_0003000> <http://www.geneontology.org/formats/oboInOwl#SynonymTypeProperty>)
+
+# Annotation Property: <http://purl.obolibrary.org/obo/uberon/core#uberon_slim> (<http://purl.obolibrary.org/obo/uberon/core#uberon_slim>)
+
+SubAnnotationPropertyOf(<http://purl.obolibrary.org/obo/uberon/core#uberon_slim> <http://www.geneontology.org/formats/oboInOwl#SubsetProperty>)
+
+# Annotation Property: <https://nfdi.fiz-karlsruhe.de/ontology/core_subset> (<https://nfdi.fiz-karlsruhe.de/ontology/core_subset>)
+
+SubAnnotationPropertyOf(<https://nfdi.fiz-karlsruhe.de/ontology/core_subset> <http://www.geneontology.org/formats/oboInOwl#SubsetProperty>)
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/BFO_0000001> (entity)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/BFO_0000001> "entity"@en)
+
+# Class: <http://purl.obolibrary.org/obo/UBERON_0000061> (anatomical structure)
+
+AnnotationAssertion(Annotation(<http://www.geneontology.org/formats/oboInOwl#hasSynonymType> <http://purl.obolibrary.org/obo/OMO_0003000>) <http://www.geneontology.org/formats/oboInOwl#hasExactSynonym> <http://purl.obolibrary.org/obo/UBERON_0000061> "AS")
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/UBERON_0000061> <http://purl.obolibrary.org/obo/uberon/core#uberon_slim>)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/UBERON_0000061> "anatomical structure"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/UBERON_0000061> <http://purl.obolibrary.org/obo/BFO_0000001>)
+
+# Class: <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001> (process)
+
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#inSubset> <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001> <https://nfdi.fiz-karlsruhe.de/ontology/core_subset>)
+AnnotationAssertion(rdfs:label <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001> "process"@en)
+SubClassOf(<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001> <http://purl.obolibrary.org/obo/BFO_0000001>)
+
+
+)

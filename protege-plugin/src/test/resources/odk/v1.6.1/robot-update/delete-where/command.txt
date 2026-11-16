@@ -1,0 +1,1 @@
+query --input input.ofn --update delete-where.ru --output robot.ofn
