@@ -24,6 +24,12 @@ public final class OdkProjectConfig {
     /** Made from an ontology that already exists: its IRI is kept as it is. */
     private boolean adopted;
 
+    /** The GitHub user or organisation the repository is under; empty when none was given. */
+    private String githubOrg = "";
+
+    /** A name GitHub gives a user or an organisation. */
+    private static final String GITHUB_NAME = "[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?";
+
     public OdkProjectConfig(String ontologyId, String title, String description,
             String baseIri, String license, File targetDirectory) {
         this.ontologyId = ontologyId == null ? "" : ontologyId.trim();
@@ -48,6 +54,19 @@ public final class OdkProjectConfig {
 
     public boolean isAdopted() {
         return adopted;
+    }
+
+    /**
+     * The GitHub user or organisation the project's repository is under - ODK's
+     * {@code github_org}, which its README, badge and pages link with; empty when none.
+     */
+    public String getGithubOrg() {
+        return githubOrg;
+    }
+
+    /** The GitHub owner, trimmed; blank or null is none. */
+    public void setGithubOrg(String owner) {
+        githubOrg = owner == null ? "" : owner.trim();
     }
 
     public void validate() {
@@ -139,6 +158,16 @@ public final class OdkProjectConfig {
                             + "'. An SPDX identifier such as 'CC0-1.0' is not one: it goes into "
                             + "rdf:resource, where a relative value is resolved against this "
                             + "computer's file path when the ontology is saved.");
+        }
+        // The owner goes into ODK's links - github.com/<owner>/<repo> in the README, its badge,
+        // the pages' address - where a blank or a slash would make every one of them lead
+        // nowhere.
+        if (!githubOrg.isEmpty() && !githubOrg.matches(GITHUB_NAME)) {
+            throw new IllegalArgumentException("The GitHub owner is the name of a user or "
+                    + "organisation on GitHub: letters, digits and hyphens, a hyphen neither "
+                    + "first nor last, for example 'kitchen-lab'. Got: '" + githubOrg + "'. "
+                    + "ODK's README and pages link to github.com/<owner>/" + ontologyId
+                    + "; leave it empty if there is no repository yet.");
         }
         if (targetDirectory == null) {
             throw new IllegalArgumentException("Choose a folder for the new project.");

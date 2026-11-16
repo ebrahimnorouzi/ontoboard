@@ -30,6 +30,31 @@ class OdkProjectConfigTest {
                 "https://creativecommons.org/licenses/by/4.0/", into);
     }
 
+    /**
+     * F2: the GitHub owner goes into ODK's links, github.com/&lt;owner&gt;/&lt;repo&gt;. It is
+     * optional - blank is none - and a name GitHub gives a user or an organisation: letters,
+     * digits and hyphens, a hyphen neither first nor last.
+     */
+    @Test
+    void theGitHubOwnerIsOptionalAndAGitHubName(@TempDir Path dir) {
+        OdkProjectConfig config = config(dir.toFile());
+        assertEquals("", config.getGithubOrg());
+        config.setGithubOrg("  kitchen-lab ");
+        assertEquals("kitchen-lab", config.getGithubOrg());
+        config.validate();
+        config.setGithubOrg(" ");
+        assertEquals("", config.getGithubOrg());
+        config.validate();
+
+        for (String bad : new String[] {"kitchen lab", "-lab", "lab-", "kitchen/lab",
+                "https://github.com/kitchen-lab"}) {
+            config.setGithubOrg(bad);
+            IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                    config::validate, bad);
+            assertTrue(refused.getMessage().contains("'" + bad + "'"), refused.getMessage());
+        }
+    }
+
     @Test
     void anOmittedIriFallsBackToTheOboConvention(@TempDir Path dir) {
         OdkProjectConfig config =

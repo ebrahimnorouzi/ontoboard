@@ -40,6 +40,23 @@ class OdkConfigWriterTest {
         assertEquals(Goldens.config("eggboil"), OdkConfigWriter.forNewProject(egg()));
     }
 
+    /**
+     * F2: the GitHub owner is written as ODK's own {@code github_org}, before {@code repo} as in
+     * ODK's samples, so that ODK's README, badge and pages link to the repository. Without one
+     * nothing is written: the egg's configuration above stays the golden one.
+     */
+    @Test
+    void anOwnerIsWrittenAsOdksGithubOrg() {
+        OdkProjectConfig config = egg();
+        config.setGithubOrg("kitchen-lab");
+
+        String yaml = OdkConfigWriter.forNewProject(config);
+
+        assertTrue(yaml.contains("\nlicense: https://creativecommons.org/licenses/by/4.0/\n"
+                + "github_org: kitchen-lab\nrepo: eggboil\n"), yaml);
+        assertEquals("kitchen-lab", OdkProjectModel.load(yaml).get("github_org"));
+    }
+
     /** ODK names the ontology {@code <uribase>/<id>.owl}; the wizard asks for that whole IRI. */
     @Test
     void theUribaseIsTheBaseIriWithoutTheFile() {

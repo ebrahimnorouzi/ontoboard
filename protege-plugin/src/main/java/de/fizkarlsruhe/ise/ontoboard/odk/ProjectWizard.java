@@ -1,11 +1,16 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import de.fizkarlsruhe.ise.ontoboard.git.GitHubUrl;
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -83,6 +88,14 @@ public final class ProjectWizard {
         final JTextField folder = new JTextField();
         folder.setEditable(false);
 
+        // The GitHub owner (F2): ODK's links name it, and without it every one of them was
+        // https://github.com//<id>/... The one given last is filled in; a folder inside a clone
+        // fills in that clone's - unless somebody typed one, which is never overwritten.
+        final java.util.prefs.Preferences remembered =
+                java.util.prefs.Preferences.userNodeForPackage(ProjectWizard.class);
+        final JTextField owner = new JTextField(remembered.get(OWNER_KEY, ""));
+        final String[] filledIn = {owner.getText()};
+
         JButton browse = new JButton("Choose...");
         browse.addActionListener(a -> {
             JFileChooser chooser = new JFileChooser();
@@ -90,6 +103,11 @@ public final class ProjectWizard {
             chooser.setDialogTitle("Where should the project folder be created?");
             if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
                 folder.setText(chooser.getSelectedFile().getAbsolutePath());
+                if (owner.getText().trim().equals(filledIn[0].trim())) {
+                    filledIn[0] = ownerFor(chooser.getSelectedFile(), ProcessRunner.real(),
+                            owner.getText().trim());
+                    owner.setText(filledIn[0]);
+                }
             }
         });
 
@@ -122,8 +140,8 @@ public final class ProjectWizard {
         // file is what ODK's own seed leaves behind.
         final javax.swing.JCheckBox git = new javax.swing.JCheckBox(GIT_BOX, true);
 
-        JPanel panel = form(id, title, description, iri, license, folder, browse, problem, adopt,
-                git);
+        JPanel panel = form(id, title, description, iri, license, folder, owner, browse, problem,
+                adopt, git);
 
         // Until it is accepted or abandoned. Every field this form collects is rejectable -
         // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
@@ -148,6 +166,7 @@ public final class ProjectWizard {
             if (adopt.isSelected()) {
                 config.adopting();
             }
+            config.setGithubOrg(owner.getText());
             try {
                 config.validate();
                 OdkConfigWriter.forNewProject(config);
@@ -155,6 +174,7 @@ public final class ProjectWizard {
                 refuse(problem, invalid.getMessage());
                 continue;
             }
+            remembered.put(OWNER_KEY, config.getGithubOrg());
             create(parent, modelManager, config, open, config.isAdopted() ? openFile : null,
                     git.isSelected());
             return;
@@ -163,6 +183,49 @@ public final class ProjectWizard {
 
     /** What the form's last box says. */
     static final String GIT_BOX = "Make it a git repository, with these files as its first commit";
+
+    /** The row that asks for the GitHub owner. */
+    static final String OWNER_LABEL = "GitHub owner (optional):";
+
+    /** Where the GitHub owner given last is remembered. */
+    private static final String OWNER_KEY = "githubOwner";
+
+    /**
+     * The owner a GitHub remote names - {@code https://github.com/<owner>/<repo>(.git)} or
+     * {@code git@github.com:<owner>/<repo>(.git)}; null for any other remote, and for none.
+     */
+    static String ownerFromRemote(String remote) {
+        if (remote == null || !remote.toLowerCase(Locale.ROOT).contains("github.com")) {
+            return null;
+        }
+        try {
+            return GitHubUrl.parse(remote.trim()).getOwner();
+        } catch (IllegalArgumentException notGitHub) {
+            return null;
+        }
+    }
+
+    /**
+     * The owner to fill in for a project made in this folder: the GitHub owner of the clone the
+     * folder is in, as git on this machine says (its {@code origin}); else the one before.
+     *
+     * @return never null; empty when there is none
+     */
+    static String ownerFor(File folder, ProcessRunner.Runner runner, String before) {
+        String owner = null;
+        if (folder != null) {
+            try {
+                ProcessRunner.Outcome outcome = runner.run(folder,
+                        Arrays.asList("git", "remote", "get-url", "origin"), 1, null);
+                if (outcome.isSuccess() && !outcome.getOutput().isEmpty()) {
+                    owner = ownerFromRemote(outcome.getOutput().get(0));
+                }
+            } catch (IOException noGit) {
+                // No git here, or no such folder: nothing to take an owner from.
+            }
+        }
+        return owner != null ? owner : before == null ? "" : before;
+    }
 
     /**
      * Writes the project off the event thread, then opens it.
@@ -236,19 +299,21 @@ public final class ProjectWizard {
      * <p>Package-visible, so a test can lay it out without a display.
      */
     static JPanel form(JTextField id, JTextField title, JTextField description, JTextField iri,
-            JTextField license, JTextField folder, JButton browse, JLabel problem,
-            Component adopt) {
-        return form(id, title, description, iri, license, folder, browse, problem, adopt, null);
+            JTextField license, JTextField folder, JTextField owner, JButton browse,
+            JLabel problem, Component adopt) {
+        return form(id, title, description, iri, license, folder, owner, browse, problem, adopt,
+                null);
     }
 
     /**
      * The same, with the box that says the project becomes a git repository.
      *
-     * @param git the box, under the fields it follows from; null for a form without it
+     * @param owner the GitHub owner's field, the last row, under the folder it is filled from
+     * @param git   the box, under the fields it follows from; null for a form without it
      */
     static JPanel form(JTextField id, JTextField title, JTextField description, JTextField iri,
-            JTextField license, JTextField folder, JButton browse, JLabel problem,
-            Component adopt, Component git) {
+            JTextField license, JTextField folder, JTextField owner, JButton browse,
+            JLabel problem, Component adopt, Component git) {
         JPanel folderRow = new JPanel(new BorderLayout(6, 0));
         folderRow.add(folder, BorderLayout.CENTER);
         folderRow.add(browse, BorderLayout.EAST);
@@ -266,6 +331,8 @@ public final class ProjectWizard {
         fields.add(license);
         fields.add(new JLabel("Create in folder:"));
         fields.add(folderRow);
+        fields.add(new JLabel(OWNER_LABEL));
+        fields.add(owner);
 
         // The rules said exactly, and the Base IRI said in a sentence: "one you own" meant nothing
         // to somebody who had never published an ontology, and the ID rule was learnt from the
@@ -280,7 +347,10 @@ public final class ProjectWizard {
                 + "OBO's address is filled in, which is right only for an ontology registered "
                 + "with the OBO Foundry. Otherwise use an address on a domain you or your "
                 + "group control, e.g. <b>https://w3id.org/myont/myont.owl</b> - every term "
-                + "is named under it, so it is hard to change later.</i></body></html>");
+                + "is named under it, so it is hard to change later.<br><b>GitHub owner</b>: "
+                + "the user or organisation the repository is under, e.g. <b>kitchen-lab</b> "
+                + "for github.com/kitchen-lab/myont; ODK's README and pages link there.</i>"
+                + "</body></html>");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         problem.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
 
