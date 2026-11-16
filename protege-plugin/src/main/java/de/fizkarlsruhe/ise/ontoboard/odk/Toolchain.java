@@ -372,9 +372,9 @@ public final class Toolchain {
                     + "Start one, or change the setting."));
         } else {
             list.add(new Capability(odk, true, "By OntoBoard itself, with nothing to install: "
-                    + "ODK's own Makefile and recipes run inside Protege. A rule a project "
-                    + "adds in its own makefile is make's to run - in ODK's container, or "
-                    + "with ODK's tools installed."));
+                    + "ODK's own Makefile and recipes run inside Protege, and the rules a "
+                    + "project adds in its own makefile when every line of them can be run "
+                    + "here."));
         }
 
         if (!nativeEnv && containerProgram == null && make) {

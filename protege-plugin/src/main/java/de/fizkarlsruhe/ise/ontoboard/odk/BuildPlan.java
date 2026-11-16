@@ -14,8 +14,9 @@ import java.util.regex.Pattern;
  * What Build offers for an ODK project, and where it will run.
  *
  * <p>With ODK's container the list is the project's own Makefile's, {@code test} first: the
- * build its maintainers and its CI run. Without it, OntoBoard's own engine runs ODK's recipes,
- * and the list is what that engine can run for this project - asked target by target, before
+ * build its maintainers and its CI run. Without it, OntoBoard's own engine runs ODK's recipes
+ * and the project's own rules, and the list is what that engine can run for this project - asked
+ * target by target, before
  * anything is shown. A target that is not offered is kept with its reason, so that the form
  * can say why {@code test} is missing instead of leaving it out in silence.
  *

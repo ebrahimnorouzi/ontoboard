@@ -150,7 +150,6 @@ class OdkQuestionsTest {
         assertFalse(OdkQuestions.isIn(file));
         assertTrue(OdkQuestions.isChangedIn(file));
         assertNull(OdkQuestions.linesIn(file));
-        assertNull(OdkQuestions.alone(file), "a changed rule is the project's own");
         String putRight = OdkQuestions.with(file);
         assertTrue(OdkQuestions.isIn(putRight), putRight);
         assertFalse(putRight.contains("other.xml"), putRight);
@@ -177,30 +176,6 @@ class OdkQuestionsTest {
         assertNotNull(place);
         assertEquals(with.split("\n", -1).length - 1, place[1], "the rule's last line is the "
                 + "file's last");
-    }
-
-    /** For the engine's comparison: the rule alone, at the lines it has in the file. */
-    @Test
-    void aloneIsTheRuleAtItsLinesAndNothingElse() {
-        String more = "mine:\n\techo mine\n" + OdkQuestions.with(SEEDS) + "\nother = 1\n";
-
-        String alone = OdkQuestions.alone(more);
-
-        String[] all = more.split("\n", -1);
-        String[] kept = alone.split("\n", -1);
-        assertEquals(all.length, kept.length, "the same number of lines");
-        int[] place = OdkQuestions.linesIn(more);
-        assertNotNull(place);
-        for (int i = 0; i < all.length; i++) {
-            boolean inside = i + 1 >= place[0] && i + 1 <= place[1];
-            assertEquals(inside ? all[i] : "", kept[i], "line " + (i + 1));
-        }
-        assertEquals("# --- OntoBoard: end of questions ---", all[place[1] - 1]);
-        assertNull(OdkQuestions.linesIn(SEEDS));
-        assertNull(OdkQuestions.alone(SEEDS), "no rule: nothing of OntoBoard's in the file");
-        assertNull(OdkQuestions.alone(more.replace("*.rq", "cq*.rq")),
-                "a changed rule is the project's own, like anything else in the file");
-        assertNull(OdkQuestions.alone(null));
     }
 
     // ------------------------------------------------------------------ the files
@@ -338,9 +313,12 @@ class OdkQuestionsTest {
         assertTrue(ran.isOk(), ran.getFailure());
     }
 
-    /** A rule somebody changed is theirs: for make, and named with its line. */
+    // Since 1.154.0 the engine runs what is the project's own as make does, when its lines
+    // can be run here: a rule changed by hand, another rule, a setting.
+
+    /** A rule somebody changed is theirs, and runs as changed. */
     @Test
-    void aChangedRuleIsTheProjectsOwnAndIsNotRunByTheEngine() throws IOException {
+    void aChangedRuleRunsAsChanged() throws IOException {
         File root = project("eggboil", "eggboil");
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
         File own = new File(root, "src/ontology/eggboil.Makefile");
@@ -350,17 +328,20 @@ class OdkQuestionsTest {
                 + "false"));
         sameAge(root);
 
-        String why = FallbackEligibility.why(edit, "test_fast");
-
-        assertNotNull(why);
-        assertTrue(why.contains("eggboil.Makefile:"), why);
-        assertTrue(why.contains("question_test"), why);
-        assertTrue(why.contains("Write a test from a question"), "what puts it right: " + why);
+        assertNull(FallbackEligibility.why(edit, "test_fast"));
+        List<String> commands = new ArrayList<String>();
+        collect(FallbackEligibility.of(edit, "test_fast",
+                Collections.<String, String>emptyMap()).plan(), commands);
+        assertTrue(String.join("\n", commands).contains("--fail-on-violation false"),
+                commands.toString());
+        OdkEngine.Outcome ran = OdkEngine.run(edit, "test_fast",
+                Collections.<String, String>emptyMap(), NEVER);
+        assertTrue(ran.isOk(), ran.getFailure());
     }
 
-    /** Something else of the project's own that the test reaches is still refused. */
+    /** Something else of the project's own that the test reaches runs too. */
     @Test
-    void anotherRuleOfTheProjectsOwnIsStillRefused() throws IOException {
+    void anotherRuleOfTheProjectsOwnRunsToo() throws IOException {
         File root = project("eggboil", "eggboil");
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
         File own = new File(root, "src/ontology/eggboil.Makefile");
@@ -369,15 +350,13 @@ class OdkQuestionsTest {
         write(own, text(own) + "\ntest: mine\nmine:\n\techo mine\n");
         sameAge(root);
 
-        String why = FallbackEligibility.why(edit, "test_fast");
-
-        assertNotNull(why);
-        assertTrue(why.contains("rule of the project's own for mine"), why);
+        assertNull(FallbackEligibility.why(edit, "test_fast"));
+        assertNull(FallbackEligibility.why(edit, "test"));
     }
 
-    /** A setting of the project's own that ODK's recipes read is still refused, rule or not. */
+    /** A setting of the project's own that ODK's recipes read is make's, and goes into them. */
     @Test
-    void aSettingOfTheProjectsOwnIsStillRefused() throws IOException {
+    void aSettingOfTheProjectsOwnGoesIntoODKsRecipes() throws IOException {
         File root = project("eggboil", "eggboil");
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
         File own = new File(root, "src/ontology/eggboil.Makefile");
@@ -385,10 +364,11 @@ class OdkQuestionsTest {
         write(own, "REPORT_FAIL_ON = none\n" + text(own));
         sameAge(root);
 
-        String why = FallbackEligibility.why(edit, "test_fast");
-
-        assertNotNull(why);
-        assertTrue(why.contains("REPORT_FAIL_ON"), why);
+        assertNull(FallbackEligibility.why(edit, "test_fast"));
+        List<String> commands = new ArrayList<String>();
+        collect(FallbackEligibility.of(edit, "test_fast",
+                Collections.<String, String>emptyMap()).plan(), commands);
+        assertTrue(String.join("\n", commands).contains("--fail-on none"), commands.toString());
     }
 
     // ------------------------------------------------------------------ what is asked, with imports

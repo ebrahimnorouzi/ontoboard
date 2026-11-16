@@ -120,10 +120,18 @@ final class OdkTools {
         /** Stands for the folder make runs in while a line is only asked about. */
         private static final File ASKING = new File(System.getProperty("java.io.tmpdir"),
                 "ontoboard-recipe-folder").getAbsoluteFile();
+        /** A project's top and where make runs in it, for what a line writes, asked as text. */
+        private static final File ASKING_TOP = new File(ASKING, "project");
+        private static final File ASKING_IN = new File(ASKING_TOP, "src/ontology");
 
         @Override
         public String whyNot(List<String> arguments) {
             try {
+                // A project's own rule may write inside the project only (1.154.0).
+                String outside = RobotPaths.whyWrittenOutside(arguments, ASKING_IN, ASKING_TOP);
+                if (outside != null) {
+                    return outside;
+                }
                 String why = OdkRobot.whyNot(RobotPaths.absolute(arguments, ASKING), ASKING);
                 return why == null ? null : asWritten(why, ASKING);
             } catch (RobotPaths.Unknown unknown) {

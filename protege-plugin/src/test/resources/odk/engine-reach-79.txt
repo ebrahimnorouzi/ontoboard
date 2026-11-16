@@ -535,13 +535,13 @@ tests__test-minimal test: runs
 tests__test-minimal test_fast: runs
 tests__test-minimal prepare_release: runs
 tests__test-minimal prepare_release_fast: runs
-tests__test-module-custom test: not run - modminic.Makefile:5 has a rule of the project's own for imports/ro_import.owl, which 'test' runs.
+tests__test-module-custom test: runs
 tests__test-module-custom test_fast: runs
-tests__test-module-custom prepare_release: not run - modminic.Makefile:5 has a rule of the project's own for imports/ro_import.owl, which 'prepare_release' runs.
+tests__test-module-custom prepare_release: runs
 tests__test-module-custom prepare_release_fast: runs
-tests__test-module-custom refresh-imports: not run - modminic.Makefile:5 has a rule of the project's own for imports/ro_import.owl, which 'refresh-imports' runs.
+tests__test-module-custom refresh-imports: runs
 tests__test-module-custom no-mirror-refresh-imports: runs
-tests__test-module-custom refresh-ro: not run - modminic.Makefile:5 has a rule of the project's own for imports/ro_import.owl, which 'refresh-ro' runs.
+tests__test-module-custom refresh-ro: runs
 tests__test-module-custom refresh-wikidata: runs
 tests__test-module-minimal test: runs
 tests__test-module-minimal test_fast: runs

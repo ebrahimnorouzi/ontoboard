@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -278,6 +279,34 @@ class RobotPathsTest {
 
         assertEquals(words("--catalog " + at + "catalog-v001.xml merge -i " + at + "a.owl"),
                 RobotPaths.absolute(words("--catalog catalog-v001.xml merge -i a.owl"), folder()));
+    }
+
+    // ------------------------------------------------------------------ what a line writes
+
+    /**
+     * A ROBOT line of a project's own rule writes inside the project: what it would write
+     * above the project's top is named before anything runs. What it only reads may be
+     * anywhere.
+     */
+    @Test
+    void whatALineWritesOutsideTheProjectIsNamed() {
+        File top = new File(temp, "eggboil");
+
+        assertNull(RobotPaths.whyWrittenOutside(words("convert -i a.owl -o tmp/b.owl"),
+                folder(), top));
+        assertNull(RobotPaths.whyWrittenOutside(words("convert -i a.owl -o ../../b.owl"),
+                folder(), top), "the project's top is inside it");
+        String why = RobotPaths.whyWrittenOutside(words("convert -i a.owl -o ../../../b.owl"),
+                folder(), top);
+        assertTrue(why != null && why.contains("../../../b.owl"), why);
+        assertNotNull(RobotPaths.whyWrittenOutside(words("merge -i a.owl annotate --output "
+                + new File(temp, "elsewhere/b.owl").getAbsolutePath()), folder(), top));
+        assertNotNull(RobotPaths.whyWrittenOutside(words("query -i a.owl --query q.sparql "
+                + "../../../rows.tsv"), folder(), top), "the second of a pair is written");
+        assertNotNull(RobotPaths.whyWrittenOutside(words("export -i a.owl --header ID "
+                + "--export ../../../terms.tsv"), folder(), top));
+        assertNull(RobotPaths.whyWrittenOutside(words("query -i ../../../../a.owl --query "
+                + "../../../q.sparql tmp/rows.tsv"), folder(), top), "only read: anywhere");
     }
 
     @Test

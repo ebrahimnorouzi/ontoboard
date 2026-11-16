@@ -286,6 +286,43 @@ class ReleaseByItselfTest {
                 MakeRun.explain("test_fast", ran));
     }
 
+    /**
+     * Ruling 9 of 1.154.0: a release made by make runs the project's own rules - here one of
+     * theirs for the base, which writes a note into it. The released base carries the note.
+     */
+    @Test
+    void aReleaseByMakeRunsTheProjectsOwnRules() throws Exception {
+        Files.write(new File(edit.getParentFile(), "eggboil.Makefile").toPath(), ("## mine\n"
+                + "$(ONT)-base.owl: $(EDIT_PREPROCESSED)\n"
+                + "\t$(ROBOT) annotate --input $< --annotation rdfs:comment \"built by a rule "
+                + "of the project\" --ontology-iri $(ONTBASE)/$@ "
+                + "$(ANNOTATE_ONTOLOGY_VERSION) --output $@\n").getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n"
+                + String.join("\n", outcome.getTranscript()));
+        String base = new String(Files.readAllBytes(new File(root, "eggboil-base.owl").toPath()),
+                StandardCharsets.UTF_8);
+        assertTrue(base.contains("built by a rule of the project"),
+                String.join("\n", outcome.getTranscript()));
+    }
+
+    /** A project's own release.sh stays the container's to run, as in 1.153.0. */
+    @Test
+    void aProjectWithItsOwnReleaseScriptIsStillNotReleasedByTheEngine() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(),
+                "#!/bin/sh\nmake prepare_release\n".getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        String said = outcome.getFailure() + "\n" + String.join("\n", outcome.getTranscript());
+        assertTrue(said.contains("release.sh"), said);
+        assertFalse(new File(root, "eggboil.owl").exists());
+        assertEquals(new ArrayList<List<String>>(), gitRan);
+    }
+
     /** A project's own release script is a shell script: it is not a target of make. */
     @Test
     void aScriptOfTheProjectsOwnIsNotRunThisWay() throws Exception {

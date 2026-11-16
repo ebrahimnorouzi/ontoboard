@@ -618,8 +618,8 @@ final class RecipeShell {
                 }
                 Tool tool = tools.get(name);
                 if (tool == null) {
-                    return "'" + name + "' is a program of ODK's image that OntoBoard's own "
-                            + "engine has no stand-in for (" + oneLine(line) + ")";
+                    return "'" + name + "' is a program OntoBoard's own engine has no stand-in "
+                            + "for (" + oneLine(line) + ")";
                 }
                 String why = tool.whyNot(arguments);
                 if (why != null) {
