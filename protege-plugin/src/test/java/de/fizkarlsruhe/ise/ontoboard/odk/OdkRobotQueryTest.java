@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -183,14 +184,93 @@ class OdkRobotQueryTest {
         assertTrue(said.toString().contains("not-there.sparql"), said.toString());
     }
 
+    // ------------------------------------------------------------------ the update
+
+    /** The cases ROBOT 1.9.10 ran in ODK's image: robot-update/README.md says what each is. */
+    static List<String> recordedUpdates() {
+        List<String> names = new ArrayList<String>();
+        File[] cases = new File(Goldens.root(), "robot-update").listFiles();
+        for (File one : cases == null ? new File[0] : cases) {
+            if (new File(one, "command.txt").isFile()) {
+                names.add(one.getName());
+            }
+        }
+        Collections.sort(names);
+        return names;
+    }
+
+    private File copyCase(String name) throws IOException {
+        File here = new File(temp, name);
+        Files.createDirectories(here.toPath());
+        for (File file : new File(new File(Goldens.root(), "robot-update"), name).listFiles()) {
+            Files.copy(file.toPath(), new File(here, file.getName()).toPath());
+        }
+        return here;
+    }
+
+    /** ROBOT's line as it ran in the image, ours written beside its, every path absolute. */
+    private static List<String> lineOf(File here) throws IOException {
+        List<String> words = new ArrayList<String>();
+        for (String word : new String(Files.readAllBytes(new File(here, "command.txt").toPath()),
+                StandardCharsets.UTF_8).trim().split("\\s+")) {
+            words.add(word.equals("robot.ofn") ? "ours.ofn" : word);
+        }
+        return RobotPaths.absolute(words, here);
+    }
+
+    /**
+     * {@code robot query --update}, as ROBOT 1.9.10 ran it in ODK's image: each update in turn
+     * over the ontology, which is then read back as ROBOT reads it, keeps the format it had - its
+     * prefixes - and goes on to the next command of the line, or to {@code --output}. The file
+     * written is ROBOT's, but for what shows the OWL API's version.
+     */
+    @ParameterizedTest
+    @MethodSource("recordedUpdates")
+    void anUpdateChangesTheOntologyAsRobotDoes(String name) throws Exception {
+        File here = copyCase(name);
+
+        OdkRobot.Result result = OdkRobot.run(lineOf(here), here);
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        RunComparisons.assertSameOntology(name, new File(here, "robot.ofn"),
+                new File(here, "ours.ofn"));
+        RunComparisons.assertSameFile(name, new File(here, "robot.ofn"),
+                new File(here, "ours.ofn"));
+        assertEquals(Collections.<String>emptyList(), result.output(),
+                "ROBOT says nothing of an update");
+    }
+
+    /** An update file that is not there fails the line as ROBOT fails it; nothing is written. */
+    @Test
+    void anUpdateFileThatIsNotThereFailsTheLineAsRobotDoes() throws Exception {
+        File here = copyCase("preprocess-module");
+        File missing = new File(here, "not-there.ru");
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("query", "--input",
+                new File(here, "input.ofn").getPath(), "--update", missing.getPath(), "--output",
+                new File(here, "ours.ofn").getPath()), here);
+
+        assertFalse(result.ok());
+        assertEquals("MISSING FILE ERROR file '" + missing.getPath() + "' does not exist",
+                result.failure());
+        assertFalse(new File(here, "ours.ofn").exists(), "nothing is written");
+    }
+
+    @Test
+    void theRecordedUpdatesAreThere() {
+        assertEquals(Arrays.asList("chain", "delete-where", "inject-subset-declaration",
+                "inject-synonymtype-declaration", "insert-data", "postprocess-module",
+                "preprocess-module"), recordedUpdates());
+    }
+
     // ------------------------------------------------------------------ what is refused
 
     /**
      * What ODK's Makefile does not use of query is refused by name before anything runs: the
-     * update, the TDB options, the other ways to name queries and outputs, loading from an IRI.
+     * TDB options, the other ways to name queries and outputs, loading from an IRI.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"--update ../sparql/x.ru", "--temporary-file true", "--tdb true",
+    @ValueSource(strings = {"--temporary-file true", "--tdb true",
         "--create-tdb true", "--keep-tdb-mappings true", "--tdb-directory .tdb",
         "--output tmp/out.owl", "--output-dir reports", "--queries ../sparql/terms.sparql",
         "--construct ../sparql/terms.sparql tmp/c.ttl", "--input-iri https://example.org/x.owl"})

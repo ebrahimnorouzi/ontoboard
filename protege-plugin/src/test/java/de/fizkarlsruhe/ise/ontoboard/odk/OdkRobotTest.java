@@ -677,10 +677,10 @@ class OdkRobotTest {
     @Test
     void whyNotNamesWhatQueryDoesNotRun(@TempDir File temp) {
         String why = OdkRobot.whyNot(Arrays.asList("query", "--input",
-                path(new File(temp, "a.ofn")), "--update", path(new File(temp, "u.ru"))));
+                path(new File(temp, "a.ofn")), "--tdb", "true"));
 
         assertNotNull(why);
-        assertTrue(why.contains("--update"), why);
+        assertTrue(why.contains("--tdb"), why);
     }
 
     /** Asking changes the host's logging no more than running does. */

@@ -193,9 +193,9 @@ class OdkToolsTest {
 
     @Test
     void whatRobotRefusesNamesNoFolderOfItsOwn() {
-        String why = whyNot("robot query -i tmp/x.owl --update ../sparql/u.ru");
+        String why = whyNot("robot query -i tmp/x.owl --tdb-directory ../.tdb");
 
-        assertTrue(why.contains("--update"), why);
+        assertTrue(why.contains("--tdb-directory"), why);
         assertFalse(why.contains(File.separator + "ontoboard-"), why);
     }
 

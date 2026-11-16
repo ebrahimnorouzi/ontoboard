@@ -10,9 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.cli.CommandLine;
@@ -29,7 +32,11 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.ResultSetMgr;
 import org.apache.jena.riot.resultset.ResultSetLang;
+import org.apache.jena.update.UpdateAction;
+import org.obolibrary.robot.CommandState;
+import org.obolibrary.robot.IOHelper;
 import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
+import org.semanticweb.owlapi.model.OWLDocumentFormat;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 
@@ -49,17 +56,25 @@ import org.semanticweb.owlapi.model.OWLOntologyStorageException;
  * value) writes CSV - and so does {@code --format --tsv}. The names ROBOT maps to RDF or XML
  * writers ({@code ttl jsonld nt nq xml sxml}) are refused here.
  *
+ * <p>{@code --update} runs as ROBOT 1.9.10 runs it, the version of ODK's image (see
+ * {@link #update}): the ontology changed by each update in turn and handed on - to the next
+ * command of the line, or to {@code --output}. Projects' own rules use it (nfdicore's import
+ * modules: ODK's seed's {@code preprocess-module.ru} and {@code postprocess-module.ru}). ROBOT
+ * then reads nothing else of query but the input, the output and {@code --temporary-file} -
+ * where the ontology waits between Jena and the OWL API, which changes nothing it writes - and
+ * neither does OntoBoard, which keeps it in memory.
+ *
  * <p>Refused by name before anything runs: every option of query ODK's recipes do not use -
- * {@code --update}, {@code --temporary-file}, the TDB options, {@code --output},
- * {@code --output-dir}, {@code --queries}, {@code --construct}, {@code --input-iri} - and a query
- * that is no SELECT, when its file can be read beforehand.
+ * {@code --temporary-file}, the TDB options, {@code --output}, {@code --output-dir},
+ * {@code --queries}, {@code --construct}, {@code --input-iri} - and a query that is no SELECT,
+ * when its file can be read beforehand. With {@code --update}, only {@code --input-iri}.
  */
 final class RobotQuery {
 
     /** query's own options that ODK's recipes do not use, by long name. */
-    static final List<String> NOT_USED = Arrays.asList("update", "temporary-file", "tdb",
-            "create-tdb", "keep-tdb-mappings", "tdb-directory", "output", "output-dir", "queries",
-            "construct", "input-iri");
+    static final List<String> NOT_USED = Arrays.asList("temporary-file", "tdb", "create-tdb",
+            "keep-tdb-mappings", "tdb-directory", "output", "output-dir", "queries", "construct",
+            "input-iri");
 
     /** The format names ROBOT gives to writers of RDF or XML: no CSV or TSV is written. */
     static final List<String> NOT_WRITTEN = Arrays.asList("ttl", "jsonld", "nt", "nq", "xml",
@@ -96,12 +111,18 @@ final class RobotQuery {
      * those only when they are there: a non-SELECT query is refused before anything runs.
      */
     static String whyNot(CommandLine line) {
-        for (String option : NOT_USED) {
+        boolean updating = line.hasOption("update");
+        for (String option : updating ? Collections.singletonList("input-iri") : NOT_USED) {
             if (line.hasOption(option)) {
                 return "'query --" + option + "' is not run inside Protege: OntoBoard runs robot "
                         + "query with the options ODK's recipes give it (--input, --format, "
-                        + "--query, --select, --use-graphs), on its own SPARQL engine";
+                        + "--query, --select, --use-graphs; --update with --output), on its own "
+                        + "SPARQL engine";
             }
+        }
+        if (updating) {
+            // ROBOT reads no query of the line then: QueryCommand.execute returns before.
+            return null;
         }
         List<Pair> pairs = pairs(line);
         if (pairs.isEmpty()) {
@@ -207,6 +228,59 @@ final class RobotQuery {
         } finally {
             dataset.close();
         }
+    }
+
+    // ------------------------------------------------------------------ the update
+
+    /**
+     * {@code query --update}, as ROBOT 1.9.10 runs it ({@code QueryCommand.executeUpdate},
+     * {@code QueryOperation.convertModel}): every update file read first - one that is not there
+     * fails the line, and one named twice is run once - then the ontology made a Jena model,
+     * each update run on it in turn, the model written as Turtle and read back by ROBOT's own
+     * {@link IOHelper} with the catalog: the line's, else {@code catalog-v001.xml} beside the
+     * input when it is there. The ontology read back is given the format the ontology had, so
+     * that it is written with the prefixes it had (1.9.9's change; 1.9.8, the ROBOT inside,
+     * does not). The files are read as UTF-8, as ODK's image reads them: its Java runs with
+     * {@code file.encoding=UTF-8}.
+     *
+     * @param state   the command's, after its input: the ontology and where it was read from
+     * @param updates the {@code --update} values, in the line's order
+     * @return the ontology as the updates left it
+     */
+    static OWLOntology update(CommandState state, IOHelper io, List<String> updates)
+            throws Exception {
+        Map<String, String> texts = new LinkedHashMap<String, String>();
+        for (String path : updates) {
+            File file = new File(path);
+            if (!file.exists()) {
+                throw new Exception(String.format(
+                        "query#MISSING FILE ERROR file '%s' does not exist", path));
+            }
+            texts.put(path, new String(Files.readAllBytes(file.toPath()),
+                    StandardCharsets.UTF_8));
+        }
+        OWLOntology input = state.getOntology();
+        Model model = modelOf(input);
+        for (String text : texts.values()) {
+            UpdateAction.parseExecute(text, model);
+        }
+        String catalog = state.getCatalogPath();
+        if (catalog == null && state.getOntologyPath() != null) {
+            File beside = io.guessCatalogFile(new File(state.getOntologyPath()));
+            catalog = beside == null ? null : beside.getPath();
+        }
+        if (catalog != null && !new File(catalog).exists()) {
+            catalog = null;
+        }
+        ByteArrayOutputStream turtle = new ByteArrayOutputStream(1 << 16);
+        RDFDataMgr.write(turtle, model, Lang.TTL);
+        OWLOntology updated = io.loadOntology(new ByteArrayInputStream(turtle.toByteArray()),
+                catalog);
+        OWLDocumentFormat format = input.getOWLOntologyManager().getOntologyFormat(input);
+        if (format != null) {
+            updated.getOWLOntologyManager().setOntologyFormat(updated, format);
+        }
+        return updated;
     }
 
     // ------------------------------------------------------------------ the dataset

@@ -26,6 +26,7 @@ import org.obolibrary.robot.CommandManager;
 import org.obolibrary.robot.CommandState;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.ReportOperation;
+import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * ROBOT's command line, and ODK's ROBOT plugin, run inside this JVM.
@@ -673,9 +674,20 @@ public final class OdkRobot {
         /**
          * {@code robot query}: ROBOT's options and ROBOT's loading of the input (the catalog
          * used), the queries on OntoBoard's engine, each output written as ROBOT writes it.
+         * With {@code --update}, as ROBOT's {@code QueryCommand.execute} does then: the
+         * ontology the updates leave is written by {@code --output}, when there is one, and
+         * handed to the next command of the line.
          */
-        private CommandState query(CommandState state, CommandLine line) throws IOException {
+        private CommandState query(CommandState state, CommandLine line) throws Exception {
             CommandState now = input(state, line);
+            List<String> updates = CommandLineHelper.getOptionalValues(line, "update");
+            if (!updates.isEmpty()) {
+                OWLOntology updated = RobotQuery.update(now,
+                        CommandLineHelper.getIOHelper(line), updates);
+                CommandLineHelper.maybeSaveOutput(line, updated);
+                now.setOntology(updated);
+                return now;
+            }
             RobotQuery.run(now.getOntology(), line,
                     CommandLineHelper.getBooleanValue(line, "use-graphs", false));
             return now;
