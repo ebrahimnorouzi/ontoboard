@@ -27,16 +27,16 @@ configs__chr-odk refresh-imports: runs
 configs__chr-odk no-mirror-refresh-imports: runs
 configs__chr-odk refresh-ro: runs
 configs__chr-odk recreate-components: runs
-configs__cl-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__cl-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__cl-odk test_fast: runs
-configs__cl-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__cl-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__cl-odk prepare_release_fast: runs
 configs__cl-odk refresh-imports: runs
 configs__cl-odk no-mirror-refresh-imports: runs
 configs__cl-odk refresh-pr: runs
-configs__cl-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__cl-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__cl-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__cl-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__cl-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__cl-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__cl-odk dosdp-docs-clustering: not run - no stand-in for dosdp-tools.
 configs__clo-odk test: runs
@@ -47,39 +47,39 @@ configs__clo-odk refresh-imports: runs
 configs__clo-odk no-mirror-refresh-imports: runs
 configs__clo-odk refresh-bfo: runs
 configs__clo-odk refresh-chebi: runs
-configs__covoc-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__covoc-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__covoc-odk test_fast: runs
-configs__covoc-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__covoc-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__covoc-odk prepare_release_fast: runs
 configs__covoc-odk refresh-imports: runs
 configs__covoc-odk no-mirror-refresh-imports: runs
 configs__covoc-odk refresh-efo: runs
-configs__covoc-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__covoc-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__covoc-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__covoc-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__covoc-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__covoc-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__ddpheno-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ddpheno-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ddpheno-odk test_fast: runs
-configs__ddpheno-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ddpheno-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ddpheno-odk prepare_release_fast: runs
 configs__ddpheno-odk refresh-imports: runs
 configs__ddpheno-odk no-mirror-refresh-imports: runs
 configs__ddpheno-odk refresh-iao: runs
-configs__ddpheno-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ddpheno-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ddpheno-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__ddpheno-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__ddpheno-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__ddpheno-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__dpo-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__dpo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__dpo-odk test_fast: runs
-configs__dpo-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__dpo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__dpo-odk prepare_release_fast: runs
 configs__dpo-odk refresh-imports: runs
 configs__dpo-odk no-mirror-refresh-imports: runs
 configs__dpo-odk refresh-fbdv: runs
 configs__dpo-odk refresh-fbbt: runs
-configs__dpo-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__dpo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__dpo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__dpo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__dpo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__dpo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__dron-odk test: runs
 configs__dron-odk test_fast: runs
@@ -90,57 +90,57 @@ configs__dron-odk no-mirror-refresh-imports: not run - make itself stops for 'no
 configs__dron-odk refresh-ro: runs
 configs__dron-odk refresh-omo: runs
 configs__dron-odk recreate-components: runs
-configs__ecocore-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecocore-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecocore-odk test_fast: runs
-configs__ecocore-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecocore-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecocore-odk prepare_release_fast: runs
 configs__ecocore-odk refresh-imports: runs
 configs__ecocore-odk no-mirror-refresh-imports: runs
 configs__ecocore-odk refresh-nbo: runs
 configs__ecocore-odk refresh-chebi: runs
-configs__ecocore-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecocore-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecocore-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__ecocore-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__ecocore-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__ecocore-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__ecto-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecto-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecto-odk test_fast: runs
-configs__ecto-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecto-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecto-odk prepare_release_fast: runs
 configs__ecto-odk refresh-imports: runs
 configs__ecto-odk no-mirror-refresh-imports: runs
 configs__ecto-odk refresh-chebi: runs
 configs__ecto-odk refresh-envo: runs
-configs__ecto-odk recreate-components: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-configs__ecto-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__ecto-odk recreate-components: not run - no stand-in for dosdp-tools.
+configs__ecto-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__ecto-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__ecto-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__ecto-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__ecto-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__envo-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__envo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__envo-odk test_fast: runs
-configs__envo-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__envo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__envo-odk prepare_release_fast: runs
 configs__envo-odk refresh-imports: runs
 configs__envo-odk no-mirror-refresh-imports: runs
 configs__envo-odk refresh-ro: runs
 configs__envo-odk refresh-chebi: runs
 configs__envo-odk refresh-pco: runs
-configs__envo-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__envo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__envo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__envo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__envo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__envo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__envo-odk dosdp-docs-entity_attribute: not run - no stand-in for dosdp-tools.
 configs__envo-odk dosdp-docs-entity_attribute_location: not run - no stand-in for dosdp-tools.
-configs__envo-odk all_subsets: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-configs__fbbt-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__envo-odk all_subsets: not run - no stand-in for dosdp-tools.
+configs__fbbt-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__fbbt-odk test_fast: runs
-configs__fbbt-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__fbbt-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__fbbt-odk prepare_release_fast: runs
 configs__fbbt-odk refresh-imports: runs
 configs__fbbt-odk no-mirror-refresh-imports: runs
 configs__fbbt-odk refresh-go: runs
-configs__fbbt-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__fbbt-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__fbbt-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__fbbt-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__fbbt-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__fbbt-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__fbcv-odk test: runs
 configs__fbcv-odk test_fast: runs
@@ -174,43 +174,43 @@ configs__geno-odk prepare_release_fast: runs
 configs__geno-odk refresh-imports: runs
 configs__geno-odk no-mirror-refresh-imports: runs
 configs__geno-odk refresh-ro: runs
-configs__hp-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__hp-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__hp-odk test_fast: runs
-configs__hp-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__hp-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__hp-odk prepare_release_fast: runs
 configs__hp-odk refresh-imports: runs
 configs__hp-odk no-mirror-refresh-imports: runs
 configs__hp-odk refresh-nbo: runs
 configs__hp-odk refresh-pr: runs
-configs__hp-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__hp-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__hp-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__hp-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__hp-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__hp-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__maxo-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__maxo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__maxo-odk test_fast: runs
-configs__maxo-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__maxo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__maxo-odk prepare_release_fast: runs
 configs__maxo-odk refresh-imports: runs
 configs__maxo-odk no-mirror-refresh-imports: runs
 configs__maxo-odk refresh-iao: runs
 configs__maxo-odk refresh-chebi: runs
-configs__maxo-odk recreate-components: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-configs__maxo-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__maxo-odk recreate-components: not run - no stand-in for dosdp-tools.
+configs__maxo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__maxo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__maxo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__maxo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__maxo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__maxo-odk dosdp-docs-manual: not run - no stand-in for dosdp-tools.
-configs__mgpo-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mgpo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mgpo-odk test_fast: runs
-configs__mgpo-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mgpo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mgpo-odk prepare_release_fast: runs
 configs__mgpo-odk refresh-imports: runs
 configs__mgpo-odk no-mirror-refresh-imports: runs
 configs__mgpo-odk refresh-iao: runs
 configs__mgpo-odk refresh-chebi: runs
-configs__mgpo-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mgpo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mgpo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__mgpo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__mgpo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__mgpo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__mgpo-odk dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 configs__mo-odk test: not run - make itself stops for 'test': make: No rule to make target 'tmp/stamp-component-pato', needed by 'components/pato'.
@@ -222,29 +222,29 @@ configs__mo-odk no-mirror-refresh-imports: runs
 configs__mo-odk refresh-nbo: not run - make itself stops for 'refresh-nbo': make[1]: No rule to make target 'tmp/stamp-component-pato', needed by 'components/pato'.
 configs__mo-odk refresh-fao: not run - make itself stops for 'refresh-fao': make[1]: No rule to make target 'tmp/stamp-component-pato', needed by 'components/pato'.
 configs__mo-odk recreate-components: runs
-configs__mondo-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mondo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mondo-odk test_fast: runs
-configs__mondo-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mondo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mondo-odk prepare_release_fast: runs
 configs__mondo-odk refresh-imports: runs
 configs__mondo-odk no-mirror-refresh-imports: not run - make itself stops for 'no-mirror-refresh-imports': make[1]: No rule to make target 'mirror/uberon.owl', needed by 'imports/uberon_import.owl'.
 configs__mondo-odk refresh-uberon: runs
 configs__mondo-odk refresh-cl: runs
-configs__mondo-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mondo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mondo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__mondo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__mondo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__mondo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__mp-odk test: not run - OntoBoard's own engine does not read 'http://purl.obolibrary.org/obo/mp[#]' (a pattern or a list in brackets) in a recipe line. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
-configs__mp-odk test_fast: not run - OntoBoard's own engine does not read 'http://purl.obolibrary.org/obo/mp[#]' (a pattern or a list in brackets) in a recipe line.
-configs__mp-odk prepare_release: not run - OntoBoard's own engine does not read 'http://purl.obolibrary.org/obo/mp[#]' (a pattern or a list in brackets) in a recipe line. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
-configs__mp-odk prepare_release_fast: not run - OntoBoard's own engine does not read 'http://purl.obolibrary.org/obo/mp[#]' (a pattern or a list in brackets) in a recipe line.
+configs__mp-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mp-odk test_fast: runs
+configs__mp-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mp-odk prepare_release_fast: runs
 configs__mp-odk refresh-imports: runs
 configs__mp-odk no-mirror-refresh-imports: runs
 configs__mp-odk refresh-nbo: runs
 configs__mp-odk refresh-go: runs
-configs__mp-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__mp-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__mp-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__mp-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__mp-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__mp-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__nbo-odk test: runs
 configs__nbo-odk test_fast: runs
@@ -254,16 +254,16 @@ configs__nbo-odk refresh-imports: runs
 configs__nbo-odk no-mirror-refresh-imports: runs
 configs__nbo-odk refresh-go: runs
 configs__nbo-odk refresh-chebi: runs
-configs__omia-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__omia-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__omia-odk test_fast: runs
-configs__omia-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__omia-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__omia-odk prepare_release_fast: runs
 configs__omia-odk refresh-imports: runs
 configs__omia-odk no-mirror-refresh-imports: runs
 configs__omia-odk refresh-ro: runs
-configs__omia-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__omia-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__omia-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__omia-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__omia-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__omia-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__omrse-odk test: runs
 configs__omrse-odk test_fast: runs
@@ -286,28 +286,28 @@ configs__pato-odk no-mirror-refresh-imports: runs
 configs__pato-odk refresh-ro: runs
 configs__pato-odk refresh-chebi: runs
 configs__pato-odk recreate-components: runs
-configs__phipo-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__phipo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__phipo-odk test_fast: runs
-configs__phipo-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__phipo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__phipo-odk prepare_release_fast: runs
 configs__phipo-odk refresh-imports: runs
 configs__phipo-odk no-mirror-refresh-imports: runs
 configs__phipo-odk refresh-ido: runs
-configs__phipo-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__phipo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__phipo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__phipo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__phipo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__phipo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__planp-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__planp-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__planp-odk test_fast: runs
-configs__planp-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__planp-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__planp-odk prepare_release_fast: runs
 configs__planp-odk refresh-imports: runs
 configs__planp-odk no-mirror-refresh-imports: runs
 configs__planp-odk refresh-plana: runs
-configs__planp-odk recreate-components: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-configs__planp-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__planp-odk recreate-components: not run - no stand-in for dosdp-tools.
+configs__planp-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__planp-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__planp-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__planp-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__planp-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__rbo-odk test: not run - make itself stops for 'test': make: No rule to make target 'reports/.owl-obo-report.tsv', needed by 'robot_reports'.
 configs__rbo-odk test_fast: not run - make itself stops for 'test_fast': make[1]: No rule to make target 'reports/.owl-obo-report.tsv', needed by 'robot_reports'.
@@ -331,28 +331,28 @@ configs__srao-odk refresh-imports: runs
 configs__srao-odk no-mirror-refresh-imports: not run - make itself stops for 'no-mirror-refresh-imports': make[1]: No rule to make target 'mirror/obi.owl', needed by 'imports/obi_import.owl'.
 configs__srao-odk refresh-obi: runs
 configs__srao-odk refresh-edam: runs
-configs__uberon-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__uberon-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__uberon-odk test_fast: runs
-configs__uberon-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__uberon-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__uberon-odk prepare_release_fast: runs
 configs__uberon-odk refresh-imports: runs
 configs__uberon-odk no-mirror-refresh-imports: not run - make itself stops for 'no-mirror-refresh-imports': make[1]: No rule to make target 'mirror/pr.owl', needed by 'imports/pr_import.owl'.
 configs__uberon-odk refresh-pr: runs
 configs__uberon-odk refresh-cl: runs
-configs__uberon-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__uberon-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__uberon-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__uberon-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__uberon-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__uberon-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__upheno-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__upheno-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__upheno-odk test_fast: runs
-configs__upheno-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__upheno-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__upheno-odk prepare_release_fast: runs
 configs__upheno-odk refresh-imports: runs
 configs__upheno-odk no-mirror-refresh-imports: runs
 configs__upheno-odk refresh-nbo: runs
-configs__upheno-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__upheno-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__upheno-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__upheno-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__upheno-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__upheno-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__wbbt-odk test: runs
 configs__wbbt-odk test_fast: runs
@@ -368,29 +368,29 @@ configs__wbls-odk prepare_release_fast: runs
 configs__wbls-odk refresh-imports: runs
 configs__wbls-odk no-mirror-refresh-imports: runs
 configs__wbls-odk refresh-ro: runs
-configs__wbphenotype-odk test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__wbphenotype-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__wbphenotype-odk test_fast: runs
-configs__wbphenotype-odk prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__wbphenotype-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__wbphenotype-odk prepare_release_fast: runs
 configs__wbphenotype-odk refresh-imports: runs
 configs__wbphenotype-odk no-mirror-refresh-imports: runs
 configs__wbphenotype-odk refresh-go: runs
 configs__wbphenotype-odk refresh-chebi: runs
-configs__wbphenotype-odk recreate-components: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-configs__wbphenotype-odk patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__wbphenotype-odk recreate-components: not run - no stand-in for dosdp-tools.
+configs__wbphenotype-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__wbphenotype-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__wbphenotype-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__wbphenotype-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__wbphenotype-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
-configs__xpo-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__xpo-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__xpo-odk test_fast: runs
-configs__xpo-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__xpo-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__xpo-odk prepare_release_fast: runs
 configs__xpo-odk refresh-imports: runs
 configs__xpo-odk no-mirror-refresh-imports: runs
 configs__xpo-odk refresh-iao: runs
-configs__xpo-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__xpo-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__xpo-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__xpo-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__xpo-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__xpo-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__xpo-odk dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 configs__xpo-odk dosdp-docs-anatomy: not run - no stand-in for dosdp-tools.
@@ -401,17 +401,17 @@ configs__zeco-odk prepare_release_fast: runs
 configs__zeco-odk refresh-imports: runs
 configs__zeco-odk no-mirror-refresh-imports: runs
 configs__zeco-odk refresh-ro: runs
-configs__zp-odk test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__zp-odk test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__zp-odk test_fast: runs
-configs__zp-odk prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__zp-odk prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__zp-odk prepare_release_fast: runs
 configs__zp-odk refresh-imports: runs
 configs__zp-odk no-mirror-refresh-imports: runs
 configs__zp-odk refresh-zfa: runs
 configs__zp-odk refresh-chebi: runs
-configs__zp-odk patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+configs__zp-odk patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 configs__zp-odk dosdp_validation: not run - no stand-in for dosdp.
-configs__zp-odk update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+configs__zp-odk update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 configs__zp-odk dosdp-docs-default: not run - no stand-in for dosdp-tools.
 configs__zp-odk dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 configs__zp-odk dosdp-docs-anatomy: not run - no stand-in for dosdp-tools.
@@ -475,17 +475,17 @@ tests__test-ci test: runs
 tests__test-ci test_fast: runs
 tests__test-ci prepare_release: runs
 tests__test-ci prepare_release_fast: runs
-tests__test-components test: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-components test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-components test_fast: runs
-tests__test-components prepare_release: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-components prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-components prepare_release_fast: runs
 tests__test-components refresh-imports: runs
 tests__test-components no-mirror-refresh-imports: runs
 tests__test-components refresh-pato: runs
-tests__test-components recreate-components: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools.
-tests__test-components patterns: not run - [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-components recreate-components: not run - no stand-in for dosdp-tools.
+tests__test-components patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-components dosdp_validation: not run - no stand-in for dosdp.
-tests__test-components update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+tests__test-components update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 tests__test-components dosdp-docs-default: not run - no stand-in for dosdp-tools.
 tests__test-components-make-base test: runs
 tests__test-components-make-base test_fast: runs
@@ -495,16 +495,16 @@ tests__test-components-make-base refresh-imports: runs
 tests__test-components-make-base no-mirror-refresh-imports: runs
 tests__test-components-make-base refresh-ro: runs
 tests__test-components-make-base recreate-components: runs
-tests__test-dosdp-matches test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-dosdp-matches test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-dosdp-matches test_fast: runs
-tests__test-dosdp-matches prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-dosdp-matches prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-dosdp-matches prepare_release_fast: runs
 tests__test-dosdp-matches refresh-imports: runs
 tests__test-dosdp-matches no-mirror-refresh-imports: runs
 tests__test-dosdp-matches refresh-ro: runs
-tests__test-dosdp-matches patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-dosdp-matches patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-dosdp-matches dosdp_validation: not run - no stand-in for dosdp.
-tests__test-dosdp-matches update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+tests__test-dosdp-matches update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 tests__test-dosdp-matches dosdp-docs-default: not run - no stand-in for dosdp-tools.
 tests__test-dosdp-matches dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 tests__test-dosdp-matches dosdp-docs-auto: not run - no stand-in for dosdp-tools.
@@ -579,16 +579,16 @@ tests__test-non-import-release prepare_release_fast: runs
 tests__test-non-import-release refresh-imports: runs
 tests__test-non-import-release no-mirror-refresh-imports: runs
 tests__test-non-import-release refresh-ro: runs
-tests__test-patterns test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-patterns test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-patterns test_fast: runs
-tests__test-patterns prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-patterns prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-patterns prepare_release_fast: runs
 tests__test-patterns refresh-imports: runs
 tests__test-patterns no-mirror-refresh-imports: runs
 tests__test-patterns refresh-ro: runs
-tests__test-patterns patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-patterns patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-patterns dosdp_validation: not run - no stand-in for dosdp.
-tests__test-patterns update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+tests__test-patterns update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 tests__test-patterns dosdp-docs-default: not run - no stand-in for dosdp-tools.
 tests__test-patterns dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 tests__test-patterns dosdp-docs-auto: not run - no stand-in for dosdp-tools.
@@ -601,21 +601,21 @@ tests__test-release no-mirror-refresh-imports: runs
 tests__test-release refresh-ro: runs
 tests__test-release-format test: runs
 tests__test-release-format test_fast: runs
-tests__test-release-format prepare_release: not run - OntoBoard's own engine does not read '(' (commands in parentheses) in a recipe line. | no stand-in for semsql.
-tests__test-release-format prepare_release_fast: not run - OntoBoard's own engine does not read '(' (commands in parentheses) in a recipe line. | no stand-in for semsql.
+tests__test-release-format prepare_release: not run - no stand-in for semsql.
+tests__test-release-format prepare_release_fast: not run - no stand-in for semsql.
 tests__test-release-format refresh-imports: runs
 tests__test-release-format no-mirror-refresh-imports: runs
 tests__test-release-format refresh-ro: runs
-tests__test-release-format-patterns test: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-release-format-patterns test: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-release-format-patterns test_fast: runs
-tests__test-release-format-patterns prepare_release: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-release-format-patterns prepare_release: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-release-format-patterns prepare_release_fast: runs
 tests__test-release-format-patterns refresh-imports: runs
 tests__test-release-format-patterns no-mirror-refresh-imports: runs
 tests__test-release-format-patterns refresh-ro: runs
-tests__test-release-format-patterns patterns: not run - [: '[ ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | [: '[ example ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for dosdp-tools. | no stand-in for dosdp.
+tests__test-release-format-patterns patterns: not run - no stand-in for dosdp-tools. | no stand-in for dosdp.
 tests__test-release-format-patterns dosdp_validation: not run - no stand-in for dosdp.
-tests__test-release-format-patterns update_patterns: not run - OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml') in a recipe line. | OntoBoard's own engine does not read a file pattern ('tmp/dosdp/*.yaml.1') in a recipe line. | [: '[ -s ../patterns/dosdp-patterns/external.txt ]' is not a test read here: only -f, -d, -e, -n, -z, = and !=. | no stand-in for wget.
+tests__test-release-format-patterns update_patterns: not run - cp: 'cp -r tmp/dosdp/*.yaml ../patterns/dosdp-patterns' is not read here: only cp <file> <file>. | no stand-in for find. | no stand-in for wget.
 tests__test-release-format-patterns dosdp-docs-default: not run - no stand-in for dosdp-tools.
 tests__test-release-format-patterns dosdp-docs-manual: not run - no stand-in for dosdp-tools.
 tests__test-release-format-patterns dosdp-docs-auto: not run - no stand-in for dosdp-tools.

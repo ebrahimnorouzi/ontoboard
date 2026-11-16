@@ -401,6 +401,102 @@ class RecipeShellTest {
         assertTrue(file("../keep.txt").isFile());
     }
 
+    // ------------------------------------------------------------------ tests, patterns, groups
+
+    /** {@code [ word ]}: true when the word has something in it, as ODK's DOSDP rules ask. */
+    @Test
+    void aTestOfOneWordIsTrueWhenTheWordIsNotEmpty() {
+        assertEquals(0, run("[ example ]"));
+        assertEquals(1, run("[ \"\" ]"));
+        assertEquals(0, run("test ]"), "without a [ before it, ] is a word like any other");
+    }
+
+    @Test
+    void aTestOfNoWordIsFalse() {
+        assertEquals(1, run("[ ]"));
+    }
+
+    @Test
+    void aTestOfSizeAsksForAFileWithSomethingInIt() throws IOException {
+        write("empty.txt", "");
+        write("full.txt", "x");
+        assertEquals(1, run("[ -s empty.txt ]"));
+        assertEquals(0, run("[ -s full.txt ]"));
+        assertEquals(1, run("[ -s missing.txt ]"));
+    }
+
+    /** mp's report rule: a bracket that matches no file leaves the word as it is written. */
+    @Test
+    void aPatternNoFileMatchesStaysAsItIs() {
+        run("robot report --base-iri http://purl.obolibrary.org/obo/mp[#] --output x.tsv");
+        assertTrue(robotRan.get(0).contains("http://purl.obolibrary.org/obo/mp[#]"));
+    }
+
+    @Test
+    void aPatternIsTheFilesItMatchesInOrder() throws IOException {
+        write("tmp/dosdp/b.yaml", "b");
+        write("tmp/dosdp/a.yaml", "a");
+        write("tmp/dosdp/a.yaml.1", "old");
+        assertEquals(0, run("rm -f tmp/dosdp/*.yaml.1"));
+        assertFalse(file("tmp/dosdp/a.yaml.1").exists());
+        assertTrue(file("tmp/dosdp/a.yaml").exists());
+    }
+
+    /** ODK's container runs in the C locale: the files come sorted by their bytes. */
+    @Test
+    void aPatternsFilesComeInTheOrderOfTheirBytes() throws IOException {
+        write("c.txt", "");
+        write("a.txt", "");
+        write("B.txt", "");
+        assertEquals(0, run("echo *.txt"));
+        assertEquals(Collections.singletonList("B.txt a.txt c.txt"), said);
+    }
+
+    /** A star does not match a name that starts with a dot: ODK keeps tmp/.gitkeep in git. */
+    @Test
+    void aPatternLeavesOutANameThatStartsWithADot() throws IOException {
+        write("tmp/.gitkeep", "");
+        write("tmp/merged.ofn", "x");
+        assertEquals(0, run("rm -f tmp/*"));
+        assertEquals(Collections.singletonList(".gitkeep"), Arrays.asList(file("tmp").list()));
+    }
+
+    /**
+     * What a pattern matched is asked again before its command runs: cp takes two files, and
+     * a star that found three would copy the first over the second. The line stops there,
+     * past any {@code ||}: sh would have done something that was not done.
+     */
+    @Test
+    void aPatternThatGivesACommandMoreThanItTakesStopsTheLine() throws IOException {
+        write("tmp/a.txt", "a");
+        write("tmp/b.txt", "b");
+        assertEquals(1, run("cp tmp/*.txt copy.txt || true"));
+        assertTrue(said.get(said.size() - 1).contains("cp <file> <file>"), said.toString());
+        assertEquals("b", read("tmp/b.txt"));
+        assertFalse(file("copy.txt").exists());
+    }
+
+    @Test
+    void commandsInParenthesesRunAsOneGroup() {
+        assertEquals(1, run("test -f nothing.db || (echo \"SQLite/SemSQL generation failed\" "
+                + "&& exit 1)"));
+        assertTrue(said.contains("SQLite/SemSQL generation failed"));
+    }
+
+    /** {@code ( ... )} is a shell of its own: an exit inside ends the group, not the line. */
+    @Test
+    void anExitInsideParenthesesEndsTheGroupOnly() {
+        assertEquals(0, run("(exit 3) || echo recovered"));
+        assertEquals(Collections.singletonList("recovered"), said);
+    }
+
+    @Test
+    void aPatternThatReachesOutsideTheProjectIsNotWritten() {
+        String why = whyNot("rm -f ../../../*.owl");
+        assertNotNull(why);
+        assertTrue(why.contains("outside the project"), why);
+    }
+
     // ------------------------------------------------------------------ what is kept safe
 
     /** A recipe writes inside the project. A path that leaves it is refused before it runs. */
@@ -423,11 +519,18 @@ class RecipeShellTest {
     @Test
     void whatTheShellPartHereDoesNotReadIsRefusedByName() {
         assertTrue(whyNot("echo $HOME").contains("$HOME"), whyNot("echo $HOME"));
-        assertTrue(whyNot("cat *.owl").contains("a file pattern ('*.owl')"), whyNot("cat *.owl"));
-        assertTrue(whyNot("cat x[ab].owl").contains("x[ab].owl"), whyNot("cat x[ab].owl"));
+        // A file pattern is read as sh reads it; inside "$(...)" it is not, nor after > or <.
+        assertTrue(whyNot("echo \"$(cat *.owl)\"").contains("a file pattern ('*.owl')"),
+                whyNot("echo \"$(cat *.owl)\""));
+        assertTrue(whyNot("echo \"$(cat x[ab].owl)\"").contains("x[ab].owl"),
+                whyNot("echo \"$(cat x[ab].owl)\""));
+        assertTrue(whyNot("echo x > tmp/*.txt").contains("tmp/*.txt"),
+                whyNot("echo x > tmp/*.txt"));
         assertTrue(whyNot("cat {a,b}.owl").contains("{a,b}.owl"), whyNot("cat {a,b}.owl"));
         assertTrue(whyNot("robot merge &").contains("&"));
-        assertTrue(whyNot("(cd .. && make)").contains("("));
+        // ( ... ) is read; what is inside is asked as any command is.
+        assertTrue(whyNot("(cd .. && make)").contains("'cd'"), whyNot("(cd .. && make)"));
+        assertTrue(String.valueOf(whyNot("[ -f x")).contains("']'"), whyNot("[ -f x"));
         assertTrue(whyNot("echo `date`").contains("`"));
         assertTrue(whyNot("X=1 robot merge").contains("X=1"));
         assertTrue(whyNot("robot merge 2> errors.txt").contains("2>"));

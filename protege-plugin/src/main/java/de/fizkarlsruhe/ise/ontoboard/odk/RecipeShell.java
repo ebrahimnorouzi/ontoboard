@@ -12,7 +12,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,10 +27,11 @@ import java.util.regex.Pattern;
  * <p>make hands each recipe line to {@code /bin/sh}. Where ODK's container cannot run there
  * may be no sh either - Protégé on Windows finds none - so OntoBoard's engine reads the line
  * itself. It reads the part of the shell that ODK's recipes use: words and quotes, {@code &&},
- * {@code ||}, {@code ;}, a group in braces, {@code if ... then ... else ... fi}, a pipe, a
- * file for input or output, and {@code "$(...)"} inside double quotes. No variables, no file
- * patterns, no background jobs: a line with any of those is refused, saying which, and so is
- * a command nobody here knows. ODK's {@code clean} loop is the one line read whole.
+ * {@code ||}, {@code ;}, a group in braces or in parentheses, {@code if ... then ... else ...
+ * fi}, a pipe, a file for input or output, {@code "$(...)"} inside double quotes, and file
+ * patterns ({@code *}, {@code ?}, {@code [...]}) as POSIX sh expands them. No variables, no
+ * background jobs: a line with either is refused, saying which, and so is a command nobody
+ * here knows. ODK's {@code clean} loop is the one line read whole.
  *
  * <p>A line is read first ({@link #parse}), asked whether every command in it can be run
  * ({@link Script#whyNot}), and only then run ({@link Script#run}). The commands themselves are
@@ -125,6 +128,26 @@ final class RecipeShell {
     private static final class Word {
         private final List<Object> parts = new ArrayList<Object>();
         private boolean quoted;
+        /** Which characters of the text no quote protects: only those make a file pattern. */
+        private final BitSet bare = new BitSet();
+        private int length;
+        /** Whether a {@code *}, {@code ?} or {@code [} stands in it unquoted. */
+        private boolean globby;
+        /** The word as a file pattern; null when it is not one. */
+        private Glob glob;
+
+        void add(String text, boolean unquoted) {
+            if (unquoted) {
+                bare.set(length, length + text.length());
+            }
+            length += text.length();
+            parts.add(text);
+        }
+
+        /** A {@code "$(...)"}: the word is computed, and is never a file pattern. */
+        void add(Node node) {
+            parts.add(node);
+        }
 
         /** The word when it is plain text; null when part of it is computed. */
         String text() {
@@ -145,6 +168,18 @@ final class RecipeShell {
         String shown() {
             String text = text();
             return text != null ? text : "$(...)";
+        }
+    }
+
+    /**
+     * A word read as a file pattern: its parts between slashes, each a name as it is written
+     * (a String) or a pattern (a Pattern). What sh makes of it is the files it matches.
+     */
+    private static final class Glob {
+        private final List<Object> steps;
+
+        Glob(List<Object> steps) {
+            this.steps = steps;
         }
     }
 
@@ -170,8 +205,17 @@ final class RecipeShell {
         @Override
         int run(Running running, String in, StringBuilder out) throws IOException {
             List<String> arguments = new ArrayList<String>();
+            boolean matched = false;
             for (Word word : words) {
-                arguments.add(running.value(word));
+                if (word.glob == null) {
+                    arguments.add(running.value(word));
+                    continue;
+                }
+                // As sh: the files the pattern matches, or the word itself when none does.
+                List<String> files = running.matches(word.glob);
+                matched |= !files.isEmpty();
+                arguments.addAll(files.isEmpty() ? Collections.singletonList(word.text())
+                        : files);
             }
             String name = arguments.remove(0);
             if (name.equals("exit")) {
@@ -191,6 +235,13 @@ final class RecipeShell {
             if (tool == null) {
                 running.said.add(name + ": command not found");
                 return 127;
+            }
+            if (matched) {
+                // The look before the run saw the pattern; the tool is asked about its files.
+                String why = tool.whyNot(arguments);
+                if (why != null) {
+                    throw new Refused(why);
+                }
             }
             int status = tool.run(new Call(arguments, running.folder, input, written,
                     running.said));
@@ -303,6 +354,29 @@ final class RecipeShell {
         }
     }
 
+    /** {@code ( list )}: the list in a shell of its own - an exit inside ends the group only. */
+    private static final class Group extends Node {
+        private final Node body;
+
+        Group(Node body) {
+            this.body = body;
+        }
+
+        @Override
+        void commands(List<Simple> into) {
+            body.commands(into);
+        }
+
+        @Override
+        int run(Running running, String in, StringBuilder out) throws IOException {
+            try {
+                return body.run(running, in, out);
+            } catch (Exit exit) {
+                return exit.status;
+            }
+        }
+    }
+
     /** ODK's {@code clean} loop: what is inside each of the folders named, when they are here. */
     private static final class Clean extends Node {
         private final List<String> folders;
@@ -355,6 +429,18 @@ final class RecipeShell {
         }
     }
 
+    /**
+     * A command to which a file pattern gave files its tool does not take. The line stops
+     * there, past any {@code ||}: sh would have done what is not done here.
+     */
+    private static final class Refused extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        Refused(String why) {
+            super(why, null, false, false);
+        }
+    }
+
     /** A run of one line: the tools, the folder, and what is said. */
     private static final class Running {
         private final Map<String, Tool> tools;
@@ -389,6 +475,53 @@ final class RecipeShell {
             return file.isAbsolute() || path.startsWith("/") ? file : new File(folder, path);
         }
 
+        /**
+         * The files a pattern matches, read from the make folder as sh reads them: each
+         * pattern between slashes against the names in its folder - a name that starts with a
+         * dot only when the pattern does too - sorted by their bytes, as in ODK's C locale.
+         * Empty when none matches.
+         */
+        List<String> matches(Glob glob) {
+            List<String> found = Collections.singletonList("");
+            for (Object step : glob.steps) {
+                List<String> next = new ArrayList<String>();
+                for (String prefix : found) {
+                    if (step instanceof String) {
+                        next.add(joined(prefix, (String) step));
+                        continue;
+                    }
+                    String[] names = (prefix.isEmpty() ? folder : file(prefix)).list();
+                    for (String name : names == null ? new String[0] : names) {
+                        if (((Pattern) step).matcher(name).matches()) {
+                            next.add(joined(prefix, name));
+                        }
+                    }
+                }
+                found = next;
+            }
+            List<String> matches = new ArrayList<String>();
+            for (String path : found) {
+                if (there(path)) {
+                    matches.add(path);
+                }
+            }
+            Collections.sort(matches, BYTES);
+            return matches;
+        }
+
+        /** Whether a path names something, as lstat sees it; one that ends in / a folder. */
+        private boolean there(String path) {
+            File file = file(path);
+            if (path.endsWith("/")) {
+                return file.isDirectory();
+            }
+            try {
+                return Files.exists(file.toPath(), LinkOption.NOFOLLOW_LINKS);
+            } catch (java.nio.file.InvalidPathException notAName) {
+                return false;
+            }
+        }
+
         /** A word's text, with what each {@code $(...)} in it writes, less its last line breaks. */
         String value(Word word) throws IOException {
             StringBuilder value = new StringBuilder();
@@ -408,6 +541,25 @@ final class RecipeShell {
             return value.toString();
         }
     }
+
+    private static String joined(String prefix, String name) {
+        return prefix.isEmpty() ? name : prefix + "/" + name;
+    }
+
+    /** Text in the order of its bytes in UTF-8: how sort and sh order names in the C locale. */
+    private static final Comparator<String> BYTES = new Comparator<String>() {
+        @Override
+        public int compare(String one, String other) {
+            byte[] a = one.getBytes(StandardCharsets.UTF_8);
+            byte[] b = other.getBytes(StandardCharsets.UTF_8);
+            for (int i = 0; i < Math.min(a.length, b.length); i++) {
+                if (a[i] != b[i]) {
+                    return (a[i] & 0xff) - (b[i] & 0xff);
+                }
+            }
+            return a.length - b.length;
+        }
+    };
 
     // ------------------------------------------------------------------ a line, read
 
@@ -433,6 +585,13 @@ final class RecipeShell {
                 if (name == null) {
                     return "a command whose name is computed is not run here: " + line;
                 }
+                if (command.words.get(0).glob != null) {
+                    return "a command named by a file pattern is not run here: " + line;
+                }
+                // A file pattern is asked as it is written. What it matches lies where its text
+                // does - each pattern between slashes is one name, never . or .. - so one that
+                // reaches outside the project is refused here; its files are asked again when
+                // the line runs.
                 List<String> arguments = new ArrayList<String>();
                 for (Word word : command.words.subList(1, command.words.size())) {
                     arguments.add(word.shown());
@@ -479,10 +638,14 @@ final class RecipeShell {
         int run(Map<String, Tool> tools, File folder, List<String> said) {
             Running running = new Running(tools, folder, said);
             int status;
+            String refused = null;
             try {
                 status = root.run(running, "", running.top);
             } catch (Exit exit) {
                 status = exit.status;
+            } catch (Refused refusal) {
+                refused = refusal.getMessage();
+                status = 1;
             } catch (IOException failed) {
                 said.add(String.valueOf(failed.getMessage()));
                 status = 1;
@@ -491,6 +654,10 @@ final class RecipeShell {
             if (running.top.length() > 0) {
                 // A last line without its line break.
                 said.add(running.top.toString());
+            }
+            if (refused != null) {
+                // The line's last word: why it stopped.
+                said.add(refused);
             }
             return status;
         }
@@ -520,7 +687,7 @@ final class RecipeShell {
             return new Script(new Clean(Arrays.asList(clean.group(1).trim().split(" "))),
                     command);
         }
-        Reader reader = new Reader(command);
+        Reader reader = new Reader(command, true);
         Node root = reader.list();
         if (reader.at < reader.tokens.size()) {
             throw reader.notRead("'" + reader.tokens.get(reader.at).shown() + "' where a "
@@ -549,11 +716,14 @@ final class RecipeShell {
                 "until", "case", "do", "done", "esac", "function", "select", "!", "[[");
 
         private final String line;
+        /** Whether a word may be a file pattern: not inside {@code "$(...)"}. */
+        private final boolean patterns;
         private final List<Token> tokens = new ArrayList<Token>();
         private int at;
 
-        Reader(String line) {
+        Reader(String line, boolean patterns) {
             this.line = line;
+            this.patterns = patterns;
             tokenize(line);
         }
 
@@ -607,7 +777,7 @@ final class RecipeShell {
                     if (close < 0) {
                         throw notRead("a quote that is not closed");
                     }
-                    word.parts.add(text.substring(i + 1, close));
+                    word.add(text.substring(i + 1, close), false);
                     word.quoted = true;
                     i = close + 1;
                 } else if (c == '"') {
@@ -616,7 +786,7 @@ final class RecipeShell {
                     if (i + 1 >= length) {
                         throw notRead("a backslash at the end");
                     }
-                    word.parts.add(String.valueOf(text.charAt(i + 1)));
+                    word.add(String.valueOf(text.charAt(i + 1)), false);
                     word.quoted = true;
                     i += 2;
                 } else if (c == '$') {
@@ -624,15 +794,21 @@ final class RecipeShell {
                             + "output outside double quotes)");
                 } else if (c == '`') {
                     throw notRead("a command in backquotes (`)");
-                } else if (c == '*' || c == '?') {
-                    throw notRead("a file pattern ('" + wordAround(text, i) + "')");
-                } else if ((c == '[' || c == '{' || c == '}') && !alone(text, i, word)) {
-                    // On its own, [ is the test and { } hold a group. Inside a word they
-                    // would be a pattern or a list of alternatives.
-                    throw notRead("'" + wordAround(text, i) + "' (a pattern or a list in "
-                            + "brackets)");
+                } else if (c == '*' || c == '?' || (c == '[' && !alone(text, i, word))) {
+                    // On its own, [ is the test. Anywhere else these make a file pattern.
+                    if (!patterns) {
+                        throw notRead("a file pattern ('" + wordAround(text, i) + "') inside "
+                                + "$(...)");
+                    }
+                    word.add(String.valueOf(c), true);
+                    word.globby = true;
+                    i++;
+                } else if ((c == '{' || c == '}') && !alone(text, i, word)) {
+                    // On their own, { } hold a group. Inside a word they would be bash's list
+                    // of alternatives, which sh does not have.
+                    throw notRead("'" + wordAround(text, i) + "' (a list in braces)");
                 } else {
-                    word.parts.add(String.valueOf(c));
+                    word.add(String.valueOf(c), true);
                     i++;
                 }
             }
@@ -642,6 +818,12 @@ final class RecipeShell {
         private Word ended(Word word) {
             if (word != null) {
                 merge(word);
+                if (word.globby) {
+                    if (word.text() == null) {
+                        throw notRead("a file pattern in a word with a $(...) in it");
+                    }
+                    word.glob = glob(word);
+                }
                 tokens.add(new Token(word, null));
             }
             return null;
@@ -715,7 +897,7 @@ final class RecipeShell {
                 return "<";
             }
             if (c == '(' || c == ')') {
-                throw notRead("'" + c + "' (commands in parentheses)");
+                return String.valueOf(c);
             }
             return null;
         }
@@ -755,16 +937,16 @@ final class RecipeShell {
                     if (i + 1 < length && text.charAt(i + 1) == '(') {
                         int close = closing(text, i + 2);
                         if (literal.length() > 0) {
-                            word.parts.add(literal.toString());
+                            word.add(literal.toString(), false);
                             literal = new StringBuilder();
                         }
-                        Reader inner = new Reader(text.substring(i + 2, close));
+                        Reader inner = new Reader(text.substring(i + 2, close), false);
                         Node node = inner.list();
                         if (inner.at < inner.tokens.size()) {
                             throw notRead("'" + inner.tokens.get(inner.at).shown() + "' inside "
                                     + "$(...)");
                         }
-                        word.parts.add(node);
+                        word.add(node);
                         i = close + 1;
                         continue;
                     }
@@ -773,7 +955,7 @@ final class RecipeShell {
                 literal.append(c);
                 i++;
             }
-            word.parts.add(literal.toString());
+            word.add(literal.toString(), false);
             word.quoted = true;
             return i + 1;
         }
@@ -816,6 +998,122 @@ final class RecipeShell {
             return text.substring(start, end);
         }
 
+        // -------------------------------------------------------------- file patterns
+
+        /** The word as a file pattern, or null when nothing in it makes one after all. */
+        private Glob glob(Word word) {
+            String text = word.text();
+            if (text.startsWith("/")) {
+                throw notRead("a file pattern that starts at the top of the file system ('"
+                        + text + "')");
+            }
+            List<Object> steps = new ArrayList<Object>();
+            boolean any = false;
+            int start = 0;
+            while (true) {
+                int slash = text.indexOf('/', start);
+                int end = slash < 0 ? text.length() : slash;
+                Object step = step(text, word.bare, start, end);
+                any |= step instanceof Pattern;
+                steps.add(step);
+                if (slash < 0) {
+                    break;
+                }
+                start = slash + 1;
+            }
+            return any ? new Glob(steps) : null;
+        }
+
+        /**
+         * One part of a word between slashes: its text when nothing in it is a pattern, or
+         * the pattern. A name that starts with a dot is matched only by a part that does too.
+         */
+        private Object step(String text, BitSet bare, int start, int end) {
+            StringBuilder regex = new StringBuilder();
+            StringBuilder literal = new StringBuilder();
+            boolean pattern = false;
+            int i = start;
+            while (i < end) {
+                char c = text.charAt(i);
+                String piece = null;
+                int next = i + 1;
+                if (bare.get(i) && c == '*') {
+                    piece = ".*";
+                } else if (bare.get(i) && c == '?') {
+                    piece = ".";
+                } else if (bare.get(i) && c == '[') {
+                    int close = bracketEnd(text, bare, i, end);
+                    if (close >= 0) {
+                        piece = bracket(text, bare, i, close);
+                        next = close + 1;
+                    }
+                }
+                if (piece == null) {
+                    literal.append(c);
+                } else {
+                    if (literal.length() > 0) {
+                        regex.append(Pattern.quote(literal.toString()));
+                        literal.setLength(0);
+                    }
+                    regex.append(piece);
+                    pattern = true;
+                }
+                i = next;
+            }
+            if (!pattern) {
+                return text.substring(start, end);
+            }
+            if (literal.length() > 0) {
+                regex.append(Pattern.quote(literal.toString()));
+            }
+            String dot = text.charAt(start) == '.' ? "" : "(?!\\.)";
+            try {
+                return Pattern.compile("(?s)" + dot + regex);
+            } catch (java.util.regex.PatternSyntaxException unread) {
+                throw notRead("the file pattern '" + text + "'");
+            }
+        }
+
+        /** Where the bracket opened at open closes, or -1: a [ without its ] is itself. */
+        private static int bracketEnd(String text, BitSet bare, int open, int end) {
+            int i = open + 1;
+            if (i < end && bare.get(i) && (text.charAt(i) == '!' || text.charAt(i) == '^')) {
+                i++;
+            }
+            if (i < end && text.charAt(i) == ']') {
+                // A ] first is one of the characters, not the end.
+                i++;
+            }
+            while (i < end && !(text.charAt(i) == ']' && bare.get(i))) {
+                i++;
+            }
+            return i < end ? i : -1;
+        }
+
+        /** A bracket expression as a class of Java's patterns: its characters and ranges. */
+        private String bracket(String text, BitSet bare, int open, int close) {
+            int i = open + 1;
+            StringBuilder set = new StringBuilder("[");
+            if (bare.get(i) && (text.charAt(i) == '!' || text.charAt(i) == '^')) {
+                set.append('^');
+                i++;
+            }
+            int first = i;
+            while (i < close) {
+                int c = text.codePointAt(i);
+                if (c == '[' && i + 1 < close && ":=.".indexOf(text.charAt(i + 1)) >= 0) {
+                    throw notRead("a class of characters in the file pattern '" + text + "'");
+                }
+                if (c == '-' && bare.get(i) && i > first && i + 1 < close) {
+                    set.append('-');
+                } else {
+                    set.append("\\x{").append(Integer.toHexString(c)).append('}');
+                }
+                i += Character.charCount(c);
+            }
+            return set.append(']').toString();
+        }
+
         // -------------------------------------------------------------- commands
 
         private boolean operator(String operator) {
@@ -828,7 +1126,7 @@ final class RecipeShell {
         }
 
         private boolean ends() {
-            return at >= tokens.size() || reserved("then") || reserved("else")
+            return at >= tokens.size() || operator(")") || reserved("then") || reserved("else")
                     || reserved("elif") || reserved("fi") || reserved("}");
         }
 
@@ -880,6 +1178,15 @@ final class RecipeShell {
                 expect("}");
                 return body;
             }
+            if (operator("(")) {
+                at++;
+                Node body = list();
+                if (!operator(")")) {
+                    throw notRead("a '(' that is not closed");
+                }
+                at++;
+                return new Group(body);
+            }
             if (reserved("if")) {
                 at++;
                 If first = new If();
@@ -916,6 +1223,11 @@ final class RecipeShell {
                             || simple.words.isEmpty()) {
                         throw notRead("'" + token.operator + "' without a command before it "
                                 + "and a file after it");
+                    }
+                    if (tokens.get(at + 1).word.glob != null) {
+                        // sh does not expand a pattern there: the file is named as written.
+                        throw notRead("a file pattern ('" + tokens.get(at + 1).word.text()
+                                + "') as the file of '" + token.operator + "'");
                     }
                     if (token.operator.startsWith(">")) {
                         simple.to = tokens.get(at + 1).word;
@@ -1210,44 +1522,8 @@ final class RecipeShell {
                 return 0;
             }
         });
-        Tool test = new Tool() {
-            @Override
-            public String whyNot(List<String> arguments) {
-                return verdict(arguments, null) == null
-                        ? "'[ " + String.join(" ", arguments) + "' is not a test read here: "
-                                + "only -f, -d, -e, -n, -z, = and !=" : null;
-            }
-
-            @Override
-            public int run(Call call) {
-                return verdict(call.arguments(), call) ? 0 : 1;
-            }
-
-            /** The test's answer; with no call, whether it is one that is read at all. */
-            private Boolean verdict(List<String> arguments, Call call) {
-                List<String> words = new ArrayList<String>(arguments);
-                if (!words.isEmpty() && words.get(words.size() - 1).equals("]")) {
-                    words.remove(words.size() - 1);
-                }
-                if (words.size() == 2 && words.get(0).matches("-[fde]")) {
-                    if (call == null) {
-                        return Boolean.TRUE;
-                    }
-                    File file = call.file(words.get(1));
-                    return words.get(0).equals("-f") ? file.isFile()
-                            : words.get(0).equals("-d") ? file.isDirectory() : file.exists();
-                }
-                if (words.size() == 2 && words.get(0).matches("-[nz]")) {
-                    return words.get(0).equals("-n") != words.get(1).isEmpty();
-                }
-                if (words.size() == 3 && words.get(1).matches("!?=")) {
-                    return words.get(1).equals("=") == words.get(0).equals(words.get(2));
-                }
-                return null;
-            }
-        };
-        tools.put("[", test);
-        tools.put("test", test);
+        tools.put("[", test(true));
+        tools.put("test", test(false));
         tools.put("cmp", new Tool() {
             @Override
             public String whyNot(List<String> arguments) {
@@ -1464,6 +1740,70 @@ final class RecipeShell {
             }
         });
         return tools;
+    }
+
+    /**
+     * The test: {@code [ ... ]}, or {@code test ...} without the closing bracket. The forms
+     * ODK's recipes use: a file that is there (-f, -d, -e) or has something in it (-s), a word
+     * that is empty or not (-z, -n, or the word by itself), two words that are the same or
+     * not (=, !=) - and no word at all, which is false.
+     */
+    private static Tool test(final boolean bracket) {
+        return new Tool() {
+            @Override
+            public String whyNot(List<String> arguments) {
+                if (bracket && (arguments.isEmpty()
+                        || !arguments.get(arguments.size() - 1).equals("]"))) {
+                    return "'[ " + String.join(" ", arguments) + "' is a test without its "
+                            + "closing ']'";
+                }
+                return verdict(arguments, null) == null
+                        ? "'" + (bracket ? "[ " : "test ") + String.join(" ", arguments)
+                                + "' is not a test read here: only -f, -d, -e, -s, -n, -z, = "
+                                + "and !=, and a word by itself" : null;
+            }
+
+            @Override
+            public int run(Call call) {
+                return verdict(call.arguments(), call) ? 0 : 1;
+            }
+
+            /** The test's answer; with no call, whether it is one that is read at all. */
+            private Boolean verdict(List<String> arguments, Call call) {
+                List<String> words = new ArrayList<String>(arguments);
+                if (bracket && !words.isEmpty() && words.get(words.size() - 1).equals("]")) {
+                    words.remove(words.size() - 1);
+                }
+                if (words.size() < 2) {
+                    // No word is false; one word is true when it has something in it.
+                    return words.size() == 1 && !words.get(0).isEmpty();
+                }
+                if (words.size() == 2 && words.get(0).matches("-[fdes]")) {
+                    if (call == null) {
+                        return Boolean.TRUE;
+                    }
+                    File file = call.file(words.get(1));
+                    switch (words.get(0)) {
+                        case "-f":
+                            return file.isFile();
+                        case "-d":
+                            return file.isDirectory();
+                        case "-s":
+                            // A folder's size is never 0 where ODK runs.
+                            return file.isDirectory() || file.length() > 0;
+                        default:
+                            return file.exists();
+                    }
+                }
+                if (words.size() == 2 && words.get(0).matches("-[nz]")) {
+                    return words.get(0).equals("-n") != words.get(1).isEmpty();
+                }
+                if (words.size() == 3 && words.get(1).matches("!?=")) {
+                    return words.get(1).equals("=") == words.get(0).equals(words.get(2));
+                }
+                return null;
+            }
+        };
     }
 
     private static Tool status(final int status) {
