@@ -80,6 +80,35 @@ public class BuildAction extends OntoBoardAction {
                 == SaveFirst.Answer.CANCELLED) {
             return false;
         }
+        // Asking the machine and the engine takes a moment before the form is on screen to say
+        // anything (minor 9): the wait cursor says it meanwhile.
+        java.awt.Component window = getOWLWorkspace();
+        java.awt.Cursor was = window.getCursor();
+        window.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        List<String> targets;
+        try {
+            if (!askTheMachineAndTheEngine(editFile)) {
+                return false;
+            }
+            targets = engine != null ? engine.targets() : MakeRun.targetsFor(editFile);
+        } finally {
+            window.setCursor(was);
+        }
+        if (targets.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    "The Makefile in " + MakeRun.workingDirectory(editFile).getAbsolutePath()
+                            + " declares no targets this can run.",
+                    "Nothing to build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        return chooseTheTarget(editFile, targets);
+    }
+
+    /**
+     * Who builds - the container, ODK's tools, OntoBoard itself - and whether it can; a refusal
+     * is shown. False when nothing can build.
+     */
+    private boolean askTheMachineAndTheEngine(File editFile) {
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
         String found = MakeRun.containerRuntime(ProcessRunner.real());
         runtime = found == null ? "docker" : found;
@@ -128,16 +157,11 @@ public class BuildAction extends OntoBoardAction {
                 return false;
             }
         }
-        List<String> targets = engine != null ? engine.targets()
-                : MakeRun.targetsFor(editFile);
-        if (targets.isEmpty()) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
-                    "The Makefile in " + MakeRun.workingDirectory(editFile).getAbsolutePath()
-                            + " declares no targets this can run.",
-                    "Nothing to build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
-        }
+        return true;
+    }
 
+    /** The form: which target, of those there are. False when it was cancelled. */
+    private boolean chooseTheTarget(File editFile, List<String> targets) {
         List<Parameter> parameters = Arrays.asList(
                 Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
                         .choices(targets.toArray(new String[0]))

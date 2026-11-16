@@ -77,6 +77,50 @@ class FallbackEligibilityTest {
         return FallbackEligibility.why(edit, goal);
     }
 
+    // ------------------------------------------------------------------ minor 9, the look-ahead
+
+    /**
+     * A configuration no other test renders, so that what was rendered before in this run
+     * cannot hide a count: the seed's, with a line of its own.
+     */
+    private void aConfigurationOfItsOwn(String which) throws IOException {
+        write("eggboil-odk.yaml", read("eggboil-odk.yaml") + "# " + which + "\n");
+    }
+
+    /**
+     * Minor 9: the Build form asks the engine about every target it offers before it opens, and
+     * each ask rendered ODK's whole seed to compare its Makefile - a pause of seconds on a click.
+     * The render is kept per configuration: seven targets, one render.
+     */
+    @Test
+    void askingAboutSevenTargetsRendersTheSeedOnce() throws IOException {
+        project("eggboil", "eggboil");
+        aConfigurationOfItsOwn("seven targets");
+        int before = FallbackEligibility.rendersSoFar();
+
+        for (String goal : java.util.Arrays.asList("test", "test_fast", "reason_test",
+                "sparql_test", "robot_reports", "validate_idranges", "prepare_release_fast")) {
+            FallbackEligibility.why(edit, goal);
+        }
+
+        assertEquals(1, FallbackEligibility.rendersSoFar() - before);
+    }
+
+    /** A configuration that changed - by one byte - is rendered again, and its Makefile with it. */
+    @Test
+    void aChangedConfigurationIsRenderedAgain() throws IOException {
+        project("eggboil", "eggboil");
+        aConfigurationOfItsOwn("changed");
+        FallbackEligibility.why(edit, "test");
+        int before = FallbackEligibility.rendersSoFar();
+
+        write("eggboil-odk.yaml", read("eggboil-odk.yaml") + "\n");
+
+        org.junit.jupiter.api.Assertions.assertNotNull(why("test"),
+                "the Makefile is not the render of this configuration");
+        assertEquals(1, FallbackEligibility.rendersSoFar() - before);
+    }
+
     // ------------------------------------------------------------------ F5, make's own route
 
     /**

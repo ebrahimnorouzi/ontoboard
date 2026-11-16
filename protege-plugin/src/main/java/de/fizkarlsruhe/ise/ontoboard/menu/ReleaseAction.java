@@ -235,13 +235,36 @@ public class ReleaseAction extends OntoBoardAction {
      * fetched on the quiet - it is five gigabytes.
      */
     private boolean configureOdk(File editFile, OntologyVersion declared, String today) {
+        // Asking the machine and the engine takes a moment before the form is on screen to say
+        // anything (minor 9): the wait cursor says it meanwhile.
+        java.awt.Component window = getOWLWorkspace();
+        java.awt.Cursor was = window.getCursor();
+        window.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        OdkReleaseForm.Start start;
+        try {
+            start = whoReleases(editFile, declared, today);
+        } finally {
+            window.setCursor(was);
+        }
+        if (start == null) {
+            return false;
+        }
+        return chooseTheRelease(start);
+    }
+
+    /**
+     * Who releases - the container, ODK's tools, OntoBoard itself - and whether anybody can; a
+     * refusal is shown. The form's start, with the route; null when nobody can release.
+     */
+    private OdkReleaseForm.Start whoReleases(File editFile, OntologyVersion declared,
+            String today) {
         ProcessRunner.Runner real = ProcessRunner.real();
         OdkReleaseForm.Start start = OdkReleaseForm.start(editFile, declared, today, real);
         if (start.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(start.refusal()), "Cannot release",
                     javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
+            return null;
         }
         String found = MakeRun.containerRuntime(real);
         OdkImage.Choice choice = found == null ? null : OdkImage.forProject(
@@ -274,9 +297,8 @@ public class ReleaseAction extends OntoBoardAction {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(route.refusal()), "Cannot release",
                     javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
+            return null;
         }
-        start = start.withRoute(route);
         odkRoute = route;
         odkEditFile = editFile;
         imageNote = null;
@@ -286,7 +308,11 @@ public class ReleaseAction extends OntoBoardAction {
             imageNote = choice.note();
             host = OdkContainer.Host.detect(found, real);
         }
+        return start.withRoute(route);
+    }
 
+    /** What is said before the form, and the form: the release as chosen. False when cancelled. */
+    private boolean chooseTheRelease(OdkReleaseForm.Start start) {
         // Before the build, not in the question after it: a release's commit leaves new files
         // out, and a tag without a new import module is a project that does not build.
         String notice = OdkReleaseForm.newFilesNotice(start);

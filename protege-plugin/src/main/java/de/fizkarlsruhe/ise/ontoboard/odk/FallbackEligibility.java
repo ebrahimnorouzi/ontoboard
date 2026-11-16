@@ -184,10 +184,44 @@ public final class FallbackEligibility {
 
     // ------------------------------------------------------------------ whose Makefile it is
 
+    /** How many times ODK's seed was rendered here; for a test to count. */
+    private static final java.util.concurrent.atomic.AtomicInteger RENDERS =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    static int rendersSoFar() {
+        return RENDERS.get();
+    }
+
+    /** How many configurations' Makefiles are kept: the ones used last. */
+    private static final int RENDERS_KEPT = 16;
+
+    /**
+     * The Makefile ODK writes, per configuration text (minor 9): the Build and Release forms
+     * ask about every target they offer before they open, and each ask rendered the whole seed
+     * again - seconds on a click. A configuration that changed is another text, and rendered.
+     */
+    private static final Map<String, String> RENDERED = Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, String>(RENDERS_KEPT, 0.75f, true) {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                    return size() > RENDERS_KEPT;
+                }
+            });
+
     /** The Makefile ODK writes for a configuration: the bundled templates' render of it. */
     private static String rendered(File config) throws IOException {
-        return new String(OdkInstaller.renderSeed(read(config)).files()
+        String text = read(config);
+        String kept = RENDERED.get(text);
+        if (kept != null) {
+            return kept;
+        }
+        RENDERS.incrementAndGet();
+        String makefile = new String(OdkInstaller.renderSeed(text).files()
                 .get("src/ontology/" + MAKEFILE), StandardCharsets.UTF_8);
+        RENDERED.put(text, makefile);
+        return makefile;
     }
 
     /**
