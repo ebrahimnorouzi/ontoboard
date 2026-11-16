@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -8,9 +9,18 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
+import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLDocumentFormat;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLOntologyStorageException;
+import org.semanticweb.owlapi.model.RemoveOntologyAnnotation;
+import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 /**
  * A project OntoBoard 1.135.x made, turned into an ODK project.
@@ -23,14 +33,16 @@ import java.util.TreeSet;
  * <ol>
  *   <li>{@link #convert}, which is this class: the configuration becomes one ODK's update can
  *       go by and that says what the project is - the modules the edit file imports declared
- *       in it, its report profile and the report's scope named - and the project's own
- *       makefile gets the rule that asks its questions.
+ *       in it, its report profile and the report's scope named - the project's own makefile
+ *       gets the rule that asks its questions, and the version 1.135 stamped into the edit
+ *       file is taken out of it: ODK's release writes each release's own beside it.
  *   <li>ODK's update ({@link OdkUpdate}), as for any ODK project: the Makefile, {@code run.sh},
  *       ODK's own checks and workflows are written, the catalog and {@code .gitignore} merged,
  *       the edit file's imports brought in line with the configuration.
  * </ol>
  *
- * <p>Nothing of the person's own is rewritten or renamed: the ontology's content, the README,
+ * <p>Nothing of the person's own is rewritten or renamed: the ontology's content (but for that
+ * stamp, a line of its own taken out where it is one), the README,
  * the pages under {@code docs/}, the releases, the report profile with whatever was relaxed in
  * it, the modules and their term lists - and the test queries. The older layout asked every
  * {@code .rq} file in {@code src/sparql} of the ontology with its imports merged; ODK's own
@@ -65,12 +77,15 @@ public final class OdkMigration {
         private final List<String> declared;
         private final List<String> notes;
         private final List<String> warnings;
+        private final String editFilePath;
+        private final byte[] oldEdit;
+        private final Unstamped unstamped;
         private final OdkUpdate.Plan update;
 
         Plan(String configPath, String oldConfig, String newConfig, List<String> questions,
                 String ownMakefilePath, String oldOwnMakefile, String newOwnMakefile,
                 List<String> declared, List<String> notes, List<String> warnings,
-                OdkUpdate.Plan update) {
+                String editFilePath, byte[] oldEdit, Unstamped unstamped, OdkUpdate.Plan update) {
             this.configPath = configPath;
             this.oldConfig = oldConfig;
             this.newConfig = newConfig;
@@ -81,6 +96,9 @@ public final class OdkMigration {
             this.declared = Collections.unmodifiableList(declared);
             this.notes = Collections.unmodifiableList(notes);
             this.warnings = Collections.unmodifiableList(warnings);
+            this.editFilePath = editFilePath;
+            this.oldEdit = oldEdit;
+            this.unstamped = unstamped;
             this.update = update;
         }
 
@@ -148,6 +166,32 @@ public final class OdkMigration {
         public OdkUpdate.Plan update() {
             return update;
         }
+
+        /** The edit file, from the project's root, with {@code /}. */
+        public String editFilePath() {
+            return editFilePath;
+        }
+
+        /**
+         * What is taken out of the edit file, each as written - {@code owl:versionInfo
+         * "0.1.0"}: the version the ontology carries itself, which ODK's release writes for
+         * each release beside any the edit file holds. Empty when there is none.
+         */
+        public List<String> stampsTakenOut() {
+            return unstamped.stamps;
+        }
+    }
+
+    /** The edit file without the ontology's own {@code owl:versionInfo}: what goes, and the bytes. */
+    static final class Unstamped {
+        private final List<String> stamps;
+        /** The file as it becomes; null when there is nothing to take out. */
+        private final byte[] bytes;
+
+        private Unstamped(List<String> stamps, byte[] bytes) {
+            this.stamps = Collections.unmodifiableList(stamps);
+            this.bytes = bytes;
+        }
     }
 
     private OdkMigration() {
@@ -206,6 +250,9 @@ public final class OdkMigration {
         List<String> declared = new ArrayList<String>();
         List<String> questions = new ArrayList<String>();
         String id;
+        String editPath;
+        byte[] editBefore;
+        Unstamped unstamped;
         try {
             id = valueOf(text, "id");
             if (id == null || id.trim().isEmpty()) {
@@ -217,6 +264,17 @@ public final class OdkMigration {
                 throw new OdkUpdate.Refused("The edit file " + ONTOLOGY + "/" + id
                         + "-edit.owl is not there. The update brings its imports in line "
                         + "with the configuration, so it has to be read first.");
+            }
+            editPath = ONTOLOGY + "/" + editFile.getName();
+            editBefore = Files.readAllBytes(editFile.toPath());
+            unstamped = unstamped(editFile, editBefore);
+            if (!unstamped.stamps.isEmpty()) {
+                notes.add("Taken out of the edit file: " + String.join(", ", unstamped.stamps)
+                        + " - " + (unstamped.stamps.equals(Collections.singletonList(
+                                "owl:versionInfo \"0.1.0\"")) ? "OntoBoard 1.135 wrote it when "
+                                        + "it made the project; " : "")
+                        + "ODK's release writes each release's own version, beside any the "
+                        + "edit file holds, so every release would say two.");
             }
             String title = valueOf(text, "title");
             text = withHeader(text, title == null ? id : title);
@@ -255,7 +313,134 @@ public final class OdkMigration {
         String now = crlf ? text.replace("\n", "\r\n") : text;
         return new Plan(ONTOLOGY + "/" + config.getName(), old, now, questions,
                 ONTOLOGY + "/" + own.getName(), ownBefore, ownAfter, declared, notes, warnings,
-                OdkUpdate.plan(root, now));
+                editPath, editBefore, unstamped, OdkUpdate.plan(root, now));
+    }
+
+    // ------------------------------------------------------------------ the edit file's stamp
+
+    /**
+     * Whether an annotation of an ontology is its {@code owl:versionInfo}: what a release
+     * writes for itself - ODK's adds one with ROBOT's annotate, beside any there is.
+     */
+    static boolean isVersionStamp(OWLAnnotation annotation) {
+        return OWLRDFVocabulary.OWL_VERSION_INFO.getIRI().equals(annotation.getProperty()
+                .getIRI());
+    }
+
+    /** An ontology's own version stamps as a person reads them, sorted: {@code owl:versionInfo "0.1.0"}. */
+    static List<String> stampsOf(OWLOntology ontology) {
+        List<String> said = new ArrayList<String>();
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (isVersionStamp(annotation)) {
+                said.add("owl:versionInfo " + (annotation.getValue().asLiteral().isPresent()
+                        ? "\"" + annotation.getValue().asLiteral().get().getLiteral() + "\""
+                        : annotation.getValue().toString()));
+            }
+        }
+        Collections.sort(said);
+        return said;
+    }
+
+    /** How many lines that name it a stamp's line is looked for in, before the OWL API writes. */
+    private static final int LINES_TRIED = 3;
+
+    /**
+     * The edit file without the ontology's own {@code owl:versionInfo}. Where a stamp has a
+     * line of its own, that line is taken out and the rest of the file stays byte for byte -
+     * the line is the stamp's when the file without it reads as exactly the ontology without
+     * the stamp. Otherwise the OWL API writes the ontology without the stamps, in the syntax
+     * it was read in.
+     */
+    private static Unstamped unstamped(File editFile, byte[] bytes) throws IOException {
+        OWLOntology ontology = ImportGuard.alone(bytes, editFile);
+        List<OWLAnnotation> stamps = new ArrayList<OWLAnnotation>();
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (isVersionStamp(annotation)) {
+                stamps.add(annotation);
+            }
+        }
+        if (stamps.isEmpty()) {
+            return new Unstamped(Collections.<String>emptyList(), null);
+        }
+        List<String> said = stampsOf(ontology);
+        byte[] without = linesTakenOut(editFile, bytes, ontology, stamps);
+        return new Unstamped(said, without != null ? without : savedWithout(ontology, stamps));
+    }
+
+    /**
+     * The file without each stamp's line; null where a stamp has no line of its own among the
+     * first few that name {@code versionInfo}.
+     */
+    private static byte[] linesTakenOut(File editFile, byte[] bytes, OWLOntology ontology,
+            List<OWLAnnotation> stamps) {
+        String text = new String(bytes, StandardCharsets.UTF_8);
+        if (!Arrays.equals(bytes, text.getBytes(StandardCharsets.UTF_8))) {
+            return null;
+        }
+        Set<OWLAnnotation> left = new HashSet<OWLAnnotation>(ontology.getAnnotations());
+        for (OWLAnnotation stamp : stamps) {
+            left.remove(stamp);
+            String without = null;
+            int from = 0;
+            for (int tried = 0; without == null && tried < LINES_TRIED; tried++) {
+                int at = text.indexOf("versionInfo", from);
+                if (at < 0) {
+                    break;
+                }
+                int start = text.lastIndexOf('\n', at) + 1;
+                int end = text.indexOf('\n', at);
+                end = end < 0 ? text.length() : end + 1;
+                String candidate = text.substring(0, start) + text.substring(end);
+                if (readsAs(candidate, editFile, ontology, left)) {
+                    without = candidate;
+                }
+                from = end;
+            }
+            if (without == null) {
+                return null;
+            }
+            text = without;
+        }
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Whether a text reads as the ontology it was taken from with these annotations, and
+     * nothing else changed: its address and version, imports and axioms.
+     */
+    private static boolean readsAs(String text, File editFile, OWLOntology was,
+            Set<OWLAnnotation> annotations) {
+        OWLOntology now;
+        try {
+            now = ImportGuard.alone(text.getBytes(StandardCharsets.UTF_8), editFile);
+        } catch (IOException unreadable) {
+            return false;
+        }
+        return now.getOntologyID().getOntologyIRI().equals(was.getOntologyID().getOntologyIRI())
+                && now.getOntologyID().getVersionIRI().equals(
+                        was.getOntologyID().getVersionIRI())
+                && now.getImportsDeclarations().equals(was.getImportsDeclarations())
+                && now.getAnnotations().equals(annotations)
+                && now.getAxioms().equals(was.getAxioms());
+    }
+
+    /** The ontology without the stamps, written by the OWL API in the syntax it was read in. */
+    private static byte[] savedWithout(OWLOntology ontology, List<OWLAnnotation> stamps)
+            throws IOException {
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        OWLDocumentFormat format = manager.getOntologyFormat(ontology);
+        for (OWLAnnotation stamp : stamps) {
+            manager.applyChange(new RemoveOntologyAnnotation(ontology, stamp));
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            manager.saveOntology(ontology, format != null ? format
+                    : new org.semanticweb.owlapi.formats.RDFXMLDocumentFormat(), out);
+        } catch (OWLOntologyStorageException notWritten) {
+            throw new IOException("The edit file could not be written without its "
+                    + "owl:versionInfo: " + notWritten.getMessage(), notWritten);
+        }
+        return out.toByteArray();
     }
 
     // ------------------------------------------------------------------ the configuration
@@ -474,11 +659,12 @@ public final class OdkMigration {
     // ------------------------------------------------------------------ writing
 
     /**
-     * Writes the configuration, and the rule for the questions into the project's own
-     * makefile; ODK's update is the caller's next step.
+     * Writes the configuration, the rule for the questions into the project's own makefile,
+     * and the edit file without the stamp 1.135 put in it; ODK's update is the caller's next
+     * step.
      *
-     * @return the files written, the configuration first; empty when there was nothing to
-     *         convert
+     * @return the files written, the configuration first and the edit file last; empty when
+     *         there was nothing to convert
      * @throws IOException when a file cannot be written, or is no longer what the plan was
      *                     made from
      */
@@ -486,14 +672,21 @@ public final class OdkMigration {
         File root = projectRoot.getAbsoluteFile();
         List<File> written = new ArrayList<File>();
         File own = fileIn(root, plan.ownMakefilePath);
+        // Looked at before anything is written: what was looked at is written, or nothing.
         if (plan.addsTheQuestionRule()) {
-            // Looked at before anything is written: the two files are written or neither.
             String now = own.isFile() ? new String(Files.readAllBytes(own.toPath()),
                     StandardCharsets.UTF_8) : null;
             if (now == null ? plan.oldOwnMakefile != null : !now.equals(plan.oldOwnMakefile)) {
                 throw new IOException(own.getName() + " changed after it was looked at, so "
                         + "nothing was written. Run the update again.");
             }
+        }
+        File edit = plan.unstamped.bytes == null ? null : fileIn(root, plan.editFilePath);
+        if (edit != null && !Arrays.equals(edit.isFile() ? Files.readAllBytes(edit.toPath())
+                : null, plan.oldEdit)) {
+            // Somebody's work, saved from Protege since the look, say.
+            throw new IOException(edit.getName() + " changed after it was looked at, so "
+                    + "nothing was written. Run the update again.");
         }
         if (plan.changesTheConfig()) {
             File config = fileIn(root, plan.configPath);
@@ -503,6 +696,19 @@ public final class OdkMigration {
         if (plan.addsTheQuestionRule()) {
             Files.write(own.toPath(), plan.newOwnMakefile.getBytes(StandardCharsets.UTF_8));
             written.add(own);
+        }
+        if (edit != null) {
+            // In one step, as ODK's update replaces it: the old file or the new one, never
+            // half of one.
+            File staged = new File(edit.getParentFile(), "." + edit.getName()
+                    + ".ontoboard-unstamped");
+            try {
+                Files.write(staged.toPath(), plan.unstamped.bytes);
+                OdkUpdate.replace(edit, staged);
+            } finally {
+                Files.deleteIfExists(staged.toPath());
+            }
+            written.add(edit);
         }
         return written;
     }

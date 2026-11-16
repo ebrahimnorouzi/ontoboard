@@ -337,6 +337,35 @@ class OdkConversionTest {
         assertEquals(Arrays.asList("0.1.0", "1.0.0"), made.getVersions(), log.toString());
     }
 
+    /**
+     * F1's cause in a converted ontology: ODK's release adds owl:versionInfo with ROBOT's
+     * annotate, beside any the edit file holds. So the edit file is made without it, as it is
+     * made without the version IRI; what was released keeps its own.
+     */
+    @Test
+    void theEditFileIsMadeWithoutTheVersionEachReleaseWrites(@TempDir File folder)
+            throws Exception {
+        File mine = new File(folder, "shop.ttl");
+        Files.write(mine.toPath(), ("@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+                + "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                + "<https://example.org/shop.owl> a owl:Ontology ; rdfs:label \"Shop\" ;\n"
+                + "  owl:versionInfo \"1.0.0\" .\n"
+                + "<https://example.org/shop#Pizza> a owl:Class ; rdfs:label \"pizza\" .\n")
+                .getBytes(StandardCharsets.UTF_8));
+        List<String> log = new ArrayList<String>();
+
+        OdkConversion.Result made = convert(new OdkConversion.Request()
+                .current(mine.getAbsolutePath()).into(new File(folder, "out")).git(false), log);
+
+        File root = made.getRoot();
+        String edit = text(root, "src/ontology/shop-edit.owl");
+        assertFalse(edit.contains("versionInfo"), edit);
+        assertTrue(edit.contains("rdfs:label"), "the rest of the head stays: " + edit);
+        assertTrue(text(root, "releases/1.0.0/shop.owl").contains(
+                "<owl:versionInfo>1.0.0</owl:versionInfo>"), "the release keeps its own");
+        assertTrue(String.join("\n", log).contains("owl:versionInfo \"1.0.0\""), log.toString());
+    }
+
     // ------------------------------------------------------------------ earlier versions
 
     /**

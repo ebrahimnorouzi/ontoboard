@@ -22,11 +22,13 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.util.VersionInfo;
+import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 /**
  * How what an ODK target did is held against what ODK's own make did: the lines make said, what
@@ -198,6 +200,23 @@ final class RunComparisons {
             imports.add(declaration.getIRI().toString());
         }
         return imports;
+    }
+
+    /**
+     * The values of the {@code owl:versionInfo} a file's ontology carries itself, sorted;
+     * what it imports is not read.
+     */
+    static List<String> versionInfos(File file) throws Exception {
+        List<String> values = new ArrayList<String>();
+        for (OWLAnnotation annotation : byItself(file).getAnnotations()) {
+            if (OWLRDFVocabulary.OWL_VERSION_INFO.getIRI().equals(
+                    annotation.getProperty().getIRI())
+                    && annotation.getValue().asLiteral().isPresent()) {
+                values.add(annotation.getValue().asLiteral().get().getLiteral());
+            }
+        }
+        Collections.sort(values);
+        return values;
     }
 
     static List<String> starting(String with, List<String> transcript) {

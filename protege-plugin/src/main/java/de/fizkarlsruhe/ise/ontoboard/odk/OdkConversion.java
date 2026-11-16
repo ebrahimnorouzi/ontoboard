@@ -366,6 +366,12 @@ public final class OdkConversion {
         try {
             saveEdit(edit, editFile);
             log.line("wrote src/ontology/" + editFile.getName());
+            List<String> stamps = OdkMigration.stampsOf(current.ontology);
+            if (!stamps.isEmpty()) {
+                log.line("Left out of the edit file: " + String.join(", ", stamps) + " - ODK's "
+                        + "release writes each release's own version, beside any the edit file "
+                        + "holds, so every release would say two.");
+            }
         } catch (IOException cannot) {
             throw new IllegalStateException("Could not write the edit file: "
                     + cannot.getMessage(), cannot);
@@ -677,7 +683,9 @@ public final class OdkConversion {
 
     /**
      * The ontology's own content in a manager of its own - axioms, annotations and imports - for
-     * the edit file without its version IRI (a release adds that), or as published with it.
+     * the edit file without its version IRI and its {@code owl:versionInfo} (a release adds
+     * both, and ODK's adds the version beside any the edit file holds), or as published with
+     * them.
      */
     static OWLOntology copyOf(OWLOntology source, boolean asEditFile) {
         try {
@@ -690,7 +698,9 @@ public final class OdkConversion {
             OWLOntology copy = manager.createOntology(kept);
             manager.addAxioms(copy, source.getAxioms());
             for (OWLAnnotation annotation : source.getAnnotations()) {
-                manager.applyChange(new AddOntologyAnnotation(copy, annotation));
+                if (!asEditFile || !OdkMigration.isVersionStamp(annotation)) {
+                    manager.applyChange(new AddOntologyAnnotation(copy, annotation));
+                }
             }
             for (OWLImportsDeclaration declaration : source.getImportsDeclarations()) {
                 manager.applyChange(new AddImport(copy, declaration));

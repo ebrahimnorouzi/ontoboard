@@ -231,13 +231,20 @@ public final class ImportGuard {
 
     /** The ontology a file holds, by itself: every import is sent to a file that is not there. */
     static OWLOntology alone(File ontologyFile) throws IOException {
+        return alone(Files.readAllBytes(ontologyFile.toPath()), ontologyFile);
+    }
+
+    /**
+     * The ontology these bytes hold, read as {@link #alone(File)} reads the file - by itself,
+     * and as if they were that file.
+     */
+    static OWLOntology alone(byte[] bytes, File ontologyFile) throws IOException {
         OWLOntologyManager reader = OWLManager.createOWLOntologyManager();
         final File nowhere = new File(ontologyFile.getAbsoluteFile().getParentFile(),
                 ".ontoboard-no-such-import");
         reader.getIRIMappers().add(iri -> IRI.create(nowhere));
         reader.setOntologyLoaderConfiguration(reader.getOntologyLoaderConfiguration()
                 .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
-        byte[] bytes = Files.readAllBytes(ontologyFile.toPath());
         OWLOntology ontology;
         try {
             ontology = reader.loadOntologyFromOntologyDocument(new StreamDocumentSource(

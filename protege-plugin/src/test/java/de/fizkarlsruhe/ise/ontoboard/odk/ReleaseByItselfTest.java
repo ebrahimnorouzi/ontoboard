@@ -11,7 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,6 +119,33 @@ class ReleaseByItselfTest {
         assertEquals("v1.0.0", outcome.getTag());
         assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-m",
                 "eggboil 1.0.0")), gitRan.toString());
+    }
+
+    /**
+     * F1, to the end: the project OntoBoard 1.135.2 made, carried over - the conversion, then
+     * ODK's update as OntoBoard itself makes it - and released by the engine says one version,
+     * its own. Until 1.154.0 it said 1.135's "0.1.0" beside it.
+     */
+    @Test
+    void aCarriedOverProjectsReleaseSaysOneVersion(@TempDir File where) throws Exception {
+        File carried = carriedOver(RecordedProject.of1352(new File(where, "egg")));
+        Map<String, String> version = new LinkedHashMap<String, String>();
+        version.put("VERSION", "0.2.0");
+
+        OdkEngine.Outcome done = OdkEngine.run(carried, "prepare_release_fast", version, null);
+
+        assertTrue(done.isOk(), done.getFailure());
+        assertEquals(Collections.singletonList("0.2.0"), RunComparisons.versionInfos(
+                new File(carried.getParentFile(), "../../eggboil.owl")));
+    }
+
+    /** The conversion, then ODK's update as OntoBoard itself makes it; the edit file. */
+    private static File carriedOver(File editFile) throws IOException {
+        File project = editFile.getAbsoluteFile().getParentFile().getParentFile()
+                .getParentFile();
+        OdkMigration.convert(project, OdkMigration.plan(project));
+        OdkUpdate.apply(project, OdkUpdate.plan(project));
+        return editFile;
     }
 
     /**
