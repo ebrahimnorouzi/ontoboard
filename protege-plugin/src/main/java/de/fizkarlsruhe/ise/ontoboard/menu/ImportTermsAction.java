@@ -188,13 +188,15 @@ public class ImportTermsAction extends OntoBoardAction {
     }
 
     /**
-     * What a term list records as its source: the IRI the terms were taken from, or for a
-     * pattern, the pattern's own IRI - not the working copy the library made on this machine,
-     * whose {@code file:} path means nothing anywhere else. Null for a pattern that has no IRI;
-     * its {@code # Pattern:} line says where it came from.
+     * What a term list records as its source: the IRI the terms were taken from; for a pattern,
+     * and for a file of this machine (F4), the ontology's own IRI - not a {@code file:} path,
+     * which means nothing anywhere else, in a list that is committed. The module's provenance
+     * records the same. Null for such an ontology without an IRI; a pattern's
+     * {@code # Pattern:} line says where it came from.
      */
     static String recordedSource(OWLOntology source, IRI sourceIri, String pattern) {
-        if (pattern == null) {
+        boolean ofThisMachine = sourceIri != null && "file".equalsIgnoreCase(sourceIri.getScheme());
+        if (pattern == null && !ofThisMachine) {
             return sourceIri == null ? null : sourceIri.toString();
         }
         if (source == null) {

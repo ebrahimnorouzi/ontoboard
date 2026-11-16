@@ -85,11 +85,40 @@ class ImportTermsActionTest {
         org.semanticweb.owlapi.model.OWLOntology pattern = manager.createOntology(own);
 
         assertEquals(own.toString(), ImportTermsAction.recordedSource(pattern, copy, "componency"));
-        assertEquals(copy.toString(), ImportTermsAction.recordedSource(pattern, copy, null),
-                "any other import records what it was given");
+        assertEquals(own.toString(), ImportTermsAction.recordedSource(pattern, copy, null),
+                "a file of this machine records the ontology's own IRI");
         org.junit.jupiter.api.Assertions.assertNull(ImportTermsAction.recordedSource(
                 manager.createOntology(), copy, "anonymous"),
                 "a pattern with no IRI records none; its # Pattern: line says where it came from");
+    }
+
+    /**
+     * F4: a file of this machine is an address on no other. Taken from one, the term list - a
+     * committed file - records the ontology's own IRI, as the module's provenance does, and
+     * none for an ontology without one: never the path.
+     */
+    @Test
+    void aLocalFileWithoutAnIriRecordsNoSource() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntology anonymous =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                        .createOntology();
+
+        org.junit.jupiter.api.Assertions.assertNull(ImportTermsAction.recordedSource(anonymous,
+                org.semanticweb.owlapi.model.IRI.create(
+                        "file:/C:/Users/someone/Downloads/mini.owl"), null));
+    }
+
+    /** A source on the web is recorded as given: it is where the terms were taken from. */
+    @Test
+    void aSourceOnTheWebIsRecordedAsGiven() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntology mini =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                        .createOntology(org.semanticweb.owlapi.model.IRI.create(
+                                "https://example.org/mini.owl"));
+
+        assertEquals("https://w3id.org/mini/1.0/mini.owl", ImportTermsAction.recordedSource(mini,
+                org.semanticweb.owlapi.model.IRI.create("https://w3id.org/mini/1.0/mini.owl"),
+                null));
     }
 
     private static final org.semanticweb.owlapi.model.IRI MODULE =
