@@ -84,7 +84,7 @@ public class FindTermsAction extends ProtegeOWLAction {
     private String loadedFrom;
     /** Which of the loaded ontology's imports could not be fetched; hidden when none. */
     private JLabel missingImports;
-    private Set<String> alreadyYours = new java.util.HashSet<String>();
+    private final Set<String> alreadyYours = new java.util.HashSet<String>();
 
     /** What adds the chosen terms to one import, for Find terms opened from Imported terms. */
     public interface AddToImport {
@@ -120,7 +120,7 @@ public class FindTermsAction extends ProtegeOWLAction {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        alreadyYours = new java.util.HashSet<String>();
+        alreadyYours.clear();
         OWLOntology yours = getOWLModelManager().getActiveOntology();
         if (yours != null) {
             for (org.semanticweb.owlapi.model.OWLEntity entity
@@ -223,7 +223,7 @@ public class FindTermsAction extends ProtegeOWLAction {
             top.add(row);
         }
 
-        found = new FoundModel();
+        found = new FoundModel(alreadyYours, chosen, () -> search.getText(), this::chosenChanged);
         JTable table = new JTable(found) {
             /** The whole IRI, which the table shortens. */
             @Override
@@ -683,11 +683,32 @@ public class FindTermsAction extends ProtegeOWLAction {
                 + "  - have ODK's own refresh build the module from that list\n";
     }
 
-    /** The terms found, with a box to tick each one. */
-    private final class FoundModel extends AbstractTableModel {
+    /**
+     * The terms found, with a box to tick each one - none for a term that is already the
+     * project's, which imported again would be a second copy of what it has (F8 tries it).
+     */
+    static final class FoundModel extends AbstractTableModel {
         private static final long serialVersionUID = 1L;
         private final String[] columns = {"", "Label", "Kind", "Term", "Definition"};
+        private final Set<String> alreadyYours;
+        private final Map<String, TermSearch.Term> chosen;
+        private final java.util.function.Supplier<String> query;
+        private final Runnable chosenChanged;
         private List<TermSearch.Term> rows = new ArrayList<TermSearch.Term>();
+
+        /**
+         * @param alreadyYours  the IRIs of the project's own terms and its imports'
+         * @param chosen        the terms ticked, by IRI: what the boxes show and change
+         * @param query         what was searched for, which the label column names
+         * @param chosenChanged told after a box changed
+         */
+        FoundModel(Set<String> alreadyYours, Map<String, TermSearch.Term> chosen,
+                java.util.function.Supplier<String> query, Runnable chosenChanged) {
+            this.alreadyYours = alreadyYours;
+            this.chosen = chosen;
+            this.query = query;
+            this.chosenChanged = chosenChanged;
+        }
 
         void show(List<TermSearch.Term> shown) {
             rows = shown;
@@ -730,8 +751,7 @@ public class FindTermsAction extends ProtegeOWLAction {
                 case 0:
                     return chosen.containsKey(term.getIri());
                 case 1:
-                    return shownLabel(term, search.getText(),
-                            alreadyYours.contains(term.getIri()));
+                    return shownLabel(term, query.get(), alreadyYours.contains(term.getIri()));
                 case 2:
                     return term.getKind();
                 case 3:
@@ -749,7 +769,7 @@ public class FindTermsAction extends ProtegeOWLAction {
             } else {
                 chosen.remove(term.getIri());
             }
-            chosenChanged();
+            chosenChanged.run();
         }
     }
 }
