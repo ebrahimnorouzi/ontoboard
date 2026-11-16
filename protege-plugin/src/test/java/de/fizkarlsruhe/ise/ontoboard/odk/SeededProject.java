@@ -67,6 +67,27 @@ public final class SeededProject {
         return config.getEditFile();
     }
 
+    /**
+     * ODK's seed of one of its own sample configurations ({@code corpus/configs/<sample>.yaml})
+     * in a folder {@code <sample>} under {@code where}: its edit file, in the configuration's
+     * edit_format, as the configuration names it.
+     */
+    public static File ofCorpus(File where, String sample) throws IOException {
+        File root = new File(where, sample);
+        String config = de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.corpusConfig(sample);
+        for (java.util.Map.Entry<String, byte[]> file
+                : de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkInstaller.renderSeed(config).files()
+                        .entrySet()) {
+            File target = new File(root, file.getKey());
+            Files.createDirectories(target.getParentFile().toPath());
+            Files.write(target.toPath(), file.getValue());
+        }
+        java.util.Map<String, Object> model =
+                de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.corpusModel(sample);
+        return new File(root, "src/ontology/" + model.get("id") + "-edit."
+                + model.get("edit_format"));
+    }
+
     /** The project's top folder. */
     public static File root(File edit) {
         return edit.getParentFile().getParentFile().getParentFile();

@@ -393,7 +393,8 @@ public final class ProjectWizard {
             return null;
         }
         File file = new File(document.toURI());
-        return file.getName().endsWith("-edit.owl") ? null : file;
+        // An edit file in any format ODK writes one in is a project's already (ruling 17).
+        return OdkProjectLoader.isEditFileName(file.getName()) ? null : file;
     }
 
     /** "https://example.org/Shop-Ontology.owl" as an ID: shop_ontology. */

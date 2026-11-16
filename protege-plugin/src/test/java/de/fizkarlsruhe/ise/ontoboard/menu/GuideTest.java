@@ -58,6 +58,20 @@ class GuideTest {
     }
 
     /**
+     * Ruling 17: a project that edits in OBO - as 15 of ODK's 79 samples do - is a project to
+     * the guide as well: its first step is done.
+     */
+    @Test
+    void aProjectThatEditsInOboIsAProject(@TempDir File temp) throws Exception {
+        File edit = de.fizkarlsruhe.ise.ontoboard.odk.SeededProject.ofCorpus(temp,
+                "tests__test-edit-obo");
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.PROJECT, facts),
+                facts).get("project"), edit.getName());
+    }
+
+    /**
      * A project OntoBoard 1.135 or before made is not set up for this version: Build and
      * Release say so when they are asked. The guide is what somebody opens first, and it
      * showed such a project's first step as done. It is the step to do, and its button

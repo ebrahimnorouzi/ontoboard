@@ -110,6 +110,27 @@ class RepoLayoutTest {
         assertEquals("thing.owl", RepoLayout.relative(root, RepoLayout.ontologyIn(root, null)));
     }
 
+    /**
+     * Ruling 17: an edit file in OBO or Turtle is the ODK edit file - chosen first, and said
+     * to be the one to change - as one in OWL is.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"eto-edit.obo", "chr-edit.ttl",
+        "fno-edit.ofn"})
+    void anEditFileInAnotherFormatIsTheOneToChange(String name, @TempDir File root)
+            throws Exception {
+        write(root, "src/ontology/" + name);
+        write(root, "src/ontology/catalogue.owl");
+        write(root, "src/ontology/imports/x_import.owl");
+        write(root, "release.owl");
+
+        File chosen = RepoLayout.ontologyIn(root, null);
+
+        assertEquals("src/ontology/" + name, RepoLayout.relative(root, chosen));
+        String explanation = RepoLayout.explain(root, chosen, RepoLayout.candidatesIn(root));
+        assertTrue(explanation.contains("the ODK edit file"), explanation);
+    }
+
     /** Choosing build output is worth saying out loud, since editing it loses the work. */
     @Test
     void choosingAGeneratedFileIsFlaggedAsProbablyBuildOutput(@TempDir File root)
