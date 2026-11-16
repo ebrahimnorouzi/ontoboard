@@ -102,3 +102,15 @@ sed (GNU sed) 4.9
 LANG=C.UTF-8
 Made on:      2026-11-16
 Command:      sed -i "$(cat script.txt)" file.txt in sed/<case>/, file.txt a copy of before.txt, for nfdicore-obolibrary, nfdicore-declaration, group, ampersand, anchors, bracket, interval, delimiter, first-only, crlf, empty-match, utf8, literal-specials, escaped-delimiter, star-first
+
+## own
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+GNU Make 4.3
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+sed (GNU sed) 4.9
+Made on:      2026-11-16
+Command:      make <target> VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00" for test_fast, no-mirror-refresh-imports, prepare_release_fast, each on a fresh copy of seed/oboimports with equivalence/own/overlay over it, in /tmp/odk/obim/src/ontology

@@ -41,6 +41,7 @@ import lexer_fixture  # noqa: E402
 import make_goldens  # noqa: E402
 import migration_goldens  # noqa: E402
 import odkimage  # noqa: E402
+import own_rules_goldens  # noqa: E402
 import robot_update_goldens  # noqa: E402
 import sed_goldens  # noqa: E402
 import update_goldens  # noqa: E402
@@ -267,6 +268,20 @@ def stage_robot_update(tool, image):
                "for " + ", ".join(robot_update_goldens.CASES))
 
 
+def stage_own(tool, image):
+    said, versions = own_rules_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-own"))
+    for line in said:
+        print("own " + line)
+    provenance(tool, image, "own", versions,
+               "make <target> VERSION=%s TODAY=%s OBODATE=\"%s\" for %s, each on a fresh copy "
+               "of seed/oboimports with equivalence/own/overlay over it, in "
+               "/tmp/odk/obim/src/ontology" % (equivalence_goldens.VERSION,
+                                                 equivalence_goldens.DATE,
+                                                 equivalence_goldens.OBODATE,
+                                                 ", ".join(own_rules_goldens.TARGETS)))
+
+
 def stage_sed(tool, image):
     said, versions = sed_goldens.run(
         tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-sed"))
@@ -312,7 +327,7 @@ def stage_imports(tool, image):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
-                                          "update", "imports", "robot-update", "sed",
+                                          "update", "imports", "robot-update", "sed", "own",
                                           "migration", "all"])
     parser.add_argument("--converted", help="the 1.135.x project as OntoBoard's conversion "
                         "leaves it, written by MigrationConvertedWriter (for the migration "
@@ -321,7 +336,7 @@ def main():
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
     if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
-                         "robot-update", "sed", "migration", "all"):
+                         "robot-update", "sed", "own", "migration", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -340,6 +355,8 @@ def main():
             stage_robot_update(tool, image)
         if options.stage in ("sed", "all"):
             stage_sed(tool, image)
+        if options.stage in ("own", "all"):
+            stage_own(tool, image)
         if options.stage == "migration":
             stage_migration(tool, image, options.converted)
     if options.stage in ("lexer", "all"):

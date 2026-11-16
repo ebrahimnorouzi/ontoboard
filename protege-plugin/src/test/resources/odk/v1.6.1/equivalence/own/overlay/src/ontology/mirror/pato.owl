@@ -1,0 +1,21 @@
+Prefix(:=<http://purl.obolibrary.org/obo/pato.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/pato.owl>
+<http://purl.obolibrary.org/obo/pato/releases/2026-01-01/pato.owl>
+
+Declaration(Class(obo:PATO_0000001))
+Declaration(Class(obo:PATO_0000051))
+Declaration(Class(obo:PATO_0000117))
+AnnotationAssertion(rdfs:label obo:PATO_0000001 "quality"@en)
+AnnotationAssertion(rdfs:label obo:PATO_0000051 "morphology"@en)
+SubClassOf(obo:PATO_0000051 obo:PATO_0000001)
+AnnotationAssertion(rdfs:label obo:PATO_0000117 "size"@en)
+SubClassOf(obo:PATO_0000117 obo:PATO_0000051)
+)

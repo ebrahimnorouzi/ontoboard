@@ -1,0 +1,50 @@
+obim.Makefile:11: warning: overriding recipe for target 'imports/iao_import.owl'
+Makefile:414: warning: ignoring old recipe for target 'imports/iao_import.owl'
+obim.Makefile:29: warning: overriding recipe for target 'obim-base.owl'
+Makefile:601: warning: ignoring old recipe for target 'obim-base.owl'
+make --assume-new=obim-edit.owl \
+	--assume-new=imports/ro_terms.txt --assume-new=imports/iao_terms.txt --assume-new=imports/bfo_terms.txt --assume-new=imports/pato_terms.txt \
+	IMP=true MIR=false PAT=false IMP_LARGE=true all_imports
+make[1]: Entering directory '/tmp/odk/obim/src/ontology'
+obim.Makefile:11: warning: overriding recipe for target 'imports/iao_import.owl'
+Makefile:414: warning: ignoring old recipe for target 'imports/iao_import.owl'
+obim.Makefile:29: warning: overriding recipe for target 'obim-base.owl'
+Makefile:601: warning: ignoring old recipe for target 'obim-base.owl'
+if [ true = true ]; then robot --catalog catalog-v001.xml query -i mirror/ro.owl --update ../sparql/preprocess-module.ru \
+	extract -T imports/ro_terms.txt --copy-ontology-annotations false --force true --individuals exclude --method BOT \
+	query --update ../sparql/inject-subset-declaration.ru --update ../sparql/inject-synonymtype-declaration.ru --update ../sparql/postprocess-module.ru \
+	remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/ro_terms.txt \
+	        --select complement --select annotation-properties \
+	annotate --ontology-iri http://purl.obolibrary.org/obo/obim/imports/ro_import.owl annotate -V http://purl.obolibrary.org/obo/obim/releases/1.0.0/imports/ro_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/ro_import.owl.tmp.owl && mv imports/ro_import.owl.tmp.owl imports/ro_import.owl; fi
+robot --catalog catalog-v001.xml convert --input obim-edit.owl --format ofn --output tmp/obim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/obim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-obim-edit.ofn
+robot --catalog catalog-v001.xml query --input tmp/merged-obim-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+if [ true = true ]; then robot --catalog catalog-v001.xml query -i mirror/iao.owl --update ../sparql/preprocess-module.ru \
+	extract --method MIREOT --upper-terms imports/iao_terms_upper.txt --lower-terms imports/iao_terms.txt --copy-ontology-annotations false --force true --individuals exclude \
+	query --update ../sparql/inject-subset-declaration.ru --update ../sparql/inject-synonymtype-declaration.ru --update ../sparql/postprocess-module.ru \
+	remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/iao_terms.txt \
+	        --select complement --select annotation-properties \
+	annotate --ontology-iri http://purl.obolibrary.org/obo/obim/imports/iao_import.owl annotate -V http://purl.obolibrary.org/obo/obim/releases/1.0.0/imports/iao_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/iao_import.owl.tmp.owl && mv imports/iao_import.owl.tmp.owl imports/iao_import.owl; sed -i "s/obofoundry/obolibrary/g" imports/iao_import.owl ; fi
+robot --catalog catalog-v001.xml annotate --input mirror/pato.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/pato_terms.txt --term-file tmp/seed.txt \
+	         --copy-ontology-annotations true --force true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term rdfs:label \
+	        --term IAO:0000115 \
+	        --term OMO:0002000 \
+	        --term-file imports/pato_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/obim/imports/pato_import.owl annotate -V http://purl.obolibrary.org/obo/obim/releases/1.0.0/imports/pato_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/pato_import.owl.tmp.owl && mv imports/pato_import.owl.tmp.owl imports/pato_import.owl
+make[1]: Leaving directory '/tmp/odk/obim/src/ontology'
