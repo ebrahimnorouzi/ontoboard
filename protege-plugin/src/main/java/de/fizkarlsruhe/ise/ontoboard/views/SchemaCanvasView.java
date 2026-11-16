@@ -6700,23 +6700,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return false;
     }
 
-    /** The short name of a term here or in an import whose label is {@code name}, or null. */
-    static String termNamed(OWLOntology ontology, String name) {
-        String wanted = name.trim();
-        for (OWLOntology part : ontology.getImportsClosure()) {
-            for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
-                    : part.getAxioms(org.semanticweb.owlapi.model.AxiomType.ANNOTATION_ASSERTION)) {
-                if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()
-                        && axiom.getValue().asLiteral().get().getLiteral().trim()
-                                .equalsIgnoreCase(wanted)
-                        && axiom.getSubject() instanceof IRI) {
-                    return ((IRI) axiom.getSubject()).getShortForm();
-                }
-            }
-        }
-        return null;
-    }
-
     /** The same, as a subclass of {@code parent} when one is given. */
     private void createEntityAt(EntityFactory.Kind kind, int x, int y, IRI parent) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
@@ -6740,21 +6723,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         // Found by a tester: OK on an empty field made a class with no label, which the board
-        // then showed by its bare identifier.
-        if (name.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Give the new " + what + " a name.",
-                    "No name", JOptionPane.WARNING_MESSAGE);
+        // then showed by its bare identifier. A second term with a name already taken is allowed
+        // - it can be meant - but asked about: until the build reported duplicate_label, nothing
+        // said two boxes now read alike. Checked as Create relation checks a property's (F7).
+        EntityFactory.NameCheck check = EntityFactory.checkName(ontology, name, what);
+        if (check.verdict() == EntityFactory.NameCheck.Verdict.REFUSED) {
+            JOptionPane.showMessageDialog(this, check.sentence(), "No name",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
-        name = name.trim();
-        // A second term with a name already taken is allowed - it can be meant - but asked about:
-        // until the build reported duplicate_label, nothing said two boxes now read alike.
-        String twin = ontology == null ? null : termNamed(ontology, name);
-        if (twin != null && JOptionPane.showConfirmDialog(this,
-                "\"" + name + "\" is already the name of " + twin
-                        + ".\nMake another " + what + " with the same name?",
-                "Name already used", JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
+        name = check.name();
+        if (check.verdict() == EntityFactory.NameCheck.Verdict.ASK
+                && JOptionPane.showConfirmDialog(this, check.sentence(), "Name already used",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE)
+                        != JOptionPane.YES_OPTION) {
             return;
         }
         minter = afterClaimingARange(minter, what);

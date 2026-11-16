@@ -35,30 +35,6 @@ public final class EntityFactory {
     }
 
     /**
-     * Builds an IRI for {@code localName} inside the ontology's own namespace, so new terms
-     * belong to the ontology being edited rather than to some hard-coded vocabulary.
-     *
-     * @throws IllegalArgumentException if the name is null, blank, or contains characters
-     *     that would produce a malformed or ambiguous IRI
-     */
-    public static IRI iriFor(OWLOntology ontology, String localName) {
-        if (localName == null) {
-            throw new IllegalArgumentException("entity name must not be null");
-        }
-        String trimmed = localName.trim();
-        if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "entity name must not be blank - a blank name would mint a bare '#' IRI");
-        }
-        if (trimmed.indexOf('#') >= 0 || trimmed.indexOf('/') >= 0
-                || trimmed.indexOf(' ') >= 0) {
-            throw new IllegalArgumentException(
-                    "entity name must not contain '#', '/' or a space: '" + trimmed + "'");
-        }
-        return IRI.create(namespaceOf(ontology) + trimmed);
-    }
-
-    /**
      * The namespace new entities are minted into: the ontology IRI plus {@code #}, unless it
      * already ends in a delimiter.
      *
@@ -91,6 +67,83 @@ public final class EntityFactory {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         changes.add(new AddAxiom(ontology, factory.getOWLDeclarationAxiom(entity)));
         return changes;
+    }
+
+    // ------------------------------------------------------------------ the name typed
+
+    /**
+     * What a name typed for a new term comes to, before anything is made (F7): the same for a
+     * class or an individual on the board and for a property in Create relation.
+     */
+    public static final class NameCheck {
+        /** Refused, asked about, or let through. */
+        public enum Verdict {
+            REFUSED,
+            ASK,
+            GOES
+        }
+
+        private final Verdict verdict;
+        private final String name;
+        private final String sentence;
+
+        private NameCheck(Verdict verdict, String name, String sentence) {
+            this.verdict = verdict;
+            this.name = name;
+            this.sentence = sentence;
+        }
+
+        public Verdict verdict() {
+            return verdict;
+        }
+
+        /** The name, trimmed; empty when it is refused. */
+        public String name() {
+            return name;
+        }
+
+        /** What is said - the refusal, or the question; null when the name goes. */
+        public String sentence() {
+            return sentence;
+        }
+    }
+
+    /**
+     * A name typed for a new {@code what} ("class", "individual", "property"): blank is refused
+     * with a sentence; a name that another term here or in an import has as its label is asked
+     * about - two terms may be meant to read alike, but nothing else says they now do, until
+     * a build reports duplicate_label; anything else goes, trimmed.
+     */
+    public static NameCheck checkName(OWLOntology ontology, String typed, String what) {
+        String name = typed == null ? "" : typed.trim();
+        if (name.isEmpty()) {
+            return new NameCheck(NameCheck.Verdict.REFUSED, "", "Give the new " + what
+                    + " a name.");
+        }
+        String twin = ontology == null ? null : termNamed(ontology, name);
+        if (twin != null) {
+            return new NameCheck(NameCheck.Verdict.ASK, name, "\"" + name
+                    + "\" is already the name of " + twin + ".\nMake another " + what
+                    + " with the same name?");
+        }
+        return new NameCheck(NameCheck.Verdict.GOES, name, null);
+    }
+
+    /** The short name of a term here or in an import whose label is {@code name}, or null. */
+    public static String termNamed(OWLOntology ontology, String name) {
+        String wanted = name.trim();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                    : part.getAxioms(org.semanticweb.owlapi.model.AxiomType.ANNOTATION_ASSERTION)) {
+                if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()
+                        && axiom.getValue().asLiteral().get().getLiteral().trim()
+                                .equalsIgnoreCase(wanted)
+                        && axiom.getSubject() instanceof IRI) {
+                    return ((IRI) axiom.getSubject()).getShortForm();
+                }
+            }
+        }
+        return null;
     }
 
     /** The entity {@code iri} denotes when read as {@code kind}. Creates no axioms. */

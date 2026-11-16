@@ -1,7 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.axiom;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -24,57 +23,67 @@ class EntityFactoryTest {
         ontology = manager.createOntology(IRI.create("http://example.org/mine"));
     }
 
+    /** Where a term named after what was typed goes (TermMinter's own mode): the ontology's. */
     @Test
     void newEntitiesLandInTheOntologysOwnNamespace() {
-        assertEquals("http://example.org/mine#Sample",
-                EntityFactory.iriFor(ontology, "Sample").toString(),
+        assertEquals("http://example.org/mine#", EntityFactory.namespaceOf(ontology),
                 "a new term must belong to the ontology being edited");
     }
 
     @Test
     void anExistingDelimiterIsNotDoubled() throws Exception {
         OWLOntology hashed = manager.createOntology(IRI.create("http://example.org/h#"));
-        assertEquals("http://example.org/h#Sample",
-                EntityFactory.iriFor(hashed, "Sample").toString());
+        assertEquals("http://example.org/h#", EntityFactory.namespaceOf(hashed));
     }
 
     @Test
     void anAnonymousOntologyFallsBackRatherThanCrashing() throws Exception {
         OWLOntology anonymous = manager.createOntology();
-        assertEquals(EntityFactory.FALLBACK_NAMESPACE + "Sample",
-                EntityFactory.iriFor(anonymous, "Sample").toString());
+        assertEquals(EntityFactory.FALLBACK_NAMESPACE, EntityFactory.namespaceOf(anonymous));
     }
 
-    @Test
-    void nameIsTrimmedBeforeUse() {
-        assertEquals("http://example.org/mine#Sample",
-                EntityFactory.iriFor(ontology, "  Sample  ").toString());
-    }
-
-    /** A blank name would mint a bare '#' IRI - an entity nobody can refer to. */
+    /**
+     * F7: a blank name is refused with a sentence, on the path the board and the relation
+     * dialog both take - for a class, an individual and a property alike. (It was tested on
+     * iriFor, which no production path called any more.)
+     */
     @Test
     void blankNamesAreRejected() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, "   "));
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, ""));
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, null));
+        for (String blank : new String[] {"   ", "", null}) {
+            EntityFactory.NameCheck check = EntityFactory.checkName(ontology, blank, "property");
+            assertEquals(EntityFactory.NameCheck.Verdict.REFUSED, check.verdict(), blank);
+            assertEquals("Give the new property a name.", check.sentence());
+        }
+        assertEquals("Give the new class a name.",
+                EntityFactory.checkName(ontology, " ", "class").sentence());
     }
 
+    /**
+     * F7: a name another term here already has as its label is asked about - two terms may be
+     * meant to read alike, but nothing else says they now do; any other name goes, trimmed.
+     */
     @Test
-    void namesContainingDelimitersOrSpacesAreRejected() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, "a#b"));
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, "a/b"));
-        assertThrows(IllegalArgumentException.class,
-                () -> EntityFactory.iriFor(ontology, "two words"));
+    void aNameAnotherTermHasIsAskedAboutAndAnyOtherGoes() {
+        IRI sample = IRI.create("http://example.org/mine#Sample");
+        manager.applyChanges(EntityFactory.declare(ontology, sample, EntityFactory.Kind.CLASS));
+        manager.addAxiom(ontology, manager.getOWLDataFactory().getOWLAnnotationAssertionAxiom(
+                manager.getOWLDataFactory().getRDFSLabel(), sample,
+                manager.getOWLDataFactory().getOWLLiteral("sample")));
+
+        EntityFactory.NameCheck twin = EntityFactory.checkName(ontology, " Sample ", "property");
+        EntityFactory.NameCheck fresh = EntityFactory.checkName(ontology, " specimen ",
+                "property");
+
+        assertEquals(EntityFactory.NameCheck.Verdict.ASK, twin.verdict());
+        assertEquals("\"Sample\" is already the name of Sample.\nMake another property with "
+                + "the same name?", twin.sentence());
+        assertEquals(EntityFactory.NameCheck.Verdict.GOES, fresh.verdict());
+        assertEquals("specimen", fresh.name());
     }
 
     @Test
     void declaringAClassProducesExactlyOneDeclarationAxiom() {
-        IRI iri = EntityFactory.iriFor(ontology, "Sample");
+        IRI iri = IRI.create("http://example.org/mine#Sample");
         List<OWLOntologyChange> changes =
                 EntityFactory.declare(ontology, iri, EntityFactory.Kind.CLASS);
 
@@ -86,7 +95,7 @@ class EntityFactoryTest {
 
     @Test
     void declaringAnIndividualProducesAnIndividualNotAClass() {
-        IRI iri = EntityFactory.iriFor(ontology, "sample1");
+        IRI iri = IRI.create("http://example.org/mine#sample1");
         manager.applyChanges(
                 EntityFactory.declare(ontology, iri, EntityFactory.Kind.INDIVIDUAL));
 
@@ -97,7 +106,7 @@ class EntityFactoryTest {
 
     @Test
     void declaringAnObjectPropertyProducesAProperty() {
-        IRI iri = EntityFactory.iriFor(ontology, "relatesTo");
+        IRI iri = IRI.create("http://example.org/mine#relatesTo");
         manager.applyChanges(
                 EntityFactory.declare(ontology, iri, EntityFactory.Kind.OBJECT_PROPERTY));
 
@@ -110,7 +119,7 @@ class EntityFactoryTest {
      */
     @Test
     void redeclaringAnExistingEntityProducesNoChanges() {
-        IRI iri = EntityFactory.iriFor(ontology, "Sample");
+        IRI iri = IRI.create("http://example.org/mine#Sample");
         manager.applyChanges(EntityFactory.declare(ontology, iri, EntityFactory.Kind.CLASS));
         int axiomsAfterFirst = ontology.getAxiomCount();
 

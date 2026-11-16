@@ -92,8 +92,11 @@ class SharedPatternClassesTest {
         manager.applyChange(new org.semanticweb.owlapi.model.AddImport(mine,
                 df.getOWLImportsDeclaration(IRI.create("http://example.org/imported"))));
 
-        assertEquals("Report", SchemaCanvasView.termNamed(mine, "Report "));
-        assertEquals("Report", SchemaCanvasView.termNamed(mine, "REPORT"));
-        assertNull(SchemaCanvasView.termNamed(mine, "steel plate"));
+        assertEquals("Report", de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory.termNamed(mine,
+                "Report "));
+        assertEquals("Report", de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory.termNamed(mine,
+                "REPORT"));
+        assertNull(de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory.termNamed(mine,
+                "steel plate"));
     }
 }

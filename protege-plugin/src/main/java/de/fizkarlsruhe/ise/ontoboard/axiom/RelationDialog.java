@@ -117,22 +117,71 @@ public final class RelationDialog {
      */
     public static Choice ask(Component parent, OWLOntology ontology, OWLClass source,
             OWLClass target) {
-        Form form = build(ontology, source, target);
-        int result = JOptionPane.showConfirmDialog(parent, form.panel, "Create relation",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result != JOptionPane.OK_OPTION) {
-            return null;
-        }
-        EdgeAxioms.Candidate candidate =
-                (EdgeAxioms.Candidate) form.candidateBox.getSelectedItem();
-        if (CREATE_NEW.equals(form.propertyBox.getSelectedItem())) {
-            String typed = form.newName.getText() == null ? "" : form.newName.getText().trim();
-            if (typed.isEmpty()) {
-                return null;
+        return ask(build(ontology, source, target), ontology, swing(parent));
+    }
+
+    /** What the dialog shows a person, apart from showing it: so that a test can answer. */
+    interface Dialogs {
+        /** The form; true for OK. */
+        boolean form(JPanel form);
+
+        /** Something said, with OK to close it. */
+        void tell(String title, String message);
+
+        /** A question; true for Yes. */
+        boolean ask(String title, String question);
+    }
+
+    /** The dialogs, shown. */
+    private static Dialogs swing(final Component parent) {
+        return new Dialogs() {
+            @Override
+            public boolean form(JPanel form) {
+                return JOptionPane.showConfirmDialog(parent, form, "Create relation",
+                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                        == JOptionPane.OK_OPTION;
             }
-            return new Choice(null, typed, candidate);
+
+            @Override
+            public void tell(String title, String message) {
+                JOptionPane.showMessageDialog(parent, message, title,
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+            @Override
+            public boolean ask(String title, String question) {
+                return JOptionPane.showConfirmDialog(parent, question, title,
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE)
+                        == JOptionPane.YES_OPTION;
+            }
+        };
+    }
+
+    /**
+     * The relation chosen on the form, as a person answers the dialogs; null for Cancel.
+     *
+     * <p>A new property's name is checked as the board checks a class's (F7,
+     * {@link EntityFactory#checkName}): a blank one is refused with a sentence - OK used to do
+     * nothing at all - and one another term already has is asked about. Either way the form
+     * comes back with everything chosen in it.
+     */
+    static Choice ask(Form form, OWLOntology ontology, Dialogs dialogs) {
+        while (dialogs.form(form.panel)) {
+            EdgeAxioms.Candidate candidate =
+                    (EdgeAxioms.Candidate) form.candidateBox.getSelectedItem();
+            if (!CREATE_NEW.equals(form.propertyBox.getSelectedItem())) {
+                return new Choice(form.chosen(), null, candidate);
+            }
+            EntityFactory.NameCheck check = EntityFactory.checkName(ontology,
+                    form.newName.getText(), "property");
+            if (check.verdict() == EntityFactory.NameCheck.Verdict.REFUSED) {
+                dialogs.tell("No name", check.sentence());
+            } else if (check.verdict() == EntityFactory.NameCheck.Verdict.GOES
+                    || dialogs.ask("Name already used", check.sentence())) {
+                return new Choice(null, check.name(), candidate);
+            }
         }
-        return new Choice(form.chosen(), null, candidate);
+        return null;
     }
 
     /** The form for a relation from {@code source} to {@code target}. */
