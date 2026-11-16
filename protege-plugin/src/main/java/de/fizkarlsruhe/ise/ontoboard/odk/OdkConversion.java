@@ -1117,17 +1117,19 @@ public final class OdkConversion {
     }
 
     static String publishing(File root, String id, boolean git) {
+        // F3: after the push, what the new repository's workflows need to publish its pages.
+        String workflows = "\n" + OdkExtras.workflowPermissions(null, id);
         if (!git) {
             return "To publish it, install git, then in " + root.getAbsolutePath() + ":\n"
                     + "  git init && git add -A && git commit -m \"The ODK repository\"\n"
-                    + "and push it to a repository you create on GitHub.";
+                    + "and push it to a repository you create on GitHub." + workflows;
         }
         return "To publish it on GitHub, create an empty repository there (no README), then in "
                 + root.getAbsolutePath() + ":\n"
-                + "  git remote add origin https://github.com/<you>/" + id + ".git\n"
+                + "  git remote add origin https://github.com/<owner>/" + id + ".git\n"
                 + "  git push -u origin main --tags\n"
                 + "or, with the GitHub CLI: gh repo create " + id + " --source . --push, then "
-                + "git push --tags";
+                + "git push --tags" + workflows;
     }
 
     // ---------------------------------------------------------------- small things

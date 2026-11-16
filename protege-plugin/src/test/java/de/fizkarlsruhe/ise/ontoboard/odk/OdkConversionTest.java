@@ -338,6 +338,24 @@ class OdkConversionTest {
     }
 
     /**
+     * F3, for an ontology converted into a project: after the commands that push it, what a new
+     * GitHub repository's workflows need before ODK's documentation workflow can publish - and
+     * one name for the owner throughout.
+     */
+    @Test
+    void publishingSaysTheWorkflowMustBeAllowedToWrite() {
+        String sentence = OdkExtras.workflowPermissions(null, "shop");
+        for (boolean git : new boolean[] {true, false}) {
+            String said = OdkConversion.publishing(new File("out"), "shop", git);
+
+            assertTrue(said.contains(sentence), said);
+            int push = said.indexOf(git ? "git push" : "push it to");
+            assertTrue(push >= 0 && push < said.indexOf(sentence), "after the push: " + said);
+            assertFalse(said.contains("<you>"), "<owner>, as the sentence says it: " + said);
+        }
+    }
+
+    /**
      * F1's cause in a converted ontology: ODK's release adds owl:versionInfo with ROBOT's
      * annotate, beside any the edit file holds. So the edit file is made without it, as it is
      * made without the version IRI; what was released keeps its own.
