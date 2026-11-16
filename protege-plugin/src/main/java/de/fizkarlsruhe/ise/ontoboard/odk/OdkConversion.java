@@ -457,8 +457,12 @@ public final class OdkConversion {
                 withThisOne.add(label);
                 writeHistory(readme, readmeOfOdk, title, withThisOne);
             }
+            // The version as it was published, recorded after the earlier ones: what it removed
+            // or what cannot be compared is history, said and not stopped on (F6 stops a release
+            // somebody makes; this one repeats one that was made).
             OdkRelease.Outcome released = OdkRelease.run(new OdkRelease.Request(editFile, label,
-                    OdkRelease.proposedShape(editFile, recording), false, false), odk, recording,
+                    OdkRelease.proposedShape(editFile, recording), false, false, true), odk,
+                    recording,
                     git ? new OdkRelease.Asks() {
                         @Override
                         public boolean commit(ReleaseRun.Staging staging) {

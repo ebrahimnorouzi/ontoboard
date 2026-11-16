@@ -38,6 +38,10 @@ public final class OdkRelease {
     /** The label of the choice that stops a release which drops a published term. */
     public static final String REFUSE_LABEL = "Refuse to release when a published term is gone";
 
+    /** The box that lets a release that cannot be compared with the last one go on (F6). */
+    public static final String UNCOMPARED_LABEL =
+            "Release even when it cannot be compared with the last release";
+
     /** A full release prints tens of thousands of lines; the transcript keeps this many. */
     static final int MAX_LINES = 4000;
 
@@ -182,8 +186,11 @@ public final class OdkRelease {
         private final VersionIriShape shape;
         private final boolean refreshImports;
         private final boolean refuseRemovedTerms;
+        private final boolean releaseUncompared;
 
         /**
+         * A release that stops where it cannot be compared with the last release.
+         *
          * @param shape              the version IRI's shape; null for ODK's. A project released
          *                           by a script of its own has the shape its script writes
          * @param refreshImports     false to build from the imports as they are, which needs
@@ -193,11 +200,22 @@ public final class OdkRelease {
          */
         public Request(File editFile, String version, VersionIriShape shape,
                 boolean refreshImports, boolean refuseRemovedTerms) {
+            this(editFile, version, shape, refreshImports, refuseRemovedTerms, false);
+        }
+
+        /**
+         * @param releaseUncompared go on, with a warning, where the last release cannot be read
+         *                          to compare this one with ({@link #UNCOMPARED_LABEL}); false
+         *                          stops there (F6)
+         */
+        public Request(File editFile, String version, VersionIriShape shape,
+                boolean refreshImports, boolean refuseRemovedTerms, boolean releaseUncompared) {
             this.editFile = editFile;
             this.version = version == null ? "" : version.trim();
             this.shape = shape == null ? VersionIriShape.of(VersionIriShape.Kind.ODK) : shape;
             this.refreshImports = refreshImports;
             this.refuseRemovedTerms = refuseRemovedTerms;
+            this.releaseUncompared = releaseUncompared;
         }
 
         public File editFile() {
@@ -218,6 +236,11 @@ public final class OdkRelease {
 
         public boolean refusesRemovedTerms() {
             return refuseRemovedTerms;
+        }
+
+        /** Whether it goes on where it cannot be compared with the last release. */
+        public boolean releasesUncompared() {
+            return releaseUncompared;
         }
     }
 
@@ -627,8 +650,21 @@ public final class OdkRelease {
                 diff = ReleaseDiff.between(last.load(), after);
                 log.note("Compared with the " + last.version + " release: " + diff.summary());
             } catch (RuntimeException cannotCompare) {
-                log.warn("Could not compare with the " + last.version + " release: "
+                // F6 (ruling 16): the comparison is the last check before the release is a
+                // commit somebody pulls - so it stops here, as for a term that is gone, unless
+                // the person said to go on without it.
+                String uncompared = "Could not compare with the " + last.version + " release: "
+                        + firstLineOf(cannotCompare);
+                log.note("What reading the " + last.version + " release said: "
                         + cannotCompare.getMessage());
+                if (!request.releaseUncompared) {
+                    return log.failed(uncompared + " ODK built the release files and put them "
+                            + "at the top of the project; nothing was copied to releases/, committed "
+                            + "or tagged. Put the " + last.version + " release right where it "
+                            + "is kept (releases/" + last.version + "/ or its tag) and release "
+                            + "again - or tick \"" + UNCOMPARED_LABEL + "\".");
+                }
+                log.warn(uncompared);
             }
         }
         if (diff != null && !diff.removals().isEmpty()) {
@@ -949,6 +985,15 @@ public final class OdkRelease {
             }
         }
         return OntologyVersion.newestFirst(versions);
+    }
+
+    /** What went wrong, in its first line: a parser's message can run to pages. */
+    private static String firstLineOf(RuntimeException failure) {
+        String message = failure.getMessage() == null ? failure.getClass().getSimpleName()
+                : failure.getMessage().trim();
+        int end = message.indexOf('\n');
+        String line = (end < 0 ? message : message.substring(0, end)).trim();
+        return line.length() > 200 ? line.substring(0, 200) + "..." : line;
     }
 
     private static String named(ReleaseDiff.TermChange removed) {

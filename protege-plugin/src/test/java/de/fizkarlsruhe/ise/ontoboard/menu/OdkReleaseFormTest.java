@@ -142,6 +142,55 @@ class OdkReleaseFormTest {
     }
 
     /**
+     * F6: the form offers to release even when the release cannot be compared with the last
+     * one - off unless ticked, after the box for a term that is gone - and the request carries
+     * what was chosen.
+     */
+    @Test
+    void theFormOffersToReleaseUncomparedOffUnlessTicked() {
+        OdkReleaseForm.Start start = start();
+
+        Parameter uncompared = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.UNCOMPARED);
+
+        assertNotNull(uncompared);
+        assertEquals(OdkRelease.UNCOMPARED_LABEL, uncompared.getLabel());
+        assertEquals("false", uncompared.getDefaultValue());
+        assertFalse(OdkReleaseForm.request(start, chosen(start)).releasesUncompared());
+        assertTrue(OdkReleaseForm.request(start, chosen(start, OdkReleaseForm.UNCOMPARED,
+                "true")).releasesUncompared());
+    }
+
+    /**
+     * A picture of the release form as its dialog lays it out, for a person to look at (memory:
+     * a box a test can tick may be one nobody can reach). Only with
+     * {@code -Dontoboard.pictures=<folder>}.
+     */
+    @Test
+    void aPictureOfTheFormWhenAsked() throws IOException {
+        String into = System.getProperty("ontoboard.pictures");
+        org.junit.jupiter.api.Assumptions.assumeTrue(into != null && !into.trim().isEmpty(),
+                "Pictures only with -Dontoboard.pictures=<folder>.");
+        OdkReleaseForm.Start start = start();
+        javax.swing.JPanel form = ParameterDialog.buildForm(null, OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), new LinkedHashMap<String, java.awt.Component>());
+        javax.swing.JOptionPane pane = new javax.swing.JOptionPane(form,
+                javax.swing.JOptionPane.PLAIN_MESSAGE, javax.swing.JOptionPane.OK_CANCEL_OPTION);
+        java.awt.Dimension size = pane.getPreferredSize();
+        pane.setSize(size);
+        pane.addNotify();
+        pane.validate();
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(size.width,
+                size.height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = image.createGraphics();
+        pane.paint(graphics);
+        graphics.dispose();
+        File png = new File(into, "release-form.png");
+        assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
+        javax.imageio.ImageIO.write(image, "png", png);
+    }
+
+    /**
      * F5: a release made by make - in ODK's container, or with ODK's tools - of a Makefile
      * somebody edited says so; OntoBoard's engine is no such route: it refuses that Makefile.
      */
@@ -354,7 +403,7 @@ class OdkReleaseFormTest {
         List<Parameter> parameters = OdkReleaseForm.parameters(start, defaults);
 
         assertEquals(Arrays.asList(OdkReleaseForm.VERSION, OdkReleaseForm.PRIOR,
-                OdkReleaseForm.REFUSE), keys(parameters));
+                OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED), keys(parameters));
         assertEquals("3.0.6", defaults.get(OdkReleaseForm.VERSION));
         assertEquals("3.0.5", defaults.get(OdkReleaseForm.PRIOR));
         String explanation = OdkReleaseForm.explanation(start);

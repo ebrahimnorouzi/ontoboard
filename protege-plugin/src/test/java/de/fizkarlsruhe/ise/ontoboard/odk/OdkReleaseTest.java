@@ -317,6 +317,46 @@ class OdkReleaseTest {
         assertEquals(0, asked.size());
     }
 
+    /** A last release that no reader takes for an ontology. */
+    private static final String UNREADABLE = "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf="
+            + "\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n<owl:Ontology rdf:about=";
+
+    /**
+     * F6: a last release that cannot be read leaves the new one uncompared, and the comparison
+     * is the last check before the release is a commit somebody pulls - so it stops there, as
+     * for a term that is gone, and says how to go on.
+     */
+    @Test
+    void aReleaseThatCannotBeComparedWithTheLastStopsBeforeTheCommit() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), UNREADABLE);
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk(), "released uncompared");
+        assertTrue(outcome.getFailure().contains("Could not compare with the 0.9.0 release"),
+                outcome.getFailure());
+        assertTrue(outcome.getFailure().contains(OdkRelease.UNCOMPARED_LABEL),
+                outcome.getFailure());
+        assertFalse(new File(root, "releases/1.0.0").exists());
+        assertEquals(Collections.<List<String>>emptyList(), gitRan);
+        assertEquals(0, asked.size());
+    }
+
+    /** With the box ticked the person has said they know: it is released, and the warning stays. */
+    @Test
+    void aReleaseUncomparedOnPurposeGoesOnAndTheWarningStays() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), UNREADABLE);
+
+        OdkRelease.Outcome outcome = OdkRelease.run(new OdkRelease.Request(edit, "1.0.0",
+                VersionIriShape.of(VersionIriShape.Kind.ODK), true, true, true), odk(), git(),
+                staging -> true);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertTrue(outcome.getWarnings().toString().contains("Could not compare with the 0.9.0 "
+                + "release"), outcome.getWarnings().toString());
+        assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile());
+    }
+
     /** With the check off, the person has said they know: it is released, and the notes say so. */
     @Test
     void aTermDroppedOnPurposeIsReleasedAndNamedInTheNotes() throws IOException {

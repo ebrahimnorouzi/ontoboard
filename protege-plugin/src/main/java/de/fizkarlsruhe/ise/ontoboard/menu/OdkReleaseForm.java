@@ -32,6 +32,7 @@ final class OdkReleaseForm {
     static final String PATTERN = "pattern";
     static final String REFRESH = "refresh";
     static final String REFUSE = "refuse";
+    static final String UNCOMPARED = "uncompared";
     static final String PRIOR = "prior";
 
     /** The choice that makes the pattern field count. */
@@ -255,6 +256,7 @@ final class OdkReleaseForm {
                     : before.getText());
         }
         values.put(REFUSE, "true");
+        values.put(UNCOMPARED, "false");
         return values;
     }
 
@@ -366,6 +368,16 @@ final class OdkReleaseForm {
                         + "that imported it, and nothing tells them. With this on, such a "
                         + "release is not copied, committed or tagged. ODK's own tests run as "
                         + "part of the build either way.")
+                .build());
+        // F6 (ruling 16): a release that cannot be held against the last one stops, as one
+        // with a term gone does; this is the way on.
+        parameters.add(Parameter.of(UNCOMPARED, OdkRelease.UNCOMPARED_LABEL,
+                Parameter.Kind.FLAG)
+                .defaultValue(values.get(UNCOMPARED))
+                .help("Where the last release cannot be read - a broken file under releases/, "
+                        + "a tag without the release's main file - the new release cannot be "
+                        + "held against it, and it is not copied, committed or tagged. With "
+                        + "this on it is, without the comparison, and the result says so.")
                 .build());
         return parameters;
     }
@@ -480,7 +492,8 @@ final class OdkReleaseForm {
         return new OdkRelease.Request(start.editFile, versionIn(chosen, VERSION),
                 start.script == null ? shape(start, chosen) : null,
                 start.mayRefreshImports() && !"false".equalsIgnoreCase(chosen.get(REFRESH)),
-                !"false".equalsIgnoreCase(chosen.get(REFUSE)));
+                !"false".equalsIgnoreCase(chosen.get(REFUSE)),
+                "true".equalsIgnoreCase(chosen.get(UNCOMPARED)));
     }
 
     // ------------------------------------------------------------------ before git records it
