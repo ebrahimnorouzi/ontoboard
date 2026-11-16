@@ -120,8 +120,7 @@ public final class FallbackEligibility {
         String own;
         try {
             String written = read(makefile);
-            String odks = new String(OdkInstaller.renderSeed(read(config)).files()
-                    .get("src/ontology/" + MAKEFILE), StandardCharsets.UTF_8);
+            String odks = rendered(config);
             if (!lf(written).equals(lf(odks))) {
                 return refused(whyNotOdks(written));
             }
@@ -184,6 +183,44 @@ public final class FallbackEligibility {
     }
 
     // ------------------------------------------------------------------ whose Makefile it is
+
+    /** The Makefile ODK writes for a configuration: the bundled templates' render of it. */
+    private static String rendered(File config) throws IOException {
+        return new String(OdkInstaller.renderSeed(read(config)).files()
+                .get("src/ontology/" + MAKEFILE), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * F5: why a project's Makefile is not the one ODK writes for its configuration, said where
+     * make runs it anyway - in ODK's container, or with ODK's tools on the machine - as it is,
+     * while the engine refuses it ({@link #of}). Null when it is ODK's render; when there is no
+     * configuration to render; when another ODK wrote it, which the image's own note says; and
+     * when it cannot be read or rendered here.
+     */
+    public static String notOdksMakefile(File editFile) {
+        File ontology = editFile == null ? null : editFile.getAbsoluteFile().getParentFile();
+        File makefile = ontology == null ? null : new File(ontology, MAKEFILE);
+        File config = ontology == null ? null : OdkBuildSettings.yamlIn(ontology);
+        if (makefile == null || !makefile.isFile() || config == null || !config.isFile()) {
+            return null;
+        }
+        try {
+            String written = read(makefile);
+            String version = OdkImage.versionOf(written);
+            if (version != null && !version.equals(OdkPin.VERSION)
+                    || lf(written).equals(lf(rendered(config)))) {
+                return null;
+            }
+        } catch (IOException | RuntimeException cannotTell) {
+            return null;
+        }
+        return "This project's Makefile is not the one ODK " + OdkPin.VERSION + " writes for "
+                + "its configuration: the configuration was changed after the Makefile was "
+                + "written, or the Makefile was edited. make runs it as it is, so this run may "
+                + "differ from what ODK writes for the configuration, and OntoBoard's own engine "
+                + "would not run it. OntoBoard > Project > Update project files... writes it "
+                + "again.";
+    }
 
     /** Why a Makefile that is not the bundled render is not run here. */
     private static String whyNotOdks(String written) {

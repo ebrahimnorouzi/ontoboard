@@ -77,6 +77,26 @@ class FallbackEligibilityTest {
         return FallbackEligibility.why(edit, goal);
     }
 
+    // ------------------------------------------------------------------ F5, make's own route
+
+    /**
+     * F5: whether the Makefile is ODK's render of the configuration, said for make's own runs -
+     * in ODK's container, with ODK's tools - which run it as it is where the engine refuses it.
+     */
+    @Test
+    void anEditedMakefileIsSaidForMakesRunsAndOdksIsNot() throws IOException {
+        project("eggboil", "eggboil");
+        assertNull(FallbackEligibility.notOdksMakefile(edit), "the seed's Makefile is ODK's");
+
+        write("Makefile", read("Makefile") + "\n# a line of their own\n");
+
+        String said = FallbackEligibility.notOdksMakefile(edit);
+        assertTrue(said != null && said.startsWith("This project's Makefile is not the one "
+                + "ODK v1.6.1 writes for its configuration"), said);
+        assertTrue(said.contains("make runs it as it is"), said);
+        assertTrue(said.contains("OntoBoard > Project > Update project files..."), said);
+    }
+
     // ------------------------------------------------------------------ nothing of their own
 
     @Test

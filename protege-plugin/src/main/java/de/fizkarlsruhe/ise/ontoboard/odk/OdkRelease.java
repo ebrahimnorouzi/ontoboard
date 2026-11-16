@@ -233,6 +233,14 @@ public final class OdkRelease {
 
         /** The same command as a line for the transcript, ready to paste into a terminal. */
         String shown(List<String> inContainer, boolean passThroughRunSh);
+
+        /**
+         * Whether the project's Makefile is run as it is - by make, in ODK's container or with
+         * ODK's tools - rather than by OntoBoard's engine, which runs only ODK's own (F5).
+         */
+        default boolean runsTheMakefileAsItIs() {
+            return true;
+        }
     }
 
     /** The person, asked before git records anything. */
@@ -371,6 +379,12 @@ public final class OdkRelease {
             @Override
             public String shown(List<String> command, boolean passThroughRunSh) {
                 return ReleaseRun.shown(command) + "   (run by OntoBoard itself, inside Protege)";
+            }
+
+            @Override
+            public boolean runsTheMakefileAsItIs() {
+                // The engine runs ODK's own Makefile only, and refuses another with its reason.
+                return false;
             }
 
             private ProcessRunner.Outcome refused(String why) {

@@ -246,7 +246,7 @@ public class BuildAction extends OntoBoardAction {
                             ontology)).build();
         }
         return passed(result, target + " succeeded in " + seconds + "s, run by OntoBoard "
-                + "itself", transcript, true, ontology);
+                + "itself", transcript, true, ontology, new ArrayList<String>());
     }
 
     /**
@@ -255,6 +255,14 @@ public class BuildAction extends OntoBoardAction {
      */
     static OperationResult processResult(OperationResult.Builder result, String target,
             ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology) {
+        List<String> warnings = new ArrayList<String>();
+        // F5: make ran the Makefile as it is, where OntoBoard's engine would have refused it.
+        String notOdks = de.fizkarlsruhe.ise.ontoboard.odk.FallbackEligibility.notOdksMakefile(
+                editFile);
+        if (notOdks != null) {
+            result.warn(notOdks);
+            warnings.add(notOdks);
+        }
         List<String> transcript = outcome.getOutput();
         noteTheTranscript(result, transcript, seconds);
         String failure = MakeRun.explain(target, outcome);
@@ -264,7 +272,8 @@ public class BuildAction extends OntoBoardAction {
                     : whyItFailed(target, transcript, failure, editFile, ontology)).build();
         }
         return passed(result, "make " + target + " succeeded in " + seconds + "s", transcript,
-                de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile), ontology);
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile), ontology,
+                warnings);
     }
 
     /**
@@ -292,13 +301,13 @@ public class BuildAction extends OntoBoardAction {
      * <p>The summary is the part nobody has to scroll to (1.135.1): the result dialog cannot
      * be resized, its log box shows six lines, and a passing test's PASS is far below them.
      *
-     * @param odks whether the checks are an ODK project's: ODK's own and the project's
+     * @param odks     whether the checks are an ODK project's: ODK's own and the project's
+     * @param warnings what was already warned of in the result, said first in the summary
      */
     private static OperationResult passed(OperationResult.Builder result, String ran,
-            List<String> transcript, boolean odks, OWLOntology ontology) {
+            List<String> transcript, boolean odks, OWLOntology ontology, List<String> warnings) {
         List<String> passed =
                 de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.passed(transcript);
-        List<String> warnings = new ArrayList<String>();
         if (de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.reasonedWithElk(transcript)) {
             String second = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.secondOpinion(
                     ontology,

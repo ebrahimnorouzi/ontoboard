@@ -63,6 +63,32 @@ class BuildResultTest {
                 + ": 0 violation(s)"), "the log keeps make's own lines");
     }
 
+    /**
+     * F5: make runs a Makefile somebody edited as it is - in ODK's container, or with ODK's
+     * tools - where OntoBoard's engine refuses it. The build says so, above its log.
+     */
+    @Test
+    void aBuildByMakeOfAnEditedMakefileSaysSo(@TempDir File where) throws Exception {
+        File edit = SeededProject.in(where);
+        OWLOntology ontology = SeededProject.open(edit);
+        OdkEngine.Outcome ran = SeededProject.run(edit, "test_fast");
+        assertTrue(ran.isOk(), String.valueOf(ran.getFailure()));
+        File makefile = new File(edit.getParentFile(), "Makefile");
+        java.nio.file.Files.write(makefile.toPath(), (new String(java.nio.file.Files.readAllBytes(
+                makefile.toPath()), java.nio.charset.StandardCharsets.UTF_8)
+                + "\n# a line of their own\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        OperationResult result = BuildAction.processResult(OperationResult.of("Build"),
+                "test_fast", asAProcess(ran), 1, edit, ontology);
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, result.getStatus(),
+                result.getSummary());
+        assertTrue(result.getSummary().contains("This project's Makefile is not the one ODK "
+                + "v1.6.1 writes for its configuration"), result.getSummary());
+        assertTrue(String.join("\n", result.getLog()).contains("Update project files..."),
+                "the way back is in the log");
+    }
+
     @Test
     void aBuildInTheContainerSaysTheSameOfItsTests(@TempDir File where) throws Exception {
         File edit = SeededProject.in(where);

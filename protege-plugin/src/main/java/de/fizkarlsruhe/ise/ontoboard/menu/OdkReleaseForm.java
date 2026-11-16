@@ -550,6 +550,14 @@ final class OdkReleaseForm {
         if (imageNote != null) {
             result.warn(imageNote);
         }
+        if (odk.runsTheMakefileAsItIs()) {
+            // F5: make runs a Makefile that is not ODK's as it is; the engine would refuse it.
+            String notOdks = de.fizkarlsruhe.ise.ontoboard.odk.FallbackEligibility
+                    .notOdksMakefile(request.editFile());
+            if (notOdks != null) {
+                result.warn(notOdks);
+            }
+        }
         if (start.script != null) {
             String said = setScriptLines(start, chosen, request.version());
             if (said == null) {

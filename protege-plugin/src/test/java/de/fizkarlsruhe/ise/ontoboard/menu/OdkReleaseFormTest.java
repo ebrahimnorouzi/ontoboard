@@ -141,6 +141,28 @@ class OdkReleaseFormTest {
         return OdkReleaseForm.start(edit, null, "2026-11-12", git());
     }
 
+    /**
+     * F5: a release made by make - in ODK's container, or with ODK's tools - of a Makefile
+     * somebody edited says so; OntoBoard's engine is no such route: it refuses that Makefile.
+     */
+    @Test
+    void aReleaseByMakeOfAnEditedMakefileSaysSo() throws IOException {
+        File makefile = new File(ontology, "Makefile");
+        write(makefile, read(makefile) + "\n# a line of their own\n");
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null);
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, result.getStatus(),
+                result.getSummary());
+        assertTrue(String.join("\n", result.getLog()).contains("This project's Makefile is not "
+                + "the one ODK v1.6.1 writes for its configuration"), result.getLog().toString());
+        assertTrue(odk().runsTheMakefileAsItIs(), "a container, ODK's tools");
+        assertFalse(OdkRelease.byOntoBoardItself(edit, null).runsTheMakefileAsItIs(),
+                "the engine refuses it instead, with its reason");
+    }
+
     private static Parameter named(List<Parameter> parameters, String key) {
         for (Parameter parameter : parameters) {
             if (parameter.getKey().equals(key)) {
