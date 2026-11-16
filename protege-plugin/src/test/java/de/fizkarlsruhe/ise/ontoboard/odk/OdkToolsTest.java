@@ -72,13 +72,13 @@ class OdkToolsTest {
             + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n)\n";
 
     @Test
-    void theToolsAreTheShellsOwnAndFiveMore() {
+    void theToolsAreTheShellsOwnAndSixMore() {
         Map<String, RecipeShell.Tool> tools = OdkTools.forProject();
 
         assertTrue(tools.keySet().containsAll(RecipeShell.builtins().keySet()));
         assertTrue(tools.keySet().containsAll(Arrays.asList("robot", "odk-info", "dicer-cli",
-                "check-rdfxml", "curl")));
-        assertEquals(RecipeShell.builtins().size() + 5, tools.size(), tools.keySet().toString());
+                "check-rdfxml", "curl", "sed")));
+        assertEquals(RecipeShell.builtins().size() + 6, tools.size(), tools.keySet().toString());
     }
 
     // ------------------------------------------------------------------ robot

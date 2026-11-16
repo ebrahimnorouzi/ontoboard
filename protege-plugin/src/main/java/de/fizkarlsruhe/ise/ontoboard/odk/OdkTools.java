@@ -76,7 +76,8 @@ final class OdkTools {
 
     /**
      * Every program ODK's recipes name that OntoBoard runs itself: the shell's own
-     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml.
+     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml, curl - and
+     * sed, for the substitutions projects' own rules make ({@link OdkSed}).
      */
     static Map<String, RecipeShell.Tool> forProject() {
         return forProject(null);
@@ -96,6 +97,7 @@ final class OdkTools {
         tools.put("dicer-cli", new Dicer());
         tools.put("check-rdfxml", new CheckRdfXml());
         tools.put("curl", new OdkCurl(stopped));
+        tools.put("sed", new OdkSed());
         return tools;
     }
 
