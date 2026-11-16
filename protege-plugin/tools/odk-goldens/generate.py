@@ -42,6 +42,7 @@ import make_goldens  # noqa: E402
 import migration_goldens  # noqa: E402
 import odkimage  # noqa: E402
 import robot_update_goldens  # noqa: E402
+import sed_goldens  # noqa: E402
 import update_goldens  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -266,6 +267,16 @@ def stage_robot_update(tool, image):
                "for " + ", ".join(robot_update_goldens.CASES))
 
 
+def stage_sed(tool, image):
+    said, versions = sed_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-sed"))
+    for line in said:
+        print("sed " + line)
+    provenance(tool, image, "sed", versions,
+               "sed -i \"$(cat script.txt)\" file.txt in sed/<case>/, file.txt a copy of "
+               "before.txt, for " + ", ".join(case for case, _, _ in sed_goldens.CASES))
+
+
 def stage_migration(tool, image, converted):
     if not converted:
         raise SystemExit("the migration stage needs --converted <folder>: the project "
@@ -301,8 +312,8 @@ def stage_imports(tool, image):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
-                                          "update", "imports", "robot-update", "migration",
-                                          "all"])
+                                          "update", "imports", "robot-update", "sed",
+                                          "migration", "all"])
     parser.add_argument("--converted", help="the 1.135.x project as OntoBoard's conversion "
                         "leaves it, written by MigrationConvertedWriter (for the migration "
                         "stage, which is not part of 'all')")
@@ -310,7 +321,7 @@ def main():
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
     if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
-                         "robot-update", "migration", "all"):
+                         "robot-update", "sed", "migration", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -327,6 +338,8 @@ def main():
             stage_imports(tool, image)
         if options.stage in ("robot-update", "all"):
             stage_robot_update(tool, image)
+        if options.stage in ("sed", "all"):
+            stage_sed(tool, image)
         if options.stage == "migration":
             stage_migration(tool, image, options.converted)
     if options.stage in ("lexer", "all"):

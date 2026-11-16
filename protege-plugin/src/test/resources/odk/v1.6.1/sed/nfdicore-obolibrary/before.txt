@@ -1,0 +1,4 @@
+Prefix(obo:=<http://purl.obofoundry.org/obo/>)
+Ontology(<http://purl.obofoundry.org/obo/swo_import.owl>
+AnnotationAssertion(rdfs:seeAlso obo:SWO_0000001 <http://obofoundry.org/ontology/swo> <http://www.obofoundry.org/>)
+)
