@@ -65,11 +65,15 @@ project files...* runs ODK's own update. Who runs them is decided each time, in 
 3. **OntoBoard itself** - everywhere else, with nothing to install. Its own engine reads ODK's
    Makefile as make reads it and runs the recipes inside Protégé: ROBOT runs inside OntoBoard,
    with ODK's ROBOT plugin, and the few other programs ODK's recipes call (`odk-info`,
-   `dicer-cli`, `check-rdfxml`, `curl` and the shell's own commands) have stand-ins. No make, no
-   container and no other program is started. The log reads as make's own, and *Stop* ends a run
-   between two lines. On a small project, on one machine busy with other work, ODK's `test` took
-   1 to 7 seconds this way and 50 to 100 seconds in ODK's container; every task's figures, and
-   the command that measures them, are in
+   `dicer-cli`, `check-rdfxml`, `curl` and the shell's own commands, and since 1.154.0 `sed -i`
+   substitutions and ODK's check of DOSDP patterns) have stand-ins. No make, no container and no
+   other program is started - but for DOSDP-Tools in a project with DOSDP patterns, which runs as
+   a program of its own ([below](#a-project-with-dosdp-patterns-since-11540)). The log reads as
+   make's own, and *Stop* ends a run between two lines. ROBOT has the memory Protégé was started
+   with, and since 1.154.0 the result says so first where the project's `robot_java_args` asks
+   for more ([limitations](limitations.md)). On a small project, on one machine busy with other
+   work, ODK's `test` took 1 to 7 seconds this way and 50 to 100 seconds in ODK's container
+   (measured with 1.153.0); every task's figures, and the command that measures them, are in
    [Measurements](measurements.md#odk-in-docker-and-ontoboard-side-by-side).
 
 *Update project files...* skips the first: it runs ODK v1.6.1's update in its container where
@@ -77,20 +81,48 @@ that image is on the machine, and otherwise makes the same files itself. A relea
 project's own `release.sh` runs in the container only, since the script calls ODK through
 `run.sh`.
 
-**What OntoBoard's own engine runs.** ODK's recipes, and only ODK's. A target is run only when
-the project's `Makefile` is the one ODK v1.6.1 writes for the project's configuration, when the
-project's own `<id>.Makefile` changes nothing of what the target runs, and when every line the run
-will need can run here - all asked before the first line runs, so a target is done or not
-started, never half done. Otherwise the target is not offered, and the reason names the rule or
-setting of the project's own and its line, or what the engine does not do, and says what else
-runs it: ODK's container, or ODK's tools installed on the machine. One thing in a project's own
-makefile is OntoBoard's and is run: the rule for the project's questions, as long as it stands
-as OntoBoard wrote it (see [the two kinds of tests](#the-two-kinds-of-tests)).
+**What OntoBoard's own engine runs.** ODK's recipes, and since 1.154.0 the rules a project adds
+in its own `<id>.Makefile`. A target is run only when the project's `Makefile` is the one ODK
+v1.6.1 writes for the project's configuration, and when every line the run will need can run
+here: each line of the project's own rules that the target reaches can be read as make reads it,
+each program it calls is one the engine has, and nothing is written outside the project - all
+asked before the first line runs, so a target is done or not started, never half done. Otherwise
+the target is not offered, and the reason names the rule of the project's own and its line, or
+what the engine does not do, and says what else runs it: ODK's container, or ODK's tools
+installed on the machine. Up to 1.153.0 the engine ran no rule or setting of a project's own but
+OntoBoard's rule for the project's questions (see [the two kinds of tests](#the-two-kinds-of-tests)).
+Import modules built by rules of a project's own - ROBOT chains with `query --update`, a
+`sed -i` - are run now: two real projects that build theirs so, nfdicore and mwo, made the same
+files both ways (nfdicore on Protégé 5.6.9's OWL API). What still needs the container - a
+project's own `release.sh`, SSSOM, the `db` export, `update_patterns` - is in
+[limitations](limitations.md).
 
 For *Build...* the engine is asked about `test`, `test_fast`, `reason_test`, `sparql_test`,
 `robot_reports`, `validate_idranges` and `clean`, and offers those it can run; the Target field's
 help says why one is missing. With the container, *Build...* offers every target of the
 Makefile, following its `include` into `<id>.Makefile`. Either way `test` is chosen first.
+
+**Build's form, since 1.154.0.** For ODK's Makefile - whoever runs it - each target is offered in
+plain words, with make's command after them: *Check everything (downloads the imports again) -
+make test*, *Check quickly (keeps the imports as they are) - make test_fast*; a target without
+such words is offered as its command, *make reason_test*. Under the target are four boxes, ODK's
+own switches, each ticked as ODK's default has it:
+
+| Box | ODK's switch | Unticked |
+|---|---|---|
+| *Build the import modules again* | `IMP` | the modules are used as they are, and nothing is downloaded for them |
+| *Download the imports' sources again* | `MIR` | the modules are built from the copies already in `src/ontology/mirror` |
+| *Make the DOSDP patterns' files again* | `PAT` | each pipeline's axioms and `definitions.owl` are used as they are |
+| *Build the components again* | `COMP` | the components are used as they are |
+
+A box unticked goes on make's command line as `NAME=false`, on every route, and the line under
+the form shows the command the choices come to - `make test_fast IMP=false MIR=false` - changing
+as the boxes do. So a `test` that downloads no import is `test` with *Build the import modules
+again* unticked. Where OntoBoard itself builds, the target is asked again with the boxes as they
+are, and a refusal brings the form back as it was, under "Cannot build with those boxes": a
+fresh clone, which has no copies in `mirror/`, is refused so with *Download the imports' sources
+again* unticked, and told to tick it. A Makefile that is not ODK's keeps its targets' own names,
+and gets no boxes.
 
 **The setting.** *Check requirements... > Container settings...* decides whether the container
 is used at all: *Automatic* is the order above; *Never in a container* leaves the container out
@@ -143,11 +175,68 @@ whoever ran it:
 - the quality report's findings, only when the report is what stopped the run - at the level the
   project's `robot_report: fail_on` names (ERROR in a project OntoBoard makes; a report told
   `none` never stops it);
-- what takes the ontology out of OWL 2 DL, with *Check and test > Profile...* to name the axioms.
+- what takes the ontology out of OWL 2 DL, with *Check and test > Profile...* to name the axioms;
+- since 1.154.0, an import's source that could not be downloaded: which import, from which
+  address, and whether the network, the server or what came was why, with the fast target to
+  run instead - as [Refresh imports](#refresh-imports-when-a-source-cannot-be-downloaded-since-11540)
+  says it.
 
 Then where make stopped, and the project's own tests that had passed by then. The whole log is
 kept and can be saved, and whatever the run rewrote that Protégé has open - an import module the
 full `test` built again - is read again afterwards.
+
+### Checking an ontology without a project — *Check this ontology...*, since 1.154.0
+
+*OntoBoard > Check and test > Check this ontology...* asks three of the questions ODK's `test`
+asks in a project OntoBoard makes, of the ontology that is open - in a project or not, a loose
+`.owl` file too - and writes nothing:
+
+- the reasoner: ELK, as an ODK release reasons, on the ontology with what it imports where that
+  is loaded - consistent, and which classes can have no members, by their labels. Where the
+  ontology has axioms ELK passes over, HermiT is asked as well, for up to ten seconds, and what
+  it finds is said, as *Build...* says it; the form's one box, *Ask HermiT too, for up to ten
+  seconds*, ticked by default, decides that;
+- ROBOT's quality report with ODK's default profile - which has the same rules at the same
+  levels as ROBOT's own - failing on an error and naming its rules, with the warnings and
+  remarks counted; *Check and test > Quality report...* lists them one by one;
+- the label check every project OntoBoard makes has: every class the ontology describes has an
+  `rdfs:label`.
+
+The result has a row for each, pass or FAIL, with the verdict - "ELK: consistent, and every
+class can have members.", "ODK's default profile: no errors; 8 warnings; 3 remarks." - and what
+each found under it in the log.
+
+### A project with DOSDP patterns, since 1.154.0
+
+ODK builds a project's DOSDP patterns with two programs of its image: DOSDP-Tools, which makes
+each pipeline's axioms from the pattern files and their tables, the term lists and
+`pattern.owl`, and `dosdp validate`, which checks the pattern files as part of `test`. Since
+1.154.0 OntoBoard's own engine runs both - `test`, `prepare_release` and the pattern targets -
+so such a project builds and releases without a container too.
+
+- **DOSDP-Tools is downloaded on first use.** It is 192 libraries, 131 MB unpacked, that clash
+  with ROBOT's, so it is not in OntoBoard's bundle. Where OntoBoard itself would build a project
+  with patterns and DOSDP-Tools is not there, *Build...* and *Release...* say so and offer
+  **Download DOSDP-Tools 0.19.3 (119 MB) and go on**: the release ODK's image carries, from
+  DOSDP-Tools' own releases on GitHub, with a window that shows the download. It goes into
+  `.ontoboard/tools/dosdp-tools-0.19.3` in your home folder, and is unpacked only when every
+  library in it is byte for byte the one in ODK's image; the archive is not kept. Declined,
+  *Build...* goes on with what runs without it, if anything does, and *Release...* stops.
+- **It runs as a program of its own**, as Widoco does, on Java 11 or later: not one of its
+  commands starts on Java 8. Protégé 5.6 runs it with its own Java. For Protégé 5.5.0 OntoBoard
+  takes the first Java 11 it finds - the one *Documentation...* runs Widoco with (*Run it with*),
+  `JAVA_HOME`, the `PATH` - and says where to get one when there is none. It is started with
+  UTF-8 and LF line ends, as in ODK's image, and writes inside the project only.
+- **ODK's pattern check is OntoBoard's own.** ODK's `dosdp validate` is a Python program under
+  the GPL-3.0, which cannot go into OntoBoard (Apache-2.0); the engine has its own check, written
+  from DOSDP's format, whose verdicts were held against ODK's checker on 191 recorded cases. Its
+  words are OntoBoard's.
+
+ODK's own sample project with patterns - its `test` and `prepare_release`, and a `test` that
+builds the imports with the patterns' terms - made the same files run by OntoBoard itself and
+by ODK's make in ODK's image. *Build...*'s *Make the DOSDP patterns' files again* is ODK's `PAT`.
+`update_patterns`, which fetches patterns listed elsewhere, still needs ODK's container, and
+nothing in OntoBoard writes or edits a pattern file.
 
 ---
 
@@ -174,7 +263,11 @@ ODK's seven steps, and what each one is inside Protégé:
 ### What the wizard produces
 
 The form asks for an ontology ID, a title, a description, a base IRI, a licence and the folder to
-make the project in. The base IRI must be an address followed by `/<id>.owl`, because ODK names
+make the project in, and since 1.154.0 for the GitHub owner the repository will be under - the
+user or organisation, optional - which ODK's README, its CI badge, its issue links and its pages
+name: up to 1.153.0 every one of those links read `https://github.com//<id>/...`. The owner given
+last is filled in, and a folder inside a clone of a GitHub repository fills in that clone's,
+unless you typed one. The base IRI must be an address followed by `/<id>.owl`, because ODK names
 the ontology `<address>/<id>.owl` and its terms `<address>/<ID>_0000001`; OBO's address,
 `http://purl.obolibrary.org/obo/<id>.owl`, is filled in as you type the ID, and is right only for
 an ontology registered with the OBO Foundry. Every rule is checked before anything is written,
@@ -205,18 +298,21 @@ src/sparql/check_labels-violation.sparql
 ```
 
 What the configuration says: the ID, title, description, licence, `uribase` (the base IRI
-without `/<id>.owl`) and `repo`; a `robot_report` block that fails on ERROR, reads the project's
+without `/<id>.owl`), `repo` and, where one was given, `github_org`; a `robot_report` block that fails on ERROR, reads the project's
 own `profile.txt` (`custom_profile: TRUE`, so ODK's seed writes ROBOT's standard profile there)
 and lists ODK's four checks and OntoBoard's label check. Release artefacts and export formats are
 left to ODK's defaults - full and base, OWL and OBO. There is no `documentation:` block, so ODK
 writes no pages of its own; `mkdocs.yaml` and the three pages under `docs/` are what ODK's
-`docs.yml` workflow publishes. `.gitattributes` pins line endings to LF, so a Windows clone is the
-same bytes as everyone else's.
+`docs.yml` workflow publishes. A new GitHub repository lets workflows only read, and that
+workflow pushes to the `gh-pages` branch: since 1.154.0 `docs/index.md` and `docs/release.md`
+say to allow writing once, in the repository's *Settings > Actions > General > Workflow
+permissions*, or with the `gh api` command they give. `.gitattributes` pins line endings to LF,
+so a Windows clone is the same bytes as everyone else's.
 
 The edit file is ODK's: functional syntax, the title, description and licence, and ODK's
 placeholder class `<ID>_0000000`, "root node". The ID ranges file holds ODK's two placeholder
 ranges; the first time you add a term, OntoBoard asks which one is yours and writes your name into
-it.
+it - since 1.154.0 the name Protégé's own ID ranges know you by.
 
 The repository is created at `<chosen folder>/<ontology id>`, and creation is refused if that
 directory already exists — there is no "seed into the folder I already made". A project that
@@ -229,7 +325,8 @@ be given once more.
 *OntoBoard > Project > New ODK project...*: the box **Start from <file> - keep its address and everything in it** fills in
 the ID, the base IRI and the title from it. The file becomes the project's edit file byte for
 byte, under its own address whatever its shape, and the file you opened is left as it was. The
-box is not offered for a file that is a project's edit file already (`*-edit.owl`).
+box is not offered for a file that is a project's edit file already (`*-edit.owl`, and since
+1.154.0 `*-edit.obo`, `*-edit.ofn` and `*-edit.ttl` too).
 
 Since 1.153.0 the configuration of such a project says two more things. Where the ontology's
 address does not end in its ID, `uribase_suffix` puts what ODK names under the project's base -
@@ -327,8 +424,10 @@ functional syntax, as ODK keeps it.
 
 What is yours is kept: the ontology's content, the README, the pages under `docs/`, the releases,
 the report profile with whatever was relaxed in it, the test queries, the modules and their term
-lists. **Write the changes** is off by default, so the first run shows the configuration as it
-will become and every file that would change, and writes nothing.
+lists. One line of the edit file is not, since 1.154.0: the `owl:versionInfo` that 1.135 wrote
+into it. ODK's release adds the release's own, so with it every release said two versions; the
+carry-over takes it out and says so. **Write the changes** is off by default, so the first run
+shows the configuration as it will become and every file that would change, and writes nothing.
 
 ### ODK repositories OntoBoard did not make
 
@@ -349,6 +448,14 @@ v1.6.1 when you ask for it, and refuses one written by a newer ODK than OntoBoar
 
 The one step with a hard requirement attached: *the YAML should be completely visible and
 editable inside Protégé*. **Visible: yes, every key. Editable: the scalars, not the structures.**
+
+**ODK's own words beside each key, since 1.154.0.** In *Project configuration...* each key's
+tooltip is what ODK says of it, and a line under the table says it for the row that is chosen -
+"Choose a key to read what ODK says of it." until one is. The words are those ODK v1.6.1's own
+documentation gives each field of the configuration, taken from ODK's source, since its project
+schema carries none. A key ODK says nothing of shows the words of the block it sits under -
+`robot_report`'s entries are documented as a whole - and otherwise "ODK v1.6.1 has no
+description of" the key.
 
 Measured against [`mwo-odk.yaml`](https://github.com/ISE-FIZKarlsruhe/mwo/blob/main/src/ontology/mwo-odk.yaml) — 13 top-level keys, of which 9 are
 editable in place and 4 are shown read-only:
@@ -572,7 +679,8 @@ Also runnable, and worth knowing about:
 
 **Shown and editable since 1.80.0** — *OntoBoard > Project > Project configuration...* lists
 every key with its value and its line number. Every scalar is editable at any depth since 1.89.0,
-and list entries are added and removed since 1.97.0 ([key by key above](#step-6-the-odk-yaml-key-by-key)).
+list entries are added and removed since 1.97.0, and since 1.154.0 each key carries ODK's own
+description of it ([key by key above](#step-6-the-odk-yaml-key-by-key)).
 
 A structure as a whole - a block such as `import_group` or `robot_report`, a `|` block of text -
 is not replaced in place, deliberately: the editor replaces exactly the characters a value
@@ -663,8 +771,11 @@ carried over from 1.135. A new project's `<id>.Makefile` is ODK's seed, to the b
 It does not help you *edit* the custom Makefile. An edit to ODK's `Makefile` is noticed by
 OntoBoard's own engine, which then runs nothing of it - the Makefile is no longer the one ODK
 writes for the configuration - and says that *Update project files...* writes it again, which
-also throws the edit away. A rule of your own belongs in `<id>.Makefile`, where ODK's container
-and ODK's tools run it and OntoBoard's engine names it and leaves the target to them.
+also throws the edit away. Since 1.154.0 *Build...* and *Release...* say it too, as a warning,
+where ODK's container or ODK's tools run such a Makefile as it is. A rule of your own belongs in
+`<id>.Makefile`, where ODK's container and ODK's tools run it, and since 1.154.0 OntoBoard's
+engine as well, when every line of it can be run here; otherwise the engine names the rule and
+its line and leaves the target to them.
 
 ### `<ontology>-idranges.owl` ✅
 
@@ -672,9 +783,12 @@ and ODK's tools run it and OntoBoard's engine names it and leaves the target to 
 
 ODK's seed writes two placeholder ranges, `ONTOLOGY-CREATOR` and `ADDITIONAL EDITOR`. Since
 1.153.0, the first time you add a term in a project whose ranges are all placeholders, OntoBoard
-asks which one is yours and writes your name into it - ODK's own instruction. A second editor
-then gets a block of their own from *ID ranges...*. Protégé's own ID range plugin asks the same
-question in its own dialog whenever the file is read again while your name is in no range - see
+asks which one is yours and writes your name into it - ODK's own instruction. Since 1.154.0 that
+name is the one Protégé's own ID ranges know you by - git's user name where Protégé's
+*Preferences > User details* asks for it, else the name set there, else your login - so Protégé
+finds the range too. A second editor then gets a block of their own from *ID ranges...*.
+Protégé 5.6's own ID range plugin asks the same question in its own dialog whenever the file is
+read again while your name is in no range - before the board's first claim, for one - see
 [limitations](limitations.md).
 
 **One thing to know.** Allocation does not insert a range — it rewrites the file from a
@@ -709,8 +823,13 @@ honoured by ODK's build and not by this dialog.
 
 ### `<ontology>-edit.owl` ✅
 
-*Project → Open existing ODK project…* takes a folder and opens the single `*-edit.owl` under
-`src/ontology`, refusing rather than guessing when there is none or more than one.
+*Project → Open existing ODK project…* takes a folder and opens the edit file under
+`src/ontology`. Since 1.154.0 that is the one in any format ODK writes an edit file in -
+`<id>-edit.owl`, `.obo`, `.ofn` or `.ttl` - and where the configuration names it (its `id` and
+`edit_format`) and it is there, that one, whatever else is named like an edit file. Without a
+configuration to say, it opens the single file named so, refusing rather than guessing when
+there is none or more than one. Up to 1.153.0 only `*-edit.owl` counted, and a project that edits
+in OBO or functional syntax was refused.
 
 Your edits are saved by Protégé's own pipeline, so the serialisation and layout stay Protégé's
 business. Since 1.153.0 the file is also rewritten on disk by ODK's update - *Update project
@@ -754,16 +873,34 @@ operation, the way ODK does them.
 | **3.** Add term IRIs to `<import>_terms.txt`, then `make refresh-<id>` | ✅ | *Find terms…* or *Import terms from a list…* writes the list from the terms you picked, and adds to it when the import already exists; then ODK's own `refresh-<id>` builds the module from it, since 1.153.0. *Imported terms…* adds and takes out terms by label and rebuilds the module at once; *Reuse → Refresh imports…* runs ODK's own refresh targets for all imports or one |
 | **4.** Copy the import URI into `<ontology>-edit.owl` and `catalog-v001.xml` | ✅ | ODK's update writes both, since 1.153.0, so the import resolves offline; where the update cannot run now, *Import terms…* writes them itself. *Pattern library…* feeds the same operation |
 | **5.** Copy the generated import schema into `<ontology>.Makefile` | ❌ | By hand. Only needed for a `custom` module whose rule you write, which is the case ODK's own generated rule refuses to build too |
-| **6.** Set `module_type`, then `update_repo`, `clean`, `make` | ✅ | *Import terms…* writes the `module_type` it actually used. Changing it later is a scalar edit in *Project configuration…*, whose save runs ODK's update; `clean` and `refresh-imports` are targets in *Build…* and *Refresh imports…* |
+| **6.** Set `module_type`, then `update_repo`, `clean`, `make` | ✅ | *Import terms…* asks what the module holds, in plain words, and declares the `module_type` that is - since 1.154.0 one of four of ODK's, below. Changing it later is a scalar edit in *Project configuration…*, whose save runs ODK's update; `clean` and `refresh-imports` are targets in *Build…* and *Refresh imports…* |
 
-**What is declared how.** An extraction with BOT, TOP or STAR becomes `module_type: slme`, which
-ODK builds again from its source whenever the imports are refreshed. Three kinds are declared
-as kept as they are - `module_type: custom` with `mirror_type: no_mirror`, a module ODK's
-refresh leaves alone and that importing again is what changes: a MIREOT extraction, for which ODK
-has no module type; a pattern from OntoBoard's library; and terms taken from a file on this
-machine, which is an address on no other machine - no path goes into the configuration.
-Where a step cannot run, the module is OntoBoard's own extraction for now, wired up by hand, and
-the result says that *OntoBoard > Reuse > Refresh imports...* has ODK build it.
+**What is declared how.** Since 1.154.0 *Import terms…* in an ODK project asks what the module
+holds, in plain words, each one of ODK's own module types, with its name in brackets:
+
+| *The module holds* | ODK's type | What comes with the terms you chose |
+|---|---|---|
+| *The terms you chose and what they need* | `slme`, BOT - ODK's default | each term's parents up to the top, and what it is defined by |
+| *Only the terms you chose and the links between them* | `filter` | what is said between them, and nothing else: their other parents are left out |
+| *The terms you chose and the relations between them* | `minimal` | the same, and links through relations as well |
+| *The whole ontology* | `mirror` | all of it, as the source has it |
+
+The words are what each type kept when asked in ODK's image: for a term `a`, its parent `b`, and
+`d`, which `a` is part of, `slme` kept them with `b`'s own parent and every axiom between them;
+`filter` kept "a is a b"; `minimal` kept that and "a is part of d", with *part of*; neither of the
+two kept `b`'s parent. The choice is declared in the configuration, so ODK's Makefile builds the
+module by its own rule for that type at every refresh and release. The module is first extracted
+here, with BOT, so that it works at once, and ODK's refresh of the import builds the kind chosen
+right after; where that cannot run now, the result says the module is OntoBoard's extraction
+until *OntoBoard > Reuse > Refresh imports...* has ODK build it. *Find terms…* says the default
+in its confirmation, and its *Advanced...* offers the others. ODK has no module type for a
+MIREOT extraction, so an ODK project is not offered one for a new import - `minimal` is the
+nearest ODK builds; an import declared before stays as it is, and a project of the older layout
+keeps ROBOT's methods, BOT, TOP, STAR and MIREOT. Two kinds are declared as kept as they are -
+`module_type: custom` with `mirror_type: no_mirror`, a module ODK's refresh leaves alone and that
+importing again is what changes: a pattern from OntoBoard's library, and terms taken from a file
+on this machine, which is an address on no other machine - no path goes into the configuration,
+and since 1.154.0 none into the term list either.
 
 **An OBO id is enough; anything else needs its source — and OntoBoard writes it the same way.**
 ODK downloads `http://purl.obolibrary.org/obo/<id>.owl` when a product gives no `mirror_from`, so
@@ -779,7 +916,7 @@ products:
   - id: edam           # anything else has to say where it came from
     mirror_from: https://edamontology.org/EDAM_1.25.owl
     module_type: slme
-    module_type_slme: STAR
+    module_type_slme: BOT
 ```
 
 **BOT, TOP, STAR — and not SUBSET.** The [extraction methods](https://robot.obolibrary.org/extract)
@@ -790,6 +927,59 @@ quietly produce a module that is not the one in the repository. NFDIcore and PMD
 SUBSET products between them. That is OntoBoard's own rebuild, which a project of the older
 layout uses; in an ODK project *Refresh imports...* runs ODK's own targets since 1.153.0, and the
 module is built by ODK's rule for it.
+
+### Refresh imports, when a source cannot be downloaded — since 1.154.0
+
+In an ODK project *Reuse → Refresh imports…* runs ODK's own targets with **Rebuild the modules**
+ticked: with **Download fresh copies first (update the mirror)** ticked, `refresh-imports`, or
+`refresh-<id>` for the one import chosen; unticked, the modules are built from the copies in
+`src/ontology/mirror` (`no-mirror-refresh-imports`), and an import with no copy yet is
+downloaded all the same.
+
+When downloading an import's source stops the run, the result says which import, from which
+address and why, read from what curl or ROBOT said - in ODK's container, with ODK's tools and in
+OntoBoard's engine alike - and then their own words:
+
+- the network, or the server, did not answer: no network, no such server, a refusal, silence,
+  or a certificate not trusted;
+- the server answered, but not with the ontology: the address may have moved, or the server has
+  trouble;
+- what came is not an ontology ROBOT can read: a server sends a page of its own in the file's
+  place when the file is not there, or when it is busy.
+
+ODK's own curl saves a server's error page as the file, so where curl downloads the source, a
+file that is not there is the third in ODK's container, and the second in OntoBoard's engine,
+whose curl stops at the server's answer.
+*Build...* and *Release...* say the same when their run stops there, with the fast target to run
+instead.
+
+Where the project has a copy of that source from before, *Refresh imports...* asks, with
+**Build the module from the copy you have (`mirror/<id>.owl`, from `<date>`)** beside
+**Not now**: ODK's own `no-mirror-refresh-<id>`, what a person at the terminal would run then.
+The module then holds what that copy holds; the result warns of the failure, notes the copy, and
+names `no-mirror-refresh-<id>` as what refreshed it. ODK's `refresh-imports` runs `clean` first
+and so empties `mirror/` before it downloads anything: after it fails, no import has a copy left
+to build from, and the result says that instead. A refresh of one import keeps its copy.
+
+### An import the configuration does not declare — *Check imports*, since 1.154.0
+
+ODK's update gives the edit file the imports the configuration declares, and no others
+([section 3](#make-update_repo-and-update-project-files)). *Reuse → Check imports* names each
+import of the edit file that the configuration does not declare - in an ODK project, when what
+Protégé has open is the project's edit file - with a button beside it that puts it right:
+
+- **Declare it**, for one that can be read: it is declared as the update's own question
+  declares it by its first answer - a module of the terms of it the ontology uses, or the whole
+  ontology where it uses none - and ODK's update is made, as a save of the configuration makes
+  it, so the module takes the import's place in the edit file. Any other import the update would
+  take out is asked about as always. With unsaved changes, or where nobody can make the update
+  now, nothing is written and the result says why.
+- **Take it out**, for one that cannot be read, which cannot be declared and stops ODK's
+  update: the import is taken out of the open ontology, as you would do it in Protégé -
+  *Edit → Undo* brings it back - and the next save brings the project's files in line.
+
+A button works once, and its result is shown over the first. Nothing is downloaded again: what
+is known of an import is what Protégé has loaded.
 
 ### The pattern library — new in 1.82.0, four collections since 1.87.0, yours since 1.92.0
 
@@ -1148,9 +1338,11 @@ released, holds the new release against the last one, keeps a copy for a project
 them, and commits and tags - after showing the git commands. Nothing is pushed.
 
 **Before the form.** ODK builds the release from the file on disk, so you are asked to save
-first. Files git has never been told about are named, with **Cancel, to commit first** and
-**Release anyway**: a release's commit takes changed files with it and leaves new ones out, and
-a tag without a new import module or test is a project that breaks for whoever fetches it.
+first. A release's commit takes changed files with it and leaves new ones out, and a tag without
+a new import module or test is a project that breaks for whoever fetches it. Since 1.154.0 the
+project's own new files under `src/` are offered in the form, to be committed first (below);
+other files git has never been told about - a page under `docs/`, a file at the top of the
+project - are named before it, with **Cancel, to commit first** and **Release anyway**.
 
 **The form.**
 
@@ -1177,6 +1369,23 @@ a tag without a new import module or test is a project that breaks for whoever f
   `prepare_release_fast`, on the modules as they are. Where OntoBoard itself builds the release
   and cannot build the full one for this project, the box is not there and the form says why.
 - **Refuse to release when a published term is gone** - on by default.
+- **Release even when it cannot be compared with the last release** - off by default, since
+  1.154.0. Where the last release cannot be read - a broken file under `releases/`, a tag without
+  the release's main file - the new one cannot be held against it, and then it is not copied,
+  committed or tagged; ticked, it is, without the comparison, and the result says so.
+- **Commit the project's `<n>` new files first** - on by default, since 1.154.0, and there only
+  when git has never been told about files of the project under `src/`: a new import module and
+  its term list, a new test, the board's layout file. Its help names them. They are committed
+  before the release, in a commit of their own, so that the release's tag holds them; unticked,
+  they are left out of the release's commit, as up to 1.153.0. New files in `tmp/`, `mirror/` and
+  `target/` are never offered.
+
+**The line under the form**, since 1.154.0, is the release in plain words, then the commands it
+runs, changing as the form does: `Release, with fresh imports - make clean, then make
+prepare_release VERSION=1.0.0`, with `ANNOTATE_ONTOLOGY_VERSION='...'` at the end where the
+version IRI is not ODK's shape, quoted as a terminal takes it. With *Refresh the imports first*
+unticked - or where OntoBoard itself cannot build the full release - it says *Release, with the
+imports as they are* and `prepare_release_fast`.
 
 With a `release.sh`, OntoBoard sets its line `VERSION=` - and `PRIOR_VERSION=`, shown as
 **Previous version**, where it has one - and changes nothing else in it; the version IRI is the
@@ -1196,13 +1405,17 @@ and full variants in both. Then, in this order:
 
 1. The new `<id>.owl` is held against the last release - under `releases/` or at its tag. A term
    that is gone rather than marked deprecated is named; with the box on, the release is not
-   copied, committed or tagged.
+   copied, committed or tagged. A last release that cannot be read stops it the same way, since
+   1.154.0, with the reader's first line as the reason, unless *Release even when it cannot be
+   compared with the last release* is ticked; up to 1.153.0 the release went on with a warning.
 2. In a project OntoBoard made, or one that keeps its releases there already, the files are
    copied to `releases/<version>/`, where ODK's version IRIs point; from the second release on,
    `releases/<version>/CHANGES.md` says what changed.
 3. The git commands are shown, and run when you press **Commit and tag**:
 
     ```
+    git add -- <the project's new files>
+    git commit -m "Files of the project before release <version>"
     git add -u -- .
     git add -f -- <id>.owl <id>.obo <id>-base.owl ...
     git add -- releases/<version>
@@ -1210,6 +1423,7 @@ and full variants in both. Then, in this order:
     git tag -a v<version> -m "<id> <version>"
     ```
 
+    The first two only with **Commit the project's `<n>` new files first**, since 1.154.0.
     `-f` because ODK's `.gitignore` keeps the release files out of git; adding them by name is
     ODK's own documented way to commit them. `-- .` keeps the first command to the project,
     which matters where the project is a folder of a larger repository: without it, tracked
@@ -1251,6 +1465,23 @@ The dated form is what OBO publishes and what ODK's Makefile defaults to
 (`VERSION = $(TODAY)`). The semantic form numbers releases `MAJOR.MINOR.PATCH` as
 [semver.org](https://semver.org/) defines it: a project at `1.2.0` publishes
 `owl:versionIRI <base>/1.2.0` and `owl:versionInfo "1.2.0"`.
+
+**A second dated release on the same day asks first, since 1.154.0.** As OBO's Makefile does, a
+release under the date of the newest one replaces `releases/<date>`; before that it now asks
+"Replace the `<date>` release? releases/`<date>` holds a release made under that date, and
+somebody may already have taken it.", with **Replace** and **Cancel** - Cancel the default, and
+it releases nothing. Up to 1.153.0 it replaced the release and warned afterwards. A number is
+never released twice, so a semantic version asks nothing.
+
+**One self-contained file (merge the imports in)** is on when the ontology imports anything.
+A release made with it off keeps its import statements, and its dated copy, outside the folder
+the catalog covers, would fetch them over the network when opened; the result warns so, and
+since 1.154.0 the warning has a button, **Release it again as one self-contained file**: the
+same release again with the imports merged in, written in the place of the one just made.
+
+To check an ontology in no project without releasing it, there is
+*Check and test > Check this ontology...*
+([above](#checking-an-ontology-without-a-project-check-this-ontology-since-11540)).
 
 **The default is read from what the ontology already declares**, so releasing a project you did
 not create continues its history instead of starting a second one beside it. A semantic release
@@ -1342,12 +1573,14 @@ order it is worth doing:
    because the project's Makefile and files are what ODK's update writes from the file, and
    OntoBoard runs that update after every change it makes there: `release_artefacts` and
    `primary_release`, which OntoBoard used to keep and not obey, are what ODK's release builds.
-3. **What OntoBoard's own engine does not run.** A rule a project adds in its own
-   `<id>.Makefile` - other than OntoBoard's rule for questions - and a program of ODK's image the
-   engine has no stand-in for. Such a target is not offered without ODK's container or ODK's tools
-   installed, and the reason names the rule and its line, or the program. ODK projects that keep
-   their own rules - a hand-written import, a release script - are released and built where make
-   runs.
+3. **What OntoBoard's own engine does not run.** A line of a project's own rules that it cannot
+   read here, a program of ODK's image it has no stand-in for - SSSOM's, `semsql` for the `db`
+   export, the `wget` of `update_patterns` - and a project's own `release.sh`. Such a target is
+   not offered without ODK's container or ODK's tools installed, and the reason names the rule
+   and its line, or the program. Since 1.154.0 the engine runs a project's own rules where every
+   line of them can be run here - hand-written imports such as nfdicore's and mwo's among them -
+   and a project's DOSDP patterns, with DOSDP-Tools downloaded on first use; a project that
+   releases by its own script is still released where make runs.
 4. **Knowing what you already imported** — the pattern library will happily suggest a pattern
    whose terms are already in an import you wrote last week, and a score of 1.00 means exactly
    that without saying so. Your own patterns can be contributed without a rebuild since 1.92.0,

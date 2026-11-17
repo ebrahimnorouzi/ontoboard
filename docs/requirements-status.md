@@ -40,9 +40,9 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | `id`, `title`, `github_org`, `repo` | Yes | In that editor, and used by ODK's seed and update. Since 1.153.0 saving the file ends with ODK's update, so the project's files follow it. |
 | `release_artefacts` / `primary_release` | Yes (1.153.0) | **Release…** runs ODK's own `prepare_release`, which builds the artefacts and formats the configuration names. |
 | `import_group` — declaring imports | Yes | **Reuse → Check imports**, **Reuse → Import terms from a list…**, **Reuse → Refresh imports…**, and the YAML editor. |
-| Module type BOT / TOP / STAR / custom | Yes | **Reuse → Import terms from a list…** offers the extraction method and writes the catalog entry. |
+| Module type BOT / TOP / STAR / custom | Yes | **Reuse → Import terms from a list…** offers the extraction method and writes the catalog entry. Since 1.154.0, in an ODK project, it offers ODK's own module types in plain words instead - `slme` with BOT, `filter`, `minimal`, `mirror` - and declares the one chosen, so ODK's refresh builds it; TOP and STAR are a scalar edit in **Project configuration…**, and a project of the older layout keeps ROBOT's methods. |
 | `robot_report` settings, `custom_profile` | Yes | **Check and test → Quality report…** uses the project's own `profile.txt` when there is one, and says which profile it used. |
-| `sh run.sh make …` targets | Yes (1.153.0) | **Build and release → Build…** runs the targets of the project's own Makefile: with ODK's tools installed, in ODK's container where its image is there, or by OntoBoard itself inside Protégé, with nothing installed. OntoBoard itself runs ODK's recipes only - a rule the project adds in its own `<id>.Makefile` needs the container or ODK's tools. `update_repo` is **Update project files…**, ODK's own update. |
+| `sh run.sh make …` targets | Yes (1.153.0) | **Build and release → Build…** runs the targets of the project's own Makefile: with ODK's tools installed, in ODK's container where its image is there, or by OntoBoard itself inside Protégé, with nothing installed. OntoBoard itself runs ODK's recipes, and since 1.154.0 the rules the project adds in its own `<id>.Makefile` where every line of them can be run here; a project's own `release.sh`, and a program OntoBoard has no stand-in for, need the container or ODK's tools. `update_repo` is **Update project files…**, ODK's own update. |
 | `src/scripts/` — run your own scripts | Yes | **Project → Run a project script…**, with arguments and the output captured. |
 | `<ontology>-idranges.owl` | Yes | **Project → ID ranges…** shows every allocation and can allocate a block. Used for minting on the canvas and, since 1.117.0, in the sheets. |
 | `profile.txt` | Yes | Written by ODK's seed, and read by ODK's report and by the quality report. |
@@ -117,7 +117,7 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | Recommend patterns for this ontology | Partly | A recommender ranks them; on a large ontology its scores saturate and the ranking becomes less useful |
 | Import a pattern's terms | Yes | From the library dialog |
 | Contribute your own | Yes | A folder of your own patterns is read alongside the bundled ones |
-| DOSDP templates | No | Not read or generated |
+| DOSDP templates | Partly (1.154.0) | A project's DOSDP patterns are built as ODK builds them, by **Build…** and **Release…**: DOSDP-Tools, downloaded on first use, and ODK's pattern check, run by OntoBoard. Nothing writes or edits a pattern, and the pattern library does not offer them |
 
 ## 7. Collaboration and git
 
@@ -176,7 +176,8 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
   judged by the reasoner rather than by spelling. Hierarchies and terms from lookup services are
   planned.
 - **SSSOM mappings.** The most-converged gap in the earlier review and still open.
-- **DOSDP templates.** Separate from the pattern library and not read.
+- **DOSDP templates.** Separate from the pattern library. Since 1.154.0 a project's patterns are
+  built as ODK builds them, but nothing in OntoBoard writes or edits one.
 - **OBO Foundry submission metadata.** ODK's seed writes `src/metadata/` since 1.153.0, and
   *Check project metadata* compares it with the ontology; nothing edits it.
 - **Reviewing pull requests in Protégé.** See above.

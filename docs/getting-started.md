@@ -88,7 +88,7 @@ property chains, SWRL rules - and [What the board draws](canvas.md) lists each, 
 **Grow the diagram.** Right-click a node and *Expand neighbours (1 hop)* to pull in what it
 is directly related to. Drag nodes to arrange them, or use the toolbar's layout algorithms.
 
-**Relate two classes.** Right-click a node, *Create relation from this node…*, pick a target
+**Relate two classes.** Right-click a node, *Relate to another term…*, pick a target
 and a property, then choose how the arrow should be read. The default — existential — means
 "every A is related to some B", which is usually what an arrow on a diagram means. The
 dialog explains each alternative.
@@ -138,10 +138,11 @@ Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, 
 
 | Works with nothing installed | Needs something else |
 |---|---|
-| New ODK project, Turn an ontology into an ODK repository, Update project files, Build (`test`, `test_fast`, `reason_test`, `sparql_test`, `robot_reports`, `validate_idranges`, `clean`), Release with dated or semantic versions (`prepare_release`, `prepare_release_fast`), Refresh imports | A target a project changes in its own `<id>.Makefile`, a project's own `release.sh`, or a recipe that calls a program OntoBoard has no stand-in for: ODK's container (Docker or Podman with ODK's image) or, on Linux and macOS, ODK's tools installed. The same for a repository whose Makefile another ODK version wrote, until *Update project files...* brings it to ODK v1.6.1 |
+| New ODK project, Turn an ontology into an ODK repository, Update project files, Build (`test`, `test_fast`, `reason_test`, `sparql_test`, `robot_reports`, `validate_idranges`, `clean`), Release with dated or semantic versions (`prepare_release`, `prepare_release_fast`), Refresh imports - and since 1.154.0 the rules a project adds in its own `<id>.Makefile`, where every line of them can be run here | A rule of a project's own with a line OntoBoard cannot run here, a project's own `release.sh`, or a recipe that calls a program OntoBoard has no stand-in for - SSSOM's, `semsql` for the `db` export: ODK's container (Docker or Podman with ODK's image) or, on Linux and macOS, ODK's tools installed. The same for a repository whose Makefile another ODK version wrote, until *Update project files...* brings it to ODK v1.6.1 |
 | Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the canvas, and *Record who edits terms* | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
 | | Imports fetched from their URLs, which need the network |
 | | WIDOCO and Konclude: the first time an action needs one, OntoBoard offers to download it (or to use a copy you downloaded yourself) |
+| | DOSDP-Tools, for a project with DOSDP patterns, since 1.154.0: *Build...* and *Release...* offer to download it (119 MB), and it needs Java 11, which Protégé 5.6 brings |
 
 *OntoBoard → Run self-test* checks this on your machine: it makes a throwaway project from ODK's
 templates, runs ODK's `test` on it by OntoBoard itself without starting any program, and lists

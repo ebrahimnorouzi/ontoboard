@@ -238,6 +238,140 @@ mvn test -Dtest=SideBySideLiveTest -Dsidebyside.runs=5
 It writes `target/side-by-side/report.md` - this table, the machine, and what the run does not
 show - and the numbers in `target/side-by-side/results.csv`.
 
+The figures above are 1.153.0's. This run was not made again for 1.154.0: it needs a quiet
+machine, and the machine 1.154.0 was made on was never quiet while it was made, so no timing of
+1.154.0 is quoted on this page.
+
+## What OntoBoard's own engine runs of ODK's 79 sample configurations
+
+ODK keeps 79 sample configurations of its own: the configurations of real projects, and those of
+its tests. Each is seeded by OntoBoard from ODK's templates as ODK seeds it - `SeedCorpusTest`
+holds every file to ODK's own seed - and every target a person would run is asked of OntoBoard's
+own engine as it is asked before a run: will it run here, and if not, every reason why. Nothing
+is run and nothing is downloaded. The answers are a table in the repository,
+`protege-plugin/src/test/resources/odk/engine-reach-79.txt`, one row per configuration and
+target, which the test holds row for row:
+
+```
+cd protege-plugin
+mvn test -Dtest=EngineReachCorpusTest
+```
+
+At 1.154.0, by target, with 1.153.0's engine asked the same way beside it:
+
+| Target | Run by OntoBoard itself | Stops where ODK's make stops too | Needs ODK's container | At 1.153.0, run |
+|---|---|---|---|---|
+| `test` | 76 of 79 | 2 | 1 | 50 |
+| `test_fast` | 78 of 79 | 1 | 0 | 77 |
+| `prepare_release` | 75 of 79 | 2 | 2 | 49 |
+| `prepare_release_fast` | 76 of 79 | 1 | 2 | 75 |
+| `refresh-imports` | 73 of 75 | 1 | 1 | 72 |
+| `no-mirror-refresh-imports` | 67 of 75 | 8 | 0 | 67 |
+| `refresh-<id>`, one import of each kind | 98 of 104 | 5 | 1 | 97 |
+| `recreate-components` | 15 of 16 | 0 | 1 | 10 |
+| DOSDP's targets: `patterns`, `dosdp_validation`, `update_patterns`, `dosdp-docs-*`, `dosdp-matches-*` | 93 of 118 | 0 | 25 | 0 |
+| `all_subsets` | 3 of 3 | 0 | 0 | 2 |
+| SSSOM's targets: `all_mappings`, `validate_mappings`, `normalize_mappings` | 0 of 3 | 0 | 3 | 0 |
+| all | 654 of 710 | 20 | 36 | 499 |
+
+By configuration, for the targets of *Build*, *Release* and *Refresh imports* - `test`,
+`test_fast`, `prepare_release`, `prepare_release_fast`, `refresh-imports` and each
+`refresh-<id>`:
+
+| | At 1.154.0 | At 1.153.0 |
+|---|---|---|
+| every one of them run by OntoBoard itself | 74 | 48 |
+| stop only where ODK's own make stops too | 3 | 3 |
+| need ODK's container | 2 | 28 |
+
+The 26 that moved: the 25 configurations with DOSDP patterns, which needed DOSDP-Tools, ODK's
+pattern check and the shell's one-word tests around them - one of them also a word in brackets
+the shell has to leave as it is - and one whose module is the project's own
+(`module_type: custom`, for which ODK's seed writes a rule into the project's own makefile). Of
+the 2 left, one needs SSSOM's programs - `sssom`, `sssom-cli`, `tsvalid` and ROBOT's SSSOM
+plugin - and the other `semsql`, for the `db` export.
+
+What each number counts:
+
+- A row is one configuration and one target. `refresh-<id>` is asked for the first import of each
+  kind - module type, mirror type, its own address or ODK's, base, gzip, large - 104 rows in place
+  of 367, since the others of a kind run the same recipes under another name. Not asked:
+  `update_repo`, ODK's update, which OntoBoard makes by its own code, and `public_release`, which
+  publishes a GitHub release.
+- "Stops where ODK's make stops too": the engine finds, before a line runs, that make itself
+  stops there - "No rule to make target". These are faults of the samples themselves - a
+  component named without `.owl`, a report on a file named `.owl`, imports merged so that there
+  is nothing to refresh - and 8 are `no-mirror-refresh-imports` on a fresh seed, which has no
+  `mirror/` yet; *Refresh imports...* downloads such an import instead. Nine of the engine's
+  answers, five stops and four runs, were checked by running ODK's own make dry in ODK's image
+  when the table was first made, and agree.
+- The DOSDP rows count DOSDP-Tools as installed, on Java 11: the 119 MB download *Build...* and
+  *Release...* offer. The 25 DOSDP rows that need the container are `update_patterns`, which
+  fetches patterns from elsewhere with `wget`, `find` and `cp -r`.
+- The table is Java 11's, as in Protégé 5.6. On Protégé 5.5.0's Java 8 a target that writes
+  ROBOT's JSON is refused besides, since the library that writes it needs Java 11; that refusal
+  is left out of the comparison there.
+- These are fresh seeds. A real project's own rules decide for it: of 30 real repositories behind
+  ODK's samples that could be read, 26 add rules of their own, 23 of them on ODK's own targets or
+  files (counted roughly, by a pattern). The next section has two such projects.
+
+## The same output, sampled
+
+**Ten of ODK's own samples.** `tests__test-minimal`, `test-release`, `test-release-reason`,
+`test-release-materialise`, `test-robot-report`, `test-sparql-report`, `test-edit-obo`,
+`test-uribase-suffix`, `test-module-star` and `examples__minimal`, each seeded as ODK seeds it,
+and each run two ways: `test_fast` and `prepare_release_fast` by ODK's own make in ODK's image
+(v1.6.1), recorded once - all 20 runs ended with make's exit 0, and made or changed 7 to 31 files
+each, 291 in all - and by OntoBoard's own engine, held against that recording without Docker:
+
+```
+cd protege-plugin
+mvn test -Dtest=CorpusEquivalenceTest
+mvn test -Dtest=CorpusEquivalenceTest -Dowlapi.version=4.5.29
+```
+
+Held for each run: make's exit; every recipe line make said, in its order; what ROBOT said of
+each check and of its report; the set of files the run made or changed; and each file by its
+kind - a report's rows in any order, the profile's verdict, an ontology made along the way as the
+same axioms, a product as ODK's file but for what shows the OWL API's version, anything else byte
+for byte.
+
+With OWL API 4.5.29 - Protégé 5.6.9's, and ROBOT's in ODK's image - all 20 runs agree. With
+4.5.9, Protégé 5.5.0's, every recipe line and every set of files agree, and six runs made files
+that differ in three ways, each the older OWL API's way of writing: an OBO header lists its
+values in another order, a `Typedef` for a property the header names by a short name has the
+property's whole IRI as its id, and where the edit file is OBO, `oboInOwl:id` has no label. The
+three are allowed on 4.5.9 only, each narrowly. On Protégé 5.5.0's Java 8 the two releases that
+write JSON are refused before they run, and the refusal is what is held there. A second run on
+4.5.9 also found that the older OWL API keeps an OBO file it has read open until Java collects
+it, which on Windows blocks the next delete - [fixed](fixed.md) in 1.154.0.
+
+**Two real projects with rules of their own.** nfdicore and mwo build their import modules by
+rules in their own makefile - ROBOT chains with `query --update`, and in nfdicore's two
+`sed -i` substitutions. Brought to ODK v1.6.1 as *Update project files...* brings them, each was
+run twice, on two copies, in ODK's container and by OntoBoard's engine: a refresh of each import
+a rule of theirs builds, then `test_fast`, each step's files held against the other route's.
+They agree - mwo on both OWL APIs, nfdicore on 4.5.29 only: its DCAT import brings SKOS, PROV-O
+and DC Terms by http addresses that move to https, which Protégé 5.5.0's OWL API does not follow
+([limitations](limitations.md)). With Docker, ODK's image and the network:
+
+```
+mvn test -Dtest=RealProjectsLiveTest -Dowlapi.version=4.5.29
+```
+
+It keeps each step's time on both routes in `target/real-projects/`; those were taken on a busy
+machine, and are not quoted.
+
+**A project with DOSDP patterns.** ODK's own sample with patterns, `tests__test-patterns`: its
+`test` and `prepare_release`, and a `test` that builds the imports with the patterns' terms, were
+recorded in ODK's image and run by OntoBoard itself with DOSDP-Tools 0.19.3 installed from its
+release; the recipe lines and the files agree, on both OWL APIs. It skips itself unless
+DOSDP-Tools is installed where OntoBoard puts it:
+
+```
+mvn test -Dtest=DosdpEquivalenceLiveTest
+```
+
 ## The test suite
 
 ```

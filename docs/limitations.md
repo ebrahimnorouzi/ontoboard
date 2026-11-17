@@ -16,27 +16,31 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   an ontology engineer, a reviewer and somebody new to ODK, each using the plugin on their own
   task. Built in 1.132.0: starting a project from the open ontology, *Show only this and its
   neighbours*, `≡` on defined classes, *Imported terms…*, *Write a test from a question…*, the
-  Rules layer and Enter for a sibling. Still open, roughly in the order they were asked for:
-    - *Check this ontology* without a project - the reasoner, the quality report and a label
-      check on a loose `.owl` file. Today Build needs a project.
-    - Help beside each key in *Project configuration…*. (A button there for *Update project
-      files…* is no longer needed: since 1.153.0 a save brings the project's files in line.)
+  Rules layer and Enter for a sibling. Built in 1.154.0: *Check this ontology…* without a
+  project - the reasoner, the quality report and the label check on a loose `.owl` file; ODK's
+  own words beside each key of *Project configuration…* (a button there for *Update project
+  files…* is not needed: since 1.153.0 a save brings the project's files in line); a button on
+  the warning that applies its fix - *Declare it* or *Take it out* for an import the
+  configuration does not declare, in *Check imports*, and *Release it again as one
+  self-contained file* for imports not merged, in *Release…*; and ODK's filter and minimal
+  module types, in plain words, when importing terms. Still open, roughly in the order they were
+  asked for:
     - *History* and *Compare releases* for properties and individuals as they are for classes
       (relabelled, redefined).
     - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
       replacement, instead of only listing what will change.
-    - A button on each warning that applies its fix - an undeclared import, imports not merged.
     - A mode for adding terms to somebody else's ontology (a contributor's view), creating the
-      repository on GitHub and pushing without a terminal, ODK's filter and minimal import
-      types when importing terms, and a beginner mode. (The menus have been grouped by job since
-      1.133.0.) Since 1.133.0, *Turn an ontology into an ODK repository…* runs `git init`,
-      commits and tags every version, and prints the two commands that publish it; since 1.153.0
-      *New ODK project…* makes the first commit too.
+      repository on GitHub and pushing without a terminal, and a beginner mode. (The menus have
+      been grouped by job since 1.133.0.) Since 1.133.0, *Turn an ontology into an ODK
+      repository…* runs `git init`, commits and tags every version, and prints the two commands
+      that publish it; since 1.153.0 *New ODK project…* makes the first commit too.
     - Bring to front and send to back for frames and notes on the board.
-- **Mappings, DOSDP patterns and pattern mining are not built, and the assistant edits little.**
-  There is no SSSOM
+- **Mappings, DOSDP pattern editing and pattern mining are not built, and the assistant edits
+  little.** There is no SSSOM
   support: a mapping can be written only as an annotation - in Protégé's annotation editor, or
-  as an `AI skos:exactMatch` column of a sheet. DOSDP pattern files are neither read nor written.
+  as an `AI skos:exactMatch` column of a sheet. Since 1.154.0 a project's DOSDP patterns are
+  built as ODK builds them (below), but nothing in OntoBoard writes or edits a pattern file, and
+  the pattern library does not offer them.
   Nothing extracts design patterns across ontologies. The [assistant](assistant.md) (since
   1.136.0) answers questions and explains reasoner problems. Since 1.137.0 it suggests
   definitions, wordings and changes to axioms - a removal, a replacement or an addition, written
@@ -100,25 +104,47 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 
 ### Known constraints
 
-- **The ROBOT inside OntoBoard is 1.9.8; ODK v1.6.1's image has 1.9.10.** OntoBoard's own
-  engine runs the shell commands ODK's recipes use, `robot`, and stand-ins for `odk-info`,
-  `dicer-cli` and `check-rdfxml`. On the projects compared, the files the two ROBOTs write
-  are the same; a difference between the two versions on other input is possible. A recipe
-  that calls another program of ODK's image - `dosdp-tools` (DOSDP patterns),
-  `relation-graph`, Soufflé, ODK's Python scripts - is not run by the engine: see "OntoBoard's
-  own engine runs ODK's Makefile, and nothing a project adds to it" below.
-- **Build cannot pass variables to make.** The form offers targets. A run such as
-  `make test IMP=false` cannot be asked for; ODK's `test_fast` is the target that leaves the
-  imports alone.
+- **The ROBOT inside OntoBoard is 1.9.8; ODK v1.6.1's image has 1.9.10.** 1.154.0 tried 1.9.10
+  and kept 1.9.8. From 1.9.9 on, ROBOT writes an `.obo` file through a call that the OWL API of
+  Protégé 5.5.0 (4.5.9) does not have - its OBO format is not one with prefixes there - and ODK's
+  release options take that path, so every release that writes OBO, as ODK's default release
+  does, failed on Protégé 5.5.0 with 1.9.10 inside. `RobotDependenciesTest` writes an `.obo` file
+  with ODK's options on that OWL API, so the next upgrade meets the reason in a test. What 1.9.9
+  and 1.9.10 changed that ODK's recipes meet, OntoBoard's own engine does already: the report's
+  queries, and `query --update`, run as 1.9.10 runs it. On the projects compared, the files the
+  two ROBOTs write are the same; an ontology whose OBO identifiers need prefixes of its own may be
+  written with whole IRIs where the image writes short ones (no recording has one). OntoBoard's
+  own engine runs the shell commands ODK's recipes use, `robot`, and stand-ins for `odk-info`,
+  `dicer-cli`, `check-rdfxml`, `curl`, and since 1.154.0 `sed -i` substitutions and ODK's DOSDP
+  pattern check; DOSDP-Tools itself runs as a program of its own (below). A recipe that calls
+  another program of ODK's image - SSSOM's, `semsql` for the `db` export (and `relation-graph`
+  through it), `wget`, ODK's Python scripts - is not run by the engine: see "What still needs
+  ODK's container" below.
+- **Build passes ODK's four switches, and no other variable.** Since 1.154.0 *Build...* in an ODK
+  project has a box for each of ODK's own switches - *Build the import modules again* (`IMP`),
+  *Download the imports' sources again* (`MIR`), *Make the DOSDP patterns' files again* (`PAT`)
+  and *Build the components again* (`COMP`) - each ticked as ODK's default has it, and shows the
+  make command they come to under the form, such as `make test IMP=false MIR=false`. No other
+  variable can be set from *Build...*; *Release...* sets the version. A plain Makefile, not ODK's,
+  gets no boxes. Where OntoBoard itself builds, the targets offered are those it runs with ODK's
+  defaults, so a target refused with every box ticked is not offered even where some boxes
+  unticked would let it run.
 - **ODK's `test` fetches the imports again on every run.** That is ODK's Makefile, in every
   route: a project with an import from the web needs the network for each `test`, and the
-  module is written again with the day as its version, so git shows it as changed. A release
-  runs `make clean` first, which empties `mirror/`, so a release that refreshes the imports
-  downloads every source again.
-- **A release expects the project's new files to be committed.** It stages what it changed
-  and the release files; a file git has never been told about - a new import module, a new
-  test, the board's layout file in a project made elsewhere - is asked about first, and is
-  not in the release's commit if you go on.
+  module is written again with the day as its version, so git shows it as changed. *Build...*
+  offers ODK's ways round it, in plain words since 1.154.0: *Check quickly (keeps the imports as
+  they are) - make test_fast*, or `test` with *Build the import modules again* unticked
+  (`IMP=false`). A release runs `make clean` first, which empties `mirror/`, so a release that
+  refreshes the imports downloads every source again.
+- **A release commits the project's new files first, and leaves the others out.** Since 1.154.0
+  *Release...* has a box, ticked by default, *Commit the project's `<n>` new files first*: what git
+  has never been told about under `src/` - a new import module and its term list, a new test,
+  the board's layout file - is committed before the release, in a commit of its own, "Files of
+  the project before release `<version>`", so that the release's tag holds it. Unticked, those
+  files are left out of the release's commit, as before. A new file elsewhere in the project - a
+  page under `docs/`, a file at the top - is still named before the form, and is not in the
+  release's commit if you go on. New files in ODK's `tmp/`, `mirror/` and `target/` are neither
+  offered nor committed.
 - **Spreadsheets and the knowledge graph do not round-trip.** *Spreadsheets → Template...* adds the
   axioms a sheet produces to the ontology open in Protégé and never removes or updates any: run it
   again after changing a label and the graph holds both labels. Nothing links an individual back to
@@ -146,7 +172,8 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   ODK's container would run with, ODK's image, GNU make, a POSIX shell, ODK Core's `odk` and Java.
   Not git, the GitHub CLI, Widoco or Konclude, which *New ODK project...* and *Release...* (for
   their commits), *Git...*, *Pull request...*, *Documentation...* and *Reason with Konclude...*
-  need.
+  need, nor DOSDP-Tools, which *Build...* and *Release...* offer to download for a project with
+  DOSDP patterns.
 - **Documentation has no changelog until the previous release is published.** Widoco builds the
   changelog by downloading the release the ontology names as `owl:priorVersion`; when nothing
   answers there it writes the rest of the page and leaves the word `null` in the changelog
@@ -174,8 +201,12 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   change after the edit, so *Edit → Undo* removes the stamp first and a second *Undo* the edit
   (also read from the code).
 - **The board creates a term only from your own identifier block**, in a project with an
-  `*-idranges.owl`. Your name is the collaboration display name (*Share → Collaboration...*), or
-  your login when none is set. Anybody without a block gets *No identifiers for you yet* until
+  `*-idranges.owl`. Since 1.154.0 your name is the one Protégé's own ID ranges know you by: git's
+  user name where Protégé's *Preferences > User details* asks for it, else the user name set
+  there, else your login. Up to 1.153.0 it was the collaboration display name
+  (*Share → Collaboration...*), and a block claimed under that name stays yours on the board
+  while none is allocated to Protégé's name. Anybody without a block gets *No identifiers for you
+  yet* until
   *Project → ID ranges...* allocates one.
 - **A project made by OntoBoard 1.135 or before is not built or released until it is carried
   over.** Its Makefile is OntoBoard's own, and *Build...* and *Release...* say so and run nothing,
@@ -273,41 +304,113 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   taken back for that. Routing only the lines a move touches would lift it, and is not built.
 - **The bundle is ~64 MB**, because ROBOT and its dependencies are embedded to run
   in-process.
-- **OntoBoard's own engine runs ODK's Makefile, and nothing a project adds to it.** Without ODK's
-  container or ODK's tools installed, OntoBoard runs ODK's targets itself (since 1.153.0) - but
-  only where the Makefile is the one ODK v1.6.1 writes for the project's configuration, and only
-  targets the project's own `<id>.Makefile` changes nothing of. A rule or setting of the
-  project's own that a target reaches, a project's own `release.sh`, and a recipe line that calls
-  a program OntoBoard has no stand-in for are not run; the target is not offered, and the reason
-  names the rule and its line, or the program. The one rule of a project's own that is run is
-  OntoBoard's rule for the project's questions, as long as it stands as OntoBoard wrote it. Such
-  targets run in ODK's container (Docker or Podman, with ODK's image) or, on Linux and macOS, with
-  ODK's tools installed - on Windows the container is the only other way. Projects whose import
-  modules are built by rules of their own are of this kind. A Makefile another ODK version wrote
-  is brought to ODK v1.6.1 by
-  *Update project files...*. [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has
-  the order.
+- **OntoBoard's own engine runs ODK's Makefile and a project's own rules, when every line of
+  them can run here.** Without ODK's container or ODK's tools installed, OntoBoard runs ODK's
+  targets itself (since 1.153.0) - only where the Makefile is the one ODK v1.6.1 writes for the
+  project's configuration. Since 1.154.0 it also runs the rules and settings a project adds in
+  its own `<id>.Makefile`, as make takes them: when every line the target reaches can be read
+  here, every program it calls is one the engine has, and nothing is written outside the project -
+  all asked before the first line runs. Up to 1.153.0 any rule or setting of the project's own
+  that a target reached left the target to the container. Import modules built by rules of a
+  project's own - ROBOT chains with `query --update`, `if [ $(IMP) = true ]`, `sed -i` - are of
+  this kind: nfdicore and mwo, two real projects that build theirs so, refreshed those imports
+  and ran `test_fast` by OntoBoard itself and in ODK's container with the same files - nfdicore on
+  Protégé 5.6.9's OWL API, for the reason in "an import whose address moves" below. A line that
+  cannot be read here, or a program the engine has no stand-in for, is not run: the target is not
+  offered, and the reason names the rule and its line, or the program. Measured over ODK's own 79
+  sample configurations, each seeded as ODK seeds it: 74 run every target of *Build*, *Release*
+  and *Refresh imports* by OntoBoard itself, 3 stop only where ODK's own make stops too, and 2
+  need the container - for SSSOM and for the `db` export - counted with DOSDP-Tools downloaded and
+  on Java 11, as in Protégé 5.6 ([how, and target by target](measurements.md#what-ontoboards-own-engine-runs-of-odks-79-sample-configurations)).
+  At 1.153.0 it was 48. Those are fresh seeds: a real project's own rules decide for it. A Makefile
+  another ODK version wrote is brought to ODK v1.6.1 by *Update project files...*.
+  [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has the order.
+- **What still needs ODK's container.** These run in ODK's container (Docker or Podman, with
+  ODK's image) or, on Linux and macOS, with ODK's tools installed - on Windows the container is
+  the only other way: a project's own `release.sh`, which calls ODK through `run.sh`; ODK's SSSOM
+  targets (`sssom`, `sssom-cli`, `tsvalid`, ROBOT's SSSOM plugin); the `db` export format
+  (`semsql`, and `relation-graph` through it); `update_patterns`, which fetches DOSDP patterns
+  from elsewhere with `wget` and `find`; and `public_release`, which publishes a GitHub release.
+  *Update project files...* runs ODK's update by OntoBoard's own code where there is no container.
+- **On Protégé 5.5.0, OntoBoard itself does not write ROBOT's JSON.** The library that writes it
+  needs Java 11, and Protégé 5.5.0 runs on Java 8: a target that writes JSON - a release with
+  `json` among its export formats - is refused there with that reason. Use Protégé 5.6, or ODK's
+  container.
+- **DOSDP patterns are built by DOSDP-Tools, downloaded on first use.** Since 1.154.0 a project
+  with DOSDP patterns is built and released by OntoBoard itself as ODK builds it. ODK's pattern
+  pipeline calls DOSDP-Tools 0.19.3, a program of 192 libraries, 131 MB unpacked, whose
+  libraries clash with ROBOT's, so it cannot be put into OntoBoard's bundle: *Build...* and
+  *Release...* offer to download it - 119 MB, the release ODK's image carries - into
+  `.ontoboard/tools` in your home folder. It is unpacked only when every library is byte for
+  byte the one in ODK's image, and runs as a program of its own, as Widoco does, on Java 11 or
+  later: Protégé 5.6 runs it with its own Java, while Protégé 5.5.0 needs a Java 11 on the
+  machine - on `JAVA_HOME` or the `PATH`, or chosen as *Run it with* in
+  *Build and release > Documentation...*, which Widoco and DOSDP-Tools share. ODK's check of the
+  pattern files, `dosdp validate`, is a Python program under the GPL-3.0, which cannot go into
+  OntoBoard (Apache-2.0); OntoBoard's engine has its own, written from DOSDP's format, whose
+  verdicts were held against ODK's checker on 191 recorded cases. On a pattern unlike those, the
+  two may disagree, and its words are OntoBoard's, not ODK's.
 - **Run by OntoBoard itself, ROBOT has Protégé's memory.** In ODK's container ROBOT gets the
   project's `robot_java_args`, or nine tenths of the container's memory. OntoBoard's own engine
   runs ROBOT inside Protégé, so a large import - refreshed by `test`, `prepare_release` or
   *Refresh imports...* - has only the memory Protégé was started with. Raise it in Protégé's own
   setting: for Protégé 5.6 `max_heap_size=8G` in `conf/jvm.conf` in Protégé's folder; for
   Protégé 5.5.0 on Windows the `-Xmx` line of `Protege.l4j.ini` beside `Protege.exe`, or the
-  `-Xmx` of `run.bat` when Protégé is started with it. Then start Protégé again.
-- **Protégé asks for your ID range again whenever the project is read again.** Protégé's own ID
-  range plugin asks a user whose name is in no range of `<id>-idranges.owl` to choose one ("No Id
-  Range Found For Current User") when a project's edit file is opened, and again each time the
-  file is read again - after *Update project files...* or an import, for example, even in the
-  middle of OntoBoard's run. It is Protégé's dialog, not OntoBoard's, and every user of ODK's seed
-  meets it as it comes: choose your range in it and go on.
+  `-Xmx` of `run.bat` when Protégé is started with it. Then start Protégé again. Since 1.154.0
+  *Build...*, *Release...* and *Refresh imports...*, run by OntoBoard itself, say so at the head of
+  their result when the project's `robot_java_args` asks for more than Protégé has, with the
+  setting of the Protégé that runs.
+- **Protégé 5.6 asks for your ID range until the board has claimed one.** Protégé's own ID range
+  plugin looks in `<id>-idranges.owl` for a range allocated to the name it knows you by - git's
+  user name where *Preferences > User details* asks for it, else the user name set there, else
+  your login - and asks a user it finds none for to choose one ("No Id Range Found For Current
+  User") when a project's edit file is opened, and again each time the file is read again - after
+  *Update project files...* or an import, for example, even in the middle of OntoBoard's run. It
+  is Protégé's dialog, not OntoBoard's. Since 1.154.0 the board claims and mints under that same
+  name, so once it has claimed your range - at your first new term on the board, in a project
+  whose ranges are ODK's placeholders - Protégé finds it and stops asking; up to 1.153.0 the board
+  claimed under the collaboration display name, which Protégé does not know, and the question
+  came back. Before the claim, choose your range in Protégé's dialog or cancel it. A range
+  claimed under the display name by an earlier OntoBoard keeps the question coming until
+  *User details* names you as the range does, or a range is allocated to Protégé's name.
+  Protégé 5.5.0 has no ID ranges of its own and does not ask.
 - **On Protégé 5.5.0 a release made by OntoBoard itself differs from ODK's in a few lines.** How a
   file is written is the OWL API's, and that is the host's: Protégé 5.6.9 carries OWL API 4.5.29,
   the same as ROBOT in ODK v1.6.1's image, and Protégé 5.5.0 carries 4.5.9. On 4.5.9 an OBO
   file's header has no `idspace:` lines and names Dublin Core properties by their whole IRIs, an
   RDF/XML file writes `owl:versionInfo` with an explicit string datatype, and the annotations
-  within an element can come in another order. The content is the same. A project released
-  alternately on Protégé 5.5.0 without a container and in ODK's container sees those lines change
-  back and forth in its release commits.
+  within an element can come in another order. Measured since 1.154.0 on ten of ODK's own sample
+  configurations, three more: an OBO file's header lists its values in another order, a
+  `Typedef` for a property the header names by a short name has the property's whole IRI as its
+  id, and where the edit file is OBO, `oboInOwl:id` has no label. The content is the same; on
+  Protégé 5.6.9 the files are ODK's. A project released alternately on Protégé 5.5.0 without a
+  container and in ODK's container sees those lines change back and forth in its release
+  commits.
+- **On Protégé 5.5.0, an import whose address moves from http to https cannot be loaded.** Some
+  of W3C's and purl.org's addresses move so - SKOS's, PROV-O's and DC Terms' among them. The OWL
+  API of Protégé 5.5.0 (4.5.9) does not follow such a move, and reads the page about the move
+  instead; Protégé 5.6.9's (4.5.29), the one in ODK's image, follows it. Since 1.154.0
+  OntoBoard's engine follows the move itself for the address a ROBOT line is given (`-I`), but
+  the imports of the ontology fetched there are the OWL API's to load - nfdicore's DCAT import
+  brings all three - so such a refresh fails on Protégé 5.5.0 with the OWL API's parse error.
+  Protégé 5.6.9 loads them.
+- **On Protégé 5.5.0, a page sent in place of an import's source is taken for an empty
+  ontology.** Where a server sends an HTML page of its own in the file's place, the OWL API of
+  Protégé 5.5.0 reads the page as an empty ontology (TriX), so OntoBoard's engine writes that over
+  `mirror/<id>.owl` and stops at the module ("Ontology IRI cannot be null"). ODK, and Protégé
+  5.6.9, refuse the page where it is downloaded and keep the copy before it. ROBOT reads with
+  Protégé's own OWL API, so this is not put right here.
+- **A refresh of every import downloads them all again, and keeps no copy when one fails.** With
+  *Download fresh copies first (update the mirror)* ticked and every import chosen,
+  *Refresh imports...* runs ODK's `refresh-imports`, which runs `make clean` first and so empties
+  `mirror/` before it downloads anything: a source that cannot be downloaded then leaves no copy
+  to build its module from, and the result says so. A refresh of one import, ODK's
+  `refresh-<id>`, keeps the copy it had, and when its download fails *Refresh imports...* offers
+  to build the module from that copy (since 1.154.0).
+- **On Windows, a gzipped JSON file keeps Windows line ends.** ROBOT's JSON writer ends its lines
+  as the platform does. Since 1.154.0 OntoBoard's engine gives ROBOT's JSON, and DOSDP-Tools' text,
+  ODK's line ends (LF) on Windows too; a `.json.gz` is left as it is written, since gzip's own
+  header makes its bytes differ from ODK's anyway.
 - **A project just made shows two small changes at its first *Update project files...*.** The
   last line of `.gitignore` and the first two lines of the catalog: ODK v1.6.1's own update
   writes its own seed's files that way. After that update the project's files are what ODK
@@ -325,7 +428,10 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   refuse to be moved or deleted for a while; wait a moment and try again, or keep local imports in
   RDF/XML. The same holds for an edit file saved in Turtle after OntoBoard itself has built
   the project (seen in a test of 1.153.0): ROBOT reads it through the OWL API. An edit file
-  in functional syntax, which is what ODK seeds, or in RDF/XML is not held.
+  in functional syntax, which is what ODK seeds, or in RDF/XML is not held. On Protégé 5.5.0 an
+  OBO file is held whoever reads it (measured in a test of 1.154.0; Protégé 5.6.9's OWL API
+  holds none): since 1.154.0 OntoBoard's engine has Java collect after each ROBOT line that reads
+  one, and an OBO file Protégé itself read stays held until Java collects.
 - **ODK's `.gitignore` leaves the release files out of git.** The files a release writes at the
   top of the project - `<id>.owl`, `<id>-base.owl` and the rest - are ignored by the `.gitignore`
   ODK's seed writes, so *Share → Git... → Commit everything* does not take them in and `git
@@ -342,10 +448,11 @@ Limitations should answer what the tool cannot do today.
 
 ### Not covered by tests
 
-For 1.153.0's ODK routes: Podman was not tried, only Docker Desktop on Windows; ODK's own
-tools installed on Linux or macOS were not tried live; OntoBoard's own engine was run live on
-Windows only, and its unit tests run on Windows and on CI's Linux. The comparison with ODK's
-container was made on small projects and two real ones, not on a large ontology.
+For 1.153.0's and 1.154.0's ODK routes: Podman was not tried, only Docker Desktop on Windows;
+ODK's own tools installed on Linux or macOS were not tried live; OntoBoard's own engine was run
+live on Windows only, and its unit tests run on Windows and on CI's Linux. The comparison with
+ODK's container was made on small projects, ten of ODK's own sample configurations and two real
+projects, not on a large ontology.
 
 The unit tests cover projection, axiom construction, layout persistence, ODK's seed, the
 report's rule execution and the OSGi configuration. Some of them reach outside the JVM:
@@ -358,7 +465,9 @@ without Docker proves considerably less than it looks, and now says nothing at a
 this plugin agrees with ROBOT. What does run without Docker is the comparison with recordings:
 since 1.153.0 the seed is held byte for byte against ODK's own seeds, and OntoBoard's own engine
 against ODK's own runs of `test_fast`, `prepare_release_fast` and the import targets, recorded
-in ODK's image.
+in ODK's image - since 1.154.0 also ten of ODK's sample configurations, rules of a project's own,
+ROBOT's `query --update`, GNU `sed` and ODK's DOSDP pattern check. A project with DOSDP patterns
+is held against ODK's runs only where DOSDP-Tools is installed.
 
 Up to 1.135 a test ran the project OntoBoard generated in that image, and found three defects in
 the generated build that had survived a 30-assertion test class — a `--` inside an XML comment in

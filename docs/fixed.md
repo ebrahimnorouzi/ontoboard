@@ -13,6 +13,144 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A carried-over 1.135 project's releases said two versions, fixed in 1.154.0.** Found
+  rebuilding the pizza-bfo example with 1.153.0, the day it was released: its release 0.2.0
+  carried `owl:versionInfo` twice, `0.1.0` and `0.2.0`. OntoBoard 1.135 wrote
+  `owl:versionInfo "0.1.0"` into a new project's edit file, *Update project files...* kept it
+  when it carried the project over, and ODK's release adds the release's own. Turning an ontology
+  into an ODK repository kept the ontology's `owl:versionInfo` in the edit file the same way, so
+  a converted project's next release said two versions as well. The carry-over now takes it out
+  of the edit file and says so, and a converted project's edit file is made without it.
+  `ReleaseByItselfTest.aCarriedOverProjectsReleaseSaysOneVersion`, red first with
+  `[0.1.0, 0.2.0]`; `OdkMigrationTest.aStampInAnotherSyntaxIsTakenOutAllTheSame`,
+  `OdkConversionTest.theEditFileIsMadeWithoutTheVersionEachReleaseWrites`.
+- **A new project's GitHub links named no owner, fixed in 1.154.0.** Found in the egg example
+  made with 1.153.0: ODK's README and its CI badge linked `https://github.com//eggboil/...`.
+  *New ODK project...* wrote no `github_org` into the configuration, and ODK's templates put the
+  owner into every link to the repository - the README, `CONTRIBUTING.md`, the pages' addresses,
+  the OBO metadata. The form asks for the GitHub owner now, optional, fills in the one of the
+  clone the folder is in, refuses a name GitHub would not give anybody, and writes it as ODK's
+  own seed takes it. `OdkCreateTest.theSeedsLinksNameTheOwner`,
+  `ProjectWizardTest.theOwnerIsTakenFromAGitHubRemote`.
+- **A new project's pages did not publish on a new GitHub repository, and nothing said why,
+  fixed in 1.154.0.** Found after 1.153.0 was released. ODK's documentation workflow pushes to
+  the `gh-pages` branch and declares no permissions, and a new GitHub repository gives workflows
+  a token that only reads, so the push fails until *Settings > Actions > General > Workflow
+  permissions* allows writing. OntoBoard leaves ODK's workflow as it is; where it says how to
+  publish - a new project's `docs/index.md` and `docs/release.md`, and what *Turn an ontology into
+  an ODK repository...* prints at its end - it now says so, with the `gh api` command that does
+  it. `OdkExtrasTest.theIndexPageSaysTheWorkflowMustBeAllowedToWriteFirst`,
+  `OdkConversionTest.publishingSaysTheWorkflowMustBeAllowedToWrite`.
+- **A term list taken from a file of this machine committed the file's path, fixed in 1.154.0.**
+  Found by a read-only review of 1.153.0's code and tests after its release, against a catalogue
+  of fourteen mistakes and the guard OntoBoard has against each. *Import terms...* from a local
+  file kept the path out of the ODK configuration, as its code meant to, but wrote it into the
+  term list's `# Source:` line, which is committed with the project - and a test held it so. The
+  term list now records what the module's own provenance records, the ontology's IRI, never where
+  the file lay, and nothing where the ontology has no IRI.
+  `ImportTermsActionTest.aLocalFileWithoutAnIriRecordsNoSource`, red first with the path.
+- **A Makefile edited by hand ran in ODK's container without a word, fixed in 1.154.0.** Found by
+  the same review. OntoBoard's own engine refuses a Makefile that is not the one ODK writes for
+  the project's configuration, and says that *Update project files...* writes it again; in ODK's
+  container, and with ODK's tools on the machine, make ran it as it was and nothing said it
+  differed. *Build...* and *Release...* now say it there as a warning, Build's summary too, from
+  the same comparison. `BuildResultTest.aBuildByMakeOfAnEditedMakefileSaysSo`,
+  `OdkReleaseFormTest.aReleaseByMakeOfAnEditedMakefileSaysSo`.
+- **A release went on when it could not be compared with the last one, fixed in 1.154.0.** Found
+  by the same review. A release is held against the last before it is committed, so that a
+  published term that is gone stops it; where the last release could not be read - a broken file
+  under `releases/`, a tag without the release's main file - there was no comparison, and the
+  release was copied, committed and tagged with a warning. It stops now, with the reader's first
+  line as the reason, and a box in the form, *Release even when it cannot be compared with the
+  last release*, off unless ticked, lets it go on.
+  `OdkReleaseTest.aReleaseThatCannotBeComparedWithTheLastStopsBeforeTheCommit`, red first.
+- **A new property's name was not checked, fixed in 1.154.0.** Found by the same review. On the
+  board a new class without a name is refused and one with another term's name is asked about;
+  a new property made in *Create relation* - *Relate to another term…* on the board - was dropped
+  without a word when its name was blank, and made without a question when another term had the
+  name. One check serves both now: a blank name is refused with a sentence, a name another term
+  has is asked about, and a refusal or a No brings the form back with everything chosen. The test
+  that held the blank-name rule had tested a method no production path called any more; it holds
+  the check now. `RelationDialogNameTest.aBlankNameIsRefusedWithASentenceAndTheFormComesBack`,
+  `aNameAnotherTermHasIsAskedAboutAndNoGoesBackToTheForm`, red first.
+- **Two guards had never met the mistake they guard against, closed in 1.154.0.** Found by the
+  same review: *Find terms*' guard that a term already yours cannot be ticked again, and the rule
+  that a saved configuration ends in ODK's update, had no test that makes the mistake. Each has
+  one now; both held, and no defect was behind them. The board's questions about a blank or a
+  taken name share their check with *Create relation*, above, and are tried through it; the
+  release's new files and the engine's want of DOSDP-Tools are tried with the work of 1.154.0
+  that changed them. `FindTermsAlreadyYoursTest.aTermThatIsAlreadyYoursCannotBeTicked`,
+  `ConfigSaveRunsThroughToTheUpdateTest.aSavedConfigurationLeavesTheMakefileOdksRenderOfIt`.
+- **A project that edits in OBO, Turtle or functional syntax was not taken for a project, fixed in
+  1.154.0.** Found by the same review. ODK writes the edit file in the format its configuration's
+  `edit_format` names - of ODK's own 79 sample configurations 63 edit in OWL, 15 in OBO and 1 in
+  Turtle - but OntoBoard looked for `-edit.owl` alone, when it opened a project, in the guide, and
+  when it chose which file of a repository to open: a project that edits in OBO was said not to
+  follow ODK's layout, and in one that edits in Turtle or functional syntax another file was
+  opened. Every format ODK writes counts now, and where the configuration names the edit file
+  and it is there, that is the one.
+  `OdkProjectLoaderTest.aProjectThatEditsInAnotherFormatOpensAtItsEditFile`,
+  `GuideTest.aProjectThatEditsInOboIsAProject`, red first.
+- **A second dated release on the same day replaced the first without asking, fixed in 1.154.0.**
+  Found by the same review, for an ontology in no project: released again under the newest
+  release's date, it replaced `releases/<date>`, as OBO's own Makefile does, and warned only
+  afterwards - though somebody may have taken the first already. It asks first now, with
+  **Replace** and **Cancel**, Cancel the default.
+  `ReleaseVersionAgainstReleasesTest.aDatedReleaseMayBeCutAgainOnTheSameDay`.
+- **Protégé went on asking for an ID range the board had claimed, fixed in 1.154.0.** Found while
+  1.153.0 was made: Protégé 5.6's own "No Id Range Found For Current User" came up on opening a
+  project, and whether the name OntoBoard writes into a range is the name Protégé looks for was
+  left to be checked. It was not. Read from Protégé 5.6.9's own classes: Protégé knows a person
+  by git's user name where *Preferences > User details* asks for it, else the user name set
+  there, else the login; OntoBoard claimed and minted under the collaboration display name, else
+  the login - so with a display name set, the board's range was one Protégé did not find. The
+  board claims and mints under Protégé's name now, and a range an earlier version claimed under
+  the display name stays the board's while none is allocated to Protégé's name.
+  `IdRangesClaimTest.theBoardClaimsUnderTheNameProtegeLooksUp`, red first with the display name.
+- **On Protégé 5.5.0 the engine could not read an import whose address moves from http to https,
+  fixed in 1.154.0 for the address itself.** Found running nfdicore's own import rules both ways,
+  in ODK's container and by OntoBoard's engine: its DCAT import, `http://www.w3.org/ns/dcat3`,
+  failed by the engine alone, with an XML parser's complaint about an `hr` element. The address
+  answers with a move to https; the OWL API of Protégé 5.5.0 leaves the move to Java, which does
+  not follow one from http to https, and ROBOT read the page about the move. The engine now
+  follows such a move itself for the address a ROBOT line is given (`-I`), so a source whose own
+  address moves loads on Protégé 5.5.0. Its imports are still the OWL API's to load - DCAT's
+  three move too - which is a [limitation](limitations.md) of that host.
+  `IriRedirectsTest.aMoveFromHttpToHttpsIsFollowedBeforeRobotLoads`, red first.
+- **ROBOT's JSON came out with Windows line ends, fixed in 1.154.0.** Found holding a release of
+  ODK's sample project with DOSDP patterns, made by OntoBoard's engine on Windows, against ODK's
+  own: its three JSON products had a carriage return at the end of each line, where ODK's have
+  none. The library that writes JSON ends a line as the platform does; the engine now writes a
+  JSON product with ODK's line ends, and leaves a `.json.gz` as it is written. DOSDP-Tools' term
+  lists, new in this version, came out the same way; DOSDP-Tools is started with ODK's line ends
+  now. That one was never released. `OdkRobotTest.jsonIsWrittenWithTheLineEndsOfOdksImage`, red
+  first.
+- **An OBO file the engine read stayed open on Protégé 5.5.0 under Windows, fixed in 1.154.0.**
+  Found holding ten of ODK's own sample configurations against ODK's runs: on the OWL API of
+  Protégé 5.5.0 four runs ended with an `-edit.obo` file still open, which Windows would not
+  delete. Every way of reading an OBO file on that OWL API leaves it open until Java collects it,
+  and ROBOT reads its files itself, so the engine cannot hand it one to close. After a ROBOT line
+  that reads an `.obo` file, on that OWL API under Windows, the engine now has Java collect.
+  `OdkRobotTest.anOboFileTheEngineReadIsLetGo`, red first.
+- **Build's form was slow to come, and nothing showed it was coming, fixed in 1.154.0.** Found in
+  1.153.0's last review: on a busy machine, half a minute passed between choosing *Build...* and
+  its form, with nothing on screen to say it had been chosen. Before the form OntoBoard's engine is
+  asked about seven targets, and each asking rendered the project's whole ODK seed again, to hold
+  its Makefile against ODK's. It is rendered once now, and again only when the configuration
+  changes, and *Build...* and *Release...* show the wait cursor while they ask.
+  `FallbackEligibilityTest.askingAboutSevenTargetsRendersTheSeedOnce`, red first with seven
+  renders.
+- **Five small ones from 1.153.0's own list, fixed in 1.154.0.** Found while 1.153.0 was made, and
+  left for later: "Committed 1 files." says "Committed 1 file."; a SPARQL check's "1 violations"
+  says "1 violation"; *Profile...*'s "a EL reasoner" says "an EL reasoner"; in *Check
+  requirements...*, the container's row under *Never in a container* had the green disc of
+  something ready, and is grey, "not used"; and in "Which range is yours?" the focus border hid
+  the underscores of `RANGECHECK_0000000`, which have room under the text now. The *Definition...*
+  item, not offered on an imported class, was checked as well: that is on purpose - an imported
+  term's definition is its author's. `GitActionTest.oneCommittedFileIsSaidAsOne`,
+  `ProfileActionTest.theReasonerIsNamedWithItsArticle`,
+  `ToolchainTest.aContainerTheSettingsDoNotUseIsSaidAsNotUsed`,
+  `RangeChoiceTest.theChosenRangeHasRoomUnderItsTextForTheFocusBorder`.
 - **A project OntoBoard made was not an ODK project, fixed in 1.153.0.** Found by having ODK
   v1.6.1 seed a project from the very configuration OntoBoard's wizard wrote, and holding the two
   side by side. ODK's had a Makefile of several hundred lines - `update_repo`, `refresh-imports`,
