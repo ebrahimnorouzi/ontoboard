@@ -1,0 +1,34 @@
+Prefix(:=<urn:unnamed:ontology#ont1>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<urn:unnamed:ontology#ont1>
+
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000010>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000011>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000020>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000021>))
+Declaration(ObjectProperty(<http://purl.obolibrary.org/obo/BFO_0000050>))
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000020> (Part of shell)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000020> "Part of shell"^^xsd:string)
+EquivalentClasses(<http://purl.obolibrary.org/obo/PTT_0000020> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/BFO_0000050> <http://purl.obolibrary.org/obo/PTT_0000010>))
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000021> (Part of yolk)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000021> "Part of yolk"^^xsd:string)
+EquivalentClasses(<http://purl.obolibrary.org/obo/PTT_0000021> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/BFO_0000050> <http://purl.obolibrary.org/obo/PTT_0000011>))
+
+
+)

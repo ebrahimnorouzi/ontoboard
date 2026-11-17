@@ -1,0 +1,5 @@
+http://purl.obolibrary.org/obo/PTT_0000011
+http://purl.obolibrary.org/obo/PTT_0000020
+http://purl.obolibrary.org/obo/PTT_0000010
+http://purl.obolibrary.org/obo/PTT_0000021
+http://purl.obolibrary.org/obo/BFO_0000050

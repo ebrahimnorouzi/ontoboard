@@ -93,3 +93,9 @@ build/bfo-notime.owl
 # Working ledgers of the development process (the superpowers skills write them here). Internal,
 # like private/: kept on the maintainer's machine, out of git.
 /.superpowers/
+
+# ODK's records, byte for byte: every file ODK's own runs left is tracked, whatever its name - the
+# data/ folders DOSDP's patterns keep their tables in, the .tmp a recipe leaves behind. Last, so
+# no rule above can hide one (the rules above caught both in 1.154.0's goldens).
+!/protege-plugin/src/main/odk/**
+!/protege-plugin/src/test/resources/odk/**
