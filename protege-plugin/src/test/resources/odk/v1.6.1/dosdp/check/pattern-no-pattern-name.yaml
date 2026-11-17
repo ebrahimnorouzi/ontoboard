@@ -1,0 +1,3 @@
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"

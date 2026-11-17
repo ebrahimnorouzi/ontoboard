@@ -1,0 +1,20 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes:
+  organ: UBERON:0000062
+  cell: CL:0000000
+relations:
+  part_of: BFO:0000050
+vars:
+  whole: "'organ'"
+  piece: "'cell'"
+name:
+  text: "%s of %s"
+  vars: [piece, whole]
+logical_axioms:
+  - axiom_type: subClassOf
+    text: "'part_of' some %s"
+    vars: [whole]
+  - axiom_type: equivalentTo
+    text: "%s and ('part_of' some %s)"
+    vars: [piece, whole]

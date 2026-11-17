@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"
+annotationProperties:
+  s: rdfs:seeAlso
+annotations:
+  - annotationProperty: s
+    var: x

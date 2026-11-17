@@ -1,0 +1,7 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"
+internal_vars:
+  - var_name: "1 bad"
+    input: x

@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+annotationProperties:
+  note: rdfs:comment
+vars:
+  x: "owl:Thing"
+subClassOf:
+  text: "'note' some %s"
+  vars: [x]

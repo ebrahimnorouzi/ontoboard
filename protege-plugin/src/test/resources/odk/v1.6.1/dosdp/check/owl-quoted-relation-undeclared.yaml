@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes:
+  thing: owl:Thing
+vars:
+  x: "'thing'"
+equivalentTo:
+  text: "'has_part' some %s"
+  vars: [x]

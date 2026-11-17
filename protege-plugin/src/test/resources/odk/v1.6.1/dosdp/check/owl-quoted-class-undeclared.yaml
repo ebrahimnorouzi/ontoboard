@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+relations:
+  part_of: BFO:0000050
+vars:
+  x: "owl:Thing"
+subClassOf:
+  text: "'part_of' some 'organ'"
+  vars: []

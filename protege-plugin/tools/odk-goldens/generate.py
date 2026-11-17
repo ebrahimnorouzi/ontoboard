@@ -35,6 +35,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dosdp_check_goldens  # noqa: E402
 import equivalence_goldens  # noqa: E402
 import imports_goldens  # noqa: E402
 import lexer_fixture  # noqa: E402
@@ -274,7 +275,15 @@ DOSDP_MANIFEST = os.path.join(PLUGIN, "src", "main", "resources", "odk",
 
 def stage_dosdp(tool, image):
     """The SHA-256 of each jar of dosdp-tools as ODK's image has it, which OntoBoard checks a
-    download of the release against before it runs one (odk/DosdpTools)."""
+    download of the release against before it runs one (odk/DosdpTools); and the verdicts of
+    ODK's pattern check on OntoBoard's own cases (dosdp_check_goldens, odk/DosdpCheck)."""
+    said, versions = dosdp_check_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-dosdp"))
+    for line in said:
+        print("dosdp check " + line)
+    provenance(tool, image, "dosdp", versions,
+               "dosdp validate -i /work/check/<input> for each input of dosdp/verdicts.txt; "
+               "the cases are dosdp_check_goldens.py's")
     _, out, _ = odkimage.in_image(tool, image, ["sh", "-c", "cd /tools/dosdptools/lib && "
                                                 "sha256sum *.jar | LC_ALL=C sort -k2"])
     lines = [line for line in out.decode("utf-8").replace("\r\n", "\n").split("\n") if line]

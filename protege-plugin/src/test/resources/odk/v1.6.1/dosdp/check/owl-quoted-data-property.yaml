@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+dataProperties:
+  weight: X:1
+vars:
+  x: "owl:Thing"
+subClassOf:
+  text: "'weight' some %s"
+  vars: [x]

@@ -1,0 +1,3 @@
+pattern_name: x
+vars:
+  x: "owl:Thing"
