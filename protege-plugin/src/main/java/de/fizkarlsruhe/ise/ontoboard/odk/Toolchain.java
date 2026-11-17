@@ -34,7 +34,12 @@ public final class Toolchain {
         /** Installed, but not currently able to do the job - Docker with its daemon stopped. */
         NOT_WORKING,
         /** Not found at all. */
-        ABSENT
+        ABSENT,
+        /**
+         * Not used, as the person's settings say - neither needed nor missing: a container
+         * when the setting is "Never in a container".
+         */
+        NOT_USED
     }
 
     /** One program, and what to do when it is not there. */
@@ -274,7 +279,7 @@ public final class Toolchain {
         OdkRoute.Use use = OdkRoute.use();
         boolean off = use == OdkRoute.Use.NEVER_CONTAINER;
         tools.add(new Tool("Container for ODK's targets",
-                program != null || off ? State.PRESENT : State.ABSENT,
+                program != null ? State.PRESENT : off ? State.NOT_USED : State.ABSENT,
                 program != null ? program + " answers" + (OdkRoute.containerProgram() != null
                         ? " - the program chosen in the settings" : "")
                         : off ? "not used: the setting is \"" + use.label() + "\"" : "none",
@@ -433,6 +438,9 @@ public final class Toolchain {
     private static String symbolFor(State state) {
         if (state == State.PRESENT) {
             return "[ok  ]";
+        }
+        if (state == State.NOT_USED) {
+            return "[off ]";
         }
         return state == State.NOT_WORKING ? "[idle]" : "[none]";
     }

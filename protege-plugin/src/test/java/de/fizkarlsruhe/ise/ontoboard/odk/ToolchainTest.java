@@ -145,4 +145,45 @@ class ToolchainTest {
         }
         throw new AssertionError("no row for building an ODK project");
     }
+
+    /**
+     * A container the settings say not to use is not used - said as a row that does not
+     * matter, grey and "[off ]", not as one that answers: 1.153.0's minor 8 (it had the green
+     * disc). This test's settings are kept under a node of its own.
+     */
+    @Test
+    void aContainerTheSettingsDoNotUseIsSaidAsNotUsed() throws Exception {
+        String before = System.getProperty(OdkRoute.SETTINGS_PROPERTY);
+        String path = "ontoboard-test-toolchain-" + System.nanoTime();
+        java.util.prefs.Preferences node = java.util.prefs.Preferences.userRoot().node(path);
+        try {
+            System.setProperty(OdkRoute.SETTINGS_PROPERTY, "node:" + path);
+            node.put(OdkRoute.USE_KEY, OdkRoute.Use.NEVER_CONTAINER.name());
+            Toolchain.Report report = Toolchain.probe(NOTHING);
+
+            Toolchain.Tool container = null;
+            for (Toolchain.Tool tool : report.getTools()) {
+                if (tool.getName().equals("Container for ODK's targets")) {
+                    container = tool;
+                }
+            }
+            assertEquals(Toolchain.State.NOT_USED, container.getState());
+            assertTrue(container.getDetail().startsWith("not used: the setting is"),
+                    container.getDetail());
+            assertTrue(Toolchain.asText(report).contains("  [off ] Container for ODK's targets"),
+                    Toolchain.asText(report));
+            assertTrue(report.isEverythingAvailable(), "not needed, so nothing is missing");
+            assertEquals(RequirementsPanel.GREY,
+                    RequirementsPanel.colourFor(Toolchain.State.NOT_USED));
+            assertEquals(RequirementsPanel.GREEN,
+                    RequirementsPanel.colourFor(Toolchain.State.PRESENT));
+        } finally {
+            if (before == null) {
+                System.clearProperty(OdkRoute.SETTINGS_PROPERTY);
+            } else {
+                System.setProperty(OdkRoute.SETTINGS_PROPERTY, before);
+            }
+            node.removeNode();
+        }
+    }
 }

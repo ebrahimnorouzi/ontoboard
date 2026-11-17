@@ -6945,10 +6945,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         for (int i = 0; i < choices.length; i++) {
             choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
         }
-        Object chosen = JOptionPane.showInputDialog(this,
+        Object chosen = RangeChoice.ask(this,
                 TermMinter.onLines(TermMinter.claimQuestion(editorName(),
-                        minter.getRangesFile().getName(), term), 90),
-                "Which range is yours?", JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+                        minter.getRangesFile().getName(), term), 90), choices);
         if (chosen == null) {
             return null;
         }
