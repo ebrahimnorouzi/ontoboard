@@ -1,0 +1,12 @@
+Level	Rule Name	Subject	Property	Value
+WARN	equivalent_class_axiom_no_genus	Part of shell	BFO:0000050	shell
+WARN	equivalent_class_axiom_no_genus	Part of yolk	BFO:0000050	yolk
+WARN	missing_definition	root node	IAO:0000115	
+WARN	missing_definition	shell	IAO:0000115	
+WARN	missing_definition	yolk	IAO:0000115	
+WARN	missing_definition	Part of shell	IAO:0000115	
+WARN	missing_definition	Part of yolk	IAO:0000115	
+WARN	missing_definition	shell resident	IAO:0000115	
+INFO	missing_superclass	root node	rdfs:subClassOf	
+INFO	missing_superclass	Part of shell	rdfs:subClassOf	
+INFO	missing_superclass	Part of yolk	rdfs:subClassOf	

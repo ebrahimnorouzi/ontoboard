@@ -1,0 +1,27 @@
+pattern_name: locatedIn
+pattern_iri: http://purl.obolibrary.org/obo/ptt/patterns/locatedIn.yaml
+description: "Anything located in a part: OntoBoard's own second pattern."
+
+classes:
+  thing: owl:Thing
+
+relations:
+  located_in: RO:0001025
+
+vars:
+  place: "'thing'"
+
+name:
+  text: "%s resident"
+  vars:
+    - place
+
+def:
+  text: "Anything that is located in a %s."
+  vars:
+    - place
+
+subClassOf:
+  text: "'located_in' some %s"
+  vars:
+    - place

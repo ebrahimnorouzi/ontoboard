@@ -1,0 +1,100 @@
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+Repository is up-to-date.
+if [ -f ptt-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error ptt-idranges.owl ; \
+fi
+dosdp validate -i ../patterns/dosdp-patterns/ && touch tmp/pattern_schema_checks
+INFO:root:Checking ../patterns/dosdp-patterns/locatedIn.yaml
+INFO:root:Checking ../patterns/dosdp-patterns/example.yaml
+INFO:root:Validation completed without any issues to report.
+robot --catalog catalog-v001.xml convert --input ptt-edit.owl --format ofn --output tmp/ptt-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/ptt-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+if [ "example" ]; then dosdp-tools generate --catalog=catalog-v001.xml \
+    --infile=../patterns/data/default/ --template=../patterns/dosdp-patterns --batch-patterns="example" \
+    --ontology=tmp/ptt-preprocess.owl --obo-prefixes=true --outfile=../patterns/data/default; fi
+if [ "locatedIn" ]; then dosdp-tools generate --catalog=catalog-v001.xml \
+    --infile=../patterns/data/manual --template=../patterns/dosdp-patterns/ --batch-patterns="locatedIn" \
+    --ontology=tmp/ptt-preprocess.owl --obo-prefixes=true --restrict-axioms-to=logical --outfile=../patterns/data/manual; fi
+if [ "example" ]   || [ "locatedIn" ] || [ "" ] && [ true = true ]; then robot --catalog catalog-v001.xml merge -i ../patterns/data/default/example.ofn -i ../patterns/data/manual/locatedIn.ofn \
+	annotate --ontology-iri http://purl.obolibrary.org/obo/ptt/patterns/definitions.owl  --version-iri http://purl.obolibrary.org/obo/ptt/releases/2026-11-11/patterns/definitions.owl \
+      --annotation owl:versionInfo 1.0.0 -o definitions.ofn && mv definitions.ofn ../patterns/definitions.owl; fi
+robot --catalog catalog-v001.xml remove --input tmp/ptt-preprocess.owl --select imports --trim false \
+	 merge  --input ../patterns/definitions.owl \
+	       --output tmp/merged-ptt-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-ptt-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+PASS Rule ../sparql/owldef-self-reference-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/label-with-iri-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/multiple-replaced_by-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/dc-properties-violation.sparql: 0 violation(s)
+robot --catalog catalog-v001.xml report -i tmp/merged-ptt-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/PTT_ --base-iri http://purl.obolibrary.org/obo/ptt --print 5 -o reports/ptt-edit.owl-obo-report.tsv
+WARN: 'missing_superclass' query is missing ?value variable
+WARN: 'missing_definition' query is missing ?value variable
+Violations: 11
+-----------------
+ERROR:      0
+WARN:       8
+INFO:       3
+
+First 5 violations:
+WARN	equivalent_class_axiom_no_genus	Part of shell	BFO:0000050	shell
+WARN	equivalent_class_axiom_no_genus	Part of yolk	BFO:0000050	yolk
+WARN	missing_definition	root node	IAO:0000115	
+WARN	missing_definition	shell	IAO:0000115	
+WARN	missing_definition	yolk	IAO:0000115	
+robot --catalog catalog-v001.xml merge --input tmp/ptt-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/ptt/ptt-full.owl annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt-full.owl --annotation owl:versionInfo 1.0.0 --output ptt-full.owl.tmp.owl && mv ptt-full.owl.tmp.owl ptt-full.owl
+robot --catalog catalog-v001.xml annotate --input ptt-full.owl --ontology-iri http://purl.obolibrary.org/obo/ptt.owl annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o ptt.owl.tmp.owl && mv ptt.owl.tmp.owl ptt.owl
+robot --catalog catalog-v001.xml merge -i ptt.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_ptt.owl.txt || { cat reports/validate_profile_owl2dl_ptt.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/ptt-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml annotate --input ptt.owl --ontology-iri http://purl.obolibrary.org/obo/ptt.json annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o ptt.json.tmp.json &&\
+	mv ptt.json.tmp.json ptt.json
+robot --catalog catalog-v001.xml convert --input ptt.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o ptt.obo
+robot --catalog catalog-v001.xml merge --input tmp/ptt-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/PTT --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/ptt/ptt-base.owl annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output ptt-base.owl.tmp.owl && mv ptt-base.owl.tmp.owl ptt-base.owl
+robot --catalog catalog-v001.xml annotate --input ptt-base.owl --ontology-iri http://purl.obolibrary.org/obo/ptt/ptt-base.json annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt-base.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o ptt-base.json.tmp.json &&\
+	mv ptt-base.json.tmp.json ptt-base.json
+robot --catalog catalog-v001.xml convert --input ptt-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o ptt-base.obo
+robot --catalog catalog-v001.xml annotate --input ptt-full.owl --ontology-iri http://purl.obolibrary.org/obo/ptt/ptt-full.json annotate -V http://purl.obolibrary.org/obo/ptt/releases/1.0.0/ptt-full.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o ptt-full.json.tmp.json &&\
+	mv ptt-full.json.tmp.json ptt-full.json
+robot --catalog catalog-v001.xml convert --input ptt-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o ptt-full.obo
+Checking RDF/XML file ptt.owl...
+  LightRDF: OK
+Checking RDF/XML file ptt-base.owl...
+  LightRDF: OK
+Checking RDF/XML file ptt-full.owl...
+  LightRDF: OK
+make copy_release_files
+make[1]: Entering directory '/tmp/odk/ptt/src/ontology'
+rsync -R   ptt.json  ptt.obo  ptt.owl   ptt-base.json  ptt-base.obo  ptt-base.owl   ptt-full.json  ptt-full.obo  ptt-full.owl   ../..
+make[1]: Leaving directory '/tmp/odk/ptt/src/ontology'
+rm -f   ptt.json  ptt.obo  ptt.owl   ptt-base.json  ptt-base.obo  ptt-base.owl   ptt-full.json  ptt-full.obo  ptt-full.owl  tmp/merged-ptt-edit.ofn tmp/ptt-preprocess.owl
+Release files are now in ../.. - now you should commit, push and make a release         on your git hosting site such as GitHub or GitLab

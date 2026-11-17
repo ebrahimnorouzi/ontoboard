@@ -1,0 +1,7 @@
+?cls	?pred	?val	?synType
+<http://purl.obolibrary.org/obo/PTT_0000030>	<http://www.w3.org/2000/01/rdf-schema#label>	"shell resident"@en	
+<http://purl.obolibrary.org/obo/PTT_0000021>	<http://www.w3.org/2000/01/rdf-schema#label>	"Part of yolk"	
+<http://purl.obolibrary.org/obo/PTT_0000020>	<http://www.w3.org/2000/01/rdf-schema#label>	"Part of shell"	
+<http://purl.obolibrary.org/obo/PTT_0000011>	<http://www.w3.org/2000/01/rdf-schema#label>	"yolk"@en	
+<http://purl.obolibrary.org/obo/PTT_0000010>	<http://www.w3.org/2000/01/rdf-schema#label>	"shell"@en	
+<http://purl.obolibrary.org/obo/PTT_0000000>	<http://www.w3.org/2000/01/rdf-schema#label>	"root node"@en	
