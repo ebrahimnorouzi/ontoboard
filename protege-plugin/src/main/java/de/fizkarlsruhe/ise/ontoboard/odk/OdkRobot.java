@@ -156,6 +156,19 @@ public final class OdkRobot {
     }
 
     /**
+     * A file ROBOT wrote as JSON, with its lines ended as ODK's image ends them: obographs
+     * writes through Jackson's pretty printer, which ends a line as the platform does - CRLF
+     * on Windows. A JSON string cannot hold a line break of its own, so every CRLF is one.
+     */
+    static void lineEndsAsInOdk(File json) throws IOException {
+        byte[] bytes = Files.readAllBytes(json.toPath());
+        String text = new String(bytes, StandardCharsets.UTF_8);
+        if (text.contains("\r\n")) {
+            Files.write(json.toPath(), text.replace("\r\n", "\n").getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
      * Why ROBOT's JSON cannot be written on this Java, or null when it can.
      *
      * <p>JSON is written by obographs, which is compiled for Java 11. Protege 5.5 runs on Java
@@ -663,7 +676,19 @@ public final class OdkRobot {
             if (NOT_HERE.contains(name)) {
                 throw new IllegalStateException(notHere(name));
             }
-            return real.execute(state, args);
+            CommandState after = real.execute(state, args);
+            if (writesJson(line)) {
+                // As ODK's image writes it: lines end in LF on every platform.
+                for (String output : real.getOptions().hasLongOption("output")
+                        && line.getOptionValues("output") != null
+                        ? line.getOptionValues("output") : new String[0]) {
+                    File written = new File(output);
+                    if (written.isFile() && !output.toLowerCase(Locale.ROOT).endsWith(".gz")) {
+                        lineEndsAsInOdk(written);
+                    }
+                }
+            }
+            return after;
         }
 
         private static String notHere(String name) {

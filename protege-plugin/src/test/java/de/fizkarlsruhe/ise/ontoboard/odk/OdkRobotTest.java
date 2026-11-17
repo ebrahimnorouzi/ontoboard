@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
 import java.io.File;
@@ -958,6 +959,42 @@ class OdkRobotTest {
             assertTrue(new String(Files.readAllBytes(out.toPath()), StandardCharsets.UTF_8)
                     .contains("https://example.org/e/Egg"));
         }
+    }
+
+    /**
+     * obographs writes JSON through Jackson's pretty printer, which ends its lines as the
+     * platform does - CRLF on Windows. ODK's image writes LF, and so does the engine: the file
+     * is ODK's byte for byte (found by DosdpEquivalenceLiveTest on ptt.json).
+     */
+    @Test
+    void jsonIsWrittenWithTheLineEndsOfOdksImage(@TempDir File temp) throws Exception {
+        assumeFalse(System.getProperty("java.specification.version").startsWith("1."),
+                "JSON is written on Java 11 and later");
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File byName = new File(temp, "a.json");
+        File byFormat = new File(temp, "a.out");
+
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(a), "--output",
+                path(byName))).ok());
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(a), "--format", "json",
+                "--output", path(byFormat))).ok());
+
+        for (File json : new File[] {byName, byFormat}) {
+            String text = new String(Files.readAllBytes(json.toPath()), StandardCharsets.UTF_8);
+            assertTrue(text.contains("\n") && !text.contains("\r"), json.getName() + ": " + text);
+        }
+    }
+
+    @Test
+    void aFileWithWindowsLineEndsIsGivenOdks(@TempDir File temp) throws Exception {
+        File json = new File(temp, "a.json");
+        Files.write(json.toPath(), "{\r\n  \"graphs\" : [ ]\r\n}".getBytes(StandardCharsets.UTF_8));
+
+        OdkRobot.lineEndsAsInOdk(json);
+
+        assertEquals("{\n  \"graphs\" : [ ]\n}", new String(Files.readAllBytes(json.toPath()),
+                StandardCharsets.UTF_8));
     }
 
     @Test
