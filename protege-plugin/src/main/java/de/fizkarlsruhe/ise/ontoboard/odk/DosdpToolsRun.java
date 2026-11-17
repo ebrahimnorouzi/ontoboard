@@ -221,9 +221,9 @@ final class DosdpToolsRun implements RecipeShell.Tool {
         }
         return Java.none("DOSDP-Tools " + DosdpTools.VERSION + " needs Java " + LEAST_JAVA
                 + " or newer - its libraries are compiled for it - and OntoBoard found none: "
-                + String.join(", ", seen) + ". Choose one under Build and release > "
-                + "Documentation..., 'Run it with' - Widoco and DOSDP-Tools share it - or install "
-                + "one from " + ToolSetup.ADOPTIUM_URL);
+                + String.join(", ", seen) + ". Choose one in "
+                + "Build and release > Documentation... ('Run it with': Widoco and DOSDP-Tools "
+                + "share it), or install one from " + ToolSetup.ADOPTIUM_URL);
     }
 
     /** What each java said it is, this session: asked once, and again only when it changed. */
