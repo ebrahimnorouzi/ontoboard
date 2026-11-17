@@ -187,6 +187,7 @@ public final class OdkRelease {
         private final boolean refreshImports;
         private final boolean refuseRemovedTerms;
         private final boolean releaseUncompared;
+        private final boolean commitNewFiles;
 
         /**
          * A release that stops where it cannot be compared with the last release.
@@ -210,12 +211,26 @@ public final class OdkRelease {
          */
         public Request(File editFile, String version, VersionIriShape shape,
                 boolean refreshImports, boolean refuseRemovedTerms, boolean releaseUncompared) {
+            this(editFile, version, shape, refreshImports, refuseRemovedTerms,
+                    releaseUncompared, false);
+        }
+
+        /**
+         * @param commitNewFiles commit the project's new files first, in a commit of their
+         *                       own, so that the release's tag holds them
+         *                       ({@link ReleaseRun#newFilesOfTheProject}); false leaves them out
+         *                       of the release's commit, as 1.153.0 did
+         */
+        public Request(File editFile, String version, VersionIriShape shape,
+                boolean refreshImports, boolean refuseRemovedTerms, boolean releaseUncompared,
+                boolean commitNewFiles) {
             this.editFile = editFile;
             this.version = version == null ? "" : version.trim();
             this.shape = shape == null ? VersionIriShape.of(VersionIriShape.Kind.ODK) : shape;
             this.refreshImports = refreshImports;
             this.refuseRemovedTerms = refuseRemovedTerms;
             this.releaseUncompared = releaseUncompared;
+            this.commitNewFiles = commitNewFiles;
         }
 
         public File editFile() {
@@ -241,6 +256,11 @@ public final class OdkRelease {
         /** Whether it goes on where it cannot be compared with the last release. */
         public boolean releasesUncompared() {
             return releaseUncompared;
+        }
+
+        /** Whether the project's new files are committed first, in a commit of their own. */
+        public boolean commitsNewFilesFirst() {
+            return commitNewFiles;
         }
     }
 
@@ -707,7 +727,8 @@ public final class OdkRelease {
         String done = "Released " + facts.id() + " " + version + ": " + assets.size()
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
-        return recorded(facts, version, assets, git, asks, log, done);
+        return recorded(facts, version, assets, git, asks, log, done,
+                request.commitsNewFilesFirst());
     }
 
     /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
@@ -1122,9 +1143,14 @@ public final class OdkRelease {
 
     // ------------------------------------------------------------------ git
 
-    /** The commit and the tag: shown, agreed to, run. A release that is not recorded says why. */
+    /**
+     * The commit and the tag: shown, agreed to, run. A release that is not recorded says why.
+     *
+     * @param commitNewFirst whether the project's new files are committed first, in a commit
+     *                       of their own, so that the tag holds them
+     */
     private static Outcome recorded(Facts facts, String version, List<File> assets,
-            ProcessRunner.Runner git, Asks asks, Log log, String done) {
+            ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst) {
         String where = facts.root().getAbsolutePath();
         String tag = GitTags.tagFor(version);
         if (GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")) == null) {
@@ -1161,7 +1187,7 @@ public final class OdkRelease {
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
                 GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
-                version, assets, status);
+                version, assets, status, commitNewFirst);
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "
@@ -1198,9 +1224,13 @@ public final class OdkRelease {
             }
         }
         String branch = staging.branch();
+        List<String> first = staging.committedFirst();
         return new Outcome(null, log, true, tag, done + ", committed and tagged " + tag
                 + (branch != null ? " on " + branch
                         : staging.onNoBranch() ? " on no branch (a detached HEAD)" : "")
+                + (first.isEmpty() ? "" : ", after the project's " + ReleaseRun.described(first)
+                        + " in a commit of " + (first.size() == 1 ? "its" : "their")
+                        + " own (\"" + ReleaseRun.newFilesMessage(version) + "\")")
                 + ". Nothing was pushed - when you are ready, in a terminal: "
                 + "git push --follow-tags");
     }

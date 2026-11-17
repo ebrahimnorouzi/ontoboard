@@ -180,6 +180,60 @@ class OdkReleaseTest {
 
     // ------------------------------------------------------------------ the whole of it
 
+    /** What git says in {@code folder}, line by line. */
+    private static List<String> gitSays(File folder, String... arguments) throws IOException {
+        List<String> command = new ArrayList<String>(Arrays.asList("git"));
+        command.addAll(Arrays.asList(arguments));
+        ProcessRunner.Outcome outcome = ProcessRunner.real().run(folder, command, 1, null);
+        assertTrue(outcome.isSuccess(), command + ": " + outcome.getOutput());
+        return outcome.getOutput();
+    }
+
+    /**
+     * After an import - a new module and its term list that git has never been told about -
+     * the release commits them first, in a commit of their own, and then itself: the tag holds
+     * the module, and the project builds for whoever fetches it. With git itself.
+     */
+    @Test
+    void afterAnImportTheReleasesTagHoldsTheModule() throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        Files.delete(new File(root, ".git").toPath());
+        ReleaseHistoryTest.git(root, "init", "-q");
+        for (String[] setting : new String[][] {{"user.name", "Test"},
+            {"user.email", "test@example.org"}, {"commit.gpgsign", "false"},
+            {"tag.gpgsign", "false"}}) {
+            ReleaseHistoryTest.git(root, "config", setting[0], setting[1]);
+        }
+        ReleaseHistoryTest.git(root, "add", "-A");
+        ReleaseHistoryTest.git(root, "commit", "-q", "-m", "the project");
+        write(new File(ontology, "imports/egg_import.owl"), owl("Spoon"));
+        write(new File(ontology, "imports/egg_terms.txt"), "https://example.org/eggboil/Spoon\n");
+
+        OdkRelease.Outcome outcome = OdkRelease.run(new OdkRelease.Request(edit, "1.0.0", null,
+                true, true, false, true), odk(), ProcessRunner.real(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return true;
+                    }
+
+                    @Override
+                    public boolean stopped() {
+                        return false;
+                    }
+                });
+
+        assertTrue(outcome.isOk() && outcome.isCommitted(), outcome.getSummary());
+        assertEquals(Arrays.asList("release(1.0.0)", "Files of the project before release 1.0.0",
+                "the project"), gitSays(root, "log", "--format=%s"));
+        List<String> tagged = gitSays(root, "ls-tree", "-r", "--name-only", "v1.0.0");
+        assertTrue(tagged.contains("src/ontology/imports/egg_import.owl"), tagged.toString());
+        assertTrue(tagged.contains("src/ontology/imports/egg_terms.txt"), tagged.toString());
+        assertTrue(outcome.getSummary().contains("after the project's new folder in a commit of "
+                + "its own (\"Files of the project before release 1.0.0\")"),
+                "git lists the new imports folder whole: " + outcome.getSummary());
+    }
+
     @Test
     void aReleaseIsBuiltKeptAndRecorded() {
         OdkRelease.Outcome outcome = release("1.0.0");

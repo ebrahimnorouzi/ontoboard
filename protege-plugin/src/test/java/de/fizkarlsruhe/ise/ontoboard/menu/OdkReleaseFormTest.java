@@ -469,10 +469,10 @@ class OdkReleaseFormTest {
 
     /**
      * A release's commit takes changed files with it and leaves new ones out, as decided: a
-     * stray file stays where it is. But a new import module that the changed edit file
-     * imports, left out, makes a tag whose project does not build - seen in a live run, where
-     * the pattern library had just written one. So new files are said before the release is
-     * built, with the way to commit them, instead of only in the question after it.
+     * stray file stays where it is - and is said before the release is built, with the way to
+     * commit it. The project's own new files under src/ - a new import module that the changed
+     * edit file imports, left out, makes a tag whose project does not build (seen in a live run
+     * of 1.153.0) - are offered in the form instead, to be committed first.
      */
     @Test
     void newFilesAreSaidBeforeTheReleaseIsBuilt() {
@@ -482,9 +482,9 @@ class OdkReleaseFormTest {
 
         String notice = OdkReleaseForm.newFilesNotice(start());
 
-        assertTrue(notice.contains("2 new files"), notice);
-        assertTrue(notice.contains("src/ontology/imports/") && notice.contains("my notes.txt"),
-                notice);
+        assertTrue(notice.contains("1 new file"), notice);
+        assertTrue(notice.contains("my notes.txt"), notice);
+        assertFalse(notice.contains("src/ontology/imports/"), "offered in the form: " + notice);
         assertTrue(notice.contains("OntoBoard > Share > Git..."), notice);
         assertTrue(notice.contains("Commit everything, with a message"), notice);
         assertFalse(notice.contains("eggboil-edit.owl"), "a changed file goes along and is not "
@@ -493,13 +493,51 @@ class OdkReleaseFormTest {
 
     @Test
     void oneNewFileIsSaidInTheSingular() {
-        status = Arrays.asList("## main", "?? src/sparql/every_egg_has_a_timer-violation.sparql");
+        status = Arrays.asList("## main", "?? docs/the-release.md");
 
         String notice = OdkReleaseForm.newFilesNotice(start());
 
-        assertTrue(notice.contains("1 new file in this project: "
-                + "src/sparql/every_egg_has_a_timer-violation.sparql."), notice);
+        assertTrue(notice.contains("1 new file in this project: docs/the-release.md."), notice);
         assertTrue(notice.contains("leaves it out"), notice);
+    }
+
+    /**
+     * After an import its module and term list are new files of the project: the form offers
+     * to commit them first, on unless unticked, so the release's tag holds them (1.153.0 left
+     * them out, by its ruling 79, and said so before the build).
+     */
+    @Test
+    void theFormOffersToCommitTheProjectsNewFilesFirst() {
+        status = Arrays.asList("## main", "?? src/ontology/imports/egg_import.owl",
+                "?? src/ontology/imports/egg_terms.txt", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        Parameter first = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.COMMIT_NEW);
+
+        assertNotNull(first);
+        assertEquals("Commit the project's 2 new files first", first.getLabel());
+        assertEquals("true", first.getDefaultValue());
+        assertTrue(first.getHelp().contains("src/ontology/imports/egg_import.owl"),
+                first.getHelp());
+        assertTrue(first.getHelp().contains("\"Files of the project before release"),
+                first.getHelp());
+        assertTrue(OdkReleaseForm.request(start, chosen(start)).commitsNewFilesFirst());
+        assertFalse(OdkReleaseForm.request(start, chosen(start, OdkReleaseForm.COMMIT_NEW,
+                "false")).commitsNewFilesFirst());
+        String notice = OdkReleaseForm.newFilesNotice(start);
+        assertTrue(notice.contains("1 new file") && notice.contains("notes.txt"), notice);
+        assertFalse(notice.contains("egg_import.owl"), "offered in the form: " + notice);
+    }
+
+    @Test
+    void withoutNewFilesOfTheProjectThereIsNoBoxForThem() {
+        status = Arrays.asList("## main", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        assertNull(named(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)),
+                OdkReleaseForm.COMMIT_NEW));
+        assertFalse(OdkReleaseForm.request(start, chosen(start)).commitsNewFilesFirst());
     }
 
     /** A dozen new files are not a dozen lines: the first five are named. */

@@ -34,6 +34,7 @@ final class OdkReleaseForm {
     static final String REFUSE = "refuse";
     static final String UNCOMPARED = "uncompared";
     static final String PRIOR = "prior";
+    static final String COMMIT_NEW = "commitnew";
 
     /** The choice that makes the pattern field count. */
     static final String OWN_PATTERN = "The pattern typed below";
@@ -166,8 +167,16 @@ final class OdkReleaseForm {
      * there are none, or no repository to have them.
      */
     static String newFilesNotice(Start start) {
-        List<String> fresh = start.status == null ? new ArrayList<String>()
-                : start.status.getUntracked();
+        // The project's own new files under src/ are offered in the form, to be committed
+        // first: what is said here is what the release would leave out whatever is ticked.
+        List<String> offered = newFilesOfTheProject(start);
+        List<String> fresh = new ArrayList<String>();
+        for (String path : ReleaseRun.untrackedOfTheProject(start.facts.root(),
+                repositoryOf(start), start.status)) {
+            if (!offered.contains(path)) {
+                fresh.add(path);
+            }
+        }
         if (fresh.isEmpty()) {
             return null;
         }
@@ -185,6 +194,46 @@ final class OdkReleaseForm {
                 + "fetches it. To have " + (one ? "it" : "them") + " in the release, commit "
                 + "your work first: OntoBoard > Share > Git..., and there \"Commit everything, "
                 + "with a message\".";
+    }
+
+    /** The project's new files under src/, which the form offers to commit first. */
+    static List<String> newFilesOfTheProject(Start start) {
+        return ReleaseRun.newFilesOfTheProject(start.facts.root(), repositoryOf(start),
+                start.status);
+    }
+
+    /** The top of the repository the project is in; null where there is none. */
+    private static File repositoryOf(Start start) {
+        return de.fizkarlsruhe.ise.ontoboard.git.GitRepo.repositoryFor(
+                new File(start.facts.ontology(), "Makefile"));
+    }
+
+    /** The box that commits the project's new files first; null where there are none. */
+    private static Parameter commitNewFirst(Start start, Map<String, String> values) {
+        List<String> fresh = newFilesOfTheProject(start);
+        if (fresh.isEmpty()) {
+            return null;
+        }
+        // One file is "it"; a folder git lists whole holds files: "they".
+        boolean one = fresh.size() == 1 && !fresh.get(0).endsWith("/");
+        String named = String.join(", ", fresh.subList(0, Math.min(NEW_FILES_NAMED,
+                fresh.size())));
+        if (fresh.size() > NEW_FILES_NAMED) {
+            named += " and " + (fresh.size() - NEW_FILES_NAMED) + " more";
+        }
+        return Parameter.of(COMMIT_NEW, "Commit the project's " + ReleaseRun.described(fresh)
+                + " first", Parameter.Kind.FLAG)
+                .defaultValue(values.get(COMMIT_NEW) == null ? "true" : values.get(COMMIT_NEW))
+                .help("Git has never been told about " + (one ? "this file" : "these files")
+                        + " of the project: " + named + ". With this on, " + (one ? "it is"
+                                : "they are") + " committed first, in a commit of "
+                        + (one ? "its" : "their") + " own - \"" + ReleaseRun.newFilesMessage(
+                                "<version>") + "\" - and then the release, so the release's "
+                        + "tag holds " + (one ? "it" : "them") + ": a new import module or test "
+                        + "missing from a tag breaks the project for whoever fetches it. Off "
+                        + "leaves " + (one ? "it" : "them") + " out of the release's commit, "
+                        + "as before OntoBoard 1.154.0.")
+                .build();
     }
 
     // ------------------------------------------------------------------ what is proposed
@@ -257,6 +306,9 @@ final class OdkReleaseForm {
         }
         values.put(REFUSE, "true");
         values.put(UNCOMPARED, "false");
+        if (!newFilesOfTheProject(start).isEmpty()) {
+            values.put(COMMIT_NEW, "true");
+        }
         return values;
     }
 
@@ -379,6 +431,10 @@ final class OdkReleaseForm {
                         + "held against it, and it is not copied, committed or tagged. With "
                         + "this on it is, without the comparison, and the result says so.")
                 .build());
+        Parameter first = commitNewFirst(start, values);
+        if (first != null) {
+            parameters.add(first);
+        }
         return parameters;
     }
 
@@ -493,7 +549,9 @@ final class OdkReleaseForm {
                 start.script == null ? shape(start, chosen) : null,
                 start.mayRefreshImports() && !"false".equalsIgnoreCase(chosen.get(REFRESH)),
                 !"false".equalsIgnoreCase(chosen.get(REFUSE)),
-                "true".equalsIgnoreCase(chosen.get(UNCOMPARED)));
+                "true".equalsIgnoreCase(chosen.get(UNCOMPARED)),
+                !newFilesOfTheProject(start).isEmpty()
+                        && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)));
     }
 
     // ------------------------------------------------------------------ before git records it
