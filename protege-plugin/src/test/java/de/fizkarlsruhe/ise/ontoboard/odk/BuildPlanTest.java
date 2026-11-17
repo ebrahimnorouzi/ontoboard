@@ -98,6 +98,24 @@ class BuildPlanTest {
         assertFalse(plan.explanation().contains("inside Protege"), plan.explanation());
     }
 
+    /**
+     * ODK's update is Update project files...: ODK v1.6.1's Makefile calls its update_repo
+     * deprecated ("sh run.sh odk.py update"), and through make it stops where a clean or a fresh
+     * clone left tmp/plugins without ROBOT's ODK plugin - HandOverLiveTest met it after a release.
+     * Build does not offer it, and its help says where the update is.
+     */
+    @Test
+    void inTheContainerBuildLeavesOdksUpdateToUpdateProjectFiles() throws IOException {
+        project("eggboil", "eggboil");
+        assertTrue(MakeRun.targetsFor(edit).contains("update_repo"), "ODK's Makefile has it");
+
+        BuildPlan plan = BuildPlan.inContainer(edit, "obolibrary/odkfull:v1.6.1", "docker");
+
+        assertFalse(plan.targets().contains("update_repo"), plan.targets().toString());
+        assertTrue(plan.help().contains("OntoBoard > Project > Update project files..."),
+                plan.help());
+    }
+
     // ------------------------------------------------------------------ without it
 
     @Test

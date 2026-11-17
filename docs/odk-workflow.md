@@ -720,7 +720,10 @@ ODK, which OntoBoard runs.
 
 ### `make update_repo` and *Update project files...* ✅
 
-ODK's `sh run.sh make update_repo` re-reads `<ontology>-odk.yaml` and brings the project's files
+ODK's update - `sh run.sh odk.py update`, as ODK v1.6.1's Makefile says to run it; its
+`make update_repo` is deprecated there, and run through make it looks for ROBOT's ODK plugin in
+`tmp/plugins/`, which a `make clean` or a fresh clone leaves empty, and stops - re-reads
+`<ontology>-odk.yaml` and brings the project's files
 in line with it: the `Makefile`, `run.sh`, the checks and the workflows ODK ships are written
 again, what the configuration now asks for is added, `.gitignore` and the catalog are merged with
 what the project has, and the edit file's import declarations are made to match the configured

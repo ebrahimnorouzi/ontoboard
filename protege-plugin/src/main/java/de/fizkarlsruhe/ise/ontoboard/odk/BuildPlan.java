@@ -37,6 +37,9 @@ public final class BuildPlan {
     private static final String TEST = "test";
     private static final String FAST = "test_fast";
 
+    /** ODK's update as a target of make: not offered, Update project files... runs it. */
+    private static final String UPDATE = "update_repo";
+
     private static final String RELOAD = " What it rewrites that Protege has open is read "
             + "again when it is done.";
 
@@ -62,7 +65,12 @@ public final class BuildPlan {
      * @param runtime {@code docker} or {@code podman}
      */
     public static BuildPlan inContainer(File editFile, String image, String runtime) {
-        return new BuildPlan(false, MakeRun.targetsFor(editFile),
+        List<String> targets = new ArrayList<String>(MakeRun.targetsFor(editFile));
+        // ODK's update is Update project files...: ODK v1.6.1's own Makefile calls update_repo
+        // deprecated - "sh run.sh odk.py update" - and run through make it stops where a clean
+        // or a fresh clone left tmp/plugins without ROBOT's ODK plugin (HandOverLiveTest).
+        targets.remove(UPDATE);
+        return new BuildPlan(false, targets,
                 new LinkedHashMap<String, String>(),
                 "Runs a target of this project's own Makefile in ODK's container (" + image
                         + ", through " + runtime + ") - the build its maintainers and its CI "
@@ -245,7 +253,8 @@ public final class BuildPlan {
         if (!inProcess) {
             return "Read from this project's own Makefile, most useful first. test is the "
                     + "full check; test_fast is the same on the imports as they are, without "
-                    + "fetching them again." + RELOAD;
+                    + "fetching them again. ODK's update is not among them: "
+                    + "OntoBoard > Project > Update project files... runs it." + RELOAD;
         }
         StringBuilder help = new StringBuilder("The targets OntoBoard's own engine can run "
                 + "for this project.");
