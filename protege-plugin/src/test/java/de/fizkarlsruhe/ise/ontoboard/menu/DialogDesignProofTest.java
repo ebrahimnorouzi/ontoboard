@@ -151,12 +151,93 @@ class DialogDesignProofTest {
         assertEquals("make test MIR=false", line.getText());
         ((javax.swing.JCheckBox) controls.get("switch.IMP")).setSelected(false);
         assertEquals("make test IMP=false MIR=false", line.getText());
-        ((javax.swing.JComboBox<?>) controls.get("target")).setSelectedItem("test_fast");
+        ((javax.swing.JComboBox<?>) controls.get("target")).setSelectedItem(
+                de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice("test_fast"));
         assertEquals("make test_fast IMP=false MIR=false", line.getText());
 
         BufferedImage image = render(content);
         File png = new File(designDirectory(), "build-form.png");
         ImageIO.write(image, "PNG", png);
+        assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
+    }
+
+    /**
+     * E3: an ODK project's targets in plain words - what each does, then make's command - in
+     * the plan's order, the plan's first choice chosen; a plain Makefile's targets as they are.
+     */
+    @Test
+    void buildsChoicesAreThePlansTargetsInPlainWords(@org.junit.jupiter.api.io.TempDir File temp)
+            throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            java.nio.file.Files.createDirectories(target.getParentFile().toPath());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan plan =
+                de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.inContainer(
+                        new File(root, "src/ontology/eggboil-edit.owl"),
+                        "obolibrary/odkfull:v1.6.1", "docker");
+
+        Parameter target = BuildAction.form(plan.targets(), plan.defaultTarget(), plan.help(),
+                true, null).get(0);
+
+        List<String> words = new java.util.ArrayList<String>();
+        for (String one : plan.targets()) {
+            words.add(de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice(one));
+        }
+        assertEquals(words, target.getChoices());
+        assertEquals("Check everything (downloads the imports again) - make test",
+                target.getDefaultValue());
+        assertTrue(target.getChoices().contains("Check quickly (keeps the imports as they are)"
+                + " - make test_fast"), target.getChoices().toString());
+        assertEquals(Arrays.asList("all", "test"), BuildAction.form(Arrays.asList("all", "test"),
+                "test", "Read from this project's own Makefile.", false, null).get(0)
+                .getChoices());
+    }
+
+    /** What Build runs is the target a choice names - the words are only said. */
+    @Test
+    void theTargetBuildRunsIsTheOneTheChoiceNames() {
+        Map<String, String> chosen = new HashMap<String, String>();
+        chosen.put("target", "Check quickly (keeps the imports as they are) - make test_fast");
+        assertEquals("test_fast", BuildAction.targetIn(chosen));
+        chosen.put("target", "reason_test");
+        assertEquals("reason_test", BuildAction.targetIn(chosen));
+    }
+
+    /**
+     * A line under the form wider than the explanation wraps at the explanation's width: a
+     * release's command with a version IRI of its own does not make the dialog that wide.
+     */
+    @Test
+    void aLongLineUnderTheFormWrapsAtTheExplanationsWidth() throws Exception {
+        final String command = "Release, with fresh imports - make clean, then make "
+                + "prepare_release VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V "
+                + "https://example.org/eggboil/eggboil/1.0.0/$@ --annotation owl:versionInfo "
+                + "1.0.0'";
+        List<Parameter> version = Arrays.asList(Parameter.of("version", "Version",
+                Parameter.Kind.TEXT).defaultValue("1.0.0")
+                .help("It becomes the tag v<version> and part of the version IRI.").build());
+        String explanation = "Builds the release with ODK's prepare_release, in ODK's container.";
+        JPanel content = ParameterDialog.content(null, explanation, version,
+                new java.util.LinkedHashMap<String, java.awt.Component>(), values -> command);
+        JPanel without = ParameterDialog.content(null, explanation, version,
+                new java.util.LinkedHashMap<String, java.awt.Component>(), null);
+        javax.swing.JLabel line = named(content, ParameterDialog.PREVIEW);
+
+        assertTrue(line.getText().contains("ANNOTATE_ONTOLOGY_VERSION='annotate -V https://"
+                + "example.org/eggboil/eggboil/1.0.0/$@ --annotation owl:versionInfo 1.0.0'"),
+                line.getText());
+        assertTrue(content.getPreferredSize().width <= without.getPreferredSize().width,
+                content.getPreferredSize().width + " px with the line, "
+                        + without.getPreferredSize().width + " px without");
+        assertTrue(line.getPreferredSize().height
+                >= 2 * line.getFontMetrics(line.getFont()).getHeight(),
+                "wrapped: " + line.getPreferredSize());
+        File png = new File(designDirectory(), "long-line-form.png");
+        ImageIO.write(render(content), "PNG", png);
         assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
     }
 

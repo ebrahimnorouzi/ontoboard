@@ -343,8 +343,10 @@ public class ReleaseAction extends OntoBoardAction {
         // Re-shown with what was typed, as the older form is: a correction, not a new start.
         Map<String, String> values = OdkReleaseForm.defaults(start);
         while (true) {
+            // Under the form, the release in plain words and make's commands (E3).
             Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Release",
-                    OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values));
+                    OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values),
+                    OdkReleaseForm.lineUnder(start));
             if (chosen == null) {
                 return false;
             }

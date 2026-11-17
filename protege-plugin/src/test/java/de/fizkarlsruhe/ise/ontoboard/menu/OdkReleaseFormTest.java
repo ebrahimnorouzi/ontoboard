@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.VersionIriShape;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
@@ -188,6 +189,90 @@ class OdkReleaseFormTest {
         File png = new File(into, "release-form.png");
         assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
         javax.imageio.ImageIO.write(image, "png", png);
+    }
+
+    // ------------------------------------------------------------------ the line under the form
+
+    /**
+     * E3: the line under the form says the release in plain words, then make's commands as the
+     * release runs them - make clean, then ODK's target with the version, and the version IRI
+     * where it is not ODK's shape - for those who know ODK.
+     */
+    @Test
+    void theLineUnderTheFormSaysTheReleaseInWordsThenMakesCommands() {
+        OdkReleaseForm.Start start = start();
+
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.0", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+        assertEquals("Release, with the imports as they are - make clean, then make "
+                + "prepare_release_fast VERSION=1.0.0", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.REFRESH, "false")));
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V " + BASE
+                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0'", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.SHAPE,
+                                BASE + "/<version>/eggboil.owl")));
+        // Not a version yet: what was typed; the form says what is wrong when it is sent.
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.x", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.VERSION, "1.0.x")));
+    }
+
+    /** OntoBoard itself, where it cannot fetch the imports, builds the fast release: said. */
+    @Test
+    void aReleaseOnTheImportsAsTheyAreSaysTheFastTarget() {
+        OdkReleaseForm.Start start = start().withRoute(ReleaseRoute.decide(false, false,
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC,
+                "Docker is not running", null, null, null, "It needs the network."));
+
+        assertEquals("Release, with the imports as they are - make clean, then make "
+                + "prepare_release_fast VERSION=1.0.0",
+                OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+    }
+
+    /** A project released by its own script: the explanation names the script; no make line. */
+    @Test
+    void aProjectsOwnScriptHasNoMakeLine() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+
+        assertNull(OdkReleaseForm.lineUnder(start()));
+    }
+
+    /**
+     * The release form with its line, at the size its dialog lays it out, for a person to look
+     * at (target/design/release-form.png): the line of a version IRI of its own wraps, so the
+     * dialog is no wider for it.
+     */
+    @Test
+    void theReleaseFormAndItsLineRenderAtTheirRealSize() throws IOException {
+        final OdkReleaseForm.Start start = start();
+        Map<String, String> values = chosen(start, OdkReleaseForm.SHAPE,
+                BASE + "/<version>/eggboil.owl");
+        javax.swing.JPanel with = ParameterDialog.content(null, OdkReleaseForm.explanation(start),
+                OdkReleaseForm.parameters(start, values),
+                new LinkedHashMap<String, java.awt.Component>(), OdkReleaseForm.lineUnder(start));
+        javax.swing.JPanel without = ParameterDialog.content(null,
+                OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values),
+                new LinkedHashMap<String, java.awt.Component>(), null);
+
+        java.awt.Dimension size = with.getPreferredSize();
+        assertTrue(size.width <= without.getPreferredSize().width,
+                size.width + " px with the line, " + without.getPreferredSize().width
+                        + " px without");
+        with.setSize(size);
+        with.addNotify();
+        with.validate();
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(size.width,
+                size.height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = image.createGraphics();
+        graphics.setColor(java.awt.Color.WHITE);
+        graphics.fillRect(0, 0, size.width, size.height);
+        with.paint(graphics);
+        graphics.dispose();
+        File png = new File("target/design/release-form.png");
+        assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
+        javax.imageio.ImageIO.write(image, "png", png);
+        assertTrue(png.length() > 2048, png.getAbsolutePath());
     }
 
     /**

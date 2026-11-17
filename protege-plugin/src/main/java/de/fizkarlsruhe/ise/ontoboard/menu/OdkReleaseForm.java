@@ -6,6 +6,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
+import de.fizkarlsruhe.ise.ontoboard.odk.TargetWords;
 import de.fizkarlsruhe.ise.ontoboard.odk.VersionIriShape;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
@@ -552,6 +553,60 @@ final class OdkReleaseForm {
                 "true".equalsIgnoreCase(chosen.get(UNCOMPARED)),
                 !newFilesOfTheProject(start).isEmpty()
                         && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)));
+    }
+
+    /**
+     * The line under the form (E3): the release in plain words, then make's commands as the
+     * release runs them - make clean, then ODK's target with the version, and the version IRI
+     * where it is not ODK's shape - for those who know ODK. Null for a project released by its
+     * own script: the explanation above the form names the script.
+     */
+    static java.util.function.Function<Map<String, String>, String> lineUnder(
+            final Start start) {
+        return start.script != null ? null : chosen -> commandShown(start, chosen);
+    }
+
+    private static String commandShown(Start start, Map<String, String> chosen) {
+        boolean fresh = start.mayRefreshImports()
+                && !"false".equalsIgnoreCase(chosen.get(REFRESH));
+        String target = fresh ? "prepare_release" : "prepare_release_fast";
+        String version = versionIn(chosen, VERSION);
+        List<String> make;
+        try {
+            make = ReleaseRun.makeArguments(version, shape(start, chosen), start.facts.ontbase(),
+                    fresh);
+        } catch (IllegalArgumentException notYet) {
+            // Not a version, or a pattern that cannot be one, yet: what was typed. The form
+            // says what is wrong with it when it is sent.
+            make = Arrays.asList("make", target, "VERSION=" + version);
+        }
+        return TargetWords.of(target) + " - " + String.join(" ", ReleaseRun.cleanArguments())
+                + ", then " + asTyped(make);
+    }
+
+    /**
+     * A command as a terminal takes it: an argument with a blank or a {@code $} in it in single
+     * quotes, after its {@code NAME=} when it has one - make's {@code $@} stays make's.
+     */
+    private static String asTyped(List<String> arguments) {
+        StringBuilder line = new StringBuilder();
+        for (String argument : arguments) {
+            if (line.length() > 0) {
+                line.append(' ');
+            }
+            if (argument.matches("[A-Za-z0-9_./=:@%+,-]*")) {
+                line.append(argument);
+                continue;
+            }
+            int equals = argument.indexOf('=');
+            String name = equals > 0
+                    && argument.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_]*")
+                    ? argument.substring(0, equals + 1) : "";
+            line.append(name).append('\'')
+                    .append(argument.substring(name.length()).replace("'", "'\\''"))
+                    .append('\'');
+        }
+        return line.toString();
     }
 
     // ------------------------------------------------------------------ before git records it

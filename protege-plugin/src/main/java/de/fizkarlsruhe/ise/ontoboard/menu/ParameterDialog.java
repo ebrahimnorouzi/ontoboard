@@ -105,6 +105,25 @@ public final class ParameterDialog {
     static final String PREVIEW = "ontoboard.preview";
 
     /**
+     * The width a line under the form wraps at: within the explanation's 400 px, so that the
+     * line never makes the dialog wider than the explanation does.
+     */
+    private static final int LINE_WIDTH = 380;
+
+    /**
+     * The line under the form as its label shows it: as it is when it fits, else as HTML that
+     * wraps at {@link #LINE_WIDTH} - a release's command with a version IRI of its own is
+     * longer than any dialog should be wide.
+     */
+    private static String wrappedIfLong(JLabel line, String text) {
+        if (text == null || line.getFontMetrics(line.getFont()).stringWidth(text) <= LINE_WIDTH) {
+            return text;
+        }
+        return "<html><body style='width:" + LINE_WIDTH + "px'>" + escape(text)
+                + "</body></html>";
+    }
+
+    /**
      * What the dialog shows: the explanation, the form, the line of what the values come to
      * when there is one, and Reset. Visible to the package so a test can render it and work
      * its controls.
@@ -120,7 +139,8 @@ public final class ParameterDialog {
             line.setFont(new Font(Font.MONOSPACED, Font.PLAIN, new JTextField().getFont()
                     .getSize()));
             line.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
-            Runnable again = () -> line.setText(preview.apply(readValues(parameters, controls)));
+            Runnable again = () -> line.setText(wrappedIfLong(line,
+                    preview.apply(readValues(parameters, controls))));
             for (Component control : controls.values()) {
                 whenItChanges(control, again);
             }

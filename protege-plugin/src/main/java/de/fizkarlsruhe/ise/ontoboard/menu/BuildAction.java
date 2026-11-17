@@ -4,6 +4,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.BuildSwitches;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
+import de.fizkarlsruhe.ise.ontoboard.odk.TargetWords;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
@@ -207,7 +208,7 @@ public class BuildAction extends OntoBoardAction {
             if (chosen == null) {
                 return false;
             }
-            target = chosen.get(OPTION_TARGET);
+            target = targetIn(chosen);
             off = switches ? offIn(chosen) : EnumSet.noneOf(BuildSwitches.Switch.class);
             String why = engine == null || off.isEmpty() ? null
                     : de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.whyNotWith(editFile, target,
@@ -224,16 +225,24 @@ public class BuildAction extends OntoBoardAction {
 
     /**
      * Build's form: the target, then - for an ODK project - ODK's four switches, each ticked as
-     * ODK's default has it, or as it was chosen when the form comes back.
+     * ODK's default has it, or as it was chosen when the form comes back. An ODK project's
+     * targets are offered in plain words, each with make's command (E3); a plain Makefile's as
+     * its Makefile names them.
      *
+     * @param switches whether the Makefile is ODK's, whose switches and words the form offers
      * @param was what was chosen when the form comes back, or null the first time
      */
     static List<Parameter> form(List<String> targets, String first, String targetHelp,
             boolean switches, Map<String, String> was) {
+        List<String> choices = new ArrayList<String>();
+        for (String target : targets) {
+            choices.add(switches ? TargetWords.choice(target) : target);
+        }
         List<Parameter> parameters = new ArrayList<Parameter>();
         parameters.add(Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
-                .choices(targets.toArray(new String[0]))
-                .defaultValue(was != null ? was.get(OPTION_TARGET) : first)
+                .choices(choices.toArray(new String[0]))
+                .defaultValue(was != null ? was.get(OPTION_TARGET)
+                        : switches && first != null ? TargetWords.choice(first) : first)
                 .required()
                 .help(targetHelp)
                 .build());
@@ -252,7 +261,12 @@ public class BuildAction extends OntoBoardAction {
 
     /** What the form's values come to, as the line under it says it: make's command. */
     static String commandShown(Map<String, String> values) {
-        return BuildSwitches.command(String.valueOf(values.get(OPTION_TARGET)), offIn(values));
+        return BuildSwitches.command(String.valueOf(targetIn(values)), offIn(values));
+    }
+
+    /** The target chosen: the one the choice names, whose words are only said. */
+    static String targetIn(Map<String, String> values) {
+        return TargetWords.target(values.get(OPTION_TARGET));
     }
 
     /** Whether the Makefile is ODK's, whose switches the form then offers. */
