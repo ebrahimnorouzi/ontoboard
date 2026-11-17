@@ -212,8 +212,13 @@ public class GitAction extends OntoBoardAction {
                     committed.getOutput())).build();
         }
         result.note("Nothing has been pushed - run Git again and choose Push when you are ready.");
-        return result.summary("Committed " + (status.getChanged().size()
-                + status.getUntracked().size()) + " files.").build();
+        return result.summary(committed(status.getChanged().size()
+                + status.getUntracked().size())).build();
+    }
+
+    /** What a commit of so many files says: one is a file. */
+    static String committed(int files) {
+        return "Committed " + files + (files == 1 ? " file." : " files.");
     }
 
     private OperationResult simple(ProcessRunner.Runner runner, File repository,
