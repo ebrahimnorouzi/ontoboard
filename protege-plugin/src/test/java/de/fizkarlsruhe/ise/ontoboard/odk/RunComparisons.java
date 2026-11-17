@@ -79,7 +79,10 @@ final class RunComparisons {
      * A file ROBOT wrote here against the one ODK's ROBOT wrote: character for character,
      * but for what shows the OWL API's version - the line in which it names its build and,
      * on the older one, the default prefix of a file in functional syntax, which that one
-     * keeps from the file it read where ODK's takes it from the ontology's new name.
+     * keeps from the file it read where ODK's takes it from the ontology's new name, and the
+     * end of an ontology in functional syntax that has declarations and no other axiom: ODK's
+     * writes two empty lines before its last ")", the older one one (an empty import module,
+     * measured by DosdpEquivalenceLiveTest on pato_import.owl; on 4.5.29 the file is ODK's).
      */
     static void assertSameFile(String name, File theirs, File ours) throws Exception {
         assertEquals(butForWhatShowsTheOwlApi(read(theirs)), butForWhatShowsTheOwlApi(
@@ -90,7 +93,8 @@ final class RunComparisons {
     private static String butForWhatShowsTheOwlApi(String text) {
         String generated = butForTheLineOfTheOwlApi(text);
         return onOdksOwlApi() ? generated
-                : generated.replaceFirst("(?m)^Prefix\\(:=<[^>]*>\\)$", "Prefix(:=<...>)");
+                : generated.replaceFirst("(?m)^Prefix\\(:=<[^>]*>\\)$", "Prefix(:=<...>)")
+                        .replaceFirst("\n\n\n\\)$", "\n\n)");
     }
 
     private static String butForTheLineOfTheOwlApi(String text) {

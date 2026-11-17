@@ -291,10 +291,10 @@ def stage_dosdp(tool, image):
         print("dosdp equivalence " + line)
     provenance(tool, image, "dosdp-equivalence", versions,
                "odk.py seed --skipgit -C tests__test-patterns.yaml; equivalence/dosdp/overlay "
-               "over it; make <target> IMP=false MIR=false VERSION=%s TODAY=%s OBODATE=\"%s\" "
-               "for %s, each on a fresh copy, in /tmp/odk/ptt/src/ontology"
+               "over it; then each on a fresh copy, in /tmp/odk/ptt/src/ontology, with "
+               "VERSION=%s TODAY=%s OBODATE=\"%s\": %s"
                % (equivalence_goldens.VERSION, equivalence_goldens.DATE,
-                  equivalence_goldens.OBODATE, ", ".join(dosdp_equivalence_goldens.TARGETS)))
+                  equivalence_goldens.OBODATE, dosdp_equivalence_goldens.described()))
     _, out, _ = odkimage.in_image(tool, image, ["sh", "-c", "cd /tools/dosdptools/lib && "
                                                 "sha256sum *.jar | LC_ALL=C sort -k2"])
     lines = [line for line in out.decode("utf-8").replace("\r\n", "\n").split("\n") if line]

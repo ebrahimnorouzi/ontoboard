@@ -86,11 +86,12 @@ class DosdpEquivalenceLiveTest {
         }
     }
 
-    /** The recording's command line: the imports as they are, nothing downloaded. */
-    private static Map<String, String> commandLine() {
+    /** The recording's command line: a run's switches, then its version and dates. */
+    private static Map<String, String> commandLine(String... switches) {
         Map<String, String> line = new LinkedHashMap<String, String>();
-        line.put("IMP", "false");
-        line.put("MIR", "false");
+        for (String one : switches) {
+            line.put(one.substring(0, one.indexOf('=')), one.substring(one.indexOf('=') + 1));
+        }
         line.put("VERSION", "1.0.0");
         line.put("TODAY", "2026-11-11");
         line.put("OBODATE", "11:11:2026 12:00");
@@ -117,28 +118,36 @@ class DosdpEquivalenceLiveTest {
     }
 
     /**
-     * Runs a target here and holds against ODK's recording what make said and which files the
-     * run made or changed. The recording leaves tmp/plugins out - ODK's copies of ROBOT's
+     * Runs a target here as the recording ran it - the same switches, the same files a minute
+     * newer than the rest - and holds against ODK's recording what make said and which files
+     * the run made or changed. The recording leaves tmp/plugins out - ODK's copies of ROBOT's
      * plugin jars - and so does this.
+     *
+     * @param run the run's folder in the recording
      */
-    private void runHeldAgainstTheRecording(String target) throws Exception {
+    private void runHeldAgainstTheRecording(String run, String target,
+            Map<String, String> commandLine, String... newer) throws Exception {
         assumeTrue(DosdpTools.isInstalled(home()), "DOSDP-Tools " + DosdpTools.VERSION
                 + " is not installed in " + home());
         theProject();
         allOfTheSameAge(project);
+        for (String path : newer) {
+            assertTrue(new File(project, path).setLastModified(RunComparisons.RECORDED_AGE
+                    + 60_000L), path);
+        }
         Map<String, String> before = hashes(project);
 
-        assertNull(OdkEngine.whyNot(edit, target, commandLine(), tools()),
+        assertNull(OdkEngine.whyNot(edit, target, commandLine, tools()),
                 "asked beforehand, it can");
         long started = System.nanoTime();
-        OdkEngine.Outcome outcome = OdkEngine.run(edit, target, commandLine(), tools(), null);
-        keep(target + ".seconds.txt", java.util.Collections.singletonList(String.valueOf(
+        OdkEngine.Outcome outcome = OdkEngine.run(edit, target, commandLine, tools(), null);
+        keep(run + ".seconds.txt", java.util.Collections.singletonList(String.valueOf(
                 (System.nanoTime() - started) / 1_000_000_000L)));
 
         List<String> ours = lines(String.join("\n", outcome.getTranscript()));
-        keep(target + ".transcript.txt", ours);
+        keep(run + ".transcript.txt", ours);
         assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + String.join("\n", ours));
-        assertEquals(String.join("\n", saidByMake(lines(recorded(target + "/transcript.txt")))),
+        assertEquals(String.join("\n", saidByMake(lines(recorded(run + "/transcript.txt")))),
                 String.join("\n", saidByMake(ours)),
                 "every recipe line make said, in the order it ran them");
         Set<String> made = madeSince(before, project);
@@ -147,8 +156,8 @@ class DosdpEquivalenceLiveTest {
                 each.remove();
             }
         }
-        keep(target + ".made.txt", new ArrayList<String>(made));
-        assertEquals(recordedFiles(target), made, "the files the run made or changed");
+        keep(run + ".made.txt", new ArrayList<String>(made));
+        assertEquals(recordedFiles(run), made, "the files the run made or changed");
     }
 
     private void assertBuiltAsOdkBuiltIt(String target, String built) throws Exception {
@@ -162,7 +171,7 @@ class DosdpEquivalenceLiveTest {
 
     @Test
     void theTestOfAProjectWithPatternsRunsHereAsItRanInOdksImage() throws Exception {
-        runHeldAgainstTheRecording("test");
+        runHeldAgainstTheRecording("test", "test", commandLine("IMP=false", "MIR=false"));
 
         for (String built : FROM_THE_PATTERNS) {
             assertBuiltAsOdkBuiltIt("test", built);
@@ -171,9 +180,59 @@ class DosdpEquivalenceLiveTest {
                 new File(project, "src/ontology/tmp/validate.ofn"));
     }
 
+    /**
+     * test with the imports built again from their mirrors - Build with "Download the imports'
+     * sources again" off - just after a pattern and its row were added: dosdp-tools makes
+     * pattern.owl (prototype) and each pipeline's term list (terms), and their terms go into
+     * the imports' seed. The lists are held byte for byte: ROBOT's CSV ends its lines in CRLF,
+     * so ODK's {@code sort | uniq} keeps a term twice, and so must this.
+     */
+    @Test
+    void theTestThatBuildsTheImportsWithThePatternsTermsRunsHereAsInOdksImage()
+            throws Exception {
+        runHeldAgainstTheRecording("test-building-imports", "test", commandLine("MIR=false"),
+                "src/patterns/dosdp-patterns/locatedIn.yaml",
+                "src/patterns/data/manual/locatedIn.tsv");
+
+        for (String built : new String[] {"src/patterns/pattern.owl",
+            "src/patterns/definitions.owl", "src/ontology/imports/ro_import.owl",
+            "src/ontology/imports/pato_import.owl"}) {
+            assertBuiltAsOdkBuiltIt("test-building-imports", built);
+        }
+        // What dosdp-tools wrote, and what sort made of all of it: byte for byte.
+        for (String list : new String[] {"src/patterns/data/default/example.txt",
+            "src/patterns/data/manual/locatedIn.txt", "src/ontology/tmp/all_pattern_terms.txt",
+            "src/ontology/tmp/seed.txt"}) {
+            assertEquals(recorded("test-building-imports/files/" + list), bytesOf(list),
+                    list + ": byte for byte");
+        }
+        // What ROBOT's queries wrote: the order of a query's rows is the store's - ODK's own
+        // runs differ in it - so its header, then its rows in any order, each ended as ODK's.
+        for (String table : new String[] {"src/ontology/tmp/pre_seed.txt",
+            "src/ontology/tmp/pattern_owl_seed.txt"}) {
+            assertEquals(linesInAnyOrder(recorded("test-building-imports/files/" + table)),
+                    linesInAnyOrder(bytesOf(table)), table + ": its rows, each line's end kept");
+        }
+    }
+
+    private String bytesOf(String path) throws IOException {
+        return new String(Files.readAllBytes(new File(project, path).toPath()),
+                StandardCharsets.UTF_8);
+    }
+
+    /** A table's header, then its rows sorted, each line with its CR where it has one. */
+    private static List<String> linesInAnyOrder(String table) {
+        List<String> all = new ArrayList<String>(java.util.Arrays.asList(table.split("\n", -1)));
+        String header = all.remove(0);
+        java.util.Collections.sort(all);
+        all.add(0, header);
+        return all;
+    }
+
     @Test
     void theReleaseOfAProjectWithPatternsIsBuiltHereAsOdkBuiltIt() throws Exception {
-        runHeldAgainstTheRecording("prepare_release");
+        runHeldAgainstTheRecording("prepare_release", "prepare_release",
+                commandLine("IMP=false", "MIR=false"));
 
         for (String built : FROM_THE_PATTERNS) {
             assertBuiltAsOdkBuiltIt("prepare_release", built);
