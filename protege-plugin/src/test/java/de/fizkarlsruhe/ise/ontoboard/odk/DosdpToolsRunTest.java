@@ -41,6 +41,11 @@ class DosdpToolsRunTest {
         public static void main(String[] arguments) throws Exception {
             System.out.println("folder " + new File("").getAbsolutePath());
             System.out.println("arguments " + String.join(" ", arguments));
+            StringBuilder separator = new StringBuilder("line separator");
+            for (char letter : System.lineSeparator().toCharArray()) {
+                separator.append(' ').append((int) letter);
+            }
+            System.out.println(separator);
             System.err.println("said on the error stream");
             for (String argument : arguments) {
                 if (argument.startsWith("--exit=")) {
@@ -135,6 +140,20 @@ class DosdpToolsRunTest {
         }
         assertNotNull(where, said.toString());
         assertEquals(folder.getCanonicalPath(), new File(where).getCanonicalPath());
+    }
+
+    /**
+     * What it writes as text - a pipeline's term list - ends its lines as in ODK's image: Java
+     * on Windows would end them in CRLF (found by DosdpEquivalenceLiveTest on example.txt).
+     */
+    @Test
+    void itEndsItsLinesAsOdksImageDoes() throws IOException {
+        List<String> said = new ArrayList<String>();
+
+        assertEquals(0, RecipeShell.parse("dosdp-tools terms --infile=a.tsv")
+                .run(tools(tool(installed(), null)), makeFolder(), said), said.toString());
+
+        assertTrue(said.contains("line separator 10"), said.toString());
     }
 
     @Test

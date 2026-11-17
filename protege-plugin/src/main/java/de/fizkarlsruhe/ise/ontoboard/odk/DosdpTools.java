@@ -335,13 +335,16 @@ public final class DosdpTools {
     }
 
     /**
-     * How ODK starts it: {@code java -jar <the launcher> <arguments>} - with the encoding the
-     * image's Java takes from {@code LANG=C.UTF-8}, which on Windows would be windows-1252.
+     * How ODK starts it: {@code java -jar <the launcher> <arguments>} - with what the image's
+     * Java takes from Linux: the encoding of {@code LANG=C.UTF-8}, which on Windows would be
+     * windows-1252, and lines that end in LF, which on Windows would end in CRLF - in a term
+     * list, say, which is written by println.
      */
     public static List<String> command(File java, File home, List<String> arguments) {
         List<String> command = new ArrayList<String>();
         command.add(java.getPath());
         command.add("-Dfile.encoding=UTF-8");
+        command.add("-Dline.separator=\n");
         command.add("-jar");
         command.add(new File(new File(home, "lib"), LAUNCHER).getPath());
         command.addAll(arguments);

@@ -71,14 +71,16 @@ class DosdpToolsTest {
     }
 
     /**
-     * As ODK's image starts it - {@code java -jar} the launcher - with the encoding the image's
-     * Java takes from {@code LANG=C.UTF-8}; on Windows it would be windows-1252.
+     * As ODK's image starts it - {@code java -jar} the launcher - with what the image's Java
+     * takes from Linux: UTF-8 from {@code LANG=C.UTF-8}, where Windows' would be windows-1252,
+     * and lines that end in LF, where Windows' end in CRLF.
      */
     @Test
     void theCommandIsTheLaunchersAsOdkStartsIt() {
         File home = new File("/x/dosdp-tools-0.19.3");
 
-        assertEquals(Arrays.asList(new File("/j/java").getPath(), "-Dfile.encoding=UTF-8", "-jar",
+        assertEquals(Arrays.asList(new File("/j/java").getPath(), "-Dfile.encoding=UTF-8",
+                "-Dline.separator=\n", "-jar",
                 new File(home, "lib/org.monarchinitiative.dosdp-tools-0.19.3-launcher.jar")
                         .getPath(), "terms", "--infile=a.tsv"),
                 DosdpTools.command(new File("/j/java"), home,
