@@ -1,0 +1,35 @@
+make --assume-new=obim-edit.owl --assume-new=imports/pato_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/pato_import.owl
+make[1]: Entering directory 'C:/tmp/ob-1154/i2/runs/pato-page/src/ontology'
+robot --catalog catalog-v001.xml convert -I http://127.0.0.1:8765/page.owl -o tmp/mirror-pato.owl
+mkdir -p mirror
+if [ -f tmp/mirror-pato.owl ]; then if cmp -s tmp/mirror-pato.owl mirror/pato.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-pato.owl mirror/pato.owl; fi; fi
+Mirrors different, updating.
+robot --catalog catalog-v001.xml convert --input obim-edit.owl --format ofn --output tmp/obim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/obim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-obim-edit.ofn
+robot --catalog catalog-v001.xml query --input tmp/merged-obim-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+robot --catalog catalog-v001.xml annotate --input mirror/pato.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/pato_terms.txt --term-file tmp/seed.txt \
+	         --copy-ontology-annotations true --force true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term rdfs:label \
+	        --term IAO:0000115 \
+	        --term OMO:0002000 \
+	        --term-file imports/pato_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/obim/imports/pato_import.owl annotate -V http://purl.obolibrary.org/obo/obim/releases/2026-11-17/imports/pato_import.owl --annotation owl:versionInfo 2026-11-17 convert -f ofn --output imports/pato_import.owl.tmp.owl && mv imports/pato_import.owl.tmp.owl imports/pato_import.owl
+Ontology IRI cannot be null
+make[1]: *** [Makefile:443: imports/pato_import.owl] Error 1
+make[1]: Leaving directory 'C:/tmp/ob-1154/i2/runs/pato-page/src/ontology'
+make: *** [Makefile:479: refresh-pato] Error 2

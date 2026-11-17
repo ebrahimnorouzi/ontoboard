@@ -1,0 +1,9 @@
+make --assume-new=obim-edit.owl --assume-new=imports/ro_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/ro_import.owl
+make[1]: Entering directory 'C:/tmp/ob-1154/i2/runs/noname/src/ontology'
+curl -L http://no-such-host.invalid/obo/ro.owl --create-dirs -o tmp/ro-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl
+curl: (6) there is no server called no-such-host.invalid (http://no-such-host.invalid/obo/ro.owl) - or no network
+make[1]: *** [Makefile:498: mirror-ro] Error 6
+make[1]: Leaving directory 'C:/tmp/ob-1154/i2/runs/noname/src/ontology'
+make: *** [Makefile:479: refresh-ro] Error 2

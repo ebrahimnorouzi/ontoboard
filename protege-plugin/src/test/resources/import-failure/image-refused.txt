@@ -1,0 +1,12 @@
+make --assume-new=obim-edit.owl --assume-new=imports/ro_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/ro_import.owl
+make[1]: Entering directory '/work/src/ontology'
+curl -L http://127.0.0.1:9/obo/ro.owl --create-dirs -o tmp/ro-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (7) Failed to connect to 127.0.0.1 port 9 after 83 ms: Couldn't connect to server
+make[1]: *** [Makefile:498: mirror-ro] Error 7
+make[1]: Leaving directory '/work/src/ontology'
+make: *** [Makefile:479: refresh-ro] Error 2

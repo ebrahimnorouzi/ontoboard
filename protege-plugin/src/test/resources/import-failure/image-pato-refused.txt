@@ -1,0 +1,10 @@
+make --assume-new=obim-edit.owl --assume-new=imports/pato_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/pato_import.owl
+make[1]: Entering directory '/work/src/ontology'
+robot --catalog catalog-v001.xml convert -I http://127.0.0.1:9/pato-base.owl -o tmp/mirror-pato.owl
+org.semanticweb.owlapi.io.OWLOntologyCreationIOException: Connection refused (Connection refused)
+Use the -vvv option to show the stack trace.
+Use the --help option to see usage information.
+make[1]: *** [Makefile:523: mirror-pato] Error 1
+make[1]: Leaving directory '/work/src/ontology'
+make: *** [Makefile:479: refresh-pato] Error 2

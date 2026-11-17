@@ -478,12 +478,18 @@ public final class MakeRun {
                     + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
                     + "Project > Project configuration... edits the key.";
         }
+        // Which import's source could not be fetched, from where, and why: when the run
+        // stopped there, that is said rather than the mirror make names last.
+        ImportFailure fetch = ImportFailure.of(outcome.getOutput());
+        if (fetch != null) {
+            String fast = fastOf(target);
+            return fetch.sentence() + (fast == null ? "" : " Run " + fast + " instead, which "
+                    + "builds from the imports as they are.");
+        }
         if (theNetworkStoppedIt(outcome.getOutput())) {
             // make's last line names a mirror file, not the cause. ODK's full targets fetch the
             // project's imports; the fast ones build from the imports as they are.
-            String fast = target.equals("test") || target.equals("prepare_release")
-                    || target.equals("all") ? target.equals("all") ? "test_fast"
-                            : target + "_fast" : null;
+            String fast = fastOf(target);
             return "The build could not download what it fetches from the web - the "
                     + "project's imports - so it stopped: the network, or the server, did not "
                     + "answer." + (fast == null ? " Run it again when the network is back."
@@ -507,6 +513,13 @@ public final class MakeRun {
         String tail = outcome.lastMeaningfulLine();
         return "make " + target + " failed (exit " + outcome.getExitCode() + ")"
                 + (tail.isEmpty() ? "." : ": " + tail);
+    }
+
+    /** ODK's target that does what this one does from the imports as they are; null for none. */
+    private static String fastOf(String target) {
+        return target.equals("all") ? "test_fast"
+                : target.equals("test") || target.equals("prepare_release") ? target + "_fast"
+                        : null;
     }
 
     /** How far from its end a transcript's word on the network is why the run stopped. */

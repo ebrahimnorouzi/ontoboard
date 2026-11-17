@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportFailure;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
 import de.fizkarlsruhe.ise.ontoboard.odk.ModuleRebuild;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
@@ -234,6 +235,20 @@ public class RefreshImportsAction extends OntoBoardAction {
         OdkImportsForm.Ran ran = odk && rebuild ? OdkImportsForm.refresh(editFile, asked,
                 java.util.Collections.<String>emptyList(), odk(editFile), protegeReadsAgain())
                 : null;
+        // A source that could not be fetched, and the copy of it the project has: ODK builds
+        // the module from that copy (no-mirror-refresh-<id>), which is offered - a person at
+        // the terminal would choose it, or wait for the server.
+        ImportFailure fetch = ran == null || ran.isOk() ? null
+                : ImportFailure.of(ran.transcript());
+        ImportFailure builtFromTheCopy = null;
+        if (fetch != null) {
+            String offer = fetch.offer(editFile.getAbsoluteFile().getParentFile());
+            if (offer != null && buildsFromTheCopy(fetch, offer)) {
+                ran = OdkImportsForm.fromTheCopy(editFile, ran, fetch, odk(editFile),
+                        protegeReadsAgain());
+                builtFromTheCopy = fetch;
+            }
+        }
         Set<String> rebuiltByOdk = new LinkedHashSet<String>();
         Set<String> changedByOdk = new LinkedHashSet<String>();
         for (File written : ran == null ? java.util.Collections.<File>emptyList()
@@ -357,7 +372,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                 : ", " + undeclared + " on disk and undeclared")
                 + (patterns == 0 ? "" : ", " + patterns + " from the pattern library");
         if (odk) {
-            return withOdk(result, counted, asked, ran, editFile);
+            return withOdk(result, counted, asked, ran, editFile, fetch, builtFromTheCopy);
         }
         if (!rebuild) {
             result.note(ImportModules.hasMirror(root)
@@ -380,7 +395,8 @@ public class RefreshImportsAction extends OntoBoardAction {
      * what was - with the run's log - and what changed.
      */
     private OperationResult withOdk(OperationResult.Builder result, String counted,
-            OdkImportsForm.Asked asked, OdkImportsForm.Ran ran, File editFile) {
+            OdkImportsForm.Asked asked, OdkImportsForm.Ran ran, File editFile,
+            ImportFailure fetch, ImportFailure builtFromTheCopy) {
         String targets = "make " + String.join(", then make ", asked.targets());
         for (String note : asked.notes()) {
             result.note(note);
@@ -407,6 +423,17 @@ public class RefreshImportsAction extends OntoBoardAction {
                 result.warn(memory);
             }
         }
+        if (builtFromTheCopy != null) {
+            String id = builtFromTheCopy.importId();
+            result.warn(builtFromTheCopy.sentence());
+            result.note("The module of " + id + " was built from the copy you have instead "
+                    + "(mirror/" + id + ".owl), by ODK's own no-mirror-refresh-" + id + ".");
+        }
+        String noCopy = OdkImportsForm.noCopyLeft(asked, fetch,
+                editFile.getAbsoluteFile().getParentFile());
+        if (noCopy != null) {
+            result.warn(noCopy);
+        }
         int shown = 0;
         for (String line : ran.transcript()) {
             if (shown++ >= MAX_LINES) {
@@ -430,7 +457,7 @@ public class RefreshImportsAction extends OntoBoardAction {
         int changed = ran.changed().size();
         int written = ran.written().size();
         return result.summary("Refreshed the imports with ODK's own "
-                + String.join(" and ", asked.targets()) + ", " + odkWay.who() + ": "
+                + OdkImportsForm.ranWith(asked, builtFromTheCopy) + ", " + odkWay.who() + ": "
                 + (written == 0 ? "no module was built again."
                         : written + " module" + (written == 1 ? "" : "s") + " built again, "
                                 + (changed == 0 ? (written == 1 ? "and it did not change"
@@ -444,6 +471,25 @@ public class RefreshImportsAction extends OntoBoardAction {
                                         : ran.readAgain().read().isEmpty() ? "."
                                         : "; Protege has read " + ran.readAgain().read().size()
                                                 + " of them again."))).build();
+    }
+
+    /**
+     * Says why the source could not be fetched and offers the copy the project has; true when
+     * the module is to be built from it. Asked on the dispatch thread, while the refresh waits.
+     */
+    private boolean buildsFromTheCopy(final ImportFailure fetch, final String offer) {
+        final boolean[] yes = new boolean[1];
+        String failed = onDispatchThread(() -> {
+            Object[] options = {offer, "Not now"};
+            yes[0] = javax.swing.JOptionPane.showOptionDialog(getOWLWorkspace(),
+                    ReleaseAction.wrapped(fetch.sentence() + "\n\nODK builds a module from the "
+                            + "copy of its source the project keeps, as it does without the "
+                            + "network (no-mirror-refresh-" + fetch.importId() + "). The module "
+                            + "then holds what that copy holds."),
+                    "Refresh imports", javax.swing.JOptionPane.DEFAULT_OPTION,
+                    javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0]) == 0;
+        });
+        return failed == null && yes[0];
     }
 
     /**

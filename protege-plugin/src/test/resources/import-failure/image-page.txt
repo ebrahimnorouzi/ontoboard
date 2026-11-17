@@ -1,0 +1,15 @@
+make --assume-new=obim-edit.owl --assume-new=imports/ro_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/ro_import.owl
+make[1]: Entering directory '/work/src/ontology'
+curl -L http://127.0.0.1:8765/obo/ro.owl --create-dirs -o tmp/ro-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   120  100   120    0     0   1004      0 --:--:-- --:--:-- --:--:--  1008
+INVALID ONTOLOGY FILE ERROR Could not load a valid ontology from file: ro-download.owl
+For details see: http://robot.obolibrary.org/errors#invalid-ontology-file-error
+Use the -vvv option to show the stack trace.
+Use the --help option to see usage information.
+make[1]: *** [Makefile:498: mirror-ro] Error 1
+make[1]: Leaving directory '/work/src/ontology'
+make: *** [Makefile:479: refresh-ro] Error 2

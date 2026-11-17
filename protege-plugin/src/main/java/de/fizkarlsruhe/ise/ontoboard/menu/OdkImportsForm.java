@@ -347,6 +347,60 @@ final class OdkImportsForm {
         return new Ran(failure, transcript, changed, written, readAgain);
     }
 
+    /**
+     * After a refresh that stopped on fetching one import's source: that import's module built
+     * from the copy of its source the project has ({@code mirror/<id>.owl}) by ODK's own
+     * {@code no-mirror-refresh-<id>} - what a person at the terminal runs then. What both runs
+     * said, wrote and had read again is the refresh's.
+     */
+    static Ran fromTheCopy(File editFile, Ran failed,
+            de.fizkarlsruhe.ise.ontoboard.odk.ImportFailure fetch, OdkRelease.Odk odk,
+            ReadsAgain session) {
+        Ran again = refresh(editFile, new Asked(
+                Collections.singletonList("no-mirror-refresh-" + fetch.importId()),
+                Collections.<String>emptyList()), Collections.<String>emptyList(), odk, session);
+        List<String> transcript = new ArrayList<String>(failed.transcript);
+        transcript.addAll(again.transcript);
+        List<String> notRead = new ArrayList<String>(failed.readAgain.notRead());
+        notRead.addAll(again.readAgain.notRead());
+        return new Ran(again.failure, transcript, eachOnce(failed.changed, again.changed),
+                eachOnce(failed.written, again.written), new WhatARunWrote.Done(
+                        eachOnce(failed.readAgain.read(), again.readAgain.read()), notRead));
+    }
+
+    /**
+     * The targets that refreshed the imports, as the result names them: what was asked, or
+     * the target that built the module from the copy instead ({@link #fromTheCopy}).
+     */
+    static String ranWith(Asked asked,
+            de.fizkarlsruhe.ise.ontoboard.odk.ImportFailure builtFromTheCopy) {
+        return builtFromTheCopy == null ? String.join(" and ", asked.targets())
+                : "no-mirror-refresh-" + builtFromTheCopy.importId() + ", from the copy you have";
+    }
+
+    /** The files of both lists, in order, each once. */
+    private static List<File> eachOnce(List<File> first, List<File> then) {
+        java.util.Set<File> both = new java.util.LinkedHashSet<File>(first);
+        both.addAll(then);
+        return new ArrayList<File>(both);
+    }
+
+    /**
+     * Said when ODK's refresh-imports was run and a fetch then failed: it empties
+     * src/ontology/mirror before it fetches, so no import has a copy of its source left - and
+     * the next refresh fetches them all again. Null otherwise.
+     */
+    static String noCopyLeft(Asked asked, de.fizkarlsruhe.ise.ontoboard.odk.ImportFailure fetch,
+            File ontologyDirectory) {
+        if (fetch == null || !asked.targets().contains("refresh-imports")
+                || fetch.copy(ontologyDirectory) != null) {
+            return null;
+        }
+        return "ODK's refresh-imports empties src/ontology/mirror before it fetches, so no "
+                + "import has a copy of its source left to build from: the next refresh "
+                + "fetches them again.";
+    }
+
     /** Why a target failed, in terms a person can act on; null when it did not. */
     private static String whyItFailed(String target, ProcessRunner.Outcome outcome) {
         if (outcome.isSuccess()) {

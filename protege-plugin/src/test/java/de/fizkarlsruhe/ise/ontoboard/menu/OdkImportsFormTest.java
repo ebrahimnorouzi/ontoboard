@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportCases;
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportFailure;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
@@ -483,6 +484,88 @@ class OdkImportsFormTest {
         assertEquals(Collections.singletonList(Collections.singletonList(module)), readAgain);
         assertTrue(ran.transcript().contains("curl: (6) Could not resolve host: "
                 + "purl.obolibrary.org"), ran.transcript().toString());
+    }
+
+    /** What ODK's image says when ro's source cannot be fetched (ImportFailureTest's). */
+    private static final List<String> RO_NOT_FETCHED = Arrays.asList(
+            "make[1]: Entering directory '/work/src/ontology'",
+            "curl -L http://purl.obolibrary.org/obo/ro.owl --create-dirs -o tmp/ro-download.owl "
+                    + "--retry 4 --max-time 200 && \\",
+            "robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o "
+                    + "tmp/mirror-ro.owl",
+            "curl: (6) Could not resolve host: purl.obolibrary.org",
+            "make[1]: *** [Makefile:498: mirror-ro] Error 6",
+            "make: *** [Makefile:479: refresh-ro] Error 2");
+
+    /**
+     * A refresh that stopped on fetching one import's source, and the copy of that source the
+     * project has: ODK's own no-mirror-refresh-<id> builds the module from it - what a person at
+     * the terminal runs then - and what both runs said and wrote is the refresh's.
+     */
+    @Test
+    void aSourceThatCouldNotBeFetchedIsBuiltFromTheCopy() throws IOException {
+        aRefreshedProjectWithOneMoreTermAskedFor();
+        final File module = new File(ontology, "imports/ro_import.owl");
+        Scripted odk = new Scripted();
+        odk.exits.put("refresh-ro", 2);
+        odk.says.put("refresh-ro", RO_NOT_FETCHED);
+        // make says what it said the first time: each line of each run is the refresh's.
+        odk.says.put("no-mirror-refresh-ro", Collections.singletonList(RO_NOT_FETCHED.get(0)));
+        odk.does.put("no-mirror-refresh-ro", new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Files.write(module.toPath(), "Ontology()\n".getBytes(StandardCharsets.UTF_8));
+                } catch (IOException impossible) {
+                    throw new IllegalStateException(impossible);
+                }
+            }
+        });
+        OdkImportsForm.Ran failed = OdkImportsForm.refresh(edit,
+                OdkImportsForm.asked(declared, "ro", true, ontology),
+                Collections.<String>emptyList(), odk, session);
+        assertFalse(failed.isOk());
+        ImportFailure fetch = ImportFailure.of(failed.transcript());
+        assertTrue(fetch.offer(ontology).startsWith("Build the module from the copy you have "
+                + "(mirror/ro.owl, from "), fetch.offer(ontology));
+
+        OdkImportsForm.Ran ran = OdkImportsForm.fromTheCopy(edit, failed, fetch, odk, session);
+
+        assertEquals("no-mirror-refresh-ro, from the copy you have",
+                OdkImportsForm.ranWith(OdkImportsForm.asked(declared, "ro", true, ontology),
+                        fetch), "the result names what built the module");
+        assertEquals("refresh-ro", OdkImportsForm.ranWith(
+                OdkImportsForm.asked(declared, "ro", true, ontology), null));
+        assertTrue(ran.isOk(), ran.failure());
+        assertEquals(Arrays.asList(Arrays.asList("make", "refresh-ro"),
+                Arrays.asList("make", "no-mirror-refresh-ro")), odk.ran);
+        List<String> both = new ArrayList<String>(failed.transcript());
+        both.add("$ make no-mirror-refresh-ro");
+        both.add(RO_NOT_FETCHED.get(0));
+        assertEquals(both, ran.transcript());
+        assertEquals(Collections.singletonList(module), ran.written());
+        assertEquals(Collections.singletonList(module), ran.readAgain().read());
+    }
+
+    /**
+     * ODK's refresh-imports empties src/ontology/mirror before it fetches: when a fetch then
+     * fails, no import has a copy left, and the result says so - the next refresh fetches.
+     */
+    @Test
+    void afterRefreshImportsNoCopyIsLeftAndThatIsSaid() throws IOException {
+        aRefreshedProjectWithOneMoreTermAskedFor();
+        ImportFailure fetch = ImportFailure.of(RO_NOT_FETCHED);
+        OdkImportsForm.Asked all = OdkImportsForm.asked(declared, OdkImportsForm.ALL, true,
+                ontology);
+        OdkImportsForm.Asked one = OdkImportsForm.asked(declared, "ro", true, ontology);
+
+        assertTrue(new File(ontology, "mirror/ro.owl").delete());
+        String said = OdkImportsForm.noCopyLeft(all, fetch, ontology);
+        assertTrue(said.contains("refresh-imports empties src/ontology/mirror"), said);
+        assertTrue(said.contains("fetches them again"), said);
+        assertNull(OdkImportsForm.noCopyLeft(one, fetch, ontology),
+                "refresh-ro leaves the copy alone: there was none before");
+        assertNull(OdkImportsForm.noCopyLeft(all, null, ontology), "no fetch failed");
     }
 
     /** make's "No rule to make target": the Makefile is older than the configuration. */
