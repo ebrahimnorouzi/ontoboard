@@ -23,6 +23,8 @@ import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
@@ -63,16 +65,46 @@ final class RunComparisons {
      * names its own build - on ODK's own OWL API and, since OntoBoard's engine writes a
      * string as ODK's OWL API writes it ({@code SimpleStrings}), on the older one as well.
      * Only OBO differs there: its header names the Dublin Core properties in full where
-     * ODK's declares short names for them.
+     * ODK's declares short names for them, and so do the ids of their Typedefs; and its
+     * header's property values come in another order (CorpusEquivalenceTest measured both;
+     * on 4.5.29 the files are ODK's).
      */
     static void assertSameProduct(String name, File theirs, File ours) throws Exception {
         if (!onOdksOwlApi() && name.endsWith(".obo")) {
-            assertEquals(String.join("\n", withItsShortNamesInFull(lines(read(theirs)))),
-                    String.join("\n", lines(read(ours))), name + ": ODK's file, the short names "
-                            + "of its header written in full as the older OWL API writes them");
+            assertEquals(String.join("\n", headerInAnyOrder(withItsShortNamesInFull(
+                    lines(read(theirs))))), String.join("\n", headerInAnyOrder(lines(read(ours)))),
+                    name + ": ODK's file, the short names of its header and of its Typedefs "
+                            + "written in full, its header's values in any order, as the older "
+                            + "OWL API writes them");
         } else {
             assertSameFile(name, theirs, ours);
         }
+    }
+
+    /** An OBO file with the property values of its header sorted where they stand. */
+    private static List<String> headerInAnyOrder(List<String> obo) {
+        int end = 0;
+        while (end < obo.size() && !obo.get(end).trim().isEmpty()
+                && !obo.get(end).startsWith("[")) {
+            end++;
+        }
+        List<String> header = new ArrayList<String>();
+        List<String> values = new ArrayList<String>();
+        int first = -1;
+        for (String line : obo.subList(0, end)) {
+            if (line.startsWith("property_value: ")) {
+                first = first < 0 ? header.size() : first;
+                values.add(line);
+            } else {
+                header.add(line);
+            }
+        }
+        Collections.sort(values);
+        if (first >= 0) {
+            header.addAll(first, values);
+        }
+        header.addAll(obo.subList(end, obo.size()));
+        return header;
     }
 
     /**
@@ -94,7 +126,43 @@ final class RunComparisons {
         String generated = butForTheLineOfTheOwlApi(text);
         return onOdksOwlApi() ? generated
                 : generated.replaceFirst("(?m)^Prefix\\(:=<[^>]*>\\)$", "Prefix(:=<...>)")
-                        .replaceFirst("\n\n\n\\)$", "\n\n)");
+                        .replaceFirst("\n\n\n\\)$", "\n\n)")
+                        // ODK's OBO parser labels oboInOwl:id "id"; the older one does not.
+                        .replace("    <owl:AnnotationProperty rdf:about=\"" + OBO_ID + "\">\n"
+                                + "        <rdfs:label>id</rdfs:label>\n"
+                                + "    </owl:AnnotationProperty>",
+                                "    <owl:AnnotationProperty rdf:about=\"" + OBO_ID + "\"/>")
+                        .replace("      \"id\" : \"" + OBO_ID + "\",\n      \"lbl\" : \"id\",\n",
+                                "      \"id\" : \"" + OBO_ID + "\",\n");
+    }
+
+    /**
+     * oboInOwl's {@code id}, which the OWL API of ODK's image labels "id" where it reads OBO -
+     * a project whose edit file is OBO - and the older one does not: on 4.5.9 that label is
+     * not held against anything (CorpusEquivalenceTest measured it, on test-edit-obo and
+     * test-module-star; on 4.5.29 the files are ODK's).
+     */
+    private static final String OBO_ID = "http://www.geneontology.org/formats/oboInOwl#id";
+
+    /** The axioms, without the label the newer OBO parser alone gives oboInOwl's id. */
+    private static Set<OWLAxiom> butForTheLabelOfOboId(Set<OWLAxiom> axioms) {
+        if (onOdksOwlApi()) {
+            return axioms;
+        }
+        Set<OWLAxiom> kept = new java.util.HashSet<OWLAxiom>();
+        for (OWLAxiom axiom : axioms) {
+            boolean itsLabel = axiom instanceof OWLAnnotationAssertionAxiom
+                    && ((OWLAnnotationAssertionAxiom) axiom).getProperty().isLabel()
+                    && OBO_ID.equals(String.valueOf(((OWLAnnotationAssertionAxiom) axiom)
+                            .getSubject()))
+                    && ((OWLAnnotationAssertionAxiom) axiom).getValue().asLiteral().isPresent()
+                    && "id".equals(((OWLAnnotationAssertionAxiom) axiom).getValue().asLiteral()
+                            .get().getLiteral());
+            if (!itsLabel) {
+                kept.add(axiom);
+            }
+        }
+        return kept;
     }
 
     private static String butForTheLineOfTheOwlApi(String text) {
@@ -115,15 +183,24 @@ final class RunComparisons {
             }
         }
         List<String> inFull = new ArrayList<String>();
+        boolean typedef = false;
         for (String line : obo) {
             if (line.startsWith("idspace: ")) {
                 continue;
+            }
+            if (line.startsWith("[")) {
+                typedef = line.equals("[Typedef]");
             }
             String written = line;
             for (Map.Entry<String, String> space : spaces.entrySet()) {
                 if (line.startsWith("property_value: " + space.getKey())) {
                     written = "property_value: " + space.getValue()
                             + line.substring(("property_value: " + space.getKey()).length());
+                }
+                // A Typedef of a property the header gives a short name: its id too.
+                if (typedef && line.startsWith("id: " + space.getKey())) {
+                    written = "id: " + space.getValue()
+                            + line.substring(("id: " + space.getKey()).length());
                 }
             }
             inFull.add(written);
@@ -249,8 +326,9 @@ final class RunComparisons {
         assertEquals(imported(recorded), imported(here), name + ": what it imports");
         assertEquals(sorted(recorded.getAnnotations()), sorted(here.getAnnotations()),
                 name + ": what the ontology says of itself");
-        assertEquals(sorted(recorded.getAxioms(Imports.EXCLUDED)),
-                sorted(here.getAxioms(Imports.EXCLUDED)), name + ": its axioms");
+        assertEquals(sorted(butForTheLabelOfOboId(recorded.getAxioms(Imports.EXCLUDED))),
+                sorted(butForTheLabelOfOboId(here.getAxioms(Imports.EXCLUDED))),
+                name + ": its axioms");
     }
 
     private static String sorted(Set<?> things) {
