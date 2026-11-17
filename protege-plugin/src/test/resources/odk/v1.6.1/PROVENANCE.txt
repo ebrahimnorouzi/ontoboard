@@ -137,3 +137,14 @@ DOSDP_VERSION=0.19.3
 dosdp 0.1.10.dev1
 Made on:      2026-11-17
 Command:      odk.py seed --skipgit -C tests__test-patterns.yaml; equivalence/dosdp/overlay over it; then each on a fresh copy, in /tmp/odk/ptt/src/ontology, with VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00": test: make test IMP=false MIR=false; prepare_release: make prepare_release IMP=false MIR=false; test-building-imports: make test MIR=false with src/patterns/dosdp-patterns/locatedIn.yaml, src/patterns/data/manual/locatedIn.tsv a minute newer
+
+## corpus-runs
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+GNU Make 4.3
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+Made on:      2026-11-17
+Command:      odk.py seed --skipgit -C corpus/configs/<sample>.yaml; then on a fresh copy of the seed, every file of one age, make <target> VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00" for test_fast, prepare_release_fast, in <project>/src/ontology; samples: tests__test-minimal, tests__test-release, tests__test-release-reason, tests__test-release-materialise, tests__test-robot-report, tests__test-sparql-report, tests__test-edit-obo, tests__test-uribase-suffix, tests__test-module-star, examples__minimal

@@ -1,0 +1,13 @@
+format-version: 1.2
+data-version: rrc/releases/1.0.0/rrc-simple.owl
+idspace: terms http://purl.org/dc/terms/ 
+ontology: rrc/rrc-simple
+property_value: owl:versionInfo "1.0.0" xsd:string
+property_value: terms:description "None" xsd:string
+property_value: terms:license https://creativecommons.org/licenses/unspecified
+property_value: terms:title "Test ROBOT report" xsd:string
+
+[Term]
+id: RRC:0000000
+name: root node
+

@@ -1,0 +1,52 @@
+make IMP=false PAT=false COMP=false MIR=false test
+make[1]: Entering directory '/tmp/odk/project/src/ontology'
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+if [ -f mini-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error mini-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input mini-edit.owl --format ofn --output tmp/mini-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/mini-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/mini-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-mini-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-mini-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+PASS Rule ../sparql/owldef-self-reference-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/label-with-iri-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/multiple-replaced_by-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/dc-properties-violation.sparql: 0 violation(s)
+robot --catalog catalog-v001.xml report -i tmp/merged-mini-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/MINI_ --base-iri http://purl.obolibrary.org/obo/mini --print 5 -o reports/mini-edit.owl-obo-report.tsv
+WARN: 'missing_definition' query is missing ?value variable
+WARN: 'missing_superclass' query is missing ?value variable
+Violations: 2
+-----------------
+ERROR:      0
+WARN:       1
+INFO:       1
+
+First 2 violations:
+WARN	missing_definition	root node	IAO:0000115	
+INFO	missing_superclass	root node	rdfs:subClassOf	
+robot --catalog catalog-v001.xml merge --input tmp/mini-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/mini/mini-full.owl annotate -V http://purl.obolibrary.org/obo/mini/releases/1.0.0/mini-full.owl --annotation owl:versionInfo 1.0.0 --output mini-full.owl.tmp.owl && mv mini-full.owl.tmp.owl mini-full.owl
+robot --catalog catalog-v001.xml annotate --input mini-full.owl --ontology-iri http://purl.obolibrary.org/obo/mini.owl annotate -V http://purl.obolibrary.org/obo/mini/releases/1.0.0/mini.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o mini.owl.tmp.owl && mv mini.owl.tmp.owl mini.owl
+robot --catalog catalog-v001.xml merge -i mini.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_mini.owl.txt || { cat reports/validate_profile_owl2dl_mini.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+make[1]: Leaving directory '/tmp/odk/project/src/ontology'

@@ -1,0 +1,104 @@
+make prepare_release IMP=false PAT=false MIR=false COMP=false
+make[1]: Entering directory '/tmp/odk/project/src/ontology'
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+Repository is up-to-date.
+if [ -f rrc-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error rrc-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input rrc-edit.owl --format ofn --output tmp/rrc-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/rrc-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/rrc-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-rrc-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml report -i tmp/merged-rrc-edit.ofn  --profile profile.txt --fail-on ERROR --print 5 -o reports/rrc-edit.owl-obo-report.tsv
+WARN: 'missing_definition' query is missing ?value variable
+WARN: 'missing_superclass' query is missing ?value variable
+Violations: 5
+-----------------
+ERROR:      0
+WARN:       4
+INFO:       1
+
+First 5 violations:
+WARN	missing_definition	obo:RRC_0000000	IAO:0000115	
+WARN	missing_definition	dc:description	IAO:0000115	
+WARN	missing_definition	dc:license	IAO:0000115	
+WARN	missing_definition	dc:title	IAO:0000115	
+INFO	missing_superclass	obo:RRC_0000000	rdfs:subClassOf	
+robot --catalog catalog-v001.xml merge --input tmp/rrc-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-full.owl annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-full.owl --annotation owl:versionInfo 1.0.0 --output rrc-full.owl.tmp.owl && mv rrc-full.owl.tmp.owl rrc-full.owl
+robot --catalog catalog-v001.xml annotate --input rrc-full.owl --ontology-iri http://purl.obolibrary.org/obo/rrc.owl annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o rrc.owl.tmp.owl && mv rrc.owl.tmp.owl rrc.owl
+robot --catalog catalog-v001.xml merge -i rrc.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_rrc.owl.txt || { cat reports/validate_profile_owl2dl_rrc.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/rrc-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv
+robot --catalog catalog-v001.xml annotate --input rrc.owl --ontology-iri http://purl.obolibrary.org/obo/rrc.json annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o rrc.json.tmp.json &&\
+	mv rrc.json.tmp.json rrc.json
+robot --catalog catalog-v001.xml convert --input rrc.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o rrc.obo
+robot --catalog catalog-v001.xml merge --input tmp/rrc-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/RRC --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-base.owl annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output rrc-base.owl.tmp.owl && mv rrc-base.owl.tmp.owl rrc-base.owl
+robot --catalog catalog-v001.xml annotate --input rrc-base.owl --ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-base.json annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-base.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o rrc-base.json.tmp.json &&\
+	mv rrc-base.json.tmp.json rrc-base.json
+robot --catalog catalog-v001.xml convert --input rrc-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o rrc-base.obo
+robot --catalog catalog-v001.xml annotate --input rrc-full.owl --ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-full.json annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-full.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o rrc-full.json.tmp.json &&\
+	mv rrc-full.json.tmp.json rrc-full.json
+robot --catalog catalog-v001.xml convert --input rrc-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o rrc-full.obo
+robot --catalog catalog-v001.xml query -f csv -i tmp/merged-rrc-edit.ofn --query ../sparql/rrc_terms.sparql tmp/ontologyterms.txt
+robot --catalog catalog-v001.xml query -f csv -i tmp/merged-rrc-edit.ofn --query ../sparql/simple-seed.sparql tmp/simple_seed.txt.tmp &&\
+cat tmp/simple_seed.txt.tmp tmp/ontologyterms.txt | sort | uniq >  tmp/simple_seed.txt &&\
+echo "http://www.geneontology.org/formats/oboInOwl#SubsetProperty" >> tmp/simple_seed.txt &&\
+echo "http://www.geneontology.org/formats/oboInOwl#SynonymTypeProperty" >> tmp/simple_seed.txt
+robot --catalog catalog-v001.xml merge --input tmp/rrc-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+	relax --include-subclass-of true \
+	remove --axioms equivalent \
+	filter --term-file tmp/simple_seed.txt --select "annotations ontology anonymous self" --trim true --signature true \
+	reduce -r ELK --include-subproperties true \
+	odk:normalize --base-iri http://purl.obolibrary.org/obo --subset-decls true --synonym-decls true \
+	repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-simple.owl annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-simple.owl --annotation owl:versionInfo 1.0.0 --output rrc-simple.owl.tmp.owl && mv rrc-simple.owl.tmp.owl rrc-simple.owl
+robot --catalog catalog-v001.xml annotate --input rrc-simple.owl --ontology-iri http://purl.obolibrary.org/obo/rrc/rrc-simple.json annotate -V http://purl.obolibrary.org/obo/rrc/releases/1.0.0/rrc-simple.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o rrc-simple.json.tmp.json &&\
+	mv rrc-simple.json.tmp.json rrc-simple.json
+robot --catalog catalog-v001.xml convert --input rrc-simple.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o rrc-simple.obo
+Checking RDF/XML file rrc.owl...
+  LightRDF: OK
+Checking RDF/XML file rrc-base.owl...
+  LightRDF: OK
+Checking RDF/XML file rrc-full.owl...
+  LightRDF: OK
+Checking RDF/XML file rrc-simple.owl...
+  LightRDF: OK
+make copy_release_files
+make[2]: Entering directory '/tmp/odk/project/src/ontology'
+rsync -R   rrc.json  rrc.obo  rrc.owl   rrc-base.json  rrc-base.obo  rrc-base.owl   rrc-full.json  rrc-full.obo  rrc-full.owl   rrc-simple.json  rrc-simple.obo  rrc-simple.owl    reports/rrc-edit.owl-obo-report.tsv ../..
+make[2]: Leaving directory '/tmp/odk/project/src/ontology'
+rm -f   rrc.json  rrc.obo  rrc.owl   rrc-base.json  rrc-base.obo  rrc-base.owl   rrc-full.json  rrc-full.obo  rrc-full.owl   rrc-simple.json  rrc-simple.obo  rrc-simple.owl  tmp/merged-rrc-edit.ofn tmp/rrc-preprocess.owl
+Release files are now in ../.. - now you should commit, push and make a release         on your git hosting site such as GitHub or GitLab
+make[1]: Leaving directory '/tmp/odk/project/src/ontology'

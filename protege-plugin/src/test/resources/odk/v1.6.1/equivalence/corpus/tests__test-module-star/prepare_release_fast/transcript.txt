@@ -1,0 +1,87 @@
+make prepare_release IMP=false PAT=false MIR=false COMP=false
+make[1]: Entering directory '/tmp/odk/project/src/ontology'
+ODK Makefile v1.6.1
+ODK Image v1.6.1
+ROBOT version 1.9.10
+DOSDP-Tools v0.19.3
+Konclude v0.7.0-1138
+Jena v4.9.0
+Relation-Graph v2.3.3
+Ontology Access Kit v0.6.23
+Ammonite REPL & Script-Runner, 2.5.9
+SSSOM-CLI version 1.10.0
+Repository is up-to-date.
+if [ -f modstar-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error modstar-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input modstar-edit.obo --format ofn --output tmp/modstar-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/modstar-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/modstar-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-modstar-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-modstar-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/dc-properties-violation.sparql -O reports
+PASS Rule ../sparql/owldef-self-reference-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/iri-range-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/label-with-iri-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/multiple-replaced_by-violation.sparql: 0 violation(s)
+PASS Rule ../sparql/dc-properties-violation.sparql: 0 violation(s)
+robot --catalog catalog-v001.xml report -i tmp/merged-modstar-edit.ofn -l true  --fail-on None --base-iri http://purl.obolibrary.org/obo/MODSTAR_ --base-iri http://purl.obolibrary.org/obo/modstar --print 5 -o reports/modstar-edit.obo-obo-report.tsv
+WARN: 'missing_definition' query is missing ?value variable
+WARN: 'missing_superclass' query is missing ?value variable
+Violations: 2
+-----------------
+ERROR:      0
+WARN:       1
+INFO:       1
+
+First 2 violations:
+WARN	missing_definition	root node	IAO:0000115	
+INFO	missing_superclass	root node	rdfs:subClassOf	
+robot --catalog catalog-v001.xml merge --input tmp/modstar-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/modstar/modstar-full.owl annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar-full.owl --annotation owl:versionInfo 1.0.0 --output modstar-full.owl.tmp.owl && mv modstar-full.owl.tmp.owl modstar-full.owl
+robot --catalog catalog-v001.xml annotate --input modstar-full.owl --ontology-iri http://purl.obolibrary.org/obo/modstar.owl annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o modstar.owl.tmp.owl && mv modstar.owl.tmp.owl modstar.owl
+robot --catalog catalog-v001.xml merge -i modstar.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_modstar.owl.txt || { cat reports/validate_profile_owl2dl_modstar.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+Finished running all tests successfully.
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/modstar-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml annotate --input modstar.owl --ontology-iri http://purl.obolibrary.org/obo/modstar.json annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o modstar.json.tmp.json &&\
+	mv modstar.json.tmp.json modstar.json
+robot --catalog catalog-v001.xml convert --input modstar.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o modstar.obo
+robot --catalog catalog-v001.xml merge --input tmp/modstar-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri http://purl.obolibrary.org/obo/MODSTAR --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri http://purl.obolibrary.org/obo/modstar/modstar-base.owl annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output modstar-base.owl.tmp.owl && mv modstar-base.owl.tmp.owl modstar-base.owl
+robot --catalog catalog-v001.xml annotate --input modstar-base.owl --ontology-iri http://purl.obolibrary.org/obo/modstar/modstar-base.json annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar-base.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o modstar-base.json.tmp.json &&\
+	mv modstar-base.json.tmp.json modstar-base.json
+robot --catalog catalog-v001.xml convert --input modstar-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o modstar-base.obo
+robot --catalog catalog-v001.xml annotate --input modstar-full.owl --ontology-iri http://purl.obolibrary.org/obo/modstar/modstar-full.json annotate -V http://purl.obolibrary.org/obo/modstar/releases/1.0.0/modstar-full.json --annotation owl:versionInfo 1.0.0 \
+	convert --check false -f json -o modstar-full.json.tmp.json &&\
+	mv modstar-full.json.tmp.json modstar-full.json
+robot --catalog catalog-v001.xml convert --input modstar-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o modstar-full.obo
+Checking RDF/XML file modstar.owl...
+  LightRDF: OK
+Checking RDF/XML file modstar-base.owl...
+  LightRDF: OK
+Checking RDF/XML file modstar-full.owl...
+  LightRDF: OK
+make copy_release_files
+make[2]: Entering directory '/tmp/odk/project/src/ontology'
+rsync -R   modstar.json  modstar.obo  modstar.owl   modstar-base.json  modstar-base.obo  modstar-base.owl   modstar-full.json  modstar-full.obo  modstar-full.owl   ../..
+make[2]: Leaving directory '/tmp/odk/project/src/ontology'
+rm -f   modstar.json  modstar.obo  modstar.owl   modstar-base.json  modstar-base.obo  modstar-base.owl   modstar-full.json  modstar-full.obo  modstar-full.owl  tmp/merged-modstar-edit.ofn tmp/modstar-preprocess.owl
+Release files are now in ../.. - now you should commit, push and make a release         on your git hosting site such as GitHub or GitLab
+make[1]: Leaving directory '/tmp/odk/project/src/ontology'

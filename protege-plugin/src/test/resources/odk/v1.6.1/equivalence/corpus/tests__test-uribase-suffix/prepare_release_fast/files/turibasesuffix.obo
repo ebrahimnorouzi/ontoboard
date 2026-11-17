@@ -1,0 +1,14 @@
+format-version: 1.2
+data-version: https://w3id.org/odk/ontology/releases/1.0.0/turibasesuffix.owl
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: https://w3id.org/odk/turibasesuffix.owl
+property_value: dcterms:description "None" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/unspecified
+property_value: dcterms:title "Test URI Base with suffix" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: TURIBASESUFFIX:0000000
+name: root node
+

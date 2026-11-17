@@ -1,0 +1,6 @@
+Level	Rule Name	Subject	Property	Value
+WARN	missing_definition	obo:RRC_0000000	IAO:0000115	
+WARN	missing_definition	dc:description	IAO:0000115	
+WARN	missing_definition	dc:license	IAO:0000115	
+WARN	missing_definition	dc:title	IAO:0000115	
+INFO	missing_superclass	obo:RRC_0000000	rdfs:subClassOf	
