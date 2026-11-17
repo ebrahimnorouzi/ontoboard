@@ -137,4 +137,81 @@ class IdRangesClaimTest {
         assertThrows(IllegalArgumentException.class,
                 () -> IdRanges.claim(once, "ADDITIONAL EDITOR", "eno"));
     }
+
+    // ------------------------------------------------------------------ under whose name
+
+    /**
+     * Protege's own ID ranges (5.6 and later) find the person's range by the user name Protege
+     * has for them, and say "No Id Range Found For Current User" when none is allocated to it.
+     * Read from protege-editor-owl 5.6.9 (IdPolicyEntityCreationPreferencesUpdater,
+     * DefaultUserNameProvider, UserNamePreferencesManager): git's user name for the ontology's
+     * repository where Preferences &gt; User details asks for it (off unless ticked), else the
+     * user name set there, else the account's; a range is theirs when its allocatedto equals
+     * that name, case aside.
+     */
+    @Test
+    void protegeTakesItsUserDetailsNameThenTheAccounts() {
+        assertEquals("Ada Lovelace",
+                ProtegeUserName.decided(false, "ada-git", "Ada Lovelace", "ada"));
+        assertEquals("ada", ProtegeUserName.decided(false, "ada-git", null, "ada"));
+        assertEquals("ada", ProtegeUserName.decided(false, null, "  ", "ada"));
+        assertEquals("ada-git", ProtegeUserName.decided(true, "ada-git", "Ada Lovelace", "ada"));
+        assertEquals("Ada Lovelace", ProtegeUserName.decided(true, " ", "Ada Lovelace", "ada"),
+                "git has no name to give: as without it");
+    }
+
+    /**
+     * The board's claim is written under that name - not under the collaboration display name,
+     * which Protege does not know - so after the claim Protege finds the range, and does not ask.
+     */
+    @Test
+    void theBoardClaimsUnderTheNameProtegeLooksUp() {
+        String protege = ProtegeUserName.decided(false, null, "Ada Lovelace", "ada");
+        String editor = ProtegeUserName.forRanges(protege, "Countess of Lovelace",
+                IdRanges.parse(seed()));
+
+        String claimed = IdRanges.claim(seed(), "ONTOLOGY-CREATOR", editor);
+
+        assertTrue(claimed.contains("allocatedto: \"Ada Lovelace\""), claimed);
+        assertFalse(claimed.contains("Countess"), claimed);
+        assertEquals("Ada Lovelace", IdRanges.parse(claimed).rangeFor("ADA LOVELACE")
+                .getAllocatedTo(), "found as Protege finds it: case aside");
+    }
+
+    /**
+     * A range an earlier OntoBoard claimed under the display name stays the one the board
+     * mints from while none is allocated to Protege's name; where both have one, Protege's.
+     */
+    @Test
+    void aRangeClaimedUnderTheDisplayNameBeforeIsStillMintedFrom() {
+        String before = IdRanges.claim(seed(), "ONTOLOGY-CREATOR", "Countess of Lovelace");
+
+        assertEquals("Countess of Lovelace", ProtegeUserName.forRanges("Ada Lovelace",
+                "Countess of Lovelace", IdRanges.parse(before)));
+        assertEquals("Ada Lovelace", ProtegeUserName.forRanges("Ada Lovelace",
+                "Countess of Lovelace", IdRanges.parse(IdRanges.claim(before,
+                        "ADDITIONAL EDITOR", "Ada Lovelace"))), "Protege's own comes first");
+        assertEquals("Ada Lovelace", ProtegeUserName.forRanges("Ada Lovelace",
+                "Countess of Lovelace", null), "a project without ranges");
+        assertEquals("Ada Lovelace", ProtegeUserName.forRanges("Ada Lovelace", null,
+                IdRanges.parse(before)), "no display name");
+    }
+
+    /** The ranges a project's name is decided by are the ones beside its ontology. */
+    @Test
+    void theRangesBesideTheOntologyDecide(@org.junit.jupiter.api.io.TempDir File folder)
+            throws Exception {
+        File ontology = new File(folder, "eggboil-edit.owl");
+        Files.write(ontology.toPath(), "Ontology()\n".getBytes(StandardCharsets.UTF_8));
+        File ranges = new File(folder, "eggboil-idranges.owl");
+        Files.write(ranges.toPath(), IdRanges.claim(seed(), "ONTOLOGY-CREATOR",
+                "Countess of Lovelace").getBytes(StandardCharsets.UTF_8));
+
+        assertEquals("Countess of Lovelace",
+                ProtegeUserName.forProjectOf(ontology, "Countess of Lovelace"));
+
+        Files.write(ranges.toPath(), seed().getBytes(StandardCharsets.UTF_8));
+        assertFalse("Countess of Lovelace".equals(ProtegeUserName.forProjectOf(ontology,
+                "Countess of Lovelace")), "no range of the display name's: Protege's name");
+    }
 }

@@ -979,7 +979,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
 
         final Map<IriGenerator.Source, IriGenerator> offered =
                 new LinkedHashMap<IriGenerator.Source, IriGenerator>();
-        String editor = IriGenerator.editorName();
+        String editor = IriGenerator.editorName(ontologyFileOrNull());
         for (IriGenerator.Source source : IriGenerator.Source.values()) {
             offered.put(source, IriGenerator.using(source, book, ontologyOrNull(),
                     ontologyFileOrNull(), editor, sheetName, IriGenerator.Moment.now()));
@@ -1093,9 +1093,10 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private void generateOneIdentifier(String sheetName, int sheetRow, int column) {
         IriGenerator minting = lastChosen == null
                 ? IriGenerator.forSheet(book, sheetName, ontologyOrNull(), ontologyFileOrNull(),
-                        IriGenerator.editorName())
+                        IriGenerator.editorName(ontologyFileOrNull()))
                 : IriGenerator.using(lastChosen, book, ontologyOrNull(), ontologyFileOrNull(),
-                        IriGenerator.editorName(), sheetName, IriGenerator.Moment.now());
+                        IriGenerator.editorName(ontologyFileOrNull()), sheetName,
+                        IriGenerator.Moment.now());
         if (!minting.canMint()) {
             JOptionPane.showMessageDialog(this, wrap(minting.getRefusal()),
                     "No identifier to give", JOptionPane.WARNING_MESSAGE);
@@ -1427,7 +1428,8 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             for (final TermCreation.Proposal proposal : TermCreation.proposeAll(book,
                     sheetName, sheetRow, modelColumn + 1,
                     IriGenerator.forSheet(book, sheetName, ontologyOrNull(),
-                            ontologyFileOrNull(), IriGenerator.editorName()))) {
+                            ontologyFileOrNull(), IriGenerator.editorName(
+                                    ontologyFileOrNull())))) {
                 if (!proposal.isPossible()) {
                     continue;
                 }

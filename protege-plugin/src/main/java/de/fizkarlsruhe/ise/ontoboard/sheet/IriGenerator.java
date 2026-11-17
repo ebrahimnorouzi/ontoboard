@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.sheet;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
+import de.fizkarlsruhe.ise.ontoboard.odk.ProtegeUserName;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateColumns;
 import java.io.File;
@@ -402,7 +403,8 @@ public final class IriGenerator {
     public static IriGenerator using(Source source, SheetBook book, OWLOntology ontology,
             File ontologyFile, String editor, String onlyThisSheet, Moment moment) {
         Set<String> inTheOntology = everyIriIn(ontology);
-        String who = editor == null || editor.trim().isEmpty() ? editorName() : editor.trim();
+        String who = editor == null || editor.trim().isEmpty() ? editorName(ontologyFile)
+                : editor.trim();
         Moment when = moment == null ? Moment.now() : moment;
         if (source == Source.ID_RANGES) {
             return fromRanges(book, inTheOntology, ontologyFile, who, when);
@@ -529,7 +531,8 @@ public final class IriGenerator {
      */
     public static IriGenerator forSheet(SheetBook book, String sheetName, OWLOntology ontology,
             File ontologyFile, String editor) {
-        String who = editor == null || editor.trim().isEmpty() ? editorName() : editor.trim();
+        String who = editor == null || editor.trim().isEmpty() ? editorName(ontologyFile)
+                : editor.trim();
         Set<String> inTheOntology = everyIriIn(ontology);
         Moment when = Moment.now();
         IriGenerator fromRanges = fromRanges(book, inTheOntology, ontologyFile, who, when);
@@ -683,26 +686,34 @@ public final class IriGenerator {
                 moment, null, null);
     }
 
-    /**
-     * Who is minting, by the same rule the canvas uses.
-     *
-     * <p>The collaboration display name when one is configured, since that is the name a team has
-     * already agreed on and the one their ranges are likely allocated to; otherwise the OS
-     * account, which is what the scaffold allocates the first range to.
-     */
+    /** As {@link #editorName(File)}, for no ontology in particular. */
     public static String editorName() {
+        return editorName(null);
+    }
+
+    /**
+     * Who is minting, by one rule for every place that mints or allocates - the board, the
+     * sheets and ID ranges...: the name Protege's own ID ranges know the person by (its
+     * Preferences &gt; User details, else the account's - {@link ProtegeUserName}), so that the
+     * range the board claims is the one Protege finds and Protege no longer says "No Id Range
+     * Found For Current User". Until 1.154.0 it was the collaboration display name, which
+     * Protege does not know: a range claimed under it stays the person's while none is
+     * allocated to Protege's name.
+     *
+     * @param ontologyFile the ontology minted in, whose ranges are read; null for none
+     */
+    public static String editorName(File ontologyFile) {
+        String displayName = null;
         try {
             String configured = de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore.load()
                     .getDisplayName();
-            if (configured != null && !configured.trim().isEmpty()) {
-                return configured.trim();
-            }
+            displayName = configured == null || configured.trim().isEmpty() ? null
+                    : configured.trim();
         } catch (RuntimeException noPreferences) {
-            // No preferences store - a test, or a first run. The OS account is the fallback the
-            // scaffold itself assumes.
+            // No preferences store - a test, or a first run: no earlier claim under it either.
         }
-        String account = System.getProperty("user.name", "");
-        return account.trim().isEmpty() ? "FirstEditor" : account.trim();
+        String who = ProtegeUserName.forProjectOf(ontologyFile, displayName);
+        return who == null || who.trim().isEmpty() ? ANONYMOUS : who.trim();
     }
 
     // ---------------------------------------------------------------- what it is

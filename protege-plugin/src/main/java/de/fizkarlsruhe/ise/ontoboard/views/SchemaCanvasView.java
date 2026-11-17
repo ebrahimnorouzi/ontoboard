@@ -6964,16 +6964,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Who is minting, for matching against the ID ranges.
-     *
-     * <p>The collaboration display name when one is configured, since that is the name a team has
-     * already agreed on and the one their ranges are likely allocated to; otherwise the OS account,
-     * which is what the scaffold allocates the first range to.
+     * Who is minting, for matching against the ID ranges: the name Protege's own ID ranges know
+     * the person by, so the range the board claims is the one Protege finds.
      */
     private String editorName() {
         // One rule for every place that mints or allocates: the sheet editor and ID ranges...
         // call the same function, so a block allocated there is the block the board mints from.
-        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName();
+        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(currentOntologyFile);
     }
 
     /**
