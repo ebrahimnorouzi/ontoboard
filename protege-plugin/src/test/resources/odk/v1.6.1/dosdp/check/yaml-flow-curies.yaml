@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes: {organ: UBERON:0000062, cell: CL:0000000}
+relations: {part_of: BFO:0000050}
+vars:
+  x: "'organ'"
+subClassOf:
+  text: "'part_of' some %s"
+  vars: [x]

@@ -153,6 +153,9 @@ PATTERNS = {
     "vars-internal-var-name-not-a-name": HEAD + X + "internal_vars:\n  - var_name: \"1 bad\"\n"
     "    input: x\n",
     "vars-internal-vars-a-map": HEAD + "internal_vars:\n  iv: x\n",
+    "vars-internal-var-a-string": HEAD + X + "internal_vars:\n  - a\n",
+    "vars-internal-var-without-a-name": HEAD + X + "internal_vars:\n  - input: x\n",
+    "vars-internal-var-a-string-without-vars": HEAD + "internal_vars:\n  - a\n",
     "vars-undeclared-in-def": HEAD + X + "def:\n  text: \"%s\"\n  vars: [y]\n",
     "vars-undeclared-in-comment": HEAD + X + "comment:\n  text: \"%s\"\n  vars: [y]\n",
     "vars-undeclared-in-namespace": HEAD + X + "namespace:\n  text: \"%s\"\n  vars: [y]\n",
@@ -301,6 +304,8 @@ PATTERNS = {
     "      - annotationProperty: nothere\n        value: w\n",
     "annotations-under-a-value": HEAD + X + C + "annotations:\n  - annotationProperty: c\n"
     "    value: v\n    annotations:\n      - annotationProperty: nothere\n        value: w\n",
+    "annotations-multi-clause-only": HEAD + X + C + "annotations:\n  - multi_clause:\n"
+    "      clauses:\n        - text: \"%s\"\n          vars: [x]\n",
     "annotations-in-a-block-property-undeclared": HEAD + X + "name:\n  text: \"%s\"\n"
     "  vars: [x]\n  annotations:\n    - annotationProperty: c\n      value: \"v\"\n",
     "annotations-in-an-owl-block-property-undeclared": HEAD + X + "subClassOf:\n"
@@ -316,6 +321,16 @@ PATTERNS = {
     "yaml-duplicate-key": HEAD + "description: one\ndescription: two\n",
     "yaml-two-documents": HEAD + "---\n" + HEAD,
     "yaml-quoted-keys": "\"pattern_name\": x\n'pattern_iri': y\n",
+    # a colon in a word between [ ] or { }: YAML 1.2 keeps it in the word, 1.1 stops there
+    "yaml-flow-curies": HEAD + "classes: {organ: UBERON:0000062, cell: CL:0000000}\n"
+    "relations: {part_of: BFO:0000050}\nvars:\n  x: \"'organ'\"\n"
+    "subClassOf:\n  text: \"'part_of' some %s\"\n  vars: [x]\n",
+    "yaml-flow-url": HEAD + "contributors: [https://orcid.org/0000-0002-1825-0097]\n",
+    "yaml-flow-words-with-a-colon": HEAD + "tags: [a:b c, d:e]\n",
+    "yaml-flow-quote-and-colon": HEAD + "tags: [it's:here]\n",
+    "yaml-flow-colon-then-space": HEAD + "tags: [a: b]\n",
+    "yaml-flow-colon-at-the-end": HEAD + "tags: [a:]\n",
+    "yaml-flow-time": HEAD + "examples: [2001-12-14 21:59:43]\n",
     "yaml-yes": HEAD + "description: yes\n",
     "yaml-on": HEAD + "description: on\n",
     "yaml-true": HEAD + "description: True\n",

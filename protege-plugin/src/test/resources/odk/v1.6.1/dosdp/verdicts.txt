@@ -50,6 +50,9 @@ vars-internal-var.yaml 0
 vars-internal-var-input-undeclared.yaml 0
 vars-internal-var-name-not-a-name.yaml 0
 vars-internal-vars-a-map.yaml 1
+vars-internal-var-a-string.yaml 1
+vars-internal-var-without-a-name.yaml 1
+vars-internal-var-a-string-without-vars.yaml 0
 vars-undeclared-in-def.yaml 1
 vars-undeclared-in-comment.yaml 1
 vars-undeclared-in-namespace.yaml 1
@@ -138,6 +141,7 @@ annotations-property-undeclared-iri.yaml 1
 annotations-property-a-class.yaml 1
 annotations-nested-property-undeclared.yaml 0
 annotations-under-a-value.yaml 1
+annotations-multi-clause-only.yaml 0
 annotations-in-a-block-property-undeclared.yaml 0
 annotations-in-an-owl-block-property-undeclared.yaml 0
 yaml-not-yaml.yaml 1
@@ -149,6 +153,13 @@ yaml-merge-key.yaml 0
 yaml-duplicate-key.yaml 1
 yaml-two-documents.yaml 1
 yaml-quoted-keys.yaml 0
+yaml-flow-curies.yaml 0
+yaml-flow-url.yaml 0
+yaml-flow-words-with-a-colon.yaml 0
+yaml-flow-quote-and-colon.yaml 0
+yaml-flow-colon-then-space.yaml 1
+yaml-flow-colon-at-the-end.yaml 0
+yaml-flow-time.yaml 1
 yaml-yes.yaml 0
 yaml-on.yaml 0
 yaml-true.yaml 1

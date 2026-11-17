@@ -1,0 +1,4 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+internal_vars:
+  - a
