@@ -250,10 +250,14 @@ final class RunComparisons {
     }
 
     private static String sorted(Set<?> things) {
-        Set<String> sorted = new TreeSet<String>();
+        // An anonymous individual's name is the loader's own, another at each load
+        // (_:genid2147732081): it says nothing of the ontology, and is left out. Found by the
+        // live run of nfdicore's refresh-ro (1.154.0): RO annotates a blank node.
+        List<String> sorted = new ArrayList<String>();
         for (Object thing : things) {
-            sorted.add(thing.toString());
+            sorted.add(thing.toString().replaceAll("_:genid[0-9]+", "_:anonymous"));
         }
+        Collections.sort(sorted);
         return String.join("\n", sorted);
     }
 
