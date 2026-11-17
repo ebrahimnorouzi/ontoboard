@@ -535,33 +535,35 @@ final class OdkReleaseForm {
     // ------------------------------------------------------------------ the release
 
     /**
-     * Releases as chosen, and reports it.
+     * The release, where nobody reads again what it rewrote: that is said instead.
      *
-     * @param imageNote why the image is not the ODK that wrote the project, or null
+     * @param routeNote a word about who builds it, said first, or null
      */
-    /** The release, where nobody reads again what it rewrote: that is said instead. */
     static OperationResult run(String operation, Start start, Map<String, String> chosen,
             OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
-            String imageNote) {
-        return run(operation, start, chosen, odk, git, asks, imageNote, null);
+            String routeNote) {
+        return run(operation, start, chosen, odk, git, asks, routeNote, null);
     }
 
     /**
      * The release.
      *
+     * @param routeNote  a word about who builds it, said first: why ODK's image is not the ODK
+     *                   that wrote the project, or that ROBOT, run by OntoBoard itself, has
+     *                   less memory than the project asks for; null for none
      * @param readsAgain whoever has the project open, asked to read again the edit file
      *                   and the import modules where the release rewrote them; null to say
      *                   instead that they were rewritten
      */
     static OperationResult run(String operation, Start start, Map<String, String> chosen,
             OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
-            String imageNote, ReadsAgain readsAgain) {
+            String routeNote, ReadsAgain readsAgain) {
         OperationResult.Builder result = OperationResult.of(operation);
         OdkRelease.Request request = request(start, chosen);
         result.note("Project: " + start.facts.root().getAbsolutePath());
         result.note("Version: " + request.version());
-        if (imageNote != null) {
-            result.warn(imageNote);
+        if (routeNote != null) {
+            result.warn(routeNote);
         }
         if (odk.runsTheMakefileAsItIs()) {
             // F5: make runs a Makefile that is not ODK's as it is; the engine would refuse it.

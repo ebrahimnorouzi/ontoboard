@@ -350,6 +350,11 @@ public class BuildAction extends OntoBoardAction {
                 + "without a container.");
         // As ODK's make would be run for it, so that the same can be run in a terminal.
         result.note("Command: " + BuildSwitches.command(target, off));
+        String memory = de.fizkarlsruhe.ise.ontoboard.odk.RobotMemory.noteHere(
+                MakeRun.workingDirectory(editFile));
+        if (memory != null) {
+            result.warn(memory);
+        }
         long started = System.currentTimeMillis();
         de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome =
                 de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.run(editFile, target,

@@ -357,7 +357,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                 : ", " + undeclared + " on disk and undeclared")
                 + (patterns == 0 ? "" : ", " + patterns + " from the pattern library");
         if (odk) {
-            return withOdk(result, counted, asked, ran);
+            return withOdk(result, counted, asked, ran, editFile);
         }
         if (!rebuild) {
             result.note(ImportModules.hasMirror(root)
@@ -380,7 +380,7 @@ public class RefreshImportsAction extends OntoBoardAction {
      * what was - with the run's log - and what changed.
      */
     private OperationResult withOdk(OperationResult.Builder result, String counted,
-            OdkImportsForm.Asked asked, OdkImportsForm.Ran ran) {
+            OdkImportsForm.Asked asked, OdkImportsForm.Ran ran, File editFile) {
         String targets = "make " + String.join(", then make ", asked.targets());
         for (String note : asked.notes()) {
             result.note(note);
@@ -398,6 +398,14 @@ public class RefreshImportsAction extends OntoBoardAction {
         if (route.imageNote() != null) {
             // Not the ODK that wrote this project's Makefile: said, as Build says it.
             result.warn(route.imageNote());
+        }
+        if (odkWay.kind() == OdkImportsForm.Way.Kind.ITSELF && editFile != null) {
+            // ROBOT runs inside Protégé then, with Protégé's memory: said, as Build says it.
+            String memory = de.fizkarlsruhe.ise.ontoboard.odk.RobotMemory.noteHere(
+                    editFile.getAbsoluteFile().getParentFile());
+            if (memory != null) {
+                result.warn(memory);
+            }
         }
         int shown = 0;
         for (String line : ran.transcript()) {

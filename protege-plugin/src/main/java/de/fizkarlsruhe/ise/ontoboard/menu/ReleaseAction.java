@@ -401,6 +401,12 @@ public class ReleaseAction extends OntoBoardAction {
             odk = OdkRelease.inContainer(runtime, image, host, start.facts().ontology(),
                     ProcessRunner.real(), null);
         }
+        // Said first: the image, when it is not the project's own ODK; ROBOT's memory, when
+        // OntoBoard builds it and the project asks for more than Protégé has.
+        String routeNote = by == ReleaseRoute.Kind.ITSELF
+                ? de.fizkarlsruhe.ise.ontoboard.odk.RobotMemory.noteHere(
+                        start.facts().ontology())
+                : imageNote;
         return OdkReleaseForm.run(operationName(), start, odkChosen, odk,
                 ProcessRunner.real(), new OdkRelease.Asks() {
                     @Override
@@ -412,7 +418,7 @@ public class ReleaseAction extends OntoBoardAction {
                     public boolean stopped() {
                         return BackgroundRun.abandoned();
                     }
-                }, imageNote, protegeReadsAgain());
+                }, routeNote, protegeReadsAgain());
     }
 
     /** The git commands of a release as the question shows them, in a view that scrolls. */
