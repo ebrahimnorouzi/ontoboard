@@ -150,7 +150,9 @@ final class OdkTools {
                 for (String named : RobotPaths.files(call.arguments(), folder)) {
                     before.put(new File(named), stampOf(new File(named)));
                 }
-                final List<String> line = RobotPaths.absolute(call.arguments(), folder);
+                // An address to load from, through a move from http to https (IriRedirects).
+                final List<String> line = RobotPaths.absolute(
+                        IriRedirects.inputIrisAcrossToHttps(call.arguments()), folder);
                 // With this Java's certificates; and where it does not know a server's
                 // authority, once more with the operating system's as well.
                 result = HttpsOpener.alsoWithOperatingSystemsTrust(
