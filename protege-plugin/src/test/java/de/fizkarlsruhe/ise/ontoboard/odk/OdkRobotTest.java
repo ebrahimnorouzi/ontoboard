@@ -986,6 +986,41 @@ class OdkRobotTest {
         }
     }
 
+    /**
+     * OWL API 4.5.9 - Protégé 5.5.0's - leaves an OBO file it read open until the stream is
+     * collected; on Windows an open file cannot be renamed or deleted, so git cannot replace a
+     * project's OBO edit file (found by CorpusEquivalenceTest, whose test-edit-obo folders
+     * could not be removed). The engine lets it go after the line.
+     */
+    @Test
+    void anOboFileTheEngineReadIsLetGo(@TempDir File temp) throws Exception {
+        File obo = new File(temp, "edit.obo");
+        Files.write(obo.toPath(), "format-version: 1.2\nontology: x\n\n[Term]\nid: X:1\nname: one\n"
+                .getBytes(StandardCharsets.UTF_8));
+
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(obo), "--output",
+                path(new File(temp, "out.ofn")))).ok());
+
+        Files.delete(obo.toPath());
+    }
+
+    @Test
+    void anOboFileIsLeftOpenByTheOlderOwlApiOnWindowsOnly() {
+        assertTrue(OdkRobot.leavesOboOpen("4.5.9.2019-02-01T07:24:44Z", true));
+        assertFalse(OdkRobot.leavesOboOpen("4.5.29.2024-05-13T12:11:03Z", true));
+        assertFalse(OdkRobot.leavesOboOpen("4.5.9.2019-02-01T07:24:44Z", false));
+    }
+
+    @Test
+    void aLineReadsAnOboFileByWhatItsInputsName() {
+        assertTrue(OdkRobot.readsObo(Arrays.asList("convert", "--input", "/x/a.obo",
+                "--output", "/x/b.ofn")));
+        assertTrue(OdkRobot.readsObo(Arrays.asList("merge", "-i", "/x/a.owl", "-i",
+                "/x/B.OBO")));
+        assertFalse(OdkRobot.readsObo(Arrays.asList("convert", "--input", "/x/a.owl",
+                "--output", "/x/b.obo")));
+    }
+
     @Test
     void aFileWithWindowsLineEndsIsGivenOdks(@TempDir File temp) throws Exception {
         File json = new File(temp, "a.json");
