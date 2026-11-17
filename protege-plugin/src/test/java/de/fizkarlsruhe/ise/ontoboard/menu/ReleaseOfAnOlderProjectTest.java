@@ -48,7 +48,9 @@ class ReleaseOfAnOlderProjectTest {
     /**
      * A release runs make clean first. Where OntoBoard itself would build, it is asked about
      * clean before the form is shown, as it is about the release's own target: a project
-     * with a clean of its own was refused only after the form had been filled in.
+     * with a clean of its own was refused only after the form had been filled in. Since
+     * 1.154.0 the engine runs a project's own rules when it can run every line of them, so
+     * this clean has a line it cannot.
      */
     @Test
     void theEngineIsAskedAboutCleanBeforeTheFormIsShown(@TempDir File where) throws Exception {
@@ -58,14 +60,15 @@ class ReleaseOfAnOlderProjectTest {
 
         File own = new File(edit.getParentFile(), "eggboil.Makefile");
         Files.write(own.toPath(), (new String(Files.readAllBytes(own.toPath()),
-                StandardCharsets.UTF_8) + "\nclean:\n\trm -rf build\n")
+                StandardCharsets.UTF_8) + "\nclean:\n\trm -rf build\n\tlatexmk -C\n")
                         .getBytes(StandardCharsets.UTF_8));
 
         String[] cannot = ReleaseAction.whyTheEngineCannot(edit,
                 Collections.singletonMap("VERSION", "1.0.0"));
 
         assertTrue(cannot[0] != null && cannot[0].contains("eggboil.Makefile")
-                && cannot[0].contains("clean"), String.valueOf(cannot[0]));
+                && cannot[0].contains("clean") && cannot[0].contains("latexmk"),
+                String.valueOf(cannot[0]));
         assertEquals(cannot[0], cannot[1], "and so can neither release be built here");
     }
 }
