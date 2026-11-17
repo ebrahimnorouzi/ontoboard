@@ -64,12 +64,26 @@ public final class MakeRun {
 
     /** The command for a target, run from the directory the Makefile is in. */
     public static List<String> command(String target) {
+        return command(target, java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, with variables on make's command line - Build's switches that are off,
+     * {@code IMP=false} ({@link BuildSwitches}) - after the target, as ODK's documentation
+     * writes them.
+     */
+    public static List<String> command(String target, java.util.Map<String, String> variables) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
         // No -j: ODK recipes are not written to be parallel-safe, and interleaved output from a
         // parallel build is unreadable, which defeats the point of keeping the transcript.
-        return Arrays.asList("make", target.trim());
+        List<String> command = new java.util.ArrayList<String>(Arrays.asList("make",
+                target.trim()));
+        for (java.util.Map.Entry<String, String> variable : variables.entrySet()) {
+            command.add(variable.getKey() + "=" + variable.getValue());
+        }
+        return command;
     }
 
     /**
@@ -172,11 +186,16 @@ public final class MakeRun {
      */
     public static List<String> containerCommand(String runtime, File ontologyDirectory,
             String image, OdkContainer.Host host, String target) {
-        if (target == null || target.trim().isEmpty()) {
-            throw new IllegalArgumentException("no target to make");
-        }
+        return containerCommand(runtime, ontologyDirectory, image, host, target,
+                java.util.Collections.<String, String>emptyMap());
+    }
+
+    /** The same, with variables on make's command line ({@link #command(String, java.util.Map)}). */
+    public static List<String> containerCommand(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, String target,
+            java.util.Map<String, String> variables) {
         return containerCommandFor(runtime, ontologyDirectory, image, host,
-                java.util.Arrays.asList("make", target.trim()));
+                command(target, variables));
     }
 
     /**

@@ -456,10 +456,26 @@ public final class Toolchain {
      * <p>Harmless when the directory does not exist: a non-existent PATH entry is skipped.
      */
     public static List<String> nativeCommand(File activationScript, String target) {
+        return nativeCommand(activationScript, target,
+                java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, with variables on make's command line - Build's switches that are off,
+     * {@code IMP=false} - each value quoted for {@code sh} where it has to be.
+     */
+    public static List<String> nativeCommand(File activationScript, String target,
+            java.util.Map<String, String> variables) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
-        return nativeCommandFor(activationScript, "make " + target.trim());
+        StringBuilder make = new StringBuilder("make ").append(target.trim());
+        for (java.util.Map.Entry<String, String> variable : variables.entrySet()) {
+            String value = variable.getValue();
+            make.append(' ').append(variable.getKey()).append('=')
+                    .append(value.matches("[A-Za-z0-9_.,/-]+") ? value : quote(value));
+        }
+        return nativeCommandFor(activationScript, make.toString());
     }
 
     /**

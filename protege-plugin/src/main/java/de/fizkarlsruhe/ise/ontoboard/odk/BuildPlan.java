@@ -4,9 +4,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -89,6 +91,16 @@ public final class BuildPlan {
      */
     static BuildPlan inProcess(File editFile, Map<String, RecipeShell.Tool> tools,
             String whyNoContainer) {
+        return inProcess(editFile, tools, whyNoContainer,
+                EnumSet.noneOf(BuildSwitches.Switch.class));
+    }
+
+    /**
+     * The plan of OntoBoard's own engine with Build's switches that are off: each target is
+     * asked as make would run it, with them on its command line.
+     */
+    static BuildPlan inProcess(File editFile, Map<String, RecipeShell.Tool> tools,
+            String whyNoContainer, Set<BuildSwitches.Switch> off) {
         List<String> has = MakeRun.targetsFor(editFile);
         List<String> offered = new ArrayList<String>();
         Map<String, String> refused = new LinkedHashMap<String, String>();
@@ -96,12 +108,11 @@ public final class BuildPlan {
             if (!has.contains(target)) {
                 continue;
             }
-            String why = OdkEngine.whyNot(editFile, target,
-                    Collections.<String, String>emptyMap(), tools);
+            String why = OdkEngine.whyNot(editFile, target, BuildSwitches.variables(off), tools);
             if (why == null) {
                 offered.add(target);
             } else {
-                refused.put(target, why);
+                refused.put(target, withTheBoxThatHelps(why, off));
             }
         }
         return new BuildPlan(true, offered, refused, whyNoContainer + ", so OntoBoard runs "
@@ -151,18 +162,53 @@ public final class BuildPlan {
         return withoutContainer(editFile, use, noContainer, howToGetOne, OdkTools.forProject());
     }
 
+    /** The same, with Build's switches that are off on make's command line. */
+    public static WithoutContainer withoutContainer(File editFile, OdkRoute.Use use,
+            String noContainer, String howToGetOne, Set<BuildSwitches.Switch> off) {
+        return withoutContainer(editFile, use, noContainer, howToGetOne, OdkTools.forProject(),
+                off);
+    }
+
     static WithoutContainer withoutContainer(File editFile, OdkRoute.Use use,
             String noContainer, String howToGetOne, Map<String, RecipeShell.Tool> tools) {
+        return withoutContainer(editFile, use, noContainer, howToGetOne, tools,
+                EnumSet.noneOf(BuildSwitches.Switch.class));
+    }
+
+    static WithoutContainer withoutContainer(File editFile, OdkRoute.Use use,
+            String noContainer, String howToGetOne, Map<String, RecipeShell.Tool> tools,
+            Set<BuildSwitches.Switch> off) {
         if (!OdkRoute.mayRunWithoutContainer(use)) {
             return new WithoutContainer(null, noContainer + ", and OntoBoard's setting for "
                     + "ODK's targets is \"" + use.label() + "\": nothing is run."
                     + (howToGetOne == null ? "" : "\n\n" + howToGetOne));
         }
-        BuildPlan plan = inProcess(editFile, tools, noContainer);
+        BuildPlan plan = inProcess(editFile, tools, noContainer, off);
         if (plan.targets().isEmpty()) {
             return new WithoutContainer(null, plan.whyNothing());
         }
         return new WithoutContainer(plan, null);
+    }
+
+    /**
+     * Why OntoBoard's own engine does not run this target with these switches off, or null -
+     * asked after the form, as make would run it.
+     */
+    public static String whyNotWith(File editFile, String target,
+            Set<BuildSwitches.Switch> off) {
+        String why = OdkEngine.whyNot(editFile, target, BuildSwitches.variables(off));
+        return why == null ? null : withTheBoxThatHelps(why, off);
+    }
+
+    /**
+     * A refusal for want of an import's source while the box that downloads them is not
+     * ticked, with that box: a fresh clone has no mirrors, and only a download makes them.
+     */
+    static String withTheBoxThatHelps(String why, Set<BuildSwitches.Switch> off) {
+        return off.contains(BuildSwitches.Switch.MIR) && why.contains("mirror/")
+                ? why + " Tick \"" + BuildSwitches.Switch.MIR.words() + "\" and make downloads "
+                        + "the imports' sources first."
+                : why;
     }
 
     /** Whether OntoBoard's own engine runs the build, not ODK's container. */

@@ -169,6 +169,26 @@ class MakeRunTest {
         assertEquals("/work/src/ontology", command.get(command.indexOf("-w") + 1));
     }
 
+    /** Build's switches that are off go on make's command line on every route that runs make. */
+    @Test
+    void theSwitchesThatAreOffGoOnMakesCommandLineOnEveryRoute(@TempDir File root)
+            throws Exception {
+        File ontology = MakeRun.workingDirectory(odkProject(root));
+        java.util.Map<String, String> off = BuildSwitches.variables(java.util.EnumSet.of(
+                BuildSwitches.Switch.IMP, BuildSwitches.Switch.MIR));
+
+        assertEquals(Arrays.asList("make", "test", "IMP=false", "MIR=false"),
+                MakeRun.command("test", off));
+        List<String> container = MakeRun.containerCommand("docker", ontology,
+                "obolibrary/odkfull:v1.6.1", OdkContainer.Host.unknown(), "test", off);
+        assertEquals(Arrays.asList("make", "test", "IMP=false", "MIR=false"),
+                container.subList(container.size() - 4, container.size()));
+        List<String> inTheEnvironment = Toolchain.nativeCommand(new File("/odk/activate"), "test",
+                off);
+        assertTrue(inTheEnvironment.get(2).endsWith(" && make test IMP=false MIR=false"),
+                inTheEnvironment.get(2));
+    }
+
     /** A target is still required, and a directory that is not src/ontology is refused. */
     @Test
     void theDockerCommandRefusesWhatItCannotPlace(@TempDir File root) {

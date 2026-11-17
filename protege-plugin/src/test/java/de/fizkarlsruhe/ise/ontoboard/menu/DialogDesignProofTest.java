@@ -130,6 +130,51 @@ class DialogDesignProofTest {
         return seen.size();
     }
 
+    /**
+     * Build's form for an ODK project: the target, ODK's four switches ticked as ODK's
+     * defaults are, and under them the make command they come to - written again as a box or
+     * the target changes. Rendered for a look, as the other forms are.
+     */
+    @Test
+    void buildsFormSaysTheMakeCommandItsBoxesComeTo() throws Exception {
+        Map<String, java.awt.Component> controls =
+                new java.util.LinkedHashMap<String, java.awt.Component>();
+        JPanel content = ParameterDialog.content(null, "Docker is not running, so OntoBoard "
+                + "runs ODK's own recipes itself, inside Protege - the same Makefile, without "
+                + "the container.", BuildAction.form(Arrays.asList("test", "test_fast",
+                        "reason_test"), "test", "The targets OntoBoard's own engine can run.",
+                        true, null), controls, BuildAction::commandShown);
+        javax.swing.JLabel line = named(content, ParameterDialog.PREVIEW);
+
+        assertEquals("make test", line.getText());
+        ((javax.swing.JCheckBox) controls.get("switch.MIR")).setSelected(false);
+        assertEquals("make test MIR=false", line.getText());
+        ((javax.swing.JCheckBox) controls.get("switch.IMP")).setSelected(false);
+        assertEquals("make test IMP=false MIR=false", line.getText());
+        ((javax.swing.JComboBox<?>) controls.get("target")).setSelectedItem("test_fast");
+        assertEquals("make test_fast IMP=false MIR=false", line.getText());
+
+        BufferedImage image = render(content);
+        File png = new File(designDirectory(), "build-form.png");
+        ImageIO.write(image, "PNG", png);
+        assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
+    }
+
+    private static javax.swing.JLabel named(java.awt.Container in, String name) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (name.equals(child.getName()) && child instanceof javax.swing.JLabel) {
+                return (javax.swing.JLabel) child;
+            }
+            if (child instanceof java.awt.Container) {
+                javax.swing.JLabel found = named((java.awt.Container) child, name);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     @Test
     void theFormRendersToAnImageSomebodyCanLookAt() throws Exception {
         Map<String, java.awt.Component> controls = new HashMap<String, java.awt.Component>();

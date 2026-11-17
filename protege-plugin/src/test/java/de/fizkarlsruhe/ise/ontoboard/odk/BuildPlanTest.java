@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -153,6 +154,41 @@ class BuildPlanTest {
         assertTrue(plan.help().contains("curl"), "the refusal's own reason: " + plan.help());
         assertFalse(plan.help().contains("only ODK's container"), plan.help());
         assertTrue(plan.help().contains("test_fast"), plan.help());
+    }
+
+    /**
+     * Build with "Download the imports' sources again" off, on a clone that has no mirrors:
+     * test would build the imports from files that are not there. Refused before anything
+     * runs, saying which file is missing and which box gets it (Review Focus 5).
+     */
+    @Test
+    void aFreshCloneWithoutMirrorsIsToldToDownloadThem() throws IOException {
+        project("oboimports", "obim");
+
+        BuildPlan.WithoutContainer without = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.AUTOMATIC, "no container", null, tools(),
+                EnumSet.of(BuildSwitches.Switch.MIR));
+
+        // iao is the first import make needs a mirror of, in this seed.
+        String why = without.plan().refused().get("test");
+        assertTrue(why != null && why.contains("mirror/iao.owl")
+                && why.contains("Download the imports' sources again"), String.valueOf(why));
+    }
+
+    /**
+     * The look-ahead asks as make would run: with the import modules and their sources left as
+     * they are, test fetches nothing, so it is offered where the programs that fetch are not.
+     */
+    @Test
+    void theLookAheadAsksWithTheSwitchesThatAreOff() throws IOException {
+        project("oboimports", "obim");
+
+        BuildPlan.WithoutContainer without = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.AUTOMATIC, "no container", null, tools(),
+                EnumSet.of(BuildSwitches.Switch.IMP, BuildSwitches.Switch.MIR));
+
+        assertTrue(without.plan().targets().contains("test"), without.plan().refused().toString());
+        assertNull(without.plan().refused().get("test"));
     }
 
     /** Nothing the engine may run: said with the reason, and what to do. */

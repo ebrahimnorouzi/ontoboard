@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.BuildSwitches;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
@@ -9,8 +10,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
@@ -31,6 +34,9 @@ public class BuildAction extends OntoBoardAction {
 
     private static final String OPTION_TARGET = "target";
 
+    /** Each of ODK's switches is an option of its own: this, then the switch's name. */
+    private static final String OPTION_SWITCH = "switch.";
+
     /**
      * How much of the transcript to keep.
      *
@@ -41,6 +47,9 @@ public class BuildAction extends OntoBoardAction {
     private static final int MAX_LINES = 4000;
 
     private volatile String target = "";
+
+    /** ODK's switches whose boxes were not ticked: on make's command line as NAME=false. */
+    private volatile Set<BuildSwitches.Switch> off = EnumSet.noneOf(BuildSwitches.Switch.class);
 
     /** Decided in {@link #configure()} so the run does not probe the machine a second time. */
     private volatile MakeRun.Route route = MakeRun.Route.NOT_RUNNABLE;
@@ -175,29 +184,115 @@ public class BuildAction extends OntoBoardAction {
         return true;
     }
 
-    /** The form: which target, of those there are. False when it was cancelled. */
+    /**
+     * The form: which target, of those there are, and - for an ODK project - ODK's switches,
+     * each box ticked as ODK's default has it, with the make command they come to under them.
+     * Where OntoBoard's own engine builds, the target is asked about again with the switches
+     * that are off; refused, the form comes back with what was chosen. False when cancelled.
+     */
     private boolean chooseTheTarget(File editFile, List<String> targets) {
-        List<Parameter> parameters = Arrays.asList(
-                Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
-                        .choices(targets.toArray(new String[0]))
-                        // test, which the guide and the docs say to run: it is the one that runs
-                        // your own tests as well. all came first in the list and was preselected.
-                        .defaultValue(engine != null ? engine.defaultTarget()
-                                : targets.contains("test") ? "test" : targets.get(0))
-                        .required()
-                        .help(engine != null ? engine.help()
-                                : helpFor(route, editFile, image, runtime))
-                        .build());
-
-        Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
-                engine != null ? engine.explanation()
-                        : explanationFor(route, editFile, image, runtime),
-                parameters);
-        if (chosen == null) {
-            return false;
+        Map<String, String> was = null;
+        boolean switches = takesOdksSwitches();
+        while (true) {
+            // test, which the guide and the docs say to run: it is the one that runs your own
+            // tests as well. all came first in the list and was preselected.
+            String first = engine != null ? engine.defaultTarget()
+                    : targets.contains("test") ? "test" : targets.get(0);
+            Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
+                    engine != null ? engine.explanation()
+                            : explanationFor(route, editFile, image, runtime),
+                    form(targets, first, engine != null ? engine.help()
+                            : helpFor(route, editFile, image, runtime), switches, was),
+                    switches ? BuildAction::commandShown : null);
+            if (chosen == null) {
+                return false;
+            }
+            target = chosen.get(OPTION_TARGET);
+            off = switches ? offIn(chosen) : EnumSet.noneOf(BuildSwitches.Switch.class);
+            String why = engine == null || off.isEmpty() ? null
+                    : de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.whyNotWith(editFile, target,
+                            off);
+            if (why == null) {
+                return true;
+            }
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    ReleaseAction.wrapped(why), "Cannot build with those boxes",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            was = chosen;
         }
-        target = chosen.get(OPTION_TARGET);
-        return true;
+    }
+
+    /**
+     * Build's form: the target, then - for an ODK project - ODK's four switches, each ticked as
+     * ODK's default has it, or as it was chosen when the form comes back.
+     *
+     * @param was what was chosen when the form comes back, or null the first time
+     */
+    static List<Parameter> form(List<String> targets, String first, String targetHelp,
+            boolean switches, Map<String, String> was) {
+        List<Parameter> parameters = new ArrayList<Parameter>();
+        parameters.add(Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
+                .choices(targets.toArray(new String[0]))
+                .defaultValue(was != null ? was.get(OPTION_TARGET) : first)
+                .required()
+                .help(targetHelp)
+                .build());
+        if (switches) {
+            for (BuildSwitches.Switch one : BuildSwitches.Switch.values()) {
+                parameters.add(Parameter.of(OPTION_SWITCH + one.name(), one.words(),
+                        Parameter.Kind.FLAG)
+                        .defaultValue(was != null ? was.get(OPTION_SWITCH + one.name())
+                                : "true")
+                        .help(switchHelp(one))
+                        .build());
+            }
+        }
+        return parameters;
+    }
+
+    /** What the form's values come to, as the line under it says it: make's command. */
+    static String commandShown(Map<String, String> values) {
+        return BuildSwitches.command(String.valueOf(values.get(OPTION_TARGET)), offIn(values));
+    }
+
+    /** Whether the Makefile is ODK's, whose switches the form then offers. */
+    private boolean takesOdksSwitches() {
+        return engine != null || route == MakeRun.Route.ODK_IN_CONTAINER
+                || route == MakeRun.Route.ODK_NATIVE;
+    }
+
+    /** The switches whose boxes are not ticked. */
+    private static Set<BuildSwitches.Switch> offIn(Map<String, String> values) {
+        Set<BuildSwitches.Switch> off = EnumSet.noneOf(BuildSwitches.Switch.class);
+        for (BuildSwitches.Switch one : BuildSwitches.Switch.values()) {
+            if (!"true".equalsIgnoreCase(values.get(OPTION_SWITCH + one.name()))) {
+                off.add(one);
+            }
+        }
+        return off;
+    }
+
+    private static String switchHelp(BuildSwitches.Switch one) {
+        switch (one) {
+            case IMP:
+                return "ODK's IMP. Ticked, as ODK's default, the import modules are built again "
+                        + "from their sources, as ODK's test does. Unticked (IMP=false), they are "
+                        + "used as they are: quicker, and nothing is downloaded for them.";
+            case MIR:
+                return "ODK's MIR. Ticked, as ODK's default, the imports' sources - the mirrors - "
+                        + "are downloaded again before the modules are built from them. Unticked "
+                        + "(MIR=false), the mirrors already in src/ontology/mirror are used; a "
+                        + "fresh clone has none, and then this box has to be ticked.";
+            case PAT:
+                return "ODK's PAT. Ticked, as ODK's default, the DOSDP patterns' files - each "
+                        + "pipeline's axioms, definitions.owl - are made again. Unticked "
+                        + "(PAT=false), they are used as they are. It matters only in a project "
+                        + "with patterns.";
+            default:
+                return "ODK's COMP. Ticked, as ODK's default, the components are built again. "
+                        + "Unticked (COMP=false), they are used as they are. It matters only in "
+                        + "a project with components.";
+        }
     }
 
     @Override
@@ -253,10 +348,12 @@ public class BuildAction extends OntoBoardAction {
             OperationResult.Builder result) {
         result.note("Run by OntoBoard itself: ODK's own Makefile and recipes, inside Protege, "
                 + "without a container.");
+        // As ODK's make would be run for it, so that the same can be run in a terminal.
+        result.note("Command: " + BuildSwitches.command(target, off));
         long started = System.currentTimeMillis();
         de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome =
                 de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.run(editFile, target,
-                        java.util.Collections.<String, String>emptyMap(),
+                        BuildSwitches.variables(off),
                         new java.util.function.BooleanSupplier() {
                             @Override
                             public boolean getAsBoolean() {
@@ -382,15 +479,17 @@ public class BuildAction extends OntoBoardAction {
     /** The command this route runs, already decided in {@link #configure()}. */
     private List<String> commandForRoute(File directory, File editFile) {
         if (route == MakeRun.Route.ODK_IN_CONTAINER) {
-            return MakeRun.containerCommand(runtime, directory, image, host, target);
+            return MakeRun.containerCommand(runtime, directory, image, host, target,
+                    BuildSwitches.variables(off));
         }
         if (route == MakeRun.Route.ODK_NATIVE) {
             return de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeCommand(
                     de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(
                             de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment()),
-                    target);
+                    target, BuildSwitches.variables(off));
         }
-        return MakeRun.command(target);
+        // Some other Makefile: ODK's switches are not offered, and none is off.
+        return MakeRun.command(target, BuildSwitches.variables(off));
     }
 
     /** How many passing tests the summary names before it counts the rest. */
