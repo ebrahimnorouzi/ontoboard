@@ -46,6 +46,7 @@ import migration_goldens  # noqa: E402
 import odkimage  # noqa: E402
 import own_rules_goldens  # noqa: E402
 import robot_update_goldens  # noqa: E402
+import schema_goldens  # noqa: E402
 import sed_goldens  # noqa: E402
 import update_goldens  # noqa: E402
 
@@ -111,8 +112,9 @@ def log_tail(name, kind):
 SEED_COMMAND = "odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>"
 
 
-def provenance(tool, image, what, versions=None, command=SEED_COMMAND):
-    about = odkimage.describe(tool, image)
+def provenance(tool, image, what, versions=None, command=SEED_COMMAND, about=None):
+    if about is None:
+        about = odkimage.describe(tool, image)
     if versions is None:
         versions = read(os.path.join(WORK, "out", "versions.txt")).decode("utf-8").splitlines()
     path = os.path.join(RES, "PROVENANCE.txt")
@@ -319,6 +321,28 @@ def stage_corpus_runs(tool, image):
                   ", ".join(corpus_runs_goldens.SAMPLES)))
 
 
+def stage_schema(tool, image, checkout=None):
+    """ODK's own description of each key of a project's configuration (schema_goldens), which
+    Project configuration shows beside the keys (odk/OdkSchema): from the image's odk.py, or -
+    with --odk-checkout, and no container needed - from odk/odk.py of ODK's source at the tag."""
+    path = os.path.join(PLUGIN, "src", "main", "odk", odkimage.PIN, "schema", "descriptions.tsv")
+    command = ("python3 -I -c schema_goldens.SCRIPT <odk.py>: the docstring under each field "
+               "of odk.py's dataclasses, flattened to a configuration's dotted keys from "
+               "OntologyProject down -> src/main/odk/" + odkimage.PIN + "/schema/descriptions.tsv")
+    if checkout:
+        count, odk_py = schema_goldens.run_on_source(os.path.join(checkout, "odk", "odk.py"),
+                                                     odkimage, path)
+        about = {"reference": "none - ODK's source at tag " + odkimage.PIN + " (--odk-checkout)",
+                 "id": "-", "digests": [], "created": "-"}
+        provenance(tool, image, "schema", ["odk.py:       odk/odk.py of the source, SHA-256 "
+                                           "(LF) " + odk_py], command, about)
+    else:
+        count, odk_py = schema_goldens.run(tool, image, odkimage, path)
+        provenance(tool, image, "schema", ["odk.py:       /tools/odk.py, SHA-256 (LF) " + odk_py],
+                   command)
+    print("schema %d keys -> %s" % (count, os.path.relpath(path, PLUGIN)))
+
+
 def stage_own(tool, image):
     said, versions = own_rules_goldens.run(
         tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-own"))
@@ -379,16 +403,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
                                           "update", "imports", "robot-update", "sed", "own",
-                                          "dosdp", "corpus-runs", "migration", "all"])
+                                          "dosdp", "corpus-runs", "schema", "migration", "all"])
     parser.add_argument("--converted", help="the 1.135.x project as OntoBoard's conversion "
                         "leaves it, written by MigrationConvertedWriter (for the migration "
                         "stage, which is not part of 'all')")
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
+    if options.stage == "schema" and options.odk_checkout:
+        # ODK's source is enough for this one: no container is asked.
+        stage_schema(None, None, options.odk_checkout)
+        return
     if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
-                         "robot-update", "sed", "own", "dosdp", "corpus-runs", "migration",
-                         "all"):
+                         "robot-update", "sed", "own", "dosdp", "corpus-runs", "schema",
+                         "migration", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -413,6 +441,8 @@ def main():
             stage_dosdp(tool, image)
         if options.stage in ("corpus-runs", "all"):
             stage_corpus_runs(tool, image)
+        if options.stage in ("schema", "all"):
+            stage_schema(tool, image)
         if options.stage == "migration":
             stage_migration(tool, image, options.converted)
     if options.stage in ("lexer", "all"):
