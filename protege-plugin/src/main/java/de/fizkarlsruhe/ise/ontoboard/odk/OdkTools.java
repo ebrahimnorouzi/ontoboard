@@ -77,8 +77,9 @@ final class OdkTools {
     /**
      * Every program ODK's recipes name that OntoBoard runs itself: the shell's own
      * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml, curl, sed -
-     * for the substitutions projects' own rules make ({@link OdkSed}) - and dosdp-tools, the
-     * release ODK's image carries, downloaded on first use ({@link DosdpToolsRun}).
+     * for the substitutions projects' own rules make ({@link OdkSed}) - dosdp-tools, the
+     * release ODK's image carries, downloaded on first use ({@link DosdpToolsRun}), and dosdp,
+     * ODK's check of a project's patterns ({@link DosdpCheck}).
      */
     static Map<String, RecipeShell.Tool> forProject() {
         return forProject(null);
@@ -109,6 +110,7 @@ final class OdkTools {
         tools.put("sed", new OdkSed());
         tools.put("dosdp-tools", new DosdpToolsRun(dosdpHome, DosdpToolsRun::onThisMachine,
                 stopped));
+        tools.put("dosdp", new DosdpCheck());
         return tools;
     }
 
