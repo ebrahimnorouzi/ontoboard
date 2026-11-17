@@ -680,7 +680,9 @@ public class FindTermsAction extends ProtegeOWLAction {
         return "  - declare the import in " + odkConfiguration + ", which is how ODK imports;\n"
                 + "      the Makefile, the catalog and your edit file follow it\n"
                 + "      (as OntoBoard > Project > Update project files... writes them)\n"
-                + "  - have ODK's own refresh build the module from that list\n";
+                + "  - have ODK's own refresh build the module from that list:\n"
+                + "      " + de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.MODULE.words()
+                + " (Advanced... offers ODK's other kinds)\n";
     }
 
     /**

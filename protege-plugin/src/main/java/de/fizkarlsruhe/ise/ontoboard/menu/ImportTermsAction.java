@@ -53,6 +53,7 @@ public class ImportTermsAction extends OntoBoardAction {
     private static final String OPTION_TERMS = "terms";
     private static final String OPTION_TERM_FILE = "termFile";
     private static final String OPTION_METHOD = "method";
+    private static final String OPTION_KIND = "kind";
     private static final String OPTION_OUTCOME = "outcome";
     private static final String OPTION_MODULE_FILE = "moduleFile";
 
@@ -85,6 +86,12 @@ public class ImportTermsAction extends OntoBoardAction {
     private volatile String termsText = "";
     private volatile String termFileText = "";
     private volatile TermExtract.Method method = TermExtract.DEFAULT_METHOD;
+
+    /**
+     * In an ODK project: what the module holds - one of ODK's module types, declared, and
+     * built by ODK's own rule for it. The extraction here, before ODK builds it, is BOT.
+     */
+    private volatile ImportProducts.Kind kind = ImportProducts.Kind.MODULE;
     private volatile Outcome outcome = Outcome.SAVE_AND_IMPORT;
     private volatile String moduleFileText = "";
 
@@ -270,15 +277,18 @@ public class ImportTermsAction extends OntoBoardAction {
             termsText = seededTerms;
             termFileText = "";
             method = TermExtract.DEFAULT_METHOD;
+            kind = ImportProducts.Kind.MODULE;
             outcome = Outcome.SAVE_AND_IMPORT;
             moduleFileText = "";
             return true;
         }
+        boolean odk = inAnOdkProject();
         Map<String, String> values = new LinkedHashMap<String, String>();
         values.put(OPTION_SOURCE, seededSource);
         values.put(OPTION_TERMS, seededTerms);
         values.put(OPTION_TERM_FILE, "");
         values.put(OPTION_METHOD, TermExtract.DEFAULT_METHOD.getDisplayName());
+        values.put(OPTION_KIND, kindLabel(ImportProducts.Kind.MODULE));
         values.put(OPTION_OUTCOME, Outcome.SAVE_AND_IMPORT.label);
         values.put(OPTION_MODULE_FILE, "");
 
@@ -291,7 +301,7 @@ public class ImportTermsAction extends OntoBoardAction {
                     "Extracts a module from another ontology and brings it into this one - what "
                             + "'robot extract' does, including the import statement and the "
                             + "catalog entry that make it resolve for everyone else.",
-                    parametersFrom(values));
+                    parametersFrom(values, odk));
             if (chosen == null) {
                 return false;
             }
@@ -313,7 +323,13 @@ public class ImportTermsAction extends OntoBoardAction {
         sourceText = values.get(OPTION_SOURCE);
         termsText = values.get(OPTION_TERMS);
         termFileText = values.get(OPTION_TERM_FILE);
-        method = methodByLabel(values.get(OPTION_METHOD));
+        if (odk) {
+            // ODK builds the module by its rule for the kind; the extraction here is BOT.
+            kind = kindByLabel(values.get(OPTION_KIND));
+            method = TermExtract.DEFAULT_METHOD;
+        } else {
+            method = methodByLabel(values.get(OPTION_METHOD));
+        }
         outcome = Outcome.byLabel(values.get(OPTION_OUTCOME));
         moduleFileText = values.get(OPTION_MODULE_FILE);
         return true;
@@ -332,7 +348,68 @@ public class ImportTermsAction extends OntoBoardAction {
         return problems;
     }
 
-    private List<Parameter> parametersFrom(Map<String, String> values) {
+    /** A kind of module as the form offers it: in plain words, ODK's name in brackets. */
+    static String kindLabel(ImportProducts.Kind kind) {
+        return kind.words() + " (" + kind.odkName() + ")";
+    }
+
+    private static ImportProducts.Kind kindByLabel(String label) {
+        for (ImportProducts.Kind kind : ImportProducts.Kind.values()) {
+            if (kindLabel(kind).equals(label)) {
+                return kind;
+            }
+        }
+        return ImportProducts.Kind.MODULE;
+    }
+
+    /** Whether the active ontology is the edit file of an ODK project. */
+    private boolean inAnOdkProject() {
+        try {
+            File editFile = fileOf(getOWLModelManager().getActiveOntology());
+            return editFile != null
+                    && de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile);
+        } catch (RuntimeException notSaved) {
+            return false;
+        }
+    }
+
+    /**
+     * What the module holds, for an ODK project: ODK's module types, in plain words. ODK builds
+     * each by its own rule, so a refresh or a release keeps the module what was chosen.
+     */
+    static Parameter kindParameter(String chosen) {
+        List<String> kinds = new ArrayList<String>();
+        for (ImportProducts.Kind available : ImportProducts.Kind.values()) {
+            kinds.add(kindLabel(available));
+        }
+        return Parameter.of(OPTION_KIND, "The module holds", Parameter.Kind.CHOICE)
+                .choices(kinds.toArray(new String[0]))
+                .defaultValue(chosen)
+                .required()
+                .help("What of the source ontology comes with the terms. Each is one of ODK's own "
+                        + "module types - its name is in brackets - and it is declared in the "
+                        + "project's configuration, so ODK's Makefile builds the module by its own "
+                        + "rule for it, now and at every refresh and release.\n\n"
+                        + "The terms you chose and what they need (slme, BOT): each term with "
+                        + "its parents up to the top, and what it is defined by - for a term "
+                        + "that is part of a heart, the heart and 'part of'. ODK's default, and "
+                        + "what an import almost always wants.\n\n"
+                        + "Only the terms you chose and the links between them (filter): "
+                        + "nothing but the terms you chose and what is said between them - "
+                        + "'a is a b' when you chose both. Their other parents are left out, "
+                        + "and so is a link through a relation you did not choose.\n\n"
+                        + "The terms you chose and the relations between them (minimal): "
+                        + "the same, and links through relations as well - 'a is part of d' "
+                        + "when you chose both, with 'part of'. Their other parents are left "
+                        + "out.\n\n"
+                        + "The whole ontology (mirror): all of it, as the source has it - for "
+                        + "a small ontology you use most of.\n\n"
+                        + "The module is first extracted here, so that it works at once; ODK's "
+                        + "own refresh of the import then builds it as chosen.")
+                .build();
+    }
+
+    private List<Parameter> parametersFrom(Map<String, String> values, boolean odk) {
         List<String> methods = new ArrayList<String>();
         StringBuilder methodHelp = new StringBuilder(
                 "How much of the source ontology comes with the terms. The names are misleading "
@@ -343,6 +420,13 @@ public class ImportTermsAction extends OntoBoardAction {
             methodHelp.append('\n').append(available.getLabel()).append(": ")
                     .append(available.getHelp()).append('\n');
         }
+        Parameter how = odk ? kindParameter(values.get(OPTION_KIND))
+                : Parameter.of(OPTION_METHOD, "Method", Parameter.Kind.CHOICE)
+                        .choices(methods.toArray(new String[0]))
+                        .defaultValue(values.get(OPTION_METHOD))
+                        .required()
+                        .help(methodHelp.toString())
+                        .build();
 
         return Arrays.asList(
                 Parameter.of(OPTION_SOURCE, "Take terms from", Parameter.Kind.FILE)
@@ -372,12 +456,7 @@ public class ImportTermsAction extends OntoBoardAction {
                                 + "means this produces the same module its build does. If both "
                                 + "this and the box above are filled in, the two are combined.")
                         .build(),
-                Parameter.of(OPTION_METHOD, "Method", Parameter.Kind.CHOICE)
-                        .choices(methods.toArray(new String[0]))
-                        .defaultValue(values.get(OPTION_METHOD))
-                        .required()
-                        .help(methodHelp.toString())
-                        .build(),
+                how,
                 Parameter.of(OPTION_OUTCOME, "Then", Parameter.Kind.CHOICE)
                         .choices(Outcome.SAVE_AND_IMPORT.label, Outcome.ADD_AXIOMS.label,
                                 Outcome.SAVE_ONLY.label)
@@ -1288,7 +1367,7 @@ public class ImportTermsAction extends OntoBoardAction {
             // layout: as 1.135.2 declared it, which its own Refresh imports reads.
             String from = sourceIri == null ? null : sourceIri.toString();
             ImportProducts.Declaration declaration = odk
-                    ? ImportProducts.declarationForImport(id, from, method)
+                    ? ImportProducts.declarationForImport(id, from, kind)
                     : ImportProducts.declarationAsBefore(id, from, method);
             fields = declaration.getFields();
             caveat = declaration.getCaveat();
