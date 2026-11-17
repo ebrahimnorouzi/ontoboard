@@ -372,6 +372,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.check.ontology"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Check this ontology..."/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotA-0"/>
+    <toolTip value="The reasoner, the quality report and the label check of what is open - no project needed"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.CheckOntologyAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.questionTest"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Write a test from a question..."/>
