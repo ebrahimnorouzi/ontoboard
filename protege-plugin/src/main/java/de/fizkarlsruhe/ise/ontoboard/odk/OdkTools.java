@@ -76,20 +76,29 @@ final class OdkTools {
 
     /**
      * Every program ODK's recipes name that OntoBoard runs itself: the shell's own
-     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml, curl - and
-     * sed, for the substitutions projects' own rules make ({@link OdkSed}).
+     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml, curl, sed -
+     * for the substitutions projects' own rules make ({@link OdkSed}) - and dosdp-tools, the
+     * release ODK's image carries, downloaded on first use ({@link DosdpToolsRun}).
      */
     static Map<String, RecipeShell.Tool> forProject() {
         return forProject(null);
     }
 
     /**
-     * The programs of a run the person can stop.
+     * The programs of a run the person can stop, dosdp-tools from where OntoBoard installs it
+     * ({@link DosdpTools#home()}).
      *
      * @param stopped whether the person has stopped the run, for a program that takes its
-     *                time over one line - a fetch; may be null
+     *                time over one line - a fetch, dosdp-tools; may be null
      */
     static Map<String, RecipeShell.Tool> forProject(BooleanSupplier stopped) {
+        return forProject(stopped, DosdpTools.home());
+    }
+
+    /**
+     * The programs of a run the person can stop, with dosdp-tools installed in {@code dosdpHome}.
+     */
+    static Map<String, RecipeShell.Tool> forProject(BooleanSupplier stopped, File dosdpHome) {
         Map<String, RecipeShell.Tool> tools = new LinkedHashMap<String, RecipeShell.Tool>(
                 RecipeShell.builtins());
         tools.put("robot", new Robot());
@@ -98,6 +107,8 @@ final class OdkTools {
         tools.put("check-rdfxml", new CheckRdfXml());
         tools.put("curl", new OdkCurl(stopped));
         tools.put("sed", new OdkSed());
+        tools.put("dosdp-tools", new DosdpToolsRun(dosdpHome, DosdpToolsRun::onThisMachine,
+                stopped));
         return tools;
     }
 

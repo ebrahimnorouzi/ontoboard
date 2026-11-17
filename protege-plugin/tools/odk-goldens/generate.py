@@ -268,6 +268,22 @@ def stage_robot_update(tool, image):
                "for " + ", ".join(robot_update_goldens.CASES))
 
 
+DOSDP_MANIFEST = os.path.join(PLUGIN, "src", "main", "resources", "odk",
+                              "dosdp-tools-0.19.3.sha256")
+
+
+def stage_dosdp(tool, image):
+    """The SHA-256 of each jar of dosdp-tools as ODK's image has it, which OntoBoard checks a
+    download of the release against before it runs one (odk/DosdpTools)."""
+    _, out, _ = odkimage.in_image(tool, image, ["sh", "-c", "cd /tools/dosdptools/lib && "
+                                                "sha256sum *.jar | LC_ALL=C sort -k2"])
+    lines = [line for line in out.decode("utf-8").replace("\r\n", "\n").split("\n") if line]
+    odkimage.write_text(DOSDP_MANIFEST, "# dosdp-tools 0.19.3's lib/, as ODK " + odkimage.PIN
+                        + "'s image has it at /tools/dosdptools/lib (generate.py dosdp)\n"
+                        + "".join(line + "\n" for line in lines))
+    print("dosdp %d jars -> %s" % (len(lines), os.path.relpath(DOSDP_MANIFEST, PLUGIN)))
+
+
 def stage_own(tool, image):
     said, versions = own_rules_goldens.run(
         tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-own"))
@@ -328,7 +344,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
                                           "update", "imports", "robot-update", "sed", "own",
-                                          "migration", "all"])
+                                          "dosdp", "migration", "all"])
     parser.add_argument("--converted", help="the 1.135.x project as OntoBoard's conversion "
                         "leaves it, written by MigrationConvertedWriter (for the migration "
                         "stage, which is not part of 'all')")
@@ -336,7 +352,7 @@ def main():
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
     if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
-                         "robot-update", "sed", "own", "migration", "all"):
+                         "robot-update", "sed", "own", "dosdp", "migration", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -357,6 +373,8 @@ def main():
             stage_sed(tool, image)
         if options.stage in ("own", "all"):
             stage_own(tool, image)
+        if options.stage in ("dosdp", "all"):
+            stage_dosdp(tool, image)
         if options.stage == "migration":
             stage_migration(tool, image, options.converted)
     if options.stage in ("lexer", "all"):

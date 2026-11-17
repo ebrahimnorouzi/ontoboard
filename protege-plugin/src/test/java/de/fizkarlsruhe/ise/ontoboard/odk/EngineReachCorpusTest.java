@@ -34,6 +34,9 @@ import org.junit.jupiter.api.io.TempDir;
  * shell it does not read. So the table also says what would be left of a target if one reason
  * were taken away - which is what decides the order of the work.
  *
+ * <p>dosdp-tools is asked as it is once OntoBoard has downloaded it, with a Java 11 to run it
+ * on: the table says what the engine runs then, and is the same on every machine.
+ *
  * <p>The table is kept in {@code odk/engine-reach-79.txt}; a change that makes the engine run
  * a target it refused, or refuse one it ran, or that changes why, shows as a line that
  * differs. It is then brought up to date on purpose: the run leaves what it found in
@@ -63,13 +66,21 @@ class EngineReachCorpusTest {
         int rows = 0;
         int runs = 0;
         StringBuilder took = new StringBuilder();
+        // dosdp-tools as it is once downloaded, on a Java 11: what the engine runs then - the
+        // same on every machine, whether this one has it or not.
+        File dosdpHome = new File(temp, "dosdp-tools-0.19.3");
+        File launcher = new File(new File(dosdpHome, "lib"), DosdpTools.LAUNCHER);
+        Files.createDirectories(launcher.getParentFile().toPath());
+        Files.write(launcher.toPath(), new byte[0]);
+        RecipeShell.Tool dosdp = new DosdpToolsRun(dosdpHome,
+                () -> DosdpToolsRun.Java.at(new File("java")), null);
         for (String config : Goldens.corpusNames()) {
             long start = System.nanoTime();
             Map<String, Object> model = Goldens.corpusModel(config);
             File edit = seeded(config, model);
             List<String> goals = targets(model);
             for (String goal : goals) {
-                Asking asked = reasons(edit, goal);
+                Asking asked = reasons(edit, goal, dosdp);
                 rows++;
                 runs += asked.refusals.isEmpty() ? 1 : 0;
                 table.append(config).append(' ').append(goal).append(": ")
@@ -234,9 +245,15 @@ class EngineReachCorpusTest {
      */
     private static final Map<String, String> ANSWERED = new java.util.HashMap<String, String>();
 
-    /** Every reason the engine has for not running a target; none when it runs it. */
-    private static Asking reasons(File edit, String goal) {
-        Asking asked = new Asking(OdkTools.forProject(), edit);
+    /**
+     * Every reason the engine has for not running a target; none when it runs it.
+     *
+     * @param dosdp dosdp-tools as it is asked here: installed
+     */
+    private static Asking reasons(File edit, String goal, RecipeShell.Tool dosdp) {
+        Map<String, RecipeShell.Tool> tools = OdkTools.forProject();
+        tools.put("dosdp-tools", dosdp);
+        Asking asked = new Asking(tools, edit);
         FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, goal,
                 Goldens.makeFixedVariables());
         if (!verdict.allowed()) {

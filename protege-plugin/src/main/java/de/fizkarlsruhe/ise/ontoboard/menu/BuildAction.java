@@ -141,6 +141,21 @@ public class BuildAction extends OntoBoardAction {
                     de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.withoutContainer(editFile,
                             de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(), noContainer,
                             howToGetOne);
+            // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is
+            // there. Declined where nothing runs, the offer was the refusal.
+            String cure = DosdpOffer.forBuild(without.plan() == null ? without.refusal() : null,
+                    without.plan() == null ? java.util.Collections.<String, String>emptyMap()
+                            : without.plan().refused());
+            if (cure != null) {
+                if (DosdpOffer.ask(getOWLWorkspace(), cure, "Cannot build",
+                        without.plan() != null)) {
+                    without = de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.withoutContainer(
+                            editFile, de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(),
+                            noContainer, howToGetOne);
+                } else if (without.plan() == null) {
+                    return false;
+                }
+            }
             if (without.plan() == null) {
                 javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                         ReleaseAction.commandsShown(without.refusal()), "Cannot build",

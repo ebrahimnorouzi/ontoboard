@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.konclude.KoncludeInstall;
+import de.fizkarlsruhe.ise.ontoboard.odk.DosdpTools;
 import de.fizkarlsruhe.ise.ontoboard.tools.Download;
 import de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener;
 import de.fizkarlsruhe.ise.ontoboard.tools.ToolAsset;
@@ -104,6 +105,31 @@ final class GetToolDialog {
                 return got;
             }
         }
+    }
+
+    /**
+     * Downloads DOSDP-Tools and installs it where OntoBoard runs it from
+     * ({@link DosdpTools#home()}), behind the same progress window; the archive is not kept.
+     * True when it is installed now. No folder is asked for: the place is OntoBoard's own.
+     */
+    static boolean installDosdpTools(Component parent) {
+        final ToolAsset asset = DosdpTools.asset();
+        final File home = DosdpTools.home();
+        final HttpsOpener opener = HttpsOpener.real();
+        File got = inBackground(parent, "Downloading " + asset.getName(), opener::stop,
+                reporter -> {
+                    File folder = home.getAbsoluteFile().getParentFile();
+                    java.nio.file.Files.createDirectories(folder.toPath());
+                    File archive = Download.fetch(asset, folder, opener, reporter);
+                    try {
+                        reporter.status("Unpacking " + asset.getName() + "...");
+                        DosdpTools.install(archive, home);
+                    } finally {
+                        java.nio.file.Files.deleteIfExists(archive.toPath());
+                    }
+                    return home;
+                });
+        return got != null && DosdpTools.isInstalled(home);
     }
 
     // ------------------------------------------------------------------- the four ways on

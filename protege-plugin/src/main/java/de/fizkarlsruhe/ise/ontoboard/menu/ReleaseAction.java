@@ -280,10 +280,11 @@ public class ReleaseAction extends OntoBoardAction {
         // the Makefile through for two targets takes a moment.
         String whyNotFast = null;
         String whyNotFull = null;
+        Map<String, String> variables = null;
         if (!container && script == null && OdkRoute.mayRunWithoutContainer(use)
                 && !nativeEnvironment) {
             // As the release runs it, after make clean.
-            Map<String, String> variables = new java.util.LinkedHashMap<String, String>();
+            variables = new java.util.LinkedHashMap<String, String>();
             variables.put("VERSION",
                     OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
             String[] cannot = whyTheEngineCannot(editFile, variables);
@@ -293,6 +294,18 @@ public class ReleaseAction extends OntoBoardAction {
         ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
                 container || choice == null ? null : choice.note(), script, whyNotFast,
                 whyNotFull);
+        // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is there.
+        // Declined, the offer was the refusal.
+        String cure = variables == null ? null : DosdpOffer.forRelease(route.refusal());
+        if (cure != null) {
+            if (!DosdpOffer.ask(getOWLWorkspace(), cure, "Cannot release", false)) {
+                return null;
+            }
+            String[] cannot = whyTheEngineCannot(editFile, variables);
+            route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
+                    container || choice == null ? null : choice.note(), script, cannot[0],
+                    cannot[1]);
+        }
         if (route.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(route.refusal()), "Cannot release",
