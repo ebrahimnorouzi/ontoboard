@@ -421,6 +421,37 @@ public class ReleaseAction extends OntoBoardAction {
                 }, routeNote, protegeReadsAgain());
     }
 
+    /**
+     * A release that kept its import statements: said, with the button that releases it again
+     * as one self-contained file - "imports not merged", which the testers of 1.132.0 asked a
+     * button for.
+     *
+     * @param mergedAgain the same release again, the imports merged in
+     */
+    static void keepsItsImports(OperationResult.Builder result, int imports,
+            final java.util.function.Supplier<OperationResult> mergedAgain) {
+        // Found by releasing a real project: the dated copy sits under releases/, outside the
+        // directory catalog-v001.xml covers, so its imports resolve only over the network.
+        // That is how OBO publishes - the PURL layer answers for them - but it means the file
+        // is not self-contained, and somebody opening the dated copy offline gets an ontology
+        // missing everything the imports hold.
+        result.warn("This release keeps its " + imports + " import statement"
+                + (imports == 1 ? "" : "s") + ", and the dated copy sits outside the directory "
+                + "catalog-v001.xml covers - so opening it will try to fetch them over the "
+                + "network. That is what OBO publishes; for a file that stands on its own, "
+                + "release it again as one self-contained file.", new OperationResult.Fix() {
+                    @Override
+                    public String label() {
+                        return "Release it again as one self-contained file";
+                    }
+
+                    @Override
+                    public OperationResult apply() {
+                        return mergedAgain.get();
+                    }
+                });
+    }
+
     /** The git commands of a release as the question shows them, in a view that scrolls. */
     static javax.swing.JScrollPane commandsShown(String commands) {
         javax.swing.JTextArea text = new javax.swing.JTextArea(commands);
@@ -941,18 +972,12 @@ public class ReleaseAction extends OntoBoardAction {
         result.note("The copy at the project root is the same file under the name a PURL resolves "
                 + "to, which is where `make prepare_release` puts it as well.");
         if (!merge && !release.getImportsDeclarations().isEmpty()) {
-            // Found by releasing a real project: the dated copy sits under releases/, outside the
-            // directory catalog-v001.xml covers, so its imports resolve only over the network.
-            // That is how OBO publishes - the PURL layer answers for them - but it means the file
-            // is not self-contained, and somebody opening the dated copy offline gets an ontology
-            // missing everything the imports hold.
-            result.warn("This release keeps its " + release.getImportsDeclarations().size()
-                    + " import statement"
-                    + (release.getImportsDeclarations().size() == 1 ? "" : "s")
-                    + ", and the dated copy sits outside the directory catalog-v001.xml covers - "
-                    + "so opening it will try to fetch them over the network. That is what OBO "
-                    + "publishes; tick 'One self-contained file' if you want a file that stands on "
-                    + "its own.");
+            // Its button makes the same release again with the imports merged in: the same
+            // version, so it takes the place of this one, as releasing it again would.
+            keepsItsImports(result, release.getImportsDeclarations().size(), () -> {
+                merge = true;
+                return run(ontology);
+            });
         }
         return result.summary("Released " + id + " " + version.getText() + ": "
                 + release.getAxiomCount() + " axioms, "

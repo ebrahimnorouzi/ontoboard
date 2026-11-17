@@ -154,6 +154,17 @@ public final class ConfigSync {
     }
 
     /**
+     * Who makes the update a sync decided on: ODK's own program in the project's own image,
+     * or OntoBoard itself. Not for a sync that writes the configuration alone.
+     */
+    static OdkUpdateForm.Way updateWay(OdkSync.Way way, ProcessRunner.Runner real) {
+        return way.how() == OdkSync.How.CONTAINER
+                ? OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, way.runtime(), way.image(),
+                        OdkContainer.Host.detect(way.runtime(), real), null, null)
+                : OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, null, null, null, null, null);
+    }
+
+    /**
      * Brings the project in line, the way decided. Off the dispatch thread: it may start a
      * container, and it asks about imports the update would take out.
      *
@@ -169,10 +180,7 @@ public final class ConfigSync {
         ProcessRunner.Runner real = ProcessRunner.real();
         OperationResult synced;
         try {
-            OdkUpdateForm.Way update = way.how() == OdkSync.How.CONTAINER
-                    ? OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, way.runtime(), way.image(),
-                            OdkContainer.Host.detect(way.runtime(), real), null, null)
-                    : OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, null, null, null, null, null);
+            OdkUpdateForm.Way update = updateWay(way, real);
             synced = OdkUpdateForm.run(OPERATION, root, true, update, real,
                     new ProtegeSession(workspace, models, root));
         } catch (RuntimeException failed) {

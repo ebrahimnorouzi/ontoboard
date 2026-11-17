@@ -43,6 +43,39 @@ public final class OperationResult {
         FAILED
     }
 
+    /**
+     * What puts right what a warning names. The result shows a button beside the warning that
+     * says the label, and pressing it applies the fix - what a person would otherwise do by
+     * hand from the warning's words (the testers of 1.132.0 asked for it).
+     */
+    public interface Fix {
+        /** What the button says: what applying it does, in a few words. */
+        String label();
+
+        /** Applies it - off the dispatch thread - and says what came of it. */
+        OperationResult apply();
+    }
+
+    /** A warning, and the fix for what it names. */
+    public static final class Fixable {
+        private final String warning;
+        private final Fix fix;
+
+        Fixable(String warning, Fix fix) {
+            this.warning = warning;
+            this.fix = fix;
+        }
+
+        /** The warning, as the log has it. */
+        public String warning() {
+            return warning;
+        }
+
+        public Fix fix() {
+            return fix;
+        }
+    }
+
     private final String operation;
     private final Status status;
     private final String summary;
@@ -50,6 +83,7 @@ public final class OperationResult {
     private final List<List<String>> rows;
     private final List<String> log;
     private final List<File> files;
+    private final List<Fixable> fixes;
     private final long millis;
     private final Date when;
 
@@ -61,6 +95,7 @@ public final class OperationResult {
         this.rows = Collections.unmodifiableList(new ArrayList<List<String>>(builder.rows));
         this.log = Collections.unmodifiableList(new ArrayList<String>(builder.log));
         this.files = Collections.unmodifiableList(new ArrayList<File>(builder.files));
+        this.fixes = Collections.unmodifiableList(new ArrayList<Fixable>(builder.fixes));
         this.millis = builder.millis;
         this.when = builder.when;
     }
@@ -77,6 +112,7 @@ public final class OperationResult {
         more.rows.addAll(rows);
         more.log.addAll(log);
         more.files.addAll(files);
+        more.fixes.addAll(fixes);
         more.millis = millis;
         more.when = when;
         return more;
@@ -123,6 +159,11 @@ public final class OperationResult {
     /** Files the operation wrote, for the dialog to offer. */
     public List<File> getFiles() {
         return files;
+    }
+
+    /** The warnings that carry their fix, in the order they were given. */
+    public List<Fixable> getFixes() {
+        return fixes;
     }
 
     public long getMillis() {
@@ -203,6 +244,7 @@ public final class OperationResult {
         private final List<List<String>> rows = new ArrayList<List<String>>();
         private final List<String> log = new ArrayList<String>();
         private final List<File> files = new ArrayList<File>();
+        private final List<Fixable> fixes = new ArrayList<Fixable>();
         private final long started = System.currentTimeMillis();
         private Status status = Status.SUCCEEDED;
         private String summary = "";
@@ -246,6 +288,15 @@ public final class OperationResult {
             note(line);
             if (status == Status.SUCCEEDED) {
                 status = Status.SUCCEEDED_WITH_WARNINGS;
+            }
+            return this;
+        }
+
+        /** A warning with what puts it right: the result shows a button for it. */
+        public Builder warn(String line, Fix fix) {
+            warn(line);
+            if (fix != null && line != null && !line.trim().isEmpty()) {
+                fixes.add(new Fixable(line.trim(), fix));
             }
             return this;
         }

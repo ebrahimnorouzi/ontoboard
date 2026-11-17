@@ -233,4 +233,57 @@ class OperationResultTest {
         assertFalse(OperationResult.of("Measure").summary("done").build().hasTable());
         assertTrue(OperationResult.of("Measure").columns("a").build().hasTable());
     }
+
+    /** A fix that says what it was asked. */
+    private static OperationResult.Fix fix(final String label) {
+        return new OperationResult.Fix() {
+            @Override
+            public String label() {
+                return label;
+            }
+
+            @Override
+            public OperationResult apply() {
+                return OperationResult.of(label).summary("Applied.").build();
+            }
+        };
+    }
+
+    /**
+     * A warning can carry what puts it right: the result keeps the two together, in order,
+     * and the warning is a warning all the same - logged, and the status downgraded.
+     */
+    @Test
+    void aWarningCarriesTheFixThatPutsItRight() {
+        OperationResult.Fix declare = fix("Declare it");
+        OperationResult.Fix takeOut = fix("Take it out");
+        OperationResult result = OperationResult.of("Imports")
+                .warn("x is not declared.", declare)
+                .warn("y has nothing to put it right.")
+                .warn("z cannot be read.", takeOut)
+                .summary("Two imports to see to.").build();
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, result.getStatus());
+        assertEquals(java.util.Arrays.asList("x is not declared.", "y has nothing to put it "
+                + "right.", "z cannot be read."), result.getLog());
+        assertEquals(2, result.getFixes().size());
+        assertEquals("x is not declared.", result.getFixes().get(0).warning());
+        assertEquals(declare, result.getFixes().get(0).fix());
+        assertEquals("z cannot be read.", result.getFixes().get(1).warning());
+        assertEquals(takeOut, result.getFixes().get(1).fix());
+        assertEquals("Applied.", result.getFixes().get(1).fix().apply().getSummary());
+    }
+
+    /** Said more of afterwards, a result keeps its fixes; a warning without one has none. */
+    @Test
+    void aResultAddedToKeepsItsFixes() {
+        OperationResult built = OperationResult.of("Imports")
+                .warn("x is not declared.", fix("Declare it")).build();
+
+        OperationResult more = built.toBuilder().warn("and something else", null).build();
+
+        assertEquals(1, more.getFixes().size());
+        assertEquals("Declare it", more.getFixes().get(0).fix().label());
+        assertEquals(2, more.getLog().size());
+    }
 }

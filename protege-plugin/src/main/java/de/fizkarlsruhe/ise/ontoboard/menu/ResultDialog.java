@@ -60,9 +60,14 @@ public final class ResultDialog {
     private ResultDialog() {
     }
 
+    /** How wide a warning with a fix is set beside its button, in the panel's CSS pixels. */
+    private static final int FIX_TEXT = 300;
+
     /** Shows {@code result}, blocking until dismissed. */
     public static void show(Component parent, OperationResult result) {
-        JPanel content = buildContent(result);
+        // A fix is applied over this dialog, and its own result is shown over it in turn.
+        final Component[] over = {parent};
+        JPanel content = buildContent(result, fixable -> apply(over[0], fixable));
 
         JButton save = new JButton("Save report...");
         save.setToolTipText("Write the summary, the table and the log to a file");
@@ -70,7 +75,20 @@ public final class ResultDialog {
 
         JOptionPane pane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE,
                 JOptionPane.DEFAULT_OPTION, null, new Object[] {save, "Close"}, "Close");
-        pane.createDialog(parent, "OntoBoard: " + result.getOperation()).setVisible(true);
+        javax.swing.JDialog dialog = pane.createDialog(parent,
+                "OntoBoard: " + result.getOperation());
+        over[0] = dialog;
+        dialog.setVisible(true);
+    }
+
+    /** Applies a fix off the dispatch thread, as every operation runs, and shows its result. */
+    private static void apply(final Component over, final OperationResult.Fixable fixable) {
+        BackgroundRun.execute(over, fixable.fix().label(), () -> fixable.fix().apply(),
+                applied -> {
+                    if (applied != null) {
+                        show(over, applied);
+                    }
+                });
     }
 
     /**
@@ -83,8 +101,18 @@ public final class ResultDialog {
      * about the diagram.
      */
     static JPanel buildContent(OperationResult result) {
+        return buildContent(result, fixable -> { });
+    }
+
+    /**
+     * As {@link #buildContent(OperationResult)}, with a button beside each warning that
+     * carries its fix: pressed, it is off - a fix is applied once - and the fix is handed to
+     * {@code applying}.
+     */
+    static JPanel buildContent(OperationResult result,
+            java.util.function.Consumer<OperationResult.Fixable> applying) {
         JPanel content = new JPanel(new BorderLayout(0, 8));
-        Component header = header(result);
+        Component header = header(result, applying);
         // The dialog cannot be resized, so what the header takes the log loses - and what is
         // pushed out of the panel cannot be reached. A long sentence above the log makes the
         // panel taller instead: a release's result showed no log at all (1.153.0, live run).
@@ -111,7 +139,8 @@ public final class ResultDialog {
         return content;
     }
 
-    private static Component header(OperationResult result) {
+    private static Component header(OperationResult result,
+            java.util.function.Consumer<OperationResult.Fixable> applying) {
         JPanel header = new JPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
 
@@ -146,6 +175,24 @@ public final class ResultDialog {
             files.setAlignmentX(Component.LEFT_ALIGNMENT);
             files.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
             header.add(files);
+        }
+        // Each warning that carries its fix, with the button that applies it beside it: what
+        // the warning says to do by hand, in one press.
+        for (final OperationResult.Fixable fixable : result.getFixes()) {
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            row.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+            row.add(new JLabel("<html><body style='width:" + FIX_TEXT + "px'>"
+                    + escape(fixable.warning()) + "</body></html>"), BorderLayout.CENTER);
+            final JButton button = new JButton(fixable.fix().label());
+            button.addActionListener(a -> {
+                button.setEnabled(false);
+                applying.accept(fixable);
+            });
+            JPanel top = new JPanel(new BorderLayout());
+            top.add(button, BorderLayout.NORTH);
+            row.add(top, BorderLayout.EAST);
+            header.add(row);
         }
         header.add(Box.createVerticalStrut(4));
         return header;

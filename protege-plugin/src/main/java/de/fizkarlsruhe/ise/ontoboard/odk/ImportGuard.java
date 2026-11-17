@@ -508,7 +508,7 @@ public final class ImportGuard {
      * @param loaded the ontology the project's edit file holds, read with its imports
      * @throws IOException when the project's configuration cannot be read
      */
-    static Reading reading(File projectRoot, OWLOntology loaded) throws IOException {
+    public static Reading reading(File projectRoot, OWLOntology loaded) throws IOException {
         File root = projectRoot.getAbsoluteFile();
         File config = configIn(root);
         return new Reading(root, config, OdkUpdate.ontbase(projectOf(config, null)), loaded);

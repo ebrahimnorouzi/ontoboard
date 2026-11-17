@@ -278,6 +278,84 @@ class DialogDesignProofTest {
                 "the result panel rendered as " + distinctColours(image) + " colours");
     }
 
+    /** A fix that only says it was made. */
+    private static OperationResult.Fix fix(final String label) {
+        return new OperationResult.Fix() {
+            @Override
+            public String label() {
+                return label;
+            }
+
+            @Override
+            public OperationResult apply() {
+                return OperationResult.of(label).summary("Applied.").build();
+            }
+        };
+    }
+
+    /** The buttons a person presses: not a scroll bar's arrows, which are buttons too. */
+    private static List<javax.swing.JButton> buttons(java.awt.Container in) {
+        List<javax.swing.JButton> found = new java.util.ArrayList<javax.swing.JButton>();
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JButton) {
+                found.add((javax.swing.JButton) child);
+            } else if (child instanceof java.awt.Container
+                    && !(child instanceof javax.swing.JScrollBar)) {
+                found.addAll(buttons((java.awt.Container) child));
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Check imports in an ODK project: a warning that carries its fix has a button beside it
+     * that applies it - in the panel, its words whole, the log keeping its room - and pressed,
+     * it hands the fix on to be applied and is off: a fix is applied once.
+     */
+    @Test
+    void eachWarningWithAFixHasItsButton() throws Exception {
+        final List<OperationResult.Fixable> applied =
+                new java.util.ArrayList<OperationResult.Fixable>();
+        OperationResult result = OperationResult.of("Imports")
+                .columns("Import", "Resolved to", "Cut from")
+                .row("https://example.invalid/whole.owl", "whole.owl", "not recorded")
+                .row("https://example.invalid/broken.owl", "NOT RESOLVED", "")
+                .warn("https://example.invalid/whole.owl is imported by the edit file, and the "
+                        + "project's configuration does not declare it: ODK's update would take "
+                        + "it out. Declared, it becomes the product whole, its module the whole "
+                        + "ontology.", fix("Declare it"))
+                .warn("https://example.invalid/broken.owl is imported by the edit file, and the "
+                        + "project's configuration does not declare it, and it cannot be read: "
+                        + "ODK's update stops until it is taken out.", fix("Take it out"))
+                .warn("ro: cut from 2024-01-01, and upstream has moved since.")
+                .summary("1 of 2 imports did not resolve.").build();
+
+        JPanel content = ResultDialog.buildContent(result, applied::add);
+        BufferedImage image = render(content);
+        ImageIO.write(image, "PNG", new File(designDirectory(), "result-dialog-fixes.png"));
+
+        List<javax.swing.JButton> buttons = buttons(content);
+        List<String> labels = new java.util.ArrayList<String>();
+        for (javax.swing.JButton button : buttons) {
+            labels.add(button.getText());
+            java.awt.Rectangle at = javax.swing.SwingUtilities.convertRectangle(
+                    button.getParent(), button.getBounds(), content);
+            assertTrue(new java.awt.Rectangle(content.getSize()).contains(at),
+                    button.getText() + " at " + at + " in " + content.getSize());
+            assertTrue(button.getWidth() >= button.getPreferredSize().width,
+                    "its words whole: " + button.getText());
+        }
+        assertEquals(Arrays.asList("Declare it", "Take it out"), labels);
+        javax.swing.JTabbedPane tabs = find(content, javax.swing.JTabbedPane.class);
+        assertTrue(tabs.getHeight() >= LOG_NEEDS, "the log keeps its room: " + tabs.getHeight());
+
+        buttons.get(1).doClick();
+        assertEquals(1, applied.size());
+        assertEquals("Take it out", applied.get(0).fix().label());
+        assertTrue(!buttons.get(1).isEnabled(), "pressed once, it is off");
+        assertTrue(buttons.get(0).isEnabled(), "the other is still there to press");
+    }
+
     // ---------------------------------------------------------------- the log stays on screen
 
     /** How much of the panel's height the log needs for its tab and a handful of lines. */

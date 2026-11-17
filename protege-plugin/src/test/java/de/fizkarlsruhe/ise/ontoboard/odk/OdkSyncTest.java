@@ -81,6 +81,25 @@ class OdkSyncTest {
         assertTrue(way.why().contains("configuration"), way.why());
     }
 
+    /**
+     * Said by an action that writes nothing when nobody can bring the project in line - a
+     * button on Check imports: why nobody can, and not that the configuration was written.
+     */
+    @Test
+    void whyNobodyCanIsSaidWithoutWhatFollowsAWrittenConfiguration() {
+        OdkSync.Way way = OdkSync.decide("v1.6", OdkRoute.Use.AUTOMATIC, "docker", null,
+                "This project's ODK image (v1.6) is not on this machine");
+
+        assertTrue(way.whyNobody().startsWith("This project's ODK image (v1.6) is not on this "
+                + "machine"), way.whyNobody());
+        assertTrue(way.whyNobody().contains("ODK v1.6"), way.whyNobody());
+        assertTrue(!way.whyNobody().contains("was written"), way.whyNobody());
+        assertTrue(!OdkSync.later("The ontology has changes that are not saved").whyNobody()
+                .contains("was written"));
+        assertNull(OdkSync.decide("v1.6", OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1.6",
+                null).whyNobody(), "somebody can");
+    }
+
     @Test
     void aProjectOfAnUnknownVersionIsNotSyncedInProcessEither() {
         OdkSync.Way way = OdkSync.decide(null, OdkRoute.Use.AUTOMATIC, null, null, NONE);
