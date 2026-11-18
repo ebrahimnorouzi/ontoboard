@@ -124,6 +124,26 @@ public final class ParameterDialog {
     }
 
     /**
+     * Makes the window the line is in as large as what it holds, when that has grown: a line
+     * that wraps to more lines after the dialog was laid out - Release's, once another version
+     * IRI is chosen - pushed OK and Cancel below the edge of a dialog that cannot be resized
+     * (found by hand in 1.154.0's release check). It only grows, so that typing does not make
+     * the dialog jump back and forth.
+     */
+    private static void grownToFit(Component line) {
+        java.awt.Window window = javax.swing.SwingUtilities.getWindowAncestor(line);
+        if (window == null) {
+            return;
+        }
+        java.awt.Dimension wanted = window.getPreferredSize();
+        if (wanted.height > window.getHeight() || wanted.width > window.getWidth()) {
+            window.setSize(Math.max(wanted.width, window.getWidth()),
+                    Math.max(wanted.height, window.getHeight()));
+            window.validate();
+        }
+    }
+
+    /**
      * What the dialog shows: the explanation, the form, the line of what the values come to
      * when there is one, and Reset. Visible to the package so a test can render it and work
      * its controls.
@@ -139,8 +159,13 @@ public final class ParameterDialog {
             line.setFont(new Font(Font.MONOSPACED, Font.PLAIN, new JTextField().getFont()
                     .getSize()));
             line.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
-            Runnable again = () -> line.setText(wrappedIfLong(line,
-                    preview.apply(readValues(parameters, controls))));
+            Runnable again = () -> {
+                line.setText(wrappedIfLong(line,
+                        preview.apply(readValues(parameters, controls))));
+                // After the change, not inside it: a document's listeners run while it is
+                // locked, and laying out a window there can wait on a painter that waits on it.
+                javax.swing.SwingUtilities.invokeLater(() -> grownToFit(line));
+            };
             for (Component control : controls.values()) {
                 whenItChanges(control, again);
             }

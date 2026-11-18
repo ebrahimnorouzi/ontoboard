@@ -127,4 +127,47 @@ class LooseCheckTest {
         assertFalse(report.passed(), report.verdict());
         assertTrue(report.verdict().contains("missing_ontology_license"), report.verdict());
     }
+
+    /**
+     * Found by hand in 1.154.0's release check: in a project with a PMDco pattern imported,
+     * Check this ontology... failed its quality report on eight errors of PMDco's own terms,
+     * while Build, Quality report... and ODK's test - which ask with the project's profile and
+     * count only the project's own terms - passed the same project. In a project the report is
+     * asked as the project asks it; a file in no project is asked as before.
+     */
+    @Test
+    void inAProjectTheReportCountsTheProjectsOwnTermsWithItsProfile(
+            @org.junit.jupiter.api.io.TempDir File temp) throws Exception {
+        File project = new File(temp, "eggboil");
+        for (java.util.Map.Entry<String, byte[]> file : UpdateCases.eggProject().entrySet()) {
+            File target = new File(project, file.getKey());
+            assertTrue(target.getParentFile().isDirectory() || target.getParentFile().mkdirs());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        File edit = new File(project, "src/ontology/eggboil-edit.owl");
+        assertTrue(new File(edit.getParentFile(), "profile.txt").isFile(), "the seed's profile");
+        OWLOntology ontology = egg();
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        // A term of another ontology, as an import brings it, with two labels: ROBOT's
+        // multiple_labels, an error - about a term that is not the project's.
+        OWLClass imported = factory.getOWLClass(IRI.create("https://w3id.org/pmd/co/PMD_0000638"));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(imported));
+        for (String label : Arrays.asList("fatigue testing process", "fatigue test")) {
+            manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                    factory.getRDFSLabel(), imported.getIRI(),
+                    factory.getOWLLiteral(label, "en")));
+        }
+
+        LooseCheck.Line asALooseFile = LooseCheck.run(ontology,
+                LooseCheck.Options.defaults().withoutSecondOpinion()).lines().get(1);
+        LooseCheck.Line inItsProject = LooseCheck.run(ontology,
+                LooseCheck.Options.forFile(edit).withoutSecondOpinion()).lines().get(1);
+
+        assertFalse(asALooseFile.passed(), asALooseFile.verdict());
+        assertTrue(asALooseFile.verdict().contains("multiple_labels"), asALooseFile.verdict());
+        assertTrue(inItsProject.passed(), inItsProject.verdict());
+        assertTrue(inItsProject.verdict().contains("profile.txt")
+                && inItsProject.verdict().contains("own terms"), inItsProject.verdict());
+    }
 }

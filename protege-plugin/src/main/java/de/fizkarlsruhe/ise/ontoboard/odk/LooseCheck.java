@@ -22,8 +22,10 @@ import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
  *
  * <p>Three checks, each with its verdict in a line: the reasoner (ELK, as ODK's release
  * reasons, and HermiT for ten seconds where ELK may miss something - Build's second opinion,
- * {@link OdkTargets#secondOpinion}); ROBOT's quality report with ODK's default profile - which
- * at ODK v1.6.1 is ROBOT's own, rule for rule (the seed's {@code profile.txt}, compared); and
+ * {@link OdkTargets#secondOpinion}); ROBOT's quality report - in a project as Quality report...
+ * asks it, with the project's profile and on its own terms ({@link Options#forFile}), else with
+ * ODK's default profile, which at ODK v1.6.1 is ROBOT's own, rule for rule (the seed's
+ * {@code profile.txt}, compared); and
  * OntoBoard's label check, ODK's check of a project made by OntoBoard
  * ({@link OdkExtras#checkLabels}), asked of the ontology by itself as ODK asks it. Nothing is
  * written.
@@ -40,23 +42,39 @@ public final class LooseCheck {
     /** What is asked. */
     public static final class Options {
         private final boolean secondOpinion;
+        private final Map<String, String> report;
 
-        private Options(boolean secondOpinion) {
+        private Options(boolean secondOpinion, Map<String, String> report) {
             this.secondOpinion = secondOpinion;
+            this.report = report;
         }
 
         /** ELK, and HermiT for ten seconds where ELK may miss something - as Build does. */
         public static Options defaults() {
-            return new Options(true);
+            return new Options(true, null);
+        }
+
+        /**
+         * The defaults, with the quality report asked as {@code Quality report...} asks it of
+         * this file: in a project, with the project's profile and on its own terms, as ODK's
+         * test counts them; for a file in no project that is ROBOT's own, as by default.
+         */
+        public static Options forFile(java.io.File file) {
+            return new Options(true, QualityReport.optionsFor(file));
         }
 
         /** ELK alone. */
         public Options withoutSecondOpinion() {
-            return new Options(false);
+            return new Options(false, report);
         }
 
         public boolean asksASecondOpinion() {
             return secondOpinion;
+        }
+
+        /** ROBOT's options for the report; null for ROBOT's own defaults. */
+        public Map<String, String> reportOptions() {
+            return report;
         }
     }
 
@@ -132,8 +150,9 @@ public final class LooseCheck {
     /** Checks the ontology - with what it imports, where that is loaded - and writes nothing. */
     public static Result run(OWLOntology ontology, Options options) {
         List<Line> lines = new ArrayList<Line>();
-        lines.add(reasoner(ontology, options == null ? Options.defaults() : options));
-        lines.add(report(ontology));
+        Options asked = options == null ? Options.defaults() : options;
+        lines.add(reasoner(ontology, asked));
+        lines.add(report(ontology, asked.reportOptions()));
         lines.add(labels(ontology));
         return new Result(lines);
     }
@@ -184,11 +203,23 @@ public final class LooseCheck {
 
     // ------------------------------------------------------------------ the quality report
 
-    private static Line report(OWLOntology ontology) {
+    /**
+     * ROBOT's quality report: with {@code reportOptions} as {@code Quality report...} takes them
+     * from a project - its profile.txt, and only its own terms, as ODK's test counts them - or,
+     * null, with ROBOT's own profile: ODK v1.6.1's profile.txt, rule for rule.
+     */
+    private static Line report(OWLOntology ontology, Map<String, String> reportOptions) {
+        String profile = reportOptions == null ? null
+                : reportOptions.get(QualityReport.OPTION_PROFILE);
+        List<String> bases = QualityReport.baseIrisIn(reportOptions);
+        String asked = (profile == null ? "ODK's default profile"
+                : "The project's " + new java.io.File(profile).getName())
+                + (bases.isEmpty() ? "" : profile == null ? ", on the project's own terms"
+                        : ", on its own terms");
         List<QualityFinding> findings;
         try {
-            // ROBOT's own profile: ODK v1.6.1's profile.txt, rule for rule.
-            findings = QualityReport.run(ontology);
+            findings = reportOptions == null ? QualityReport.run(ontology)
+                    : QualityReport.run(ontology, reportOptions);
         } catch (RuntimeException cannotRun) {
             return new Line(REPORT, false, "ROBOT's quality report could not run: "
                     + cannotRun.getMessage(), Collections.<String>emptyList());
@@ -198,6 +229,13 @@ public final class LooseCheck {
                         QualityFinding.Severity.class);
         Map<String, Integer> errors = new TreeMap<String, Integer>();
         List<String> details = new ArrayList<String>();
+        if (profile != null) {
+            details.add("The profile: " + profile);
+        }
+        if (!bases.isEmpty()) {
+            details.add("Counted: terms whose IRI starts with " + String.join(" or ", bases)
+                    + " - the project's own, as ODK's test counts them");
+        }
         for (QualityFinding finding : findings) {
             Integer before = counts.get(finding.getSeverity());
             counts.put(finding.getSeverity(), before == null ? 1 : before + 1);
@@ -217,11 +255,11 @@ public final class LooseCheck {
                         + ")"));
             }
             int count = counts.get(QualityFinding.Severity.ERROR);
-            return new Line(REPORT, false, "ODK's default profile: " + counted(count, "error",
+            return new Line(REPORT, false, asked + ": " + counted(count, "error",
                     "errors") + " - " + named(rules) + others + ". "
                     + "Check and test > Quality report... lists them one by one.", details);
         }
-        return new Line(REPORT, true, "ODK's default profile: no errors" + others + ".", details);
+        return new Line(REPORT, true, asked + ": no errors" + others + ".", details);
     }
 
     /** The warnings and remarks, as the end of a sentence; empty when there are none. */

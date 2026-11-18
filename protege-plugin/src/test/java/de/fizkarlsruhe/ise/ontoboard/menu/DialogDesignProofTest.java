@@ -277,6 +277,70 @@ class DialogDesignProofTest {
         assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
     }
 
+    /**
+     * Found by hand in 1.154.0's release check: choosing another version IRI in Release... made
+     * the line under the form wrap to four lines after the dialog had been laid out, and the
+     * dialog - which cannot be resized - kept its height, so OK and Cancel slid below its edge
+     * with two pixels of them left. A line that grows takes its dialog with it.
+     */
+    @Test
+    void aLineThatGrowsTakesItsDialogWithItSoOkStaysInView() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeFalse(
+                java.awt.GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final String wrapped = "Release, with fresh imports - make clean, then make "
+                + "prepare_release VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V "
+                + "https://example.org/eggboil/eggboil/1.0.0 --annotation owl:versionInfo "
+                + "1.0.0'";
+        List<Parameter> shape = Arrays.asList(Parameter.of("shape", "Version IRI",
+                Parameter.Kind.TEXT).defaultValue("odk")
+                .help("The shape of the version IRI.").build());
+        Map<String, java.awt.Component> controls =
+                new java.util.LinkedHashMap<String, java.awt.Component>();
+        JPanel content = ParameterDialog.content(null, "Builds the release.", shape, controls,
+                values -> "odk".equals(values.get("shape"))
+                        ? "Release, with fresh imports - make clean, then make prepare_release"
+                        : wrapped);
+        javax.swing.JDialog dialog = new javax.swing.JOptionPane(content,
+                javax.swing.JOptionPane.PLAIN_MESSAGE, javax.swing.JOptionPane.OK_CANCEL_OPTION)
+                .createDialog(null, "Release");
+        try {
+            // Typed as a person types: on Swing's thread. What the change queues - the dialog
+            // made to fit - runs before the second call does.
+            final javax.swing.JTextField field = (javax.swing.JTextField) controls.get("shape");
+            javax.swing.SwingUtilities.invokeAndWait(() -> field.setText("version only"));
+            final int[] measured = new int[2];
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                dialog.validate();
+                java.awt.Container pane = dialog.getContentPane();
+                javax.swing.JButton ok = buttonCalled(pane, "OK");
+                measured[0] = javax.swing.SwingUtilities.convertPoint(ok, 0, ok.getHeight(),
+                        pane).y;
+                measured[1] = pane.getHeight();
+            });
+
+            assertTrue(measured[0] <= measured[1], "OK ends at " + measured[0]
+                    + " px, the dialog's content at " + measured[1] + " px");
+        } finally {
+            dialog.dispose();
+        }
+    }
+
+    private static javax.swing.JButton buttonCalled(java.awt.Container in, String text) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JButton
+                    && text.equals(((javax.swing.JButton) child).getText())) {
+                return (javax.swing.JButton) child;
+            }
+            if (child instanceof java.awt.Container) {
+                javax.swing.JButton found = buttonCalled((java.awt.Container) child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     private static javax.swing.JLabel named(java.awt.Container in, String name) {
         for (java.awt.Component child : in.getComponents()) {
             if (name.equals(child.getName()) && child instanceof javax.swing.JLabel) {
