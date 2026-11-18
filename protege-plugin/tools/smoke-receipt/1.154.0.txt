@@ -1,0 +1,173 @@
+OntoBoard 1.154.0 - host smoke receipt
+
+Fewer limits without Docker: OntoBoard's own engine also runs a project's own Makefile rules and
+its DOSDP patterns, so 74 of ODK's 79 sample configurations build, release and refresh their
+imports with nothing installed (48 at 1.153.0); imports are easier to declare, refresh and
+repair; Build and Release say in plain words what they run. See WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Two of the runs are in throwaway copies of the
+maintainer's installs, each with this jar the only ontoboard-*.jar in plugins; the installs
+themselves were only read. At the maintainer's request the jar is also installed in the
+maintainer's own Protege 5.6.9, the only ontoboard-*.jar there, and smoked there (the last row).
+smoke.ps1 ran under Windows PowerShell 5.1, with -WaitSeconds 300, and opened no ontology.
+
+  2026-11-18  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 11/11  test 12/12
+  2026-11-18  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 11/11
+  2026-11-18  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 11/11  test 12/12
+  2026-11-18  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 11/11  test 12/12
+
+The self-test's summary starts with the version it tested: "OntoBoard 1.154.0: 12 of 12 checks
+ran - 9 menu items, ODK's test run by OntoBoard itself and 2 tabs". Its item "Build (nothing
+installed)" makes a project from ODK v1.6.1's templates and runs ODK's test on it by OntoBoard
+itself - the reasoner, ODK's five checks, the quality report and the OWL profile - without
+starting any program: 1350 ms in the copy of 5.6.9, 839 ms in 5.5.0, 1158 ms in the
+maintainer's own 5.6.9. In 5.5.0 two other plugins of the install, cellfie 2.2.4 and swrltab
+2.1.3, failed to install; neither is OntoBoard's. Each install cleans Felix's bundle cache at
+start (org.osgi.framework.storage.clean=onFirstInit), so the jar in plugins is the one that runs,
+whichever candidate of this version was there before.
+
+The bundle's manifest is 1.153.0's but for the version: the same 261 package imports, the same
+104 embedded libraries, the same 34 exported packages. Nothing new is asked of Protege.
+
+By hand, in an isolated copy of the maintainer's Protege 5.6.9 - its own home and its own
+preferences, -Xmx2G, the setting "Never in a container" - through its menus and forms, on a
+project New ODK project... made there, on ODK's own sample project with DOSDP patterns, and on
+loose files. First with the first candidate of this release (sha256 4d02e1d1...):
+
+  2026-11-18  Check requirements...: the container's row grey, "not used"; the image's "not
+              looked for".
+  2026-11-18  New ODK project...: the GitHub owner asked for, and in the configuration and the
+              README's links.
+  2026-11-18  ID ranges: the board writes the name Protege knows the user by into the range it
+              claims, though a different collaboration display name was set; "Which range is
+              yours?" keeps its underscores in sight under the focus border; after the claim,
+              Protege's own "No Id Range Found" stays away when OntoBoard rewrites the edit file
+              and Protege reads it again, and Protege's log finds the user's range.
+  2026-11-18  Import terms: the four kinds of module in plain words, and their help.
+  2026-11-18  Build...: the targets in words, the four switches, and the make command under the
+              form as they change; test run by OntoBoard itself.
+  2026-11-18  Release...: the box that commits the project's new files first, its help naming
+              them, the line under the form, the git commands, the two commits and the tag.
+  2026-11-18  Project configuration...: ODK's own words under the table and as each key's
+              tooltip; a key ODK has no words for says what it sits under.
+  2026-11-18  Check this ontology... on a loose file: the reasoner, the report and the labels,
+              each failing with its finding.
+  2026-11-18  An ontology in no project released with its imports unmerged: the warning and its
+              button, which releases it again as one self-contained file.
+  2026-11-18  Check imports: Declare it for an import the configuration does not declare - the
+              module built, the configuration and the edit file updated - Take it out for one
+              that cannot be read, and Edit > Undo.
+  2026-11-18  Refresh imports with a source that refuses at once: the question offering the copy
+              the project keeps; with every import downloaded again, the warning that ODK's
+              refresh leaves no copy to build from.
+
+That check found four defects, fixed in this jar, each with a test that failed first:
+
+- With a version IRI of another shape - two of the three the form offers - Release's line wraps
+  to four lines, and the dialog, which cannot be resized, kept its height: OK and Cancel slid
+  below its edge, two pixels of them left.
+- Check this ontology... asked the quality report with ROBOT's defaults in a project too, and
+  failed a project with a PMDco pattern imported on PMDco's own terms while Build passed it. It
+  asks as Quality report... does now: the project's profile, and its own terms.
+- Refresh imports' question came before its progress window when the source failed at once -
+  offline, a host that is down - and the window then came up over the question: once it was
+  answered neither could close, and "Refresh imports is running..." stayed until Stop.
+- DOSDP-Tools did not install inside Protege on this machine: the unpacked folder's move into
+  place was refused every time. Reproduced outside Protege under Protege's javaw.exe, and not
+  under java.exe: something on the machine still reads the 192 libraries just written, and
+  Windows does not rename a folder while it does. The move is tried again for up to 30 s.
+
+With the third candidate (sha256 f174b8de...), which differs from this jar only by the last fix,
+in the same copy (its jar replaced and the hash checked):
+
+  2026-11-18  Release... with a version IRI of another shape: the dialog grows with the line, OK
+              and Cancel in view.
+  2026-11-18  Check this ontology... in the project: all three checks pass, the report as "The
+              project's profile.txt, on its own terms".
+  2026-11-18  Refresh imports with the source refusing at once: the question, and no window over
+              it; answered, the module built from the copy and the result shown.
+  2026-11-18  The project opened afresh after the board's claim: no "No Id Range Found".
+
+With this jar, in the same copy:
+
+  2026-11-18  DOSDP-Tools from Build's offer on ODK's sample project with DOSDP patterns: the
+              download's window, the install (192 libraries), and test run by OntoBoard itself
+              with DOSDP-Tools, passed in 68 s.
+
+The jar: sha256 92bae8f7f97e441a7e2e05fb131c3e4f6b38243965425ba18ae0b1a852260956, 68,076,132
+bytes, built on Windows by mvn -o -B clean package from this release's tree; it is the jar the
+smoke runs. The unit suite in that build, on Java 11: 5,968 tests, 0 failures, 0 errors, 8
+skipped - BundleConfigurationTest's two jar tests, which a clean build reaches before the jar
+exists (run against this jar afterwards, its 20 tests passed); PinchZoomTest, on a Mac only;
+KoncludeTest's executable-bit test and one SettingsPanelTest case, which need a file system with
+an executable bit or one that keeps case, and run on CI's Linux job; three tests that write
+pictures only when asked. On Java 8, Protege 5.5.0's own 1.8.0_121: the ODK classes and the forms
+that start them, on the tree before the release check, 2,491 tests, 1 failure - a test's
+expectation that this version's own change to an import failure's words had outdated, fixed and
+green since; and the classes of the release check's fixes, on this release's tree, 114 tests, 0
+failures. With OWL API 4.5.29, Protege 5.6.9's: the ODK classes and those forms, on the tree
+before the release check, 2,491 tests, 0 failures. The live tests, which start ODK's
+container (obolibrary/odkfull, v1.6.1), on the tree before the DOSDP-Tools fix, which no live
+test reaches: 43 tests, 0 failures, 2 skipped - MigrationLiveTest's case for projects named on
+the command line, and nfdicore's case on OWL API 4.5.9, whose imports move from http to https;
+with 4.5.29 it ran, 2 of 2. Among them HandOverLiveTest: a project OntoBoard made is carried on
+with ODK and back, and a project ODK made with OntoBoard and back.
+
+GitHub's runners, reproduced here on this release's tree: the dialogs measured in DejaVu Sans, as
+Linux draws them, 253 tests, 0 failures; the ODK classes and the forms that start them with an
+8.3 short temporary folder, as on the Windows runner, 2,498 tests, 0 failures - and with a blank
+in its name, as for a Windows user name with a space, 2,498 tests, 0 failures.
+
+
+WHAT THIS RELEASE ADDS
+
+- OntoBoard's own engine runs a project's own rules - the rules and settings of its
+  <id>.Makefile - as make takes them, when every line the target reaches can be read here, every
+  program it calls is one the engine has, and nothing is written outside the project; all asked
+  before the first line runs. nfdicore and mwo, which build their import modules so, refreshed
+  those imports and ran test_fast by OntoBoard itself and in ODK's container with the same files.
+- A project with DOSDP patterns is built and released by OntoBoard itself as ODK builds it.
+  DOSDP-Tools 0.19.3 cannot go into the bundle; Build... and Release... offer to download it
+  (119 MB, the release ODK's image carries) into .ontoboard/tools in the home folder, unpack it
+  only when every library is byte for byte the one in ODK's image, and run it on Java 11 or later.
+  ODK's check of the pattern files is GPL-3.0 Python; OntoBoard has its own, held against ODK's
+  checker on 191 recorded cases.
+- Of ODK's 79 sample configurations, each seeded as ODK seeds it, 74 run every target of Build,
+  Release and Refresh imports by OntoBoard itself (48 at 1.153.0), 3 stop only where ODK's own
+  make stops too, and 2 need the container (SSSOM, and the db export).
+- Build... has a box for each of ODK's four switches (IMP, MIR, PAT, COMP) and shows the make
+  command they come to; its targets are named in words with the make target beside them, and
+  ODK's deprecated update_repo is no longer offered. Release... shows its make commands.
+- Import terms... names ODK's module types in plain words and declares the import with the kind
+  chosen; Refresh imports... says which import failed and offers to build it from the copy it
+  has; a warning about an undeclared import or imports not merged has a button that applies its
+  fix.
+- Release... commits the project's new files first, in a commit of their own, so that the
+  release's tag holds a new import module and its term list.
+- Check this ontology... checks whatever is open - a loose .owl file too - with the reasoner,
+  ROBOT's quality report and the label check. Project configuration... shows ODK's own
+  description beside each key, from ODK's schema (BSD-3, in NOTICE).
+- The board claims and mints under the name Protege 5.6's ID ranges look for, so Protege's own
+  "No Id Range Found For Current User" stops once the board has claimed a range.
+- A project goes from OntoBoard to ODK and back, both ways, with ODK v1.6.1's container.
+- A review of the whole branch found one critical defect, two important and seven minor, and the
+  release check by hand four more; all are fixed, each with a test that failed first but one
+  test-only finding, shown by its live run. docs/fixed.md has the entries marked 1.154.0.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The scripted runs send mouse events to the components directly, so focus, hover, drag and the
+  native file dialogs were not exercised with a real mouse on this jar; the wait cursor while
+  Build and Release ask the engine was not seen.
+- Linux and macOS: not run on this jar; CI runs the unit suite on Linux and on Windows.
+- DOSDP-Tools on Protege 5.5.0, which needs a Java 11 on the machine to run it, was not tried by
+  hand; its tests run it with Java 11. On a Java 19 or newer its messages' non-ASCII characters
+  come out garbled in the transcript (a deferred minor); the files it writes are not affected.
+- OntoBoard's own DOSDP pattern check on patterns unlike the 191 recorded cases: only ODK's
+  checker can say, and a project's CI in ODK's image runs that one.
+- Podman, and ODK's own tools installed on Linux or macOS: not tried.
+- How long each task takes against ODK in Docker on a quiet machine: not measured for this
+  release - the machine was never quiet; docs/measurements.md has 1.153.0's measurement and the
+  command.

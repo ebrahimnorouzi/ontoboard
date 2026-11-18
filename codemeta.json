@@ -13,11 +13,11 @@
   ],
   "codeRepository": "https://github.com/ebrahimnorouzi/ontoboard",
   "license": "https://spdx.org/licenses/Apache-2.0",
-  "softwareVersion": "1.153.0",
-  "version": "1.153.0",
+  "softwareVersion": "1.154.0",
+  "version": "1.154.0",
   "dateCreated": "2026-04-11",
   "datePublished": "2026-10-14",
-  "dateModified": "2026-11-15",
+  "dateModified": "2026-11-18",
   "developmentStatus": "active",
   "author": [
     {
