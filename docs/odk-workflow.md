@@ -197,15 +197,19 @@ asks in a project OntoBoard makes, of the ontology that is open - in a project o
   ontology has axioms ELK passes over, HermiT is asked as well, for up to ten seconds, and what
   it finds is said, as *Build...* says it; the form's one box, *Ask HermiT too, for up to ten
   seconds*, ticked by default, decides that;
-- ROBOT's quality report with ODK's default profile - which has the same rules at the same
-  levels as ROBOT's own - failing on an error and naming its rules, with the warnings and
-  remarks counted; *Check and test > Quality report...* lists them one by one;
+- ROBOT's quality report, failing on an error and naming its rules, with the warnings and
+  remarks counted; *Check and test > Quality report...* lists them one by one. It is asked as
+  *Quality report...* asks it: in a project with the project's `profile.txt`, and counting only
+  the project's own terms, as ODK's `test` does - not the terms an import brings with it; for a
+  file in no project with ODK's default profile, which has the same rules at the same levels as
+  ROBOT's own;
 - the label check every project OntoBoard makes has: every class the ontology describes has an
   `rdfs:label`.
 
 The result has a row for each, pass or FAIL, with the verdict - "ELK: consistent, and every
-class can have members.", "ODK's default profile: no errors; 8 warnings; 3 remarks." - and what
-each found under it in the log.
+class can have members.", "ODK's default profile: no errors; 8 warnings; 3 remarks." - in a
+project "The project's profile.txt, on its own terms: ..." - and what each found under it in
+the log.
 
 ### A project with DOSDP patterns, since 1.154.0
 
