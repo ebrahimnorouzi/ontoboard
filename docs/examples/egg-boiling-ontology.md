@@ -31,8 +31,7 @@ kept as they are (`module_type: custom` in `src/ontology/eggboil-odk.yaml`).
 
 ## 3. Check it as ODK does
 
-*OntoBoard → Build and release → Build...* → *Check everything (downloads the imports again) -
-make test*. That is ODK's own `test` - the reasoner, ODK's checks, the quality report and the OWL
+*OntoBoard → Build and release → Build...* → *Check everything - make test*. That is ODK's own `test` - the reasoner, ODK's checks, the quality report and the OWL
 profile - and the project's two questions, asked of the ontology with its imports: every kind of
 egg boiling dataset has some *has part*, and every kind of egg mass value specifies the value of
 some *mass*. Without the network, choose *Check quickly (keeps the imports as they are) - make

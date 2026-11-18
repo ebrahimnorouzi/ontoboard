@@ -103,8 +103,9 @@ help says why one is missing. With the container, *Build...* offers every target
 Makefile, following its `include` into `<id>.Makefile`. Either way `test` is chosen first.
 
 **Build's form, since 1.154.0.** For ODK's Makefile - whoever runs it - each target is offered in
-plain words, with make's command after them: *Check everything (downloads the imports again) -
-make test*, *Check quickly (keeps the imports as they are) - make test_fast*; a target without
+plain words, with make's command after them: *Check everything - make test*, *Check quickly
+(keeps the imports as they are) - make test_fast*; whether *Check everything* fetches the imports
+again is the boxes' to say, so its words do not claim it. A target without
 such words is offered as its command, *make reason_test*. Under the target are four boxes, ODK's
 own switches, each ticked as ODK's default has it:
 
@@ -884,8 +885,8 @@ holds, in plain words, each one of ODK's own module types, with its name in brac
 | *The module holds* | ODK's type | What comes with the terms you chose |
 |---|---|---|
 | *The terms you chose and what they need* | `slme`, BOT - ODK's default | each term's parents up to the top, and what it is defined by |
-| *Only the terms you chose and the links between them* | `filter` | what is said between them, and nothing else: their other parents are left out |
-| *The terms you chose and the relations between them* | `minimal` | the same, and links through relations as well |
+| *Only the terms you chose, with their "is a" links* | `filter` | which of them is a kind of which, and nothing else: their other parents are left out, and so are links through other relations |
+| *The terms you chose, with every relation between them* | `minimal` | the same, and the links through other relations as well - "a is part of d" |
 | *The whole ontology* | `mirror` | all of it, as the source has it |
 
 The words are what each type kept when asked in ODK's image: for a term `a`, its parent `b`, and
