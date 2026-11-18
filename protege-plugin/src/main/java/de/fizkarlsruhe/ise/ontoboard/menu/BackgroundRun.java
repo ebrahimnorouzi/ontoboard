@@ -70,7 +70,22 @@ public final class BackgroundRun {
      */
     private static final ThreadLocal<AtomicBoolean> ABANDONED = new ThreadLocal<AtomicBoolean>();
 
+    /**
+     * How many questions the work on this thread has open on the dispatch thread now - see
+     * {@link OntoBoardAction#onDispatchThread}. While one is, the progress window waits: shown
+     * on top of a question, inside its modal loop, it held the answer back until the run ended,
+     * and the run waited for the answer (found by hand in 1.154.0's release check: Refresh
+     * imports' question, after a source refused the connection at once).
+     */
+    private static final ThreadLocal<java.util.concurrent.atomic.AtomicInteger> ASKING =
+            new ThreadLocal<java.util.concurrent.atomic.AtomicInteger>();
+
     private BackgroundRun() {
+    }
+
+    /** The open-question count of the run on this thread; null when no run is on it. */
+    static java.util.concurrent.atomic.AtomicInteger asking() {
+        return ASKING.get();
     }
 
     /**
@@ -100,6 +115,8 @@ public final class BackgroundRun {
         final JDialog dialog = createDialog(parent, what);
         final long started = System.currentTimeMillis();
         final AtomicBoolean abandoned = new AtomicBoolean(false);
+        final java.util.concurrent.atomic.AtomicInteger asking =
+                new java.util.concurrent.atomic.AtomicInteger();
         // Guarantees onFinished runs once. Both the abandon button and done() race to deliver.
         final AtomicBoolean delivered = new AtomicBoolean(false);
 
@@ -114,11 +131,13 @@ public final class BackgroundRun {
             @Override
             protected OperationResult doInBackground() throws Exception {
                 ABANDONED.set(abandoned);
+                ASKING.set(asking);
                 de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.cancelWith(cancellation);
                 try {
                     return work.call();
                 } finally {
                     ABANDONED.remove();
+                    ASKING.remove();
                     de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.stopCancelling();
                 }
             }
@@ -152,10 +171,17 @@ public final class BackgroundRun {
         // Shown only if the work outlasts the threshold: a modal dialog shown and disposed within
         // a frame or two reads as a glitch. The timer is what enforces the delay - the EDT is
         // free in the meantime, which is the whole point.
-        javax.swing.Timer reveal = new javax.swing.Timer(SHOW_AFTER_MILLIS, e -> {
-            if (!worker.isDone() && !abandoned.get()) {
-                dialog.setVisible(true);
+        final javax.swing.Timer reveal = new javax.swing.Timer(SHOW_AFTER_MILLIS, null);
+        reveal.addActionListener(e -> {
+            if (worker.isDone() || abandoned.get()) {
+                return;
             }
+            if (asking.get() > 0) {
+                // A question of this run is open: the window comes once it is answered.
+                reveal.restart();
+                return;
+            }
+            dialog.setVisible(true);
         });
         reveal.setRepeats(false);
         reveal.start();

@@ -264,6 +264,12 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
             work.run();
             return failure[0];
         }
+        // Counted while it is open, so that the run's progress window does not come up on top
+        // of a question it asks (BackgroundRun.asking).
+        java.util.concurrent.atomic.AtomicInteger asking = BackgroundRun.asking();
+        if (asking != null) {
+            asking.incrementAndGet();
+        }
         try {
             javax.swing.SwingUtilities.invokeAndWait(work);
         } catch (InterruptedException interrupted) {
@@ -271,6 +277,10 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
             return "the wait for it was interrupted";
         } catch (java.lang.reflect.InvocationTargetException thrown) {
             return said(thrown.getCause() == null ? thrown : thrown.getCause());
+        } finally {
+            if (asking != null) {
+                asking.decrementAndGet();
+            }
         }
         return failure[0];
     }
