@@ -48,8 +48,19 @@ class RobotPathsTest {
         return folder.getAbsolutePath() + File.separator;
     }
 
-    private static List<String> words(String line) {
-        return Arrays.asList(line.trim().split(" +"));
+    /**
+     * A line's words, split at blanks as a recipe's are - but the test's own folder is one word
+     * whatever its name holds. With a blank in the temporary folder - a Windows user name with a
+     * space - the test split its own expected lines and inputs, not the product's (found running
+     * the ODK classes with TMP on such a folder, 1.154.0's release check).
+     */
+    private List<String> words(String line) {
+        String folder = temp.getAbsolutePath();
+        List<String> words = new ArrayList<String>();
+        for (String word : line.trim().replace(folder, "\u0001").split(" +")) {
+            words.add(word.replace("\u0001", folder));
+        }
+        return words;
     }
 
     // ------------------------------------------------------------------ every line ODK has
