@@ -1,28 +1,25 @@
 # Start here: from an idea to a released ontology
 
-You do not need to know the Ontology Development Kit (ODK), ROBOT or the eXtreme Design method
-to build an ontology the way they do. OntoBoard runs their steps inside Protégé, from its menus,
-with nothing else installed — no Docker, no command line.
-
-In Protégé, **OntoBoard → Start here: the guide...** shows the steps below, ticks the ones your
-project has done, marks the next one, and has a button for each. The empty board offers it too.
-A word you have not met is in the [glossary](glossary.md). What needs nothing installed and what
-needs git or Docker is listed under [What works with nothing installed](getting-started.md#what-works-with-nothing-installed).
+OntoBoard runs the steps of the Ontology Development Kit (ODK), ROBOT and eXtreme Design inside
+Protégé, from its menus, with nothing else installed. **OntoBoard → Start here: the guide...**
+shows the steps below, ticks the ones your project has done and has a button for each. Words are
+explained in the [glossary](glossary.md); what needs git or Docker is under
+[What works with nothing installed](getting-started.md#what-works-with-nothing-installed).
 
 ## Where are you starting?
 
 | You have... | Your first step | In OntoBoard |
 |---|---|---|
 | Nothing yet | Create a project | *OntoBoard > Project > New ODK project...* |
-| An ontology file | Open it, then make a project of it: tick **Start from** your file, and it becomes the project's edit file | *OntoBoard > Project > New ODK project...* |
-| An ontology file and its earlier versions | Turn it into a project, its earlier versions becoming the project's history | *OntoBoard > Project > Turn an ontology into an ODK repository...* |
-| A project made by OntoBoard 1.135 or before | Carry it over to an ODK project first: Build and Release do not run on it until then | *OntoBoard > Project > Update project files...* |
+| An ontology file | Make a project of it: tick **Start from** your file | *OntoBoard > Project > New ODK project...* |
+| An ontology file and its earlier versions | Turn it into a project with its history | *OntoBoard > Project > Turn an ontology into an ODK repository...* |
+| A project made by OntoBoard 1.135 or before | Carry it over first | *OntoBoard > Project > Update project files...* |
 | An ODK project on this computer | Open its edit file, `src/ontology/<id>-edit.owl` | *Project → Open existing ODK project...* |
 | A project on GitHub | Clone it and open it | *Project → Open from GitHub...* |
-| Terms to add to somebody else's ontology | Fork it on GitHub, open your fork, get an ID range if its terms are numbered, add your terms, build, and propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Share → Pull request...* |
+| Terms to add to somebody else's ontology | Fork it, open your fork, get an ID range, add terms, build, propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Share → Pull request...* |
 
-Only want to look at an ontology and draw on it? Open the file in Protégé and go to the
-**OntoBoard** tab - no project needed. The project is what builds, tests and releases need.
+To only look at an ontology and draw on it, open the file and go to the **OntoBoard** tab - no
+project needed.
 
 ## The path
 
@@ -41,210 +38,85 @@ Steps 5 to 8 are then a loop: model, test, release.
 
 ### 1. Set up a project
 
-**What you do.** Answer a few questions — a short id, a title, a web address for your terms, a
-licence. OntoBoard writes the project: the edit file you work in, `src/ontology/<id>-edit.owl`,
-its configuration `<id>-odk.yaml`, ODK's Makefile and checks, and a documentation site - and,
-with git installed, makes it a repository with these files as its first commit. A release folder
-comes with the first release.
+Answer a few questions - a short id, a title, a web address for your terms, a licence. OntoBoard
+writes the project ODK itself writes: the edit file `src/ontology/<id>-edit.owl`, its
+configuration `<id>-odk.yaml`, ODK's Makefile and checks - and, with git installed, a first
+commit. To start from an ontology you have, tick **Start from** your file; with its earlier
+versions, *OntoBoard > Project > Turn an ontology into an ODK repository...* makes each one a
+release and a git tag.
 
-**Why.** A project makes everything after it repeatable: anyone who opens it gets the same
-build, the same tests and the same releases — you next year included.
-
-**Instead of.** ODK's `seed` command. Since 1.153.0 it is the project ODK itself writes, the
-same files, so other ontology developers recognise it - but there is no Docker and no command
-line to set up: ODK writes it in its container where its image is on the machine, and otherwise
-OntoBoard writes it from ODK's own templates.
-
-**Already have an ontology?** Open it, then *OntoBoard > Project > New ODK project...* and tick
-**Start from** your file: it becomes the project's edit file, its address and everything in it
-kept. With its earlier versions, 
-*OntoBoard > Project > Turn an ontology into an ODK repository...* makes the project from it, in any format: each earlier version becomes a release
-and a git tag, oldest first, so the project starts with its history. Imports become modules of
-the terms you use. Every step is shown as it runs, with what it wrote.
-
-**Made with OntoBoard 1.135 or before?** Such a project has a Makefile of OntoBoard's own, and
-Build and Release do not run on it. *OntoBoard > Project > Update project files...* makes it an
-ODK project - it shows every change before it makes any, and keeps the ontology, its imports and
-its tests. The guide's first step offers it.
-
-**Done when** the ontology you have open is `src/ontology/<id>-edit.owl`, and the project's
-Makefile is the one ODK writes.
+**Done when** the ontology you have open is `src/ontology/<id>-edit.owl`.
 
 ### 2. Say what it is for
 
-**What you do.** Write a few user stories — who needs the ontology, and for what — and the
-*competency questions* it must answer, such as "Which products are suitable for children?". The
-guide's **Write the requirements** button puts `docs/requirements.md` into your project with the
-sections eXtreme Design asks for, and opens it.
+Write a few user stories and the *competency questions* the ontology must answer, such as "Which
+products are suitable for children?". The guide's **Write the requirements** button creates
+`docs/requirements.md` with the sections eXtreme Design asks for.
 
-**Why.** The questions decide what to model and what to leave out. Later they become the tests
-that tell you the ontology does its job.
-
-**Done when** the project has `docs/requirements.md` (or `docs/xd/requirements.md`).
+**Done when** the project has `docs/requirements.md`.
 
 ### 3. Start from a design pattern
 
-**What you do.** *OntoBoard → Reuse → Pattern library...*, search with the words of your questions,
-pick a pattern, *Import terms...*, *Add them*.
-
-**Why.** A pattern is a small, proven piece of ontology for a problem many people have had —
-parts and wholes, roles, classifications, prices. You start from a design others have tested,
-not a blank page.
-
-**What OntoBoard does.** It extracts the pattern's terms as a module of your project, records
-where it came from, and shows its classes on the board in a frame named after the pattern. A
-board opened on an ontology frames every pattern it uses, including in a release, where the
-imports are merged.
+*OntoBoard → Reuse → Pattern library...*, search with the words of your questions, pick a
+pattern, *Import terms...*, *Add them*. Its terms become a module of your project, shown on the
+board in a frame named after the pattern.
 
 **Done when** the ontology imports a pattern from the library.
 
 ### 4. Reuse terms from other ontologies *(optional)*
 
-**What you do.** *OntoBoard → Reuse → Find terms in another ontology...*: give its web address or a
-file
-- or pick one from the list, which has your own imports' sources and a few widely used
-ontologies, and PMDco and TTO when you have imported a PMDco pattern - **Load**, then type part of
-a name. Every label a term has is searched, in every language, and its synonyms - OBO's
-alternative label, `skos:altLabel`, oboInOwl's synonyms - and a term found by another name than
-the one shown says so: *mould - found as "mold"*. Tick the terms you want — the ticks stay while
-you search for more — and **Import**: one confirmation names the files it writes, and **Add them**
-does it (*Advanced...* chooses how much comes with the terms, and where the module goes). The
-module is named after the ontology - `pmdco_import.owl` for PMDco - and an import you already
-have keeps its name. Terms
-already in your ontology are marked, and obsolete ones are hidden unless asked for. A term the
-ontology only refers to, rather than defines, comes after its own terms and says where it is from
-— `schema.org/Person` beside a vocabulary's own *Person* — and the whole address is in its
-tooltip.
-
-The address of a *page about* an ontology works too: OntoBoard follows the page's link to the
-ontology's file and says which one it read. A server that accepts the connection and then sends
-nothing is given up on after 30 seconds, with the reason; **Stop** ends any load at once. If one
-of the ontology's own imports cannot be fetched, the rest still loads and the missing import is
-named.
-
-*OntoBoard → Reuse → Imported terms...* shows what came from where: each import, every term it
-brings by label — the ones you chose, and the ones that came along because a chosen term needs them
-— and how often your own axioms use each. **Add terms from ...** opens Find terms on that import's
-source; **Take out of the import** removes chosen terms. Either way the import is rebuilt at once,
-and Protégé shows the change straight away. A term that more than one import brings is marked
-under *Also in*, and so is a pair that word it differently.
-
-In a project, since 1.153.0, the import is made the way ODK makes one: the import is declared in
-the project's `<id>-odk.yaml`, ODK's update writes the Makefile's rules for it, the catalog entry
-and the import in your edit file, and ODK's own refresh builds the module from the term list - by
-whoever runs ODK's targets on this machine, OntoBoard itself where nothing else is there. The
-confirmation lists these steps before anything is written.
-
-**Why.** Shared terms make your data join up with everyone else's, and spare you defining what
-has been defined well before.
-
-**Instead of.** ROBOT's `extract`, which needs the terms' IRIs, and ODK's `update_repo` and
-`refresh-imports` after it. OntoBoard keeps the module, its term list and the import in step, and
-adding terms to an import keeps the terms it already had.
+*OntoBoard → Reuse → Find terms in another ontology...*: give its web address or a file, or pick
+one from the list, **Load**, type part of a name, tick the terms you want and **Import**. Every
+label and synonym is searched. In a project the import is made as ODK makes one - declared in the
+configuration, with ODK's rules, catalog entry and module. *OntoBoard → Reuse → Imported terms...*
+shows what came from where, and adds or takes out terms.
 
 ### 5. Model it
 
-**What you do.** Specialise the patterns and add your own classes, relations and examples — on
-the OntoBoard board or in Protégé's usual tabs. Give every term a label; a definition helps the
-next reader.
-
-On the board: double-click empty space for a class; select a class and press **Tab** for a
-subclass beside it, or **Enter** for a sibling below it; right-click a class for *New
-subclass...* or *New individual of this class...*; drag from a box's edge to another box to
-relate them. Names may have spaces - the label
-is what you type. Select a term to see what it is connected to; the **?** on the toolbar has the
-legend and every shortcut.
-
-**Why.** Drawing the model makes gaps and odd relations obvious, and the board can be shared live
-with your team.
+Specialise the patterns and add your own classes, relations and examples, on the board or in
+Protégé's usual tabs. Give every term a label. On the board: double-click empty space for a class;
+select a class and press **Tab** for a subclass or **Enter** for a sibling; right-click for more;
+drag from a box's edge to another box to relate them. The **?** on the toolbar has every shortcut.
 
 **Done when** the ontology has classes of its own.
 
 ### 6. Turn your questions into tests
 
-**What you do.** Write each competency question as a SPARQL query in `src/sparql/` that lists
-what *breaks* the rule — "every pizza has a base" becomes "the pizzas with no base". An empty
-answer passes. You do not have to write the SPARQL: the guide's **Write a test** button - also
-*Check and test → Write a test from a question...* - offers the rules a first ontology tends to need
-(every kind of pizza has some base; every kind of pizza has some topping that is a cheese topping;
-every pizza in the data has a price; nothing is both vegetarian and meaty; everything has a label;
-no pizza has more than N bases), lets you pick the terms by their labels, saves the test in
-`src/sparql/` and runs it at once, naming whatever breaks the rule. A class deep in an imported
-ontology often inherits "has some *property*" from a class above it, so that question passes before
-you have drawn anything; ask for what the property points to - "that is a *class*" - and it is red
-until your class says so.
+Each competency question becomes a SPARQL query in `src/sparql/` that lists what *breaks* the
+rule - an empty answer passes. You do not write the SPARQL: the guide's **Write a test** button,
+or *Check and test → Write a test from a question...*, offers common rules (every pizza has some
+base, everything has a label, ...), lets you pick the terms by label, saves the test and runs it.
+Your questions are asked of the ontology with its imports; ODK's own checks of the edit file alone
+([the two kinds](odk-workflow.md#the-two-kinds-of-tests)).
 
-**How the build asks it.** A test written this way is a *question*, `src/sparql/<name>.rq`, and is
-asked of the ontology with its imports - its terms and the restrictions that answer it are as
-often in an import as in your edit file. Since 1.153.0 the first question also writes a short
-rule into the project's own `src/ontology/<id>.Makefile`, by which ODK's `make test` asks every
-question there, beside ODK's own checks; ODK's checks (`*-violation.sparql`, listed in
-`<id>-odk.yaml`) are asked of the edit file alone. [Working with ODK](odk-workflow.md#the-two-kinds-of-tests)
-has the two kinds side by side.
-
-**Why.** A test catches next month's mistake before a user does, and passing tests are how you
-know the ontology answers what it was built for.
-
-**Done when** `src/sparql/` holds a question of your own (a `.rq` file), or a check of your own
-that the project's `<id>-odk.yaml` lists - besides ODK's checks and the label check every project
-starts with.
+**Done when** `src/sparql/` holds a question of your own.
 
 ### 7. Build and test *(every time)*
 
-**What you do.** *OntoBoard > Build and release > Build...* → `test`. It reasons, runs the quality
-report, runs ODK's checks and your questions and checks the OWL profile, and names the terms that
-break a rule - with what to draw on the board where the model does not answer a question yet.
-
-**Instead of.** ODK's `make test` - and since 1.153.0 it *is* ODK's `make test`: in ODK's
-container where its image is on the machine, otherwise run by OntoBoard itself inside Protégé,
-with nothing to install. On a small project, on one machine, that took 1 to 3 seconds.
+*OntoBoard > Build and release > Build...* → *Check everything - make test*: the reasoner, the
+quality report, ODK's checks and your questions, and the OWL profile. A failure names the terms
+that break the rule. It is ODK's own `make test`, run by OntoBoard itself or in ODK's container.
 
 ### 8. Release a version
 
-**What you do.** *OntoBoard > Build and release > Release...*, and choose a version — `1.0.0`.
-ODK's release writes the merged, reasoned files people use, `<id>.owl` among them, at the top of
-the project, with the version stamped in. OntoBoard then shows the git commands that record them
-and runs them when you agree: a commit and the tag `v1.0.0`. In a project OntoBoard made it also
-keeps a copy under `releases/1.0.0/`. Nothing is pushed.
+*OntoBoard > Build and release > Release...*, choose a version - `1.0.0`. ODK's release writes the
+files people use, `<id>.owl` among them; OntoBoard shows the git commands - the project's new
+files first, then the release's commit and the tag `v1.0.0` - and runs them when you agree.
+Nothing is pushed.
 
-**Why.** A released version never changes under the people who depend on it, and its number tells
-them what kind of change to expect: a patch for a fix, a minor version for new terms, a major one
-for anything removed or redefined.
-
-**Instead of.** ODK's `prepare_release`, and the `git add -f`, commit and tag after it - since
-1.153.0 the release is ODK's own `prepare_release`, run as Build runs `test`.
-
-**Done when** the project has a release: a git tag such as `v1.0.0` that holds the ontology, or a
-copy under `releases/`.
+**Done when** the project has a release tag such as `v1.0.0`.
 
 ### 9. See how it evolved
 
-**What you do.** *OntoBoard → Build and release → History...* lists every release, newest first,
-with your working copy above them: how many classes, properties and individuals each holds, and what
-changed since the one before — "+3 classes, +4 properties, 1 obsoleted". Choose one to see every
-change, term by term; compare any two with **Compare with**; open any version in a window of its
-own with **Open in a new window**.
-
-**Why.** Before a release, it shows whether you removed a term others use — removed classes are
-called out, because obsoleting is the safe way to retire one. After a release, it is what you tell
-your users changed.
-
-**Instead of.** ROBOT's `diff`, which lists axioms; History lists terms.
+*OntoBoard → Build and release → History...* lists every release with what changed since the one
+before - "+3 classes, 1 obsoleted" - term by term; **Compare with** compares any two, and
+**Open in a new window** opens one.
 
 **Done when** the project has two releases or more.
 
 ### 10. Share it
 
-**What you do.** *OntoBoard → Share → Git...* to commit and push, *Pull request...* to propose a
-change for review — or *Collaboration...* to edit the board together, live.
+*OntoBoard → Share → Git...* to commit and push, *Pull request...* to propose a change, or
+*Collaboration...* to edit the board together, live.
 
 **Done when** the project is a git repository.
-
-## Why OntoBoard
-
-- **Nothing to install.** No Docker, no command line: the project is ODK's, and ODK's build, tests
-  and release run inside Protégé - or in ODK's container, where you have one.
-- **Your questions become tests**, and the build runs them in seconds.
-- **Proven patterns, not a blank page**, shown on the board as what they are.
-- **Every release versioned, kept and compared**, term by term.
-- **One board your team can share**, live.

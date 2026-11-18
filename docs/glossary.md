@@ -5,37 +5,31 @@
 
 # Glossary
 
-The words OntoBoard's menus, dialogs and docs use, in plain terms. You do not need any of them to
-start - the [guide](guide.md) uses each one only when it gets to it.
+The words OntoBoard's menus, dialogs and docs use, in plain terms.
 
 ## The project
 
 **Project, project folder**
-:   A folder that holds an ontology together with everything around it: its tests, the terms it
-    imports, its releases. *Project → New ODK project...* makes one. A single `.owl` file works on
-    the board without one; builds, tests and releases need it.
+:   A folder that holds an ontology with its tests, imports and releases.
+    *Project → New ODK project...* makes one. The board works on a single `.owl` file without one.
 
 **Edit file**
-:   The file you work in, `src/ontology/<id>-edit.owl` in a project. Releases are copies made
-    from it; you never edit those by hand.
+:   The file you work in, `src/ontology/<id>-edit.owl`. Releases are made from it.
 
 **ODK (Ontology Development Kit)**
-:   A standard way of organising an ontology project - the folder layout, the build, the release -
-    used by many ontologies. It normally runs on the command line inside Docker. OntoBoard uses the
-    same layout and does the same steps from Protégé's menus.
+:   A standard layout, build and release for ontology projects, normally run on the command line
+    in Docker. OntoBoard does the same steps from Protégé's menus.
 
 **ROBOT**
-:   The tool ODK uses to check, convert and extract parts of ontologies. OntoBoard has it built in,
-    so what OntoBoard does with it - the checks under *Check and test*, importing and exporting
-    terms, templates - runs inside Protégé, with nothing to install.
+:   The tool ODK uses to check, convert and extract ontologies. OntoBoard has it built in.
 
 **Build**
-:   Checking the ontology: *Build and release → Build...*, and choose `test`. It runs the reasoner,
-    the quality report, your tests and the OWL profile check, and lists what is wrong.
+:   Checking the ontology: *Build and release → Build...*, then `test` - the reasoner, the quality
+    report, your tests and the OWL profile.
 
 **ID range**
-:   A block of term numbers kept for one editor, so two people never give two terms the same
-    identifier. Needed only in a project whose terms are numbered; *Project → ID ranges...*.
+:   A block of term numbers kept for one editor, so two people never mint the same identifier.
+    *Project → ID ranges...*.
 
 **Project configuration (`<id>-odk.yaml`)**
 :   The project's settings file, in ODK's format. *Project → Project configuration...* edits it.
@@ -43,109 +37,91 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 ## Releases
 
 **Release**
-:   A finished version of the ontology that others can use: *Build and release → Release...*. In a
-    project it is ODK's release - the files at the top of the project, reasoned, with the version
-    stamped in - recorded as a git commit and a tag `v<version>`, and in a project OntoBoard made
-    also kept under `releases/<version>/`.
+:   A finished version others can use: *Build and release → Release...* - ODK's release files,
+    a git commit and a tag `v<version>`.
 
 **Version**
-:   The number of a release. With semantic versions, `1.4.0` then `1.5.0` means terms were added;
-    `2.0.0` means something others relied on was removed or changed.
+:   The number of a release. With semantic versions, `1.5.0` after `1.4.0` means terms were added;
+    `2.0.0` means something was removed or changed.
 
 **Base IRI**
-:   The web address the ontology and its terms are named under, chosen when the project is made -
-    for example `https://w3id.org/myont/myont.owl`. Every term's address starts with it, so it is
-    hard to change later.
+:   The web address the ontology and its terms are named under, such as
+    `https://w3id.org/myont/myont.owl`. Hard to change later.
 
 **Version IRI**
-:   The permanent web address of one release, so anyone can point at exactly that version. For
-    an ontology at `https://w3id.org/myont.owl` in a project, ODK names a release
-    `https://w3id.org/myont/releases/1.4.0/myont.owl`, or with a date
-    `https://w3id.org/myont/releases/2026-11-01/myont.owl`; *Release...* proposes the shape the
-    last release has, and offers others such as `https://w3id.org/myont/1.4.0`.
+:   The permanent address of one release, such as
+    `https://w3id.org/myont/releases/1.4.0/myont.owl`.
 
 **Obsolete (deprecated)**
-:   A term that is retired but kept, marked so that users know to stop using it and what to use
-    instead. Removing a term breaks whoever still refers to it; making it obsolete does not.
-    *Obsolete the selected term...*.
+:   A retired term that is kept and marked, with what to use instead. Removing a term breaks whoever
+    uses it; obsoleting does not. *Obsolete the selected term...*.
 
 ## Reusing other ontologies
 
 **Import**
-:   Using terms from another ontology inside yours. OntoBoard copies only the terms you chose,
-    with what they need, into a small file of your project - an import module.
+:   Using terms from another ontology: OntoBoard copies the terms you chose, with what they need,
+    into an import module.
 
 **Import module**
-:   That small file, under `src/ontology/imports/`. *Refresh imports...* rebuilds it from its
-    source when the source changes.
+:   That small file under `src/ontology/imports/`, rebuilt by *Refresh imports...*.
 
 **Term list**
-:   The list of terms a module is made from, one per line, next to the module.
+:   The terms a module is made from, one per line, next to the module.
 
 **Imported terms**
-:   *OntoBoard → Reuse → Imported terms...*: every import and the terms it brings, by label - the
-    ones you chose and the ones that came along because a chosen term needs them. Terms are added
-    and taken out there, and the module is rebuilt at once.
+:   *OntoBoard → Reuse → Imported terms...*: each import and the terms it brings; add or take out
+    terms there.
 
 **Catalog**
-:   A file (`catalog-v001.xml`) telling Protégé where to find each imported file on disk, so it
-    does not download them.
+:   `catalog-v001.xml`, telling Protégé where each imported file is on disk.
 
 **Mirror**
-:   A saved copy of a source ontology, so rebuilding a module does not have to download it again.
+:   A saved copy of a source ontology, so a module can be rebuilt without downloading it.
 
 **BOT, TOP, STAR, MIREOT**
-:   Ways of cutting the terms you chose out of a source ontology: with everything above them
-    (BOT, the usual choice), everything below them (TOP), the smallest piece that keeps their
-    meaning (STAR), or just their parents and labels (MIREOT).
+:   Ways of cutting chosen terms out of a source: with everything above them (BOT, the usual),
+    everything below (TOP), the smallest piece that keeps their meaning (STAR), or just their
+    parents and labels (MIREOT).
 
 **Design pattern**
-:   A small, tried model of something ontologies often need to say - parts and wholes, roles,
-    prices. Starting from one gives you its terms and its reasoning. *Pattern library...*.
+:   A small, tried model of something ontologies often need - parts and wholes, roles, prices.
+    *Pattern library...*.
 
 ## Checking
 
 **Reasoner**
 :   The program that works out what follows from what you wrote, and finds contradictions. ELK is
-    the one used by default; it is fast and built in.
+    the default.
 
 **Quality report**
-:   A list of common problems - a term with no label, two definitions for one term - by
-    severity. Part of every build. It is about your own terms: a problem in an imported term
-    belongs to the ontology it comes from, and the build says how many it left out.
+:   Common problems - a term without a label, two definitions - by severity, about your own terms.
 
 **Defined class**
-:   A class with an equivalence - *cheesy pizza ≡ pizza that has a cheese topping* - so the
-    reasoner can find its members without anybody saying so. The board marks one with `≡`.
+:   A class with an equivalence, so the reasoner finds its members. The board marks one with `≡`.
 
 **OWL profile**
-:   A restricted form of OWL some reasoners need. The profile check says whether the ontology
-    stays within one (OWL 2 DL, EL...).
+:   A restricted form of OWL (OWL 2 DL, EL...) some reasoners need.
 
 **Competency question**
-:   A question the ontology must be able to answer, written before modelling - "Which pizzas
-    have a meat topping?". It is how eXtreme Design starts.
+:   A question the ontology must answer - "Which pizzas have a meat topping?".
 
 **Test (SPARQL test)**
-:   A competency question turned into a query that lists what breaks a rule, saved under
-    `src/sparql/`. An empty answer means the test passes. Every build runs them.
+:   A competency question as a query that lists what breaks a rule, under `src/sparql/`. An empty
+    answer passes.
 
 **eXtreme Design (XD)**
-:   A method for building ontologies in small steps: write the questions, pick a design pattern
-    for each, model, test against the questions, release. The guide follows it.
+:   Building an ontology in small steps: questions, a pattern for each, model, test, release.
 
 ## Data
 
 **Knowledge graph**
-:   The things themselves - this pizzeria, that baker - described with the ontology's terms, in a
-    file of its own that imports the ontology. [From spreadsheets to a knowledge
-    graph](knowledge-graph.md)
+:   The things themselves, described with the ontology's terms in a file that imports it.
+    [From spreadsheets to a knowledge graph](knowledge-graph.md)
 
 **ROBOT template**
-:   A spreadsheet whose first row is your headings and whose second row says what each column is
-    (`ID`, `TYPE`, `AL rdfs:label@en`, `I <property>`); every row after that becomes a term or an
-    individual. *Spreadsheets → Template...*.
+:   A spreadsheet whose second row says what each column is (`ID`, `TYPE`,
+    `AL rdfs:label@en`); every row after it becomes a term or an individual.
+    *Spreadsheets → Template...*.
 
 **Sheet editor**
-:   *Spreadsheets → Sheet editor*: the templates of a folder, open for editing inside Protégé,
-    with the problems marked where you type and identifiers generated for new rows.
+:   *Spreadsheets → Sheet editor*: a folder's templates, edited inside Protégé.
