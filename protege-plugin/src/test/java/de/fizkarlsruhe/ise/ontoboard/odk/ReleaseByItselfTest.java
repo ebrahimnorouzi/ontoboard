@@ -217,8 +217,9 @@ class ReleaseByItselfTest {
             assertTrue(log.contains("$ make clean"), log);
             if (refreshImports) {
                 // The recorded project also has a module with a source on the web, at an
-                // address made up for it: the release gets as far as fetching that.
-                assertTrue(outcome.isOk() || outcome.getFailure().contains("mirror-handmade"),
+                // address made up for it: the release gets as far as fetching that - and since
+                // Task 19 the failure names the import and its address, not make's target.
+                assertTrue(outcome.isOk() || outcome.getFailure().contains("import handmade"),
                         outcome.getFailure() + "\n" + log);
             } else {
                 assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + log);
