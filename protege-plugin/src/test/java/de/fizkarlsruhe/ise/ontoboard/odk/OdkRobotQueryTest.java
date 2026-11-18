@@ -230,6 +230,11 @@ class OdkRobotQueryTest {
         File here = copyCase(name);
 
         OdkRobot.Result result = OdkRobot.run(lineOf(here), here);
+        // As OntoBoard's engine has it after every ROBOT line (OdkTools): on the OWL API of
+        // Protégé 5.5.0 what ROBOT writes for a string depends on what the process met before
+        // (SimpleStrings). CI's Linux job ran this after tests that had met the typed form, and
+        // the update came out with "2026-01-01"^^xsd:string where ODK's has "2026-01-01".
+        SimpleStrings.simplify(new File(here, "ours.ofn"));
 
         assertTrue(result.ok(), String.valueOf(result.failure()));
         RunComparisons.assertSameOntology(name, new File(here, "robot.ofn"),
