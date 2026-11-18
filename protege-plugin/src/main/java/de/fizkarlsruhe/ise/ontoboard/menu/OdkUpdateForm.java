@@ -449,10 +449,24 @@ final class OdkUpdateForm {
             }
         }
         File editFile = plan.editFile();
+        // What the conversion takes out of the edit file (1.135's version stamp) is a change
+        // of it as well, whether or not ODK's update rewrites it.
+        List<String> stamps = migration == null ? new ArrayList<String>()
+                : migration.stampsTakenOut();
+        if (editFile != null || !stamps.isEmpty()) {
+            List<String> why = new ArrayList<String>();
+            if (!stamps.isEmpty()) {
+                why.add(String.join(", ", stamps) + (stamps.size() == 1 ? " is" : " are")
+                        + " taken out");
+            }
+            if (editFileChanges) {
+                why.add("its import declarations are brought in line with the configuration");
+            }
+            result.row(editFile != null ? relative(root, editFile) : migration.editFilePath(),
+                    why.isEmpty() ? "as it is" : "changes: " + String.join("; ", why));
+            changing += why.isEmpty() ? 0 : 1;
+        }
         if (editFile != null) {
-            result.row(relative(root, editFile), editFileChanges ? "changes: its import "
-                    + "declarations are brought in line with the configuration" : "as it is");
-            changing += editFileChanges ? 1 : 0;
             result.note(plan.imports().isEmpty() ? "The edit file imports nothing after the "
                     + "update: the configuration declares no import." : "The edit file imports "
                     + "after the update: " + String.join(", ", plan.imports()));
@@ -559,9 +573,13 @@ final class OdkUpdateForm {
                 all++;
             }
         }
-        if (editFile != null && written.contains(editFile) && session != null
-                && session.isOpen(editFile)) {
-            String notRead = session.readAgain(editFile, servedFrom(root, plan.imports()));
+        // Rewritten by ODK's update, or by the conversion alone: what is open is read again,
+        // or saving it would write the old file back.
+        File reread = editFile != null ? editFile : stamps.isEmpty() ? null
+                : new File(root, migration.editFilePath()).getAbsoluteFile();
+        if (reread != null && (written.contains(reread) || declared.contains(reread))
+                && session != null && session.isOpen(reread)) {
+            String notRead = session.readAgain(reread, servedFrom(root, plan.imports()));
             if (notRead == null) {
                 result.note("The edit file was rewritten on disk, and the ontology was read "
                         + "again from it.");

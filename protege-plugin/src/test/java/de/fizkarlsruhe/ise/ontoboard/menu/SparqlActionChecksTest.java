@@ -147,14 +147,18 @@ class SparqlActionChecksTest {
                 null);
 
         java.util.Map<String, String> answers = new java.util.LinkedHashMap<String, String>();
+        java.util.Map<String, String> details = new java.util.LinkedHashMap<String, String>();
         for (List<String> row : result.getRows()) {
             answers.put(row.get(0), row.get(1));
+            details.put(row.get(0), row.get(2));
         }
         assertEquals("pass", answers.get(NAME + "-violation.sparql"),
                 "ODK's check does not see the import");
         assertEquals("FAIL", answers.get("mine.rq"), "the question does");
+        // One is said as one ("1 violations" was 1.153.0's: its minor 4).
+        assertEquals("1 violation", details.get("mine.rq"));
         String log = String.join("\n", result.getLog());
-        assertTrue(log.contains("mine.rq found 1 violations, so this project's `make test` "
+        assertTrue(log.contains("mine.rq found 1 violation, so this project's `make test` "
                 + "would fail"), log);
     }
 

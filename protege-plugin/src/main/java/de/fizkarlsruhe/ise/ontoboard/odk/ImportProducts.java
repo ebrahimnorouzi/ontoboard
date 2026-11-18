@@ -637,19 +637,122 @@ public final class ImportProducts {
      */
     public static Declaration declarationForImport(String id, String source,
             TermExtract.Method method) {
-        // A file of this machine is an address on no other: written into the configuration,
-        // ODK's refresh would stop on it everywhere else - on the next person's machine and
-        // in continuous integration. Kept as it is instead, like a pattern's module, and no
-        // path goes into a file that is committed.
-        if (source != null && source.trim().toLowerCase(java.util.Locale.ROOT)
+        Declaration here = fromThisMachine(id, source);
+        return here != null ? here : declarationFor(id, source, method);
+    }
+
+    /**
+     * A source that is a file of this machine, declared as kept as it is; null for any other.
+     * A file of this machine is an address on no other: written into the configuration, ODK's
+     * refresh would stop on it everywhere else - on the next person's machine and in continuous
+     * integration. Kept as it is instead, like a pattern's module, and no path goes into a file
+     * that is committed.
+     */
+    private static Declaration fromThisMachine(String id, String source) {
+        if (source == null || !source.trim().toLowerCase(java.util.Locale.ROOT)
                 .startsWith("file:")) {
-            return new Declaration(frozen(id), id + " was taken from a file on this machine, "
-                    + "which is an address on no other, so it is declared as kept as it is: "
-                    + "ODK's refresh leaves the module alone, and importing the terms again "
-                    + "is what builds it again. Where the source has an address on the web, "
-                    + "import from that address and ODK refreshes the module itself.");
+            return null;
         }
-        return declarationFor(id, source, method);
+        return new Declaration(frozen(id), id + " was taken from a file on this machine, "
+                + "which is an address on no other, so it is declared as kept as it is: "
+                + "ODK's refresh leaves the module alone, and importing the terms again "
+                + "is what builds it again. Where the source has an address on the web, "
+                + "import from that address and ODK refreshes the module itself.");
+    }
+
+    /**
+     * What an import's module holds, as Import terms offers it in plain words: each is one of
+     * ODK's module types, and ODK's Makefile builds the module by its own rule for that type.
+     *
+     * <p>The words are what each type keeps, measured in ODK's image: asked for a, its parent
+     * b and d (what a is part of), slme kept them with b's own parent and what holds between
+     * them; filter kept a, b and "a is a b"; minimal kept those and "a is part of d", with part
+     * of; neither of the two kept b's own parent; mirror kept everything.
+     */
+    public enum Kind {
+        /** ODK's default: {@code module_type: slme}, {@code module_type_slme: BOT}. */
+        MODULE("The terms you chose and what they need", "slme", "BOT"),
+        /** {@code module_type: filter}: of what holds between them, only "is a". */
+        ONLY_THESE("Only the terms you chose, with their \"is a\" links", "filter", null),
+        /** {@code module_type: minimal}: what holds between them through any relation too. */
+        WITH_RELATIONS("The terms you chose, with every relation between them", "minimal", null),
+        /** {@code module_type: mirror}. */
+        WHOLE("The whole ontology", "mirror", null);
+
+        private final String words;
+        private final String moduleType;
+        private final String slme;
+
+        Kind(String words, String moduleType, String slme) {
+            this.words = words;
+            this.moduleType = moduleType;
+            this.slme = slme;
+        }
+
+        /** What the module holds, in plain words. */
+        public String words() {
+            return words;
+        }
+
+        /** ODK's name for it: the module type, and its SLME method where it has one. */
+        public String odkName() {
+            return slme == null ? moduleType : moduleType + ", " + slme;
+        }
+
+        /** The kind whose words these are, or null. */
+        public static Kind byWords(String words) {
+            for (Kind kind : values()) {
+                if (kind.words.equals(words)) {
+                    return kind;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * The kind a declared import is - its module type, and its SLME method where it has
+         * one, ODK's defaults filled in - or null for one that is none of the four (an SLME
+         * module by TOP or STAR).
+         */
+        public static Kind of(Product product) {
+            for (Kind kind : values()) {
+                if (kind.moduleType.equalsIgnoreCase(product.getModuleType())
+                        && (kind.slme == null || kind.slme.equalsIgnoreCase(
+                                product.getSlmeMethod()))) {
+                    return kind;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * The declaration of an import of this kind: ODK's module type for it, the source named
+     * where it is not ODK's own address for the id - or, for a file of this machine, kept as it
+     * is.
+     */
+    public static Declaration declarationForImport(String id, String source, Kind kind) {
+        Declaration here = fromThisMachine(id, source);
+        if (here != null) {
+            return here;
+        }
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+        String standard = OBO_BASE + "/" + id + ".owl";
+        if (source != null && !source.isEmpty() && !standard.equals(source)) {
+            fields.put("mirror_from", source);
+        }
+        fields.put("module_type", kind.moduleType);
+        if (kind.slme != null) {
+            fields.put("module_type_slme", kind.slme);
+        }
+        return new Declaration(fields, null);
+    }
+
+    /** The configuration with an import of this kind declared ({@link #withProduct}). */
+    public static String declare(String configText, String id, String source, Kind kind) {
+        return withProduct(configText, declarationForImport(id, source, kind).getFields());
     }
 
     /**

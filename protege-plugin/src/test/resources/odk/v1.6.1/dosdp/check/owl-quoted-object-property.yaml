@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+objectProperties:
+  overlaps: RO:0002131
+vars:
+  x: "owl:Thing"
+subClassOf:
+  text: "'overlaps' some %s"
+  vars: [x]

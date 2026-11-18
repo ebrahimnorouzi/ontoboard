@@ -11,7 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
@@ -119,6 +122,33 @@ class ReleaseByItselfTest {
     }
 
     /**
+     * F1, to the end: the project OntoBoard 1.135.2 made, carried over - the conversion, then
+     * ODK's update as OntoBoard itself makes it - and released by the engine says one version,
+     * its own. Until 1.154.0 it said 1.135's "0.1.0" beside it.
+     */
+    @Test
+    void aCarriedOverProjectsReleaseSaysOneVersion(@TempDir File where) throws Exception {
+        File carried = carriedOver(RecordedProject.of1352(new File(where, "egg")));
+        Map<String, String> version = new LinkedHashMap<String, String>();
+        version.put("VERSION", "0.2.0");
+
+        OdkEngine.Outcome done = OdkEngine.run(carried, "prepare_release_fast", version, null);
+
+        assertTrue(done.isOk(), done.getFailure());
+        assertEquals(Collections.singletonList("0.2.0"), RunComparisons.versionInfos(
+                new File(carried.getParentFile(), "../../eggboil.owl")));
+    }
+
+    /** The conversion, then ODK's update as OntoBoard itself makes it; the edit file. */
+    private static File carriedOver(File editFile) throws IOException {
+        File project = editFile.getAbsoluteFile().getParentFile().getParentFile()
+                .getParentFile();
+        OdkMigration.convert(project, OdkMigration.plan(project));
+        OdkUpdate.apply(project, OdkUpdate.plan(project));
+        return editFile;
+    }
+
+    /**
      * ODK's test builds the ontology it validates - the file a release puts at the top of the
      * project - and stamps it with the day. A release made afterwards must not take that file
      * for its own: a release cleans first, which takes that file away. Found in 1.153.0's
@@ -187,8 +217,9 @@ class ReleaseByItselfTest {
             assertTrue(log.contains("$ make clean"), log);
             if (refreshImports) {
                 // The recorded project also has a module with a source on the web, at an
-                // address made up for it: the release gets as far as fetching that.
-                assertTrue(outcome.isOk() || outcome.getFailure().contains("mirror-handmade"),
+                // address made up for it: the release gets as far as fetching that - and since
+                // Task 19 the failure names the import and its address, not make's target.
+                assertTrue(outcome.isOk() || outcome.getFailure().contains("import handmade"),
                         outcome.getFailure() + "\n" + log);
             } else {
                 assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + log);
@@ -254,6 +285,43 @@ class ReleaseByItselfTest {
         assertTrue(ran.wasCancelled(), String.join("\n", ran.getOutput()));
         assertTrue(MakeRun.explain("test_fast", ran).startsWith("You stopped the build"),
                 MakeRun.explain("test_fast", ran));
+    }
+
+    /**
+     * Ruling 9 of 1.154.0: a release made by make runs the project's own rules - here one of
+     * theirs for the base, which writes a note into it. The released base carries the note.
+     */
+    @Test
+    void aReleaseByMakeRunsTheProjectsOwnRules() throws Exception {
+        Files.write(new File(edit.getParentFile(), "eggboil.Makefile").toPath(), ("## mine\n"
+                + "$(ONT)-base.owl: $(EDIT_PREPROCESSED)\n"
+                + "\t$(ROBOT) annotate --input $< --annotation rdfs:comment \"built by a rule "
+                + "of the project\" --ontology-iri $(ONTBASE)/$@ "
+                + "$(ANNOTATE_ONTOLOGY_VERSION) --output $@\n").getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n"
+                + String.join("\n", outcome.getTranscript()));
+        String base = new String(Files.readAllBytes(new File(root, "eggboil-base.owl").toPath()),
+                StandardCharsets.UTF_8);
+        assertTrue(base.contains("built by a rule of the project"),
+                String.join("\n", outcome.getTranscript()));
+    }
+
+    /** A project's own release.sh stays the container's to run, as in 1.153.0. */
+    @Test
+    void aProjectWithItsOwnReleaseScriptIsStillNotReleasedByTheEngine() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(),
+                "#!/bin/sh\nmake prepare_release\n".getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        String said = outcome.getFailure() + "\n" + String.join("\n", outcome.getTranscript());
+        assertTrue(said.contains("release.sh"), said);
+        assertFalse(new File(root, "eggboil.owl").exists());
+        assertEquals(new ArrayList<List<String>>(), gitRan);
     }
 
     /** A project's own release script is a shell script: it is not a target of make. */

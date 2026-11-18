@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -130,6 +131,231 @@ class DialogDesignProofTest {
         return seen.size();
     }
 
+    /**
+     * Build's form for an ODK project: the target, ODK's four switches ticked as ODK's
+     * defaults are, and under them the make command they come to - written again as a box or
+     * the target changes. Rendered for a look, as the other forms are.
+     */
+    @Test
+    void buildsFormSaysTheMakeCommandItsBoxesComeTo() throws Exception {
+        Map<String, java.awt.Component> controls =
+                new java.util.LinkedHashMap<String, java.awt.Component>();
+        JPanel content = ParameterDialog.content(null, "Docker is not running, so OntoBoard "
+                + "runs ODK's own recipes itself, inside Protege - the same Makefile, without "
+                + "the container.", BuildAction.form(Arrays.asList("test", "test_fast",
+                        "reason_test"), "test", "The targets OntoBoard's own engine can run.",
+                        true, null), controls, BuildAction::commandShown);
+        javax.swing.JLabel line = named(content, ParameterDialog.PREVIEW);
+
+        assertEquals("make test", line.getText());
+        ((javax.swing.JCheckBox) controls.get("switch.MIR")).setSelected(false);
+        assertEquals("make test MIR=false", line.getText());
+        ((javax.swing.JCheckBox) controls.get("switch.IMP")).setSelected(false);
+        assertEquals("make test IMP=false MIR=false", line.getText());
+        // The chosen words stay true with the boxes unticked (the 1.154.0 review's M3).
+        String chosen = String.valueOf(((javax.swing.JComboBox<?>) controls.get("target"))
+                .getSelectedItem());
+        assertFalse(chosen.toLowerCase(java.util.Locale.ROOT).contains("download"), chosen);
+        ((javax.swing.JComboBox<?>) controls.get("target")).setSelectedItem(
+                de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice("test_fast"));
+        assertEquals("make test_fast IMP=false MIR=false", line.getText());
+
+        BufferedImage image = render(content);
+        File png = new File(designDirectory(), "build-form.png");
+        ImageIO.write(image, "PNG", png);
+        assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
+    }
+
+    /**
+     * E3: an ODK project's targets in plain words - what each does, then make's command - in
+     * the plan's order, the plan's first choice chosen; a plain Makefile's targets as they are.
+     */
+    @Test
+    void buildsChoicesAreThePlansTargetsInPlainWords(@org.junit.jupiter.api.io.TempDir File temp)
+            throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            java.nio.file.Files.createDirectories(target.getParentFile().toPath());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan plan =
+                de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.inContainer(
+                        new File(root, "src/ontology/eggboil-edit.owl"),
+                        "obolibrary/odkfull:v1.6.1", "docker");
+
+        Parameter target = BuildAction.form(plan.targets(), plan.defaultTarget(), plan.help(),
+                true, null).get(0);
+
+        List<String> words = new java.util.ArrayList<String>();
+        for (String one : plan.targets()) {
+            words.add(de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice(one));
+        }
+        assertEquals(words, target.getChoices());
+        assertEquals("Check everything - make test", target.getDefaultValue());
+        assertTrue(target.getChoices().contains("Check quickly (keeps the imports as they are)"
+                + " - make test_fast"), target.getChoices().toString());
+        assertEquals(Arrays.asList("all", "test"), BuildAction.form(Arrays.asList("all", "test"),
+                "test", "Read from this project's own Makefile.", false, null).get(0)
+                .getChoices());
+    }
+
+    /**
+     * ODK's update is not a target Build offers for ODK's Makefile, whichever list the form is
+     * given - the Makefile's own, as the container's and ODK's tools' routes give it (the 1.154.0
+     * review's I1: 83dbf29 filtered another list). Update project files... runs it. A plain
+     * Makefile's targets are offered as they are.
+     */
+    @Test
+    void buildDoesNotOfferOdksUpdateForOdksMakefile(@org.junit.jupiter.api.io.TempDir File temp)
+            throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            java.nio.file.Files.createDirectories(target.getParentFile().toPath());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        List<String> makefiles = de.fizkarlsruhe.ise.ontoboard.odk.MakeRun.targetsFor(
+                new File(root, "src/ontology/eggboil-edit.owl"));
+        assertTrue(makefiles.contains("update_repo"), makefiles.toString());
+
+        List<String> offered = BuildAction.form(makefiles, "test",
+                "Read from this project's own Makefile.", true, null).get(0).getChoices();
+
+        assertTrue(offered.contains(de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice("test")),
+                offered.toString());
+        assertTrue(offered.stream().noneMatch(choice -> choice.endsWith("update_repo")),
+                offered.toString());
+        assertTrue(BuildAction.form(Arrays.asList("all", "update_repo"), "all",
+                "Read from this project's own Makefile.", false, null).get(0).getChoices()
+                .contains("update_repo"));
+    }
+
+    /** What Build runs is the target a choice names - the words are only said. */
+    @Test
+    void theTargetBuildRunsIsTheOneTheChoiceNames() {
+        Map<String, String> chosen = new HashMap<String, String>();
+        chosen.put("target", "Check quickly (keeps the imports as they are) - make test_fast");
+        assertEquals("test_fast", BuildAction.targetIn(chosen));
+        chosen.put("target", "reason_test");
+        assertEquals("reason_test", BuildAction.targetIn(chosen));
+    }
+
+    /**
+     * A line under the form wider than the explanation wraps at the explanation's width: a
+     * release's command with a version IRI of its own does not make the dialog that wide.
+     */
+    @Test
+    void aLongLineUnderTheFormWrapsAtTheExplanationsWidth() throws Exception {
+        final String command = "Release, with fresh imports - make clean, then make "
+                + "prepare_release VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V "
+                + "https://example.org/eggboil/eggboil/1.0.0/$@ --annotation owl:versionInfo "
+                + "1.0.0'";
+        List<Parameter> version = Arrays.asList(Parameter.of("version", "Version",
+                Parameter.Kind.TEXT).defaultValue("1.0.0")
+                .help("It becomes the tag v<version> and part of the version IRI.").build());
+        String explanation = "Builds the release with ODK's prepare_release, in ODK's container.";
+        JPanel content = ParameterDialog.content(null, explanation, version,
+                new java.util.LinkedHashMap<String, java.awt.Component>(), values -> command);
+        JPanel without = ParameterDialog.content(null, explanation, version,
+                new java.util.LinkedHashMap<String, java.awt.Component>(), null);
+        javax.swing.JLabel line = named(content, ParameterDialog.PREVIEW);
+
+        assertTrue(line.getText().contains("ANNOTATE_ONTOLOGY_VERSION='annotate -V https://"
+                + "example.org/eggboil/eggboil/1.0.0/$@ --annotation owl:versionInfo 1.0.0'"),
+                line.getText());
+        assertTrue(content.getPreferredSize().width <= without.getPreferredSize().width,
+                content.getPreferredSize().width + " px with the line, "
+                        + without.getPreferredSize().width + " px without");
+        assertTrue(line.getPreferredSize().height
+                >= 2 * line.getFontMetrics(line.getFont()).getHeight(),
+                "wrapped: " + line.getPreferredSize());
+        File png = new File(designDirectory(), "long-line-form.png");
+        ImageIO.write(render(content), "PNG", png);
+        assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
+    }
+
+    /**
+     * Found by hand in 1.154.0's release check: choosing another version IRI in Release... made
+     * the line under the form wrap to four lines after the dialog had been laid out, and the
+     * dialog - which cannot be resized - kept its height, so OK and Cancel slid below its edge
+     * with two pixels of them left. A line that grows takes its dialog with it.
+     */
+    @Test
+    void aLineThatGrowsTakesItsDialogWithItSoOkStaysInView() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeFalse(
+                java.awt.GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final String wrapped = "Release, with fresh imports - make clean, then make "
+                + "prepare_release VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V "
+                + "https://example.org/eggboil/eggboil/1.0.0 --annotation owl:versionInfo "
+                + "1.0.0'";
+        List<Parameter> shape = Arrays.asList(Parameter.of("shape", "Version IRI",
+                Parameter.Kind.TEXT).defaultValue("odk")
+                .help("The shape of the version IRI.").build());
+        Map<String, java.awt.Component> controls =
+                new java.util.LinkedHashMap<String, java.awt.Component>();
+        JPanel content = ParameterDialog.content(null, "Builds the release.", shape, controls,
+                values -> "odk".equals(values.get("shape"))
+                        ? "Release, with fresh imports - make clean, then make prepare_release"
+                        : wrapped);
+        javax.swing.JDialog dialog = new javax.swing.JOptionPane(content,
+                javax.swing.JOptionPane.PLAIN_MESSAGE, javax.swing.JOptionPane.OK_CANCEL_OPTION)
+                .createDialog(null, "Release");
+        try {
+            // Typed as a person types: on Swing's thread. What the change queues - the dialog
+            // made to fit - runs before the second call does.
+            final javax.swing.JTextField field = (javax.swing.JTextField) controls.get("shape");
+            javax.swing.SwingUtilities.invokeAndWait(() -> field.setText("version only"));
+            final int[] measured = new int[2];
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                dialog.validate();
+                java.awt.Container pane = dialog.getContentPane();
+                javax.swing.JButton ok = buttonCalled(pane, "OK");
+                measured[0] = javax.swing.SwingUtilities.convertPoint(ok, 0, ok.getHeight(),
+                        pane).y;
+                measured[1] = pane.getHeight();
+            });
+
+            assertTrue(measured[0] <= measured[1], "OK ends at " + measured[0]
+                    + " px, the dialog's content at " + measured[1] + " px");
+        } finally {
+            dialog.dispose();
+        }
+    }
+
+    private static javax.swing.JButton buttonCalled(java.awt.Container in, String text) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JButton
+                    && text.equals(((javax.swing.JButton) child).getText())) {
+                return (javax.swing.JButton) child;
+            }
+            if (child instanceof java.awt.Container) {
+                javax.swing.JButton found = buttonCalled((java.awt.Container) child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static javax.swing.JLabel named(java.awt.Container in, String name) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (name.equals(child.getName()) && child instanceof javax.swing.JLabel) {
+                return (javax.swing.JLabel) child;
+            }
+            if (child instanceof java.awt.Container) {
+                javax.swing.JLabel found = named((java.awt.Container) child, name);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     @Test
     void theFormRendersToAnImageSomebodyCanLookAt() throws Exception {
         Map<String, java.awt.Component> controls = new HashMap<String, java.awt.Component>();
@@ -231,6 +457,84 @@ class DialogDesignProofTest {
         assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath());
         assertTrue(distinctColours(image) > 8,
                 "the result panel rendered as " + distinctColours(image) + " colours");
+    }
+
+    /** A fix that only says it was made. */
+    private static OperationResult.Fix fix(final String label) {
+        return new OperationResult.Fix() {
+            @Override
+            public String label() {
+                return label;
+            }
+
+            @Override
+            public OperationResult apply() {
+                return OperationResult.of(label).summary("Applied.").build();
+            }
+        };
+    }
+
+    /** The buttons a person presses: not a scroll bar's arrows, which are buttons too. */
+    private static List<javax.swing.JButton> buttons(java.awt.Container in) {
+        List<javax.swing.JButton> found = new java.util.ArrayList<javax.swing.JButton>();
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JButton) {
+                found.add((javax.swing.JButton) child);
+            } else if (child instanceof java.awt.Container
+                    && !(child instanceof javax.swing.JScrollBar)) {
+                found.addAll(buttons((java.awt.Container) child));
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Check imports in an ODK project: a warning that carries its fix has a button beside it
+     * that applies it - in the panel, its words whole, the log keeping its room - and pressed,
+     * it hands the fix on to be applied and is off: a fix is applied once.
+     */
+    @Test
+    void eachWarningWithAFixHasItsButton() throws Exception {
+        final List<OperationResult.Fixable> applied =
+                new java.util.ArrayList<OperationResult.Fixable>();
+        OperationResult result = OperationResult.of("Imports")
+                .columns("Import", "Resolved to", "Cut from")
+                .row("https://example.invalid/whole.owl", "whole.owl", "not recorded")
+                .row("https://example.invalid/broken.owl", "NOT RESOLVED", "")
+                .warn("https://example.invalid/whole.owl is imported by the edit file, and the "
+                        + "project's configuration does not declare it: ODK's update would take "
+                        + "it out. Declared, it becomes the product whole, its module the whole "
+                        + "ontology.", fix("Declare it"))
+                .warn("https://example.invalid/broken.owl is imported by the edit file, and the "
+                        + "project's configuration does not declare it, and it cannot be read: "
+                        + "ODK's update stops until it is taken out.", fix("Take it out"))
+                .warn("ro: cut from 2024-01-01, and upstream has moved since.")
+                .summary("1 of 2 imports did not resolve.").build();
+
+        JPanel content = ResultDialog.buildContent(result, applied::add);
+        BufferedImage image = render(content);
+        ImageIO.write(image, "PNG", new File(designDirectory(), "result-dialog-fixes.png"));
+
+        List<javax.swing.JButton> buttons = buttons(content);
+        List<String> labels = new java.util.ArrayList<String>();
+        for (javax.swing.JButton button : buttons) {
+            labels.add(button.getText());
+            java.awt.Rectangle at = javax.swing.SwingUtilities.convertRectangle(
+                    button.getParent(), button.getBounds(), content);
+            assertTrue(new java.awt.Rectangle(content.getSize()).contains(at),
+                    button.getText() + " at " + at + " in " + content.getSize());
+            assertTrue(button.getWidth() >= button.getPreferredSize().width,
+                    "its words whole: " + button.getText());
+        }
+        assertEquals(Arrays.asList("Declare it", "Take it out"), labels);
+        javax.swing.JTabbedPane tabs = find(content, javax.swing.JTabbedPane.class);
+        assertTrue(tabs.getHeight() >= LOG_NEEDS, "the log keeps its room: " + tabs.getHeight());
+
+        buttons.get(1).doClick();
+        assertEquals(1, applied.size());
+        assertEquals("Take it out", applied.get(0).fix().label());
+        assertTrue(!buttons.get(1).isEnabled(), "pressed once, it is off");
+        assertTrue(buttons.get(0).isEnabled(), "the other is still there to press");
     }
 
     // ---------------------------------------------------------------- the log stays on screen

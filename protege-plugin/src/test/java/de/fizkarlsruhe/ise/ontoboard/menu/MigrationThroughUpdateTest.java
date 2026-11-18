@@ -250,6 +250,45 @@ class MigrationThroughUpdateTest {
         assertTrue(result.getSummary().contains("becomes an ODK project"), result.getSummary());
     }
 
+    /**
+     * F1: looking names what the conversion takes out of the edit file - 1.135's
+     * {@code owl:versionInfo} - with the edit file's other change, and why.
+     */
+    @Test
+    void lookingNamesTheStampTakenOutOfTheEditFile() throws IOException {
+        OperationResult result = OdkUpdateForm.run(OPERATION, root, false, itself(),
+                noContainer(), open());
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        String state = states(result).get(EDIT);
+        assertTrue(state != null && state.startsWith("changes: owl:versionInfo \"0.1.0\" is "
+                + "taken out"), String.valueOf(state));
+        String log = String.join("\n", result.getLog());
+        assertTrue(log.contains("Taken out of the edit file: owl:versionInfo \"0.1.0\""), log);
+        assertTrue(text(EDIT).contains("<owl:versionInfo>0.1.0</owl:versionInfo>"),
+                "looking writes nothing");
+    }
+
+    /**
+     * Where ODK's update leaves the edit file alone - the configuration does not let it manage
+     * the imports - the conversion's change is all the edit file gets, and what is open is
+     * read again all the same: saving it would put the stamp back.
+     */
+    @Test
+    void anEditFileOnlyTheConversionChangedIsReadAgain() throws IOException {
+        replace(CONFIG, "primary_release: full\n",
+                "primary_release: full\nmanage_import_declarations: FALSE\n");
+        Open open = open();
+
+        OperationResult result = OdkUpdateForm.run(OPERATION, root, true, itself(),
+                noContainer(), open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        assertFalse(text(EDIT).contains("versionInfo"), text(EDIT));
+        assertTrue(written(result).contains(EDIT), written(result).toString());
+        assertEquals(1, open.readAgain, "the stamp is gone from the file and from what is open");
+    }
+
     // ------------------------------------------------------------------ writing
 
     @Test

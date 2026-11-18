@@ -367,9 +367,10 @@ public class SparqlAction extends OntoBoardAction {
                 result.row(check.getName(), "pass", "no violations");
             } else {
                 failed++;
-                result.row(check.getName(), "FAIL",
-                        check.getViolations() + " violations");
-                result.warn(check.getName() + " found " + check.getViolations() + " violations, so "
+                String found = check.getViolations()
+                        + (check.getViolations() == 1 ? " violation" : " violations");
+                result.row(check.getName(), "FAIL", found);
+                result.warn(check.getName() + " found " + found + ", so "
                         + "this project's " + (question ? "`make test`" : "`make sparql_test`")
                         + " would fail.");
                 // One TSV per failing check, the way `robot verify --output-dir` does it - the

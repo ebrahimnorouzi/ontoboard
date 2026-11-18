@@ -310,18 +310,75 @@ class OdkEngineTest {
                 outcome.getFailure());
     }
 
-    /** A rule of the project's own is make's to run, in ODK's container. */
+    /** A rule of the project's own runs as make runs it, when every line of it runs here. */
     @Test
-    void aRuleOfTheProjectsOwnIsRefusedBeforeAnythingRuns() throws IOException {
+    void aRuleOfTheProjectsOwnIsRunByTheEngine() throws IOException {
         write("eggboil.Makefile", "## mine\nreason_test:\n\techo mine\n");
         assertTrue(file("eggboil.Makefile").setLastModified(SAME_TIME));
 
         OdkEngine.Outcome outcome = run("test_fast");
 
-        assertFalse(outcome.isOk());
-        assertFalse(outcome.ranAnything());
-        assertEquals(0, robot.size());
-        assertTrue(outcome.getFailure().contains("eggboil.Makefile:2"), outcome.getFailure());
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertTrue(outcome.getTranscript().contains("mine"), outcome.getTranscript().toString());
+    }
+
+    /**
+     * nfdicore builds its import modules with rules of its own: an update of ODK's seed before
+     * an extract, one after, ODK's annotation and conversion, and a sed over the module. The
+     * engine runs such a rule - ROBOT's update, extract and sed included - for
+     * {@code no-mirror-refresh-ro}, from a mirror of three terms.
+     */
+    @Test
+    void anNfdicoreShapedImportRuleRunsByTheEngine(@TempDir File where) throws Exception {
+        File top = new File(where, "obim");
+        for (Map.Entry<String, byte[]> one : Goldens.seedTree("oboimports").entrySet()) {
+            File target = new File(top, one.getKey());
+            Files.createDirectories(target.getParentFile().toPath());
+            Files.write(target.toPath(), one.getValue());
+        }
+        File here = new File(top, "src/ontology");
+        Files.write(new File(here, "obim.Makefile").toPath(), ("## mine\n"
+                + "$(IMPORTDIR)/ro_import.owl: $(MIRRORDIR)/ro.owl $(IMPORTDIR)/ro_terms.txt\n"
+                + "\tif [ $(IMP) = true ]; then $(ROBOT) query -i $< --update "
+                + "../sparql/preprocess-module.ru \\\n"
+                + "\t\textract -T $(IMPORTDIR)/ro_terms.txt --force true --individuals exclude "
+                + "--method BOT \\\n"
+                + "\t\tquery --update ../sparql/postprocess-module.ru \\\n"
+                + "\t\t$(ANNOTATE_CONVERT_FILE); sed -i \"s/obofoundry/obolibrary/g\" $@; fi\n")
+                .getBytes(StandardCharsets.UTF_8));
+        Files.createDirectories(new File(here, "mirror").toPath());
+        Files.write(new File(here, "mirror/ro.owl").toPath(), ("Prefix(obo:=<http://purl."
+                + "obolibrary.org/obo/>)\nPrefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)\n"
+                + "Ontology(<http://purl.obolibrary.org/obo/ro.owl>\n"
+                + "<http://purl.obolibrary.org/obo/ro/releases/2026-01-01/ro.owl>\n"
+                + "Declaration(ObjectProperty(obo:RO_0000052))\n"
+                + "Declaration(ObjectProperty(obo:RO_0000053))\n"
+                + "Declaration(ObjectProperty(obo:RO_0002131))\n"
+                + "AnnotationAssertion(rdfs:label obo:RO_0000052 \"characteristic of\")\n"
+                + "AnnotationAssertion(rdfs:seeAlso obo:RO_0000052 "
+                + "\"http://www.obofoundry.org/ontology/ro.html\")\n"
+                + "AnnotationAssertion(rdfs:label obo:RO_0000053 \"has characteristic\")\n"
+                + "AnnotationAssertion(rdfs:label obo:RO_0002131 \"overlaps\")\n"
+                + "InverseObjectProperties(obo:RO_0000052 obo:RO_0000053)\n)\n")
+                .getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(here, "imports/ro_terms.txt").toPath(),
+                "http://purl.obolibrary.org/obo/RO_0000052\n".getBytes(StandardCharsets.UTF_8));
+        sameAge(top);
+
+        OdkEngine.Outcome outcome = OdkEngine.run(new File(here, "obim-edit.owl"),
+                "no-mirror-refresh-ro", Goldens.makeFixedVariables(), null);
+
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n"
+                + String.join("\n", outcome.getTranscript()));
+        String module = new String(Files.readAllBytes(new File(here, "imports/ro_import.owl")
+                .toPath()), StandardCharsets.UTF_8);
+        assertTrue(module.contains("RO_0000052"), module);
+        assertTrue(module.contains("RO_0000053"), "its inverse, in the BOT module: " + module);
+        assertFalse(module.contains("RO_0002131"), "not asked for: " + module);
+        assertTrue(module.contains("imports/ro_import.owl>"), "ODK's annotation, after the "
+                + "second update: " + module);
+        assertTrue(module.contains("http://www.obolibrary.org/ontology/ro.html")
+                && !module.contains("obofoundry"), "sed ran: " + module);
     }
 
     /**

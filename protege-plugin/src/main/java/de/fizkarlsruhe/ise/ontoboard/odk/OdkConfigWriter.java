@@ -69,6 +69,8 @@ public final class OdkConfigWriter {
                 + "uribase: " + plain(uriBase(config)) + "\n"
                 + (suffix == null ? "" : "uribase_suffix: " + plain(suffix) + "\n")
                 + "license: " + plain(config.getLicense()) + "\n"
+                + (config.getGithubOrg().isEmpty() ? ""
+                        : "github_org: " + plain(config.getGithubOrg()) + "\n")
                 + "repo: " + plain(id) + "\n"
                 + own
                 + "robot_report:\n"

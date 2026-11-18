@@ -1,0 +1,13 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"
+subClassOf:
+  multi_clause:
+    clauses:
+      - text: "%s"
+        vars: [x]
+        sub_clauses:
+          - clauses:
+              - text: "'organ'"
+                vars: []

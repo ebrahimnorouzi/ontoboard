@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -47,8 +48,19 @@ class RobotPathsTest {
         return folder.getAbsolutePath() + File.separator;
     }
 
-    private static List<String> words(String line) {
-        return Arrays.asList(line.trim().split(" +"));
+    /**
+     * A line's words, split at blanks as a recipe's are - but the test's own folder is one word
+     * whatever its name holds. With a blank in the temporary folder - a Windows user name with a
+     * space - the test split its own expected lines and inputs, not the product's (found running
+     * the ODK classes with TMP on such a folder, 1.154.0's release check).
+     */
+    private List<String> words(String line) {
+        String folder = temp.getAbsolutePath();
+        List<String> words = new ArrayList<String>();
+        for (String word : line.trim().replace(folder, "\u0001").split(" +")) {
+            words.add(word.replace("\u0001", folder));
+        }
+        return words;
     }
 
     // ------------------------------------------------------------------ every line ODK has
@@ -278,6 +290,34 @@ class RobotPathsTest {
 
         assertEquals(words("--catalog " + at + "catalog-v001.xml merge -i " + at + "a.owl"),
                 RobotPaths.absolute(words("--catalog catalog-v001.xml merge -i a.owl"), folder()));
+    }
+
+    // ------------------------------------------------------------------ what a line writes
+
+    /**
+     * A ROBOT line of a project's own rule writes inside the project: what it would write
+     * above the project's top is named before anything runs. What it only reads may be
+     * anywhere.
+     */
+    @Test
+    void whatALineWritesOutsideTheProjectIsNamed() {
+        File top = new File(temp, "eggboil");
+
+        assertNull(RobotPaths.whyWrittenOutside(words("convert -i a.owl -o tmp/b.owl"),
+                folder(), top));
+        assertNull(RobotPaths.whyWrittenOutside(words("convert -i a.owl -o ../../b.owl"),
+                folder(), top), "the project's top is inside it");
+        String why = RobotPaths.whyWrittenOutside(words("convert -i a.owl -o ../../../b.owl"),
+                folder(), top);
+        assertTrue(why != null && why.contains("../../../b.owl"), why);
+        assertNotNull(RobotPaths.whyWrittenOutside(words("merge -i a.owl annotate --output "
+                + new File(temp, "elsewhere/b.owl").getAbsolutePath()), folder(), top));
+        assertNotNull(RobotPaths.whyWrittenOutside(words("query -i a.owl --query q.sparql "
+                + "../../../rows.tsv"), folder(), top), "the second of a pair is written");
+        assertNotNull(RobotPaths.whyWrittenOutside(words("export -i a.owl --header ID "
+                + "--export ../../../terms.tsv"), folder(), top));
+        assertNull(RobotPaths.whyWrittenOutside(words("query -i ../../../../a.owl --query "
+                + "../../../q.sparql tmp/rows.tsv"), folder(), top), "only read: anywhere");
     }
 
     @Test

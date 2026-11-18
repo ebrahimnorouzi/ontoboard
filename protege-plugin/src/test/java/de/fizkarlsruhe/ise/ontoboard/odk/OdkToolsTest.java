@@ -72,13 +72,13 @@ class OdkToolsTest {
             + "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n)\n";
 
     @Test
-    void theToolsAreTheShellsOwnAndFiveMore() {
+    void theToolsAreTheShellsOwnAndEightMore() {
         Map<String, RecipeShell.Tool> tools = OdkTools.forProject();
 
         assertTrue(tools.keySet().containsAll(RecipeShell.builtins().keySet()));
         assertTrue(tools.keySet().containsAll(Arrays.asList("robot", "odk-info", "dicer-cli",
-                "check-rdfxml", "curl")));
-        assertEquals(RecipeShell.builtins().size() + 5, tools.size(), tools.keySet().toString());
+                "check-rdfxml", "curl", "sed", "dosdp-tools", "dosdp")));
+        assertEquals(RecipeShell.builtins().size() + 8, tools.size(), tools.keySet().toString());
     }
 
     // ------------------------------------------------------------------ robot
@@ -193,9 +193,9 @@ class OdkToolsTest {
 
     @Test
     void whatRobotRefusesNamesNoFolderOfItsOwn() {
-        String why = whyNot("robot query -i tmp/x.owl --update ../sparql/u.ru");
+        String why = whyNot("robot query -i tmp/x.owl --tdb-directory ../.tdb");
 
-        assertTrue(why.contains("--update"), why);
+        assertTrue(why.contains("--tdb-directory"), why);
         assertFalse(why.contains(File.separator + "ontoboard-"), why);
     }
 

@@ -50,7 +50,19 @@ class ReleaseTagsTest {
      * answer git gives about them may be kept.
      */
     private static void settle(File root) {
-        long past = System.currentTimeMillis() - 60_000;
+        dateTheRefs(root, System.currentTimeMillis() - 60_000);
+    }
+
+    /**
+     * Makes the repository's tag refs changed just now - not left to the clock: on a busy
+     * machine the git commands that made them can take longer than the three seconds an
+     * answer is not kept for, and the whole suite at 6ffacf9 saw it so.
+     */
+    private static void justChanged(File root) {
+        dateTheRefs(root, System.currentTimeMillis());
+    }
+
+    private static void dateTheRefs(File root, long past) {
         File git = new File(root, ".git");
         List<File> pending = new ArrayList<File>();
         pending.add(new File(git, "refs/tags"));
@@ -252,6 +264,7 @@ class ReleaseTagsTest {
         assumeGit();
         git(root, "init", "-q");
         tagged(root, "1.0.0", demo("Egg"));
+        justChanged(root);
         Counting counting = new Counting();
 
         list(root, counting);

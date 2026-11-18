@@ -28,6 +28,18 @@ class FindTermsSaysWhatAnOdkImportDoesTest {
         }
     }
 
+    /** What the module holds is ODK's default kind, said in plain words, the others a click away. */
+    @Test
+    void inAnOdkProjectTheKindOfModuleIsNamed() {
+        String steps = FindTermsAction.importSteps("demo-odk.yaml");
+
+        assertTrue(steps.contains("The terms you chose and what they need"), steps);
+        assertTrue(steps.contains("Advanced..."), steps);
+        for (String line : steps.split("\n")) {
+            assertTrue(line.length() <= 86, "no wider than the lines above it: " + line);
+        }
+    }
+
     /** A project of the older layout, or no project at all: as it always said. */
     @Test
     void elsewhereItSaysWhatItAlwaysSaid() {

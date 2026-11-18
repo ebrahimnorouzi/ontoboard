@@ -1,0 +1,14 @@
+format-version: 1.2
+data-version: rta/releases/1.0.0/rta-non-classified.owl
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: rta/rta-non-classified
+property_value: dcterms:description "None" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/unspecified
+property_value: dcterms:title "Release Test A Ontology" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: RTA:0000000
+name: root node
+

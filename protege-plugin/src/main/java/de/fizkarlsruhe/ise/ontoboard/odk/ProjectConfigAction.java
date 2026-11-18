@@ -95,6 +95,7 @@ public class ProjectConfigAction extends ProtegeOWLAction {
         table.setRowHeight(table.getRowHeight() + 6);
         widths(table);
         session.table = table;
+        javax.swing.JTextArea under = withHelp(table, () -> session.entries);
 
         JPanel content = new JPanel(new BorderLayout(0, 8));
         content.add(new JLabel("<html>" + yaml.getName()
@@ -130,7 +131,11 @@ public class ProjectConfigAction extends ProtegeOWLAction {
         JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
         buttons.add(add);
         buttons.add(remove);
-        content.add(buttons, BorderLayout.SOUTH);
+        // ODK's own words for the chosen key, between the table and the buttons.
+        JPanel south = new JPanel(new BorderLayout(0, 6));
+        south.add(under, BorderLayout.NORTH);
+        south.add(buttons, BorderLayout.SOUTH);
+        content.add(south, BorderLayout.SOUTH);
         content.setPreferredSize(new Dimension(720, 420));
 
         if (JOptionPane.showConfirmDialog(getOWLWorkspace(), content,
@@ -419,8 +424,74 @@ public class ProjectConfigAction extends ProtegeOWLAction {
         OdkBuildSettings.writeIfUnchanged(yaml, expected, updated);
     }
 
+    /** What the line under the table says while no row is chosen. */
+    static final String CHOOSE_A_KEY = "Choose a key to read what ODK says of it.";
+
+    /**
+     * ODK's own words beside each key ({@link OdkSchema#line}): as the tooltip of the key's
+     * cell, and in the line under the table for the row that is chosen - the testers of
+     * 1.132.0 asked for help beside each key. The line is plain text, wrapped at the dialog's
+     * width, three lines high.
+     *
+     * @param entries the rows as they are now: a list's entry added or removed renumbers them
+     * @return the line, for the dialog to put under the table
+     */
+    static javax.swing.JTextArea withHelp(final JTable table,
+            final java.util.function.Supplier<List<OdkYaml.Entry>> entries) {
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                new javax.swing.table.DefaultTableCellRenderer() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public java.awt.Component getTableCellRendererComponent(JTable shown,
+                            Object value, boolean isSelected, boolean hasFocus, int row,
+                            int column) {
+                        java.awt.Component cell = super.getTableCellRendererComponent(shown,
+                                value, isSelected, hasFocus, row, column);
+                        List<OdkYaml.Entry> now = entries.get();
+                        setToolTipText(row >= 0 && row < now.size()
+                                ? OdkSchema.line(now.get(row).getPath()) : null);
+                        return cell;
+                    }
+                });
+        final javax.swing.JTextArea under = new javax.swing.JTextArea(CHOOSE_A_KEY) {
+            private static final long serialVersionUID = 1L;
+
+            /**
+             * Three of its lines high, as wide as it is given. A wrapping text area's own
+             * preferred size is measured before it has a width, one word to a line: 2,368 px
+             * high in the 420 px dialog, and the table had no room left (its rendering, 1.154.0).
+             */
+            @Override
+            public Dimension getPreferredSize() {
+                java.awt.Insets insets = getInsets();
+                return new Dimension(1, getFontMetrics(getFont()).getHeight() * 3
+                        + insets.top + insets.bottom);
+            }
+        };
+        under.setEditable(false);
+        under.setFocusable(false);
+        under.setLineWrap(true);
+        under.setWrapStyleWord(true);
+        under.setOpaque(false);
+        under.setBorder(null);
+        under.setFont(javax.swing.UIManager.getFont("Label.font"));
+        table.getSelectionModel().addListSelectionListener(
+                new javax.swing.event.ListSelectionListener() {
+                    @Override
+                    public void valueChanged(javax.swing.event.ListSelectionEvent event) {
+                        int row = table.getSelectedRow();
+                        List<OdkYaml.Entry> now = entries.get();
+                        under.setText(row >= 0 && row < now.size()
+                                ? OdkSchema.line(now.get(row).getPath()) : CHOOSE_A_KEY);
+                        under.setCaretPosition(0);
+                    }
+                });
+        return under;
+    }
+
     /** Key, value and whether it can be edited - the third column explains a read-only row. */
-    private static DefaultTableModel modelFor(final List<OdkYaml.Entry> entries) {
+    static DefaultTableModel modelFor(final List<OdkYaml.Entry> entries) {
         List<Object[]> rows = new ArrayList<Object[]>();
         for (OdkYaml.Entry entry : entries) {
             // Indented by depth, so the nesting is visible: a bare `id` column would show four

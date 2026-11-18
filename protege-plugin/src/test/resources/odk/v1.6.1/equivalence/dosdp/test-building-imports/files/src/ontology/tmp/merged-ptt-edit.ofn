@@ -1,0 +1,80 @@
+Prefix(:=<http://purl.obolibrary.org/obo/ptt.owl#>)
+Prefix(dce:=<http://purl.org/dc/elements/1.1/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/ptt.owl>
+Annotation(dcterms:description "None")
+Annotation(dcterms:license <https://creativecommons.org/licenses/unspecified>)
+Annotation(dcterms:title "Pattern Test Ontology")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000000>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000010>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000011>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000020>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000021>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PTT_0000030>))
+Declaration(ObjectProperty(<http://purl.obolibrary.org/obo/BFO_0000050>))
+Declaration(ObjectProperty(<http://purl.obolibrary.org/obo/RO_0001025>))
+Declaration(AnnotationProperty(dcterms:description))
+Declaration(AnnotationProperty(dcterms:license))
+Declaration(AnnotationProperty(dcterms:title))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: dcterms:description (description)
+
+AnnotationAssertion(rdfs:label dcterms:description "description")
+
+# Annotation Property: dcterms:license (license)
+
+AnnotationAssertion(rdfs:label dcterms:license "license")
+
+# Annotation Property: dcterms:title (title)
+
+AnnotationAssertion(rdfs:label dcterms:title "title")
+
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000000> (root node)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000000> "root node"@en)
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000010> (shell)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000010> "shell"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/PTT_0000010> <http://purl.obolibrary.org/obo/PTT_0000000>)
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000011> (yolk)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000011> "yolk"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/PTT_0000011> <http://purl.obolibrary.org/obo/PTT_0000000>)
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000020> (Part of shell)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000020> "Part of shell")
+EquivalentClasses(<http://purl.obolibrary.org/obo/PTT_0000020> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/BFO_0000050> <http://purl.obolibrary.org/obo/PTT_0000010>))
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000021> (Part of yolk)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000021> "Part of yolk")
+EquivalentClasses(<http://purl.obolibrary.org/obo/PTT_0000021> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/BFO_0000050> <http://purl.obolibrary.org/obo/PTT_0000011>))
+
+# Class: <http://purl.obolibrary.org/obo/PTT_0000030> (shell resident)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PTT_0000030> "shell resident"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/PTT_0000030> ObjectSomeValuesFrom(<http://purl.obolibrary.org/obo/RO_0001025> <http://purl.obolibrary.org/obo/PTT_0000010>))
+
+
+)

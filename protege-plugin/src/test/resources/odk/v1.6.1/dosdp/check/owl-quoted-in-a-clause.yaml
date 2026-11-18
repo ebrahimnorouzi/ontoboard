@@ -1,0 +1,10 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"
+subClassOf:
+  multi_clause:
+    sep: " and "
+    clauses:
+      - text: "'part_of' some %s"
+        vars: [x]

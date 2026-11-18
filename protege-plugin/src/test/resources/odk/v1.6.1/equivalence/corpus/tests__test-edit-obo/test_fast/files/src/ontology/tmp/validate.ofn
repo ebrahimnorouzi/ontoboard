@@ -1,0 +1,69 @@
+Prefix(:=<http://purl.obolibrary.org/obo/eto.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(terms:=<http://purl.org/dc/terms/>)
+Prefix(oboInOwl:=<http://www.geneontology.org/formats/oboInOwl#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/eto.owl>
+<http://purl.obolibrary.org/obo/eto/releases/1.0.0/eto.owl>
+Annotation(terms:description "None")
+Annotation(terms:license <https://creativecommons.org/licenses/unspecified>)
+Annotation(terms:title "Test Ontology For using OBO format base")
+Annotation(oboInOwl:hasOBOFormatVersion "1.2")
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/ETO_0000000>))
+Declaration(AnnotationProperty(terms:description))
+Declaration(AnnotationProperty(terms:license))
+Declaration(AnnotationProperty(terms:title))
+Declaration(AnnotationProperty(oboInOwl:hasOBOFormatVersion))
+Declaration(AnnotationProperty(oboInOwl:id))
+Declaration(AnnotationProperty(oboInOwl:is_metadata_tag))
+Declaration(AnnotationProperty(rdfs:label))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: terms:description (description)
+
+AnnotationAssertion(oboInOwl:id terms:description "http://purl.org/dc/terms/description")
+AnnotationAssertion(oboInOwl:is_metadata_tag terms:description "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label terms:description "description")
+
+# Annotation Property: terms:license (license)
+
+AnnotationAssertion(oboInOwl:id terms:license "http://purl.org/dc/terms/license")
+AnnotationAssertion(oboInOwl:is_metadata_tag terms:license "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label terms:license "license")
+
+# Annotation Property: terms:title (title)
+
+AnnotationAssertion(oboInOwl:id terms:title "http://purl.org/dc/terms/title")
+AnnotationAssertion(oboInOwl:is_metadata_tag terms:title "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label terms:title "title")
+
+# Annotation Property: oboInOwl:hasOBOFormatVersion (has_obo_format_version)
+
+AnnotationAssertion(rdfs:label oboInOwl:hasOBOFormatVersion "has_obo_format_version")
+
+# Annotation Property: oboInOwl:id (id)
+
+AnnotationAssertion(rdfs:label oboInOwl:id "id")
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/ETO_0000000> (root node)
+
+AnnotationAssertion(oboInOwl:id <http://purl.obolibrary.org/obo/ETO_0000000> "ETO:0000000")
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/ETO_0000000> "root node")
+
+
+)

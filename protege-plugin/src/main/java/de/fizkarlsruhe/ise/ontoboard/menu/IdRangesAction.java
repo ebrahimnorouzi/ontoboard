@@ -73,10 +73,12 @@ public class IdRangesAction extends OntoBoardAction {
                         .defaultValue(defaultEditorName())
                         .help("Who the block belongs to. ODK conventionally uses a person's name "
                                 + "or their email address, and it has to match the name this "
-                                + "plugin mints under - which is your display name under "
-                                + "OntoBoard > Share > Collaboration... if you have set one, and "
-                                + "your login name otherwise. That is the name filled in here. A "
-                                + "block allocated to a name nobody edits under helps nobody.")
+                                + "plugin mints under - which is the name Protege's own ID "
+                                + "ranges look for: the user name on the User details tab of "
+                                + "Protege's preferences if you have set one (or git's, where "
+                                + "that tab asks for it), and your login name otherwise. That is "
+                                + "the name filled in here. A block allocated to a name nobody "
+                                + "edits under helps nobody.")
                         .build(),
                 Parameter.of(OPTION_SIZE, "How many identifiers", Parameter.Kind.NUMBER)
                         .defaultValue(String.valueOf(suggestedBlockSize(rangesFile)))
@@ -137,7 +139,7 @@ public class IdRangesAction extends OntoBoardAction {
         if (allocating) {
             return allocate(ranges, rangesFile);
         }
-        return describe(ranges, rangesFile);
+        return describe(ranges, rangesFile, ontologyFile);
     }
 
     /** The lost lines, quoted, for a refusal a user can act on. */
@@ -218,7 +220,7 @@ public class IdRangesAction extends OntoBoardAction {
     }
 
     /** The read-only view. */
-    private OperationResult describe(IdRanges ranges, File rangesFile) {
+    private OperationResult describe(IdRanges ranges, File rangesFile, File ontologyFile) {
         OperationResult.Builder result = withTable(OperationResult.of(operationName()), ranges)
                 .summary(ranges.getRanges().size() + " range"
                         + (ranges.getRanges().size() == 1 ? "" : "s") + " under prefix "
@@ -226,7 +228,9 @@ public class IdRangesAction extends OntoBoardAction {
                         + " digits");
         result.note("Read from " + rangesFile.getAbsolutePath());
 
-        String me = defaultEditorName();
+        // The board's minting name for this ontology: a block claimed under the display name
+        // by an earlier OntoBoard is still the person's.
+        String me = de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(ontologyFile);
         boolean mine = false;
         for (IdRanges.Range range : ranges.getRanges()) {
             mine |= range.getAllocatedTo().equalsIgnoreCase(me);

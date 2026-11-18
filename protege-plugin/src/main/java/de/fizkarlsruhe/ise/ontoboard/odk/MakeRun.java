@@ -64,12 +64,26 @@ public final class MakeRun {
 
     /** The command for a target, run from the directory the Makefile is in. */
     public static List<String> command(String target) {
+        return command(target, java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, with variables on make's command line - Build's switches that are off,
+     * {@code IMP=false} ({@link BuildSwitches}) - after the target, as ODK's documentation
+     * writes them.
+     */
+    public static List<String> command(String target, java.util.Map<String, String> variables) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
         // No -j: ODK recipes are not written to be parallel-safe, and interleaved output from a
         // parallel build is unreadable, which defeats the point of keeping the transcript.
-        return Arrays.asList("make", target.trim());
+        List<String> command = new java.util.ArrayList<String>(Arrays.asList("make",
+                target.trim()));
+        for (java.util.Map.Entry<String, String> variable : variables.entrySet()) {
+            command.add(variable.getKey() + "=" + variable.getValue());
+        }
+        return command;
     }
 
     /**
@@ -172,11 +186,16 @@ public final class MakeRun {
      */
     public static List<String> containerCommand(String runtime, File ontologyDirectory,
             String image, OdkContainer.Host host, String target) {
-        if (target == null || target.trim().isEmpty()) {
-            throw new IllegalArgumentException("no target to make");
-        }
+        return containerCommand(runtime, ontologyDirectory, image, host, target,
+                java.util.Collections.<String, String>emptyMap());
+    }
+
+    /** The same, with variables on make's command line ({@link #command(String, java.util.Map)}). */
+    public static List<String> containerCommand(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, String target,
+            java.util.Map<String, String> variables) {
         return containerCommandFor(runtime, ontologyDirectory, image, host,
-                java.util.Arrays.asList("make", target.trim()));
+                command(target, variables));
     }
 
     /**
@@ -405,6 +424,32 @@ public final class MakeRun {
      * are the ones worth naming; everything else is handed over with the last meaningful line,
      * which is where a build tool puts its complaint.
      */
+    /**
+     * As {@link #explain(String, ProcessRunner.Outcome)}, for a run with Build's switches: where
+     * "Download the imports' sources again" was unticked and make stops on a mirror it has no
+     * rule for - a fresh clone has none - the way out is that box, said as the engine's route
+     * says it before a run (Review Focus 5; the 1.154.0 review's I2).
+     *
+     * @param off Build's switches that were off; null or empty for ODK's defaults
+     */
+    public static String explain(String target, ProcessRunner.Outcome outcome,
+            java.util.Set<BuildSwitches.Switch> off) {
+        if (off != null && off.contains(BuildSwitches.Switch.MIR) && !outcome.isSuccess()
+                && !outcome.wasCancelled() && !outcome.timedOut()) {
+            java.util.regex.Matcher noRule = NO_RULE.matcher(joined(outcome.getOutput()));
+            if (noRule.find() && noRule.group(1).startsWith("mirror/")) {
+                String box = BuildSwitches.Switch.MIR.words();
+                return "make has no rule to make '" + noRule.group(1) + "'"
+                        + (noRule.group(2) == null ? "" : ", which '" + noRule.group(2)
+                                + "' needs") + ", so '" + target + "' stopped: a file under "
+                        + "mirror/ is an imported ontology as it was downloaded, and with \""
+                        + box + "\" unticked nothing downloads it - a fresh clone has none. "
+                        + "Tick \"" + box + "\" and make downloads the imports' sources first.";
+            }
+        }
+        return explain(target, outcome);
+    }
+
     public static String explain(String target, ProcessRunner.Outcome outcome) {
         if (outcome.isSuccess()) {
             return null;
@@ -459,12 +504,18 @@ public final class MakeRun {
                     + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
                     + "Project > Project configuration... edits the key.";
         }
+        // Which import's source could not be fetched, from where, and why: when the run
+        // stopped there, that is said rather than the mirror make names last.
+        ImportFailure fetch = ImportFailure.of(outcome.getOutput());
+        if (fetch != null) {
+            String fast = fastOf(target);
+            return fetch.sentence() + (fast == null ? "" : " Run " + fast + " instead, which "
+                    + "builds from the imports as they are.");
+        }
         if (theNetworkStoppedIt(outcome.getOutput())) {
             // make's last line names a mirror file, not the cause. ODK's full targets fetch the
             // project's imports; the fast ones build from the imports as they are.
-            String fast = target.equals("test") || target.equals("prepare_release")
-                    || target.equals("all") ? target.equals("all") ? "test_fast"
-                            : target + "_fast" : null;
+            String fast = fastOf(target);
             return "The build could not download what it fetches from the web - the "
                     + "project's imports - so it stopped: the network, or the server, did not "
                     + "answer." + (fast == null ? " Run it again when the network is back."
@@ -488,6 +539,13 @@ public final class MakeRun {
         String tail = outcome.lastMeaningfulLine();
         return "make " + target + " failed (exit " + outcome.getExitCode() + ")"
                 + (tail.isEmpty() ? "." : ": " + tail);
+    }
+
+    /** ODK's target that does what this one does from the imports as they are; null for none. */
+    private static String fastOf(String target) {
+        return target.equals("all") ? "test_fast"
+                : target.equals("test") || target.equals("prepare_release") ? target + "_fast"
+                        : null;
     }
 
     /** How far from its end a transcript's word on the network is why the run stopped. */

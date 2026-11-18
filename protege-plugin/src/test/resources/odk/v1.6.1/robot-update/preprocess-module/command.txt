@@ -1,0 +1,1 @@
+query --input input.ofn --update preprocess-module.ru --output robot.ofn

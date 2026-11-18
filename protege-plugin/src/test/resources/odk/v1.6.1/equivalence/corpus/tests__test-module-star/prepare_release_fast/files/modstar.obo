@@ -1,0 +1,29 @@
+format-version: 1.2
+data-version: releases/1.0.0
+idspace: oboInOwl http://www.geneontology.org/formats/oboInOwl# 
+idspace: terms http://purl.org/dc/terms/ 
+ontology: modstar
+property_value: owl:versionInfo "1.0.0" xsd:string
+property_value: terms:description "None" xsd:string
+property_value: terms:license https://creativecommons.org/licenses/unspecified
+property_value: terms:title "Test ROBOT extract star" xsd:string
+
+[Term]
+id: MODSTAR:0000000
+name: root node
+
+[Typedef]
+id: terms:description
+name: description
+is_metadata_tag: true
+
+[Typedef]
+id: terms:license
+name: license
+is_metadata_tag: true
+
+[Typedef]
+id: terms:title
+name: title
+is_metadata_tag: true
+

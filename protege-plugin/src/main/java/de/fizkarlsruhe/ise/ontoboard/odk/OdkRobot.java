@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Map;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -26,6 +28,7 @@ import org.obolibrary.robot.CommandManager;
 import org.obolibrary.robot.CommandState;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.ReportOperation;
+import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
  * ROBOT's command line, and ODK's ROBOT plugin, run inside this JVM.
@@ -152,6 +155,49 @@ public final class OdkRobot {
     public static String hostLogLevel() {
         HostLog log = HostLog.find();
         return log == null || log.level == null ? null : log.level.toString();
+    }
+
+    /**
+     * Whether the OWL API leaves an OBO file it read open where that matters: OWL API 4.5.9 -
+     * Protégé 5.5.0's - keeps the file's stream until the collector closes it (measured: every
+     * way of reading one; 4.5.29 closes it), and on Windows an open file cannot be renamed or
+     * deleted, so git could not replace a project's OBO edit file meanwhile.
+     */
+    static boolean leavesOboOpen(String owlApiVersion, boolean windows) {
+        Matcher version = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)").matcher(
+                owlApiVersion == null ? "" : owlApiVersion);
+        if (!windows || !version.find()) {
+            return false;
+        }
+        int major = Integer.parseInt(version.group(1));
+        int minor = Integer.parseInt(version.group(2));
+        int patch = Integer.parseInt(version.group(3));
+        return major < 4 || major == 4 && (minor < 5 || minor == 5 && patch < 29);
+    }
+
+    /** Whether a ROBOT line reads an OBO file: one of its inputs names one. */
+    static boolean readsObo(List<String> arguments) {
+        for (int i = 1; i < arguments.size(); i++) {
+            String before = arguments.get(i - 1);
+            if ((before.equals("-i") || before.equals("--input") || before.equals("--inputs"))
+                    && arguments.get(i).toLowerCase(Locale.ROOT).endsWith(".obo")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A file ROBOT wrote as JSON, with its lines ended as ODK's image ends them: obographs
+     * writes through Jackson's pretty printer, which ends a line as the platform does - CRLF
+     * on Windows. A JSON string cannot hold a line break of its own, so every CRLF is one.
+     */
+    static void lineEndsAsInOdk(File json) throws IOException {
+        byte[] bytes = Files.readAllBytes(json.toPath());
+        String text = new String(bytes, StandardCharsets.UTF_8);
+        if (text.contains("\r\n")) {
+            Files.write(json.toPath(), text.replace("\r\n", "\n").getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     /**
@@ -376,6 +422,14 @@ public final class OdkRobot {
             System.err.flush();
             System.setOut(out);
             System.setErr(err);
+        }
+        if (readsObo(Arrays.asList(line)) && leavesOboOpen(org.semanticweb.owlapi.util
+                .VersionInfo.getVersionInfo().getVersion(), System.getProperty("os.name", "")
+                        .toLowerCase(Locale.ROOT).contains("win"))) {
+            // What the older OWL API left open of the OBO file it read is closed when its
+            // stream is collected: now, not when the collector would have come by.
+            System.gc();
+            System.runFinalization();
         }
         List<String> lines = new ArrayList<String>();
         String text = new String(printed.toByteArray(), Charset.defaultCharset());
@@ -662,7 +716,19 @@ public final class OdkRobot {
             if (NOT_HERE.contains(name)) {
                 throw new IllegalStateException(notHere(name));
             }
-            return real.execute(state, args);
+            CommandState after = real.execute(state, args);
+            if (writesJson(line)) {
+                // As ODK's image writes it: lines end in LF on every platform.
+                for (String output : real.getOptions().hasLongOption("output")
+                        && line.getOptionValues("output") != null
+                        ? line.getOptionValues("output") : new String[0]) {
+                    File written = new File(output);
+                    if (written.isFile() && !output.toLowerCase(Locale.ROOT).endsWith(".gz")) {
+                        lineEndsAsInOdk(written);
+                    }
+                }
+            }
+            return after;
         }
 
         private static String notHere(String name) {
@@ -673,9 +739,20 @@ public final class OdkRobot {
         /**
          * {@code robot query}: ROBOT's options and ROBOT's loading of the input (the catalog
          * used), the queries on OntoBoard's engine, each output written as ROBOT writes it.
+         * With {@code --update}, as ROBOT's {@code QueryCommand.execute} does then: the
+         * ontology the updates leave is written by {@code --output}, when there is one, and
+         * handed to the next command of the line.
          */
-        private CommandState query(CommandState state, CommandLine line) throws IOException {
+        private CommandState query(CommandState state, CommandLine line) throws Exception {
             CommandState now = input(state, line);
+            List<String> updates = CommandLineHelper.getOptionalValues(line, "update");
+            if (!updates.isEmpty()) {
+                OWLOntology updated = RobotQuery.update(now,
+                        CommandLineHelper.getIOHelper(line), updates);
+                CommandLineHelper.maybeSaveOutput(line, updated);
+                now.setOntology(updated);
+                return now;
+            }
             RobotQuery.run(now.getOntology(), line,
                     CommandLineHelper.getBooleanValue(line, "use-graphs", false));
             return now;

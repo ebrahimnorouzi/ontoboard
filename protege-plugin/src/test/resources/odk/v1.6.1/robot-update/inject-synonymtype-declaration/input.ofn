@@ -1,0 +1,24 @@
+Prefix(:=<https://nfdi.fiz-karlsruhe.de/ontology/test/synonyms.owl#>)
+Prefix(nfdicore:=<https://nfdi.fiz-karlsruhe.de/ontology/>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(oboInOwl:=<http://www.geneontology.org/formats/oboInOwl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<https://nfdi.fiz-karlsruhe.de/ontology/test/synonyms.owl>
+
+Declaration(Class(obo:UBERON_0000061))
+Declaration(Class(nfdicore:NFDI_0000001))
+Declaration(AnnotationProperty(oboInOwl:SynonymTypeProperty))
+Declaration(AnnotationProperty(oboInOwl:hasExactSynonym))
+Declaration(AnnotationProperty(oboInOwl:hasSynonymType))
+AnnotationAssertion(rdfs:label obo:UBERON_0000061 "anatomical structure"@en)
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType obo:OMO_0003000) oboInOwl:hasExactSynonym obo:UBERON_0000061 "AS")
+AnnotationAssertion(rdfs:label nfdicore:NFDI_0000001 "process"@en)
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType nfdicore:NFDI_0001000) oboInOwl:hasExactSynonym nfdicore:NFDI_0000001 "proc.")
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType <https://example.org/other#short>) oboInOwl:hasExactSynonym nfdicore:NFDI_0000001 "p")
+)

@@ -85,11 +85,40 @@ class ImportTermsActionTest {
         org.semanticweb.owlapi.model.OWLOntology pattern = manager.createOntology(own);
 
         assertEquals(own.toString(), ImportTermsAction.recordedSource(pattern, copy, "componency"));
-        assertEquals(copy.toString(), ImportTermsAction.recordedSource(pattern, copy, null),
-                "any other import records what it was given");
+        assertEquals(own.toString(), ImportTermsAction.recordedSource(pattern, copy, null),
+                "a file of this machine records the ontology's own IRI");
         org.junit.jupiter.api.Assertions.assertNull(ImportTermsAction.recordedSource(
                 manager.createOntology(), copy, "anonymous"),
                 "a pattern with no IRI records none; its # Pattern: line says where it came from");
+    }
+
+    /**
+     * F4: a file of this machine is an address on no other. Taken from one, the term list - a
+     * committed file - records the ontology's own IRI, as the module's provenance does, and
+     * none for an ontology without one: never the path.
+     */
+    @Test
+    void aLocalFileWithoutAnIriRecordsNoSource() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntology anonymous =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                        .createOntology();
+
+        org.junit.jupiter.api.Assertions.assertNull(ImportTermsAction.recordedSource(anonymous,
+                org.semanticweb.owlapi.model.IRI.create(
+                        "file:/C:/Users/someone/Downloads/mini.owl"), null));
+    }
+
+    /** A source on the web is recorded as given: it is where the terms were taken from. */
+    @Test
+    void aSourceOnTheWebIsRecordedAsGiven() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntology mini =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                        .createOntology(org.semanticweb.owlapi.model.IRI.create(
+                                "https://example.org/mini.owl"));
+
+        assertEquals("https://w3id.org/mini/1.0/mini.owl", ImportTermsAction.recordedSource(mini,
+                org.semanticweb.owlapi.model.IRI.create("https://w3id.org/mini/1.0/mini.owl"),
+                null));
     }
 
     private static final org.semanticweb.owlapi.model.IRI MODULE =
@@ -230,5 +259,31 @@ class ImportTermsActionTest {
                 ImportTermsAction.moduleSummary(604, 1));
         assertEquals("Wrote a module of 1 axiom for 2 terms, and imported it.",
                 ImportTermsAction.moduleSummary(1, 2));
+    }
+
+    /**
+     * The 1.154.0 review's M4: an import already declared keeps its kind (Task 18's ruling), so
+     * a kind chosen for it is not taken - and the result says so, with where an import's kind is
+     * changed; the form's help says it before. The same kind as declared needs no word.
+     */
+    @Test
+    void anImportAlreadyDeclaredSaysTheKindChosenIsNotTaken() {
+        de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Product ro =
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.named(
+                        de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.declaredIn(
+                                "id: egg\nimport_group:\n  products:\n    - id: ro\n"), "ro");
+
+        String note = ImportTermsAction.alreadyDeclared("ro", ro,
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.WHOLE);
+
+        assertTrue(note.contains("not taken"), note);
+        assertTrue(note.contains(
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.WHOLE.words()), note);
+        assertTrue(note.contains("OntoBoard > Project > Project configuration..."), note);
+        assertFalse(ImportTermsAction.alreadyDeclared("ro", ro,
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.MODULE)
+                .contains("not taken"));
+        assertTrue(ImportTermsAction.kindParameter(null).getHelp().contains("already declared"),
+                ImportTermsAction.kindParameter(null).getHelp());
     }
 }

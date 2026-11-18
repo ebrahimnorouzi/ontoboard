@@ -6,6 +6,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
+import de.fizkarlsruhe.ise.ontoboard.odk.TargetWords;
 import de.fizkarlsruhe.ise.ontoboard.odk.VersionIriShape;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
@@ -32,7 +33,9 @@ final class OdkReleaseForm {
     static final String PATTERN = "pattern";
     static final String REFRESH = "refresh";
     static final String REFUSE = "refuse";
+    static final String UNCOMPARED = "uncompared";
     static final String PRIOR = "prior";
+    static final String COMMIT_NEW = "commitnew";
 
     /** The choice that makes the pattern field count. */
     static final String OWN_PATTERN = "The pattern typed below";
@@ -165,8 +168,16 @@ final class OdkReleaseForm {
      * there are none, or no repository to have them.
      */
     static String newFilesNotice(Start start) {
-        List<String> fresh = start.status == null ? new ArrayList<String>()
-                : start.status.getUntracked();
+        // The project's own new files under src/ are offered in the form, to be committed
+        // first: what is said here is what the release would leave out whatever is ticked.
+        List<String> offered = newFilesOfTheProject(start);
+        List<String> fresh = new ArrayList<String>();
+        for (String path : ReleaseRun.untrackedOfTheProject(start.facts.root(),
+                repositoryOf(start), start.status)) {
+            if (!offered.contains(path)) {
+                fresh.add(path);
+            }
+        }
         if (fresh.isEmpty()) {
             return null;
         }
@@ -184,6 +195,46 @@ final class OdkReleaseForm {
                 + "fetches it. To have " + (one ? "it" : "them") + " in the release, commit "
                 + "your work first: OntoBoard > Share > Git..., and there \"Commit everything, "
                 + "with a message\".";
+    }
+
+    /** The project's new files under src/, which the form offers to commit first. */
+    static List<String> newFilesOfTheProject(Start start) {
+        return ReleaseRun.newFilesOfTheProject(start.facts.root(), repositoryOf(start),
+                start.status);
+    }
+
+    /** The top of the repository the project is in; null where there is none. */
+    private static File repositoryOf(Start start) {
+        return de.fizkarlsruhe.ise.ontoboard.git.GitRepo.repositoryFor(
+                new File(start.facts.ontology(), "Makefile"));
+    }
+
+    /** The box that commits the project's new files first; null where there are none. */
+    private static Parameter commitNewFirst(Start start, Map<String, String> values) {
+        List<String> fresh = newFilesOfTheProject(start);
+        if (fresh.isEmpty()) {
+            return null;
+        }
+        // One file is "it"; a folder git lists whole holds files: "they".
+        boolean one = fresh.size() == 1 && !fresh.get(0).endsWith("/");
+        String named = String.join(", ", fresh.subList(0, Math.min(NEW_FILES_NAMED,
+                fresh.size())));
+        if (fresh.size() > NEW_FILES_NAMED) {
+            named += " and " + (fresh.size() - NEW_FILES_NAMED) + " more";
+        }
+        return Parameter.of(COMMIT_NEW, "Commit the project's " + ReleaseRun.described(fresh)
+                + " first", Parameter.Kind.FLAG)
+                .defaultValue(values.get(COMMIT_NEW) == null ? "true" : values.get(COMMIT_NEW))
+                .help("Git has never been told about " + (one ? "this file" : "these files")
+                        + " of the project: " + named + ". With this on, " + (one ? "it is"
+                                : "they are") + " committed first, in a commit of "
+                        + (one ? "its" : "their") + " own - \"" + ReleaseRun.newFilesMessage(
+                                "<version>") + "\" - and then the release, so the release's "
+                        + "tag holds " + (one ? "it" : "them") + ": a new import module or test "
+                        + "missing from a tag breaks the project for whoever fetches it. Off "
+                        + "leaves " + (one ? "it" : "them") + " out of the release's commit, "
+                        + "as before OntoBoard 1.154.0.")
+                .build();
     }
 
     // ------------------------------------------------------------------ what is proposed
@@ -255,6 +306,10 @@ final class OdkReleaseForm {
                     : before.getText());
         }
         values.put(REFUSE, "true");
+        values.put(UNCOMPARED, "false");
+        if (!newFilesOfTheProject(start).isEmpty()) {
+            values.put(COMMIT_NEW, "true");
+        }
         return values;
     }
 
@@ -367,6 +422,20 @@ final class OdkReleaseForm {
                         + "release is not copied, committed or tagged. ODK's own tests run as "
                         + "part of the build either way.")
                 .build());
+        // F6 (ruling 16): a release that cannot be held against the last one stops, as one
+        // with a term gone does; this is the way on.
+        parameters.add(Parameter.of(UNCOMPARED, OdkRelease.UNCOMPARED_LABEL,
+                Parameter.Kind.FLAG)
+                .defaultValue(values.get(UNCOMPARED))
+                .help("Where the last release cannot be read - a broken file under releases/, "
+                        + "a tag without the release's main file - the new release cannot be "
+                        + "held against it, and it is not copied, committed or tagged. With "
+                        + "this on it is, without the comparison, and the result says so.")
+                .build());
+        Parameter first = commitNewFirst(start, values);
+        if (first != null) {
+            parameters.add(first);
+        }
         return parameters;
     }
 
@@ -480,7 +549,68 @@ final class OdkReleaseForm {
         return new OdkRelease.Request(start.editFile, versionIn(chosen, VERSION),
                 start.script == null ? shape(start, chosen) : null,
                 start.mayRefreshImports() && !"false".equalsIgnoreCase(chosen.get(REFRESH)),
-                !"false".equalsIgnoreCase(chosen.get(REFUSE)));
+                !"false".equalsIgnoreCase(chosen.get(REFUSE)),
+                "true".equalsIgnoreCase(chosen.get(UNCOMPARED)),
+                !newFilesOfTheProject(start).isEmpty()
+                        && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)),
+                // The files the box named, and only those, are committed first (M1).
+                newFilesOfTheProject(start));
+    }
+
+    /**
+     * The line under the form (E3): the release in plain words, then make's commands as the
+     * release runs them - make clean, then ODK's target with the version, and the version IRI
+     * where it is not ODK's shape - for those who know ODK. Null for a project released by its
+     * own script: the explanation above the form names the script.
+     */
+    static java.util.function.Function<Map<String, String>, String> lineUnder(
+            final Start start) {
+        return start.script != null ? null : chosen -> commandShown(start, chosen);
+    }
+
+    private static String commandShown(Start start, Map<String, String> chosen) {
+        boolean fresh = start.mayRefreshImports()
+                && !"false".equalsIgnoreCase(chosen.get(REFRESH));
+        String target = fresh ? "prepare_release" : "prepare_release_fast";
+        String version = versionIn(chosen, VERSION);
+        List<String> make;
+        try {
+            make = ReleaseRun.makeArguments(version, shape(start, chosen), start.facts.ontbase(),
+                    fresh);
+        } catch (IllegalArgumentException notYet) {
+            // Not a version, or a pattern that cannot be one, yet: what was typed. The form
+            // says what is wrong with it when it is sent.
+            make = Arrays.asList("make", target, "VERSION=" + version);
+        }
+        // Here the box "Refresh the imports first" is what chooses the target, so a release
+        // that fetches them can say so.
+        return (fresh ? "Release, with fresh imports" : TargetWords.of(target)) + " - "
+                + String.join(" ", ReleaseRun.cleanArguments()) + ", then " + asTyped(make);
+    }
+
+    /**
+     * A command as a terminal takes it: an argument with a blank or a {@code $} in it in single
+     * quotes, after its {@code NAME=} when it has one - make's {@code $@} stays make's.
+     */
+    private static String asTyped(List<String> arguments) {
+        StringBuilder line = new StringBuilder();
+        for (String argument : arguments) {
+            if (line.length() > 0) {
+                line.append(' ');
+            }
+            if (argument.matches("[A-Za-z0-9_./=:@%+,-]*")) {
+                line.append(argument);
+                continue;
+            }
+            int equals = argument.indexOf('=');
+            String name = equals > 0
+                    && argument.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_]*")
+                    ? argument.substring(0, equals + 1) : "";
+            line.append(name).append('\'')
+                    .append(argument.substring(name.length()).replace("'", "'\\''"))
+                    .append('\'');
+        }
+        return line.toString();
     }
 
     // ------------------------------------------------------------------ before git records it
@@ -522,33 +652,43 @@ final class OdkReleaseForm {
     // ------------------------------------------------------------------ the release
 
     /**
-     * Releases as chosen, and reports it.
+     * The release, where nobody reads again what it rewrote: that is said instead.
      *
-     * @param imageNote why the image is not the ODK that wrote the project, or null
+     * @param routeNote a word about who builds it, said first, or null
      */
-    /** The release, where nobody reads again what it rewrote: that is said instead. */
     static OperationResult run(String operation, Start start, Map<String, String> chosen,
             OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
-            String imageNote) {
-        return run(operation, start, chosen, odk, git, asks, imageNote, null);
+            String routeNote) {
+        return run(operation, start, chosen, odk, git, asks, routeNote, null);
     }
 
     /**
      * The release.
      *
+     * @param routeNote  a word about who builds it, said first: why ODK's image is not the ODK
+     *                   that wrote the project, or that ROBOT, run by OntoBoard itself, has
+     *                   less memory than the project asks for; null for none
      * @param readsAgain whoever has the project open, asked to read again the edit file
      *                   and the import modules where the release rewrote them; null to say
      *                   instead that they were rewritten
      */
     static OperationResult run(String operation, Start start, Map<String, String> chosen,
             OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
-            String imageNote, ReadsAgain readsAgain) {
+            String routeNote, ReadsAgain readsAgain) {
         OperationResult.Builder result = OperationResult.of(operation);
         OdkRelease.Request request = request(start, chosen);
         result.note("Project: " + start.facts.root().getAbsolutePath());
         result.note("Version: " + request.version());
-        if (imageNote != null) {
-            result.warn(imageNote);
+        if (routeNote != null) {
+            result.warn(routeNote);
+        }
+        if (odk.runsTheMakefileAsItIs()) {
+            // F5: make runs a Makefile that is not ODK's as it is; the engine would refuse it.
+            String notOdks = de.fizkarlsruhe.ise.ontoboard.odk.FallbackEligibility
+                    .notOdksMakefile(request.editFile());
+            if (notOdks != null) {
+                result.warn(notOdks);
+            }
         }
         if (start.script != null) {
             String said = setScriptLines(start, chosen, request.version());

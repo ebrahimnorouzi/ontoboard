@@ -1,0 +1,9 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes:
+  a: X:1
+vars:
+  x: "owl:Thing"
+subClassOf:
+  text: "'a' and 'b and %s"
+  vars: [x]

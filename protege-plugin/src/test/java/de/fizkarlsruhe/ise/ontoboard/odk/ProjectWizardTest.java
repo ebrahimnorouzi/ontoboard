@@ -1,15 +1,19 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import javax.swing.JButton;
@@ -93,6 +97,7 @@ class ProjectWizardTest {
         final JTextField iri = new JTextField();
         final JTextField license = new JTextField("https://creativecommons.org/licenses/by/4.0/");
         final JTextField folder = new JTextField("C:\\Users\\participant\\Documents\\study");
+        final JTextField owner = new JTextField("kitchen-lab");
         final JLabel problem = new JLabel();
         final JCheckBox adopt;
         /** The box that makes the project a git repository, as {@code show} makes it; or null. */
@@ -113,14 +118,15 @@ class ProjectWizardTest {
             adopt.setVisible(canAdopt);
             git = withGitBox ? new JCheckBox(ProjectWizard.GIT_BOX, true) : null;
             form = withGitBox
-                    ? ProjectWizard.form(id, title, description, iri, license, folder,
+                    ? ProjectWizard.form(id, title, description, iri, license, folder, owner,
                             new JButton("Choose..."), problem, adopt, git)
-                    : ProjectWizard.form(id, title, description, iri, license, folder,
+                    : ProjectWizard.form(id, title, description, iri, license, folder, owner,
                             new JButton("Choose..."), problem, adopt);
         }
 
-        List<JTextField> six() {
-            return Arrays.asList(id, title, description, iri, license, folder);
+        /** The form's fields, top to bottom. */
+        List<JTextField> fields() {
+            return Arrays.asList(id, title, description, iri, license, folder, owner);
         }
 
         /** OK pressed: the validator's own words, shown as the wizard shows them. */
@@ -256,7 +262,7 @@ class ProjectWizardTest {
     }
 
     private static void assertEveryFieldWhole(Widgets widgets, String when) {
-        for (JTextField field : widgets.six()) {
+        for (JTextField field : widgets.fields()) {
             assertTrue(field.getHeight() >= field.getPreferredSize().height,
                     when + " a field is " + field.getHeight() + " px high of the "
                             + field.getPreferredSize().height + " it needs, with the adopt box "
@@ -328,6 +334,108 @@ class ProjectWizardTest {
                     line);
         }
         assertTrue(html.replace("<br>", "").contains(path), "nothing of the path is lost: " + html);
+    }
+
+    // ---------------------------------------------------------------- the GitHub owner (F2)
+
+    /**
+     * The form asks for the GitHub owner, under the folder the project is made in, and says it
+     * is optional; the layout tests above hold its field whole with the others.
+     */
+    @Test
+    void theFormAsksForTheGitHubOwner() {
+        Widgets widgets = new Widgets(EGG, "https://example.org/eggboil/eggboil.owl", false);
+        shown(widgets.form);
+
+        JLabel label = labelled(widgets.form, ProjectWizard.OWNER_LABEL);
+        assertTrue(label != null, "no '" + ProjectWizard.OWNER_LABEL + "' on the form");
+        assertTrue(ProjectWizard.OWNER_LABEL.contains("optional"), ProjectWizard.OWNER_LABEL);
+        Rectangle folder = SwingUtilities.convertRectangle(widgets.folder.getParent(),
+                widgets.folder.getBounds(), widgets.form);
+        Rectangle owner = SwingUtilities.convertRectangle(widgets.owner.getParent(),
+                widgets.owner.getBounds(), widgets.form);
+        assertTrue(owner.y >= folder.y + folder.height, "the owner is asked under the folder: "
+                + owner + " / " + folder);
+    }
+
+    /**
+     * A picture of the form as the dialog shows it - the git box, the owner, and then after a
+     * refusal - for a person to look at, as a test cannot (memory: a control a test can click
+     * may be one nobody can reach). Written only with {@code -Dontoboard.pictures=<folder>}.
+     */
+    @Test
+    void picturesOfTheFormWhenAsked() throws java.io.IOException {
+        String into = System.getProperty("ontoboard.pictures");
+        org.junit.jupiter.api.Assumptions.assumeTrue(into != null && !into.trim().isEmpty(),
+                "Pictures only with -Dontoboard.pictures=<folder>.");
+        Widgets widgets = new Widgets(EGG, EGG_TYPED_AFTER, true, true);
+        picture(widgets.form, new File(into, "new-odk-project.png"));
+        widgets.refused();
+        picture(widgets.form, new File(into, "new-odk-project-refused.png"));
+    }
+
+    private static void picture(JPanel form, File png) throws java.io.IOException {
+        shown(form);
+        JOptionPane pane = (JOptionPane) SwingUtilities.getAncestorOfClass(JOptionPane.class,
+                form);
+        BufferedImage image = new BufferedImage(pane.getWidth(), pane.getHeight(),
+                BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        pane.paint(graphics);
+        graphics.dispose();
+        assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
+        javax.imageio.ImageIO.write(image, "png", png);
+    }
+
+    private static JLabel labelled(Container in, String text) {
+        for (Component child : in.getComponents()) {
+            if (child instanceof JLabel && text.equals(((JLabel) child).getText())) {
+                return (JLabel) child;
+            }
+            if (child instanceof Container) {
+                JLabel found = labelled((Container) child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** A GitHub remote names its owner; any other remote names none. */
+    @Test
+    void theOwnerIsTakenFromAGitHubRemote() {
+        assertEquals("kitchen-lab", ProjectWizard.ownerFromRemote(
+                "https://github.com/kitchen-lab/egg-boiling-ontology.git"));
+        assertEquals("ISE-FIZKarlsruhe", ProjectWizard.ownerFromRemote(
+                "git@github.com:ISE-FIZKarlsruhe/nfdicore.git"));
+        assertNull(ProjectWizard.ownerFromRemote("https://gitlab.com/x/y.git"));
+        assertNull(ProjectWizard.ownerFromRemote("../shared/eggs.git"), "a folder, not an owner");
+        assertNull(ProjectWizard.ownerFromRemote(null));
+    }
+
+    /**
+     * A project made in a folder of a clone is filled in with that clone's owner - asked of git
+     * on this machine, never of the network; elsewhere with what was given before.
+     */
+    @Test
+    void aFolderInAGitHubCloneGivesItsOwnerElseTheOneBefore() {
+        final List<List<String>> asked = new java.util.ArrayList<List<String>>();
+        ProcessRunner.Runner clone = (folder, command, minutes, sink) -> {
+            asked.add(command);
+            return new ProcessRunner.Outcome(0,
+                    Arrays.asList("https://github.com/kitchen-lab/eggs.git"), false);
+        };
+        ProcessRunner.Runner noClone = (folder, command, minutes, sink) ->
+                new ProcessRunner.Outcome(128, Arrays.asList(
+                        "fatal: not a git repository (or any of the parent directories): .git"),
+                        false);
+
+        assertEquals("kitchen-lab", ProjectWizard.ownerFor(new File("study"), clone, "someone"));
+        assertEquals(Arrays.asList(Arrays.asList("git", "remote", "get-url", "origin")), asked);
+        assertEquals("someone", ProjectWizard.ownerFor(new File("study"), noClone, "someone"));
+        assertEquals("", ProjectWizard.ownerFor(new File("study"), noClone, null));
+        assertEquals("someone", ProjectWizard.ownerFor(null, clone, "someone"), "no folder yet");
     }
 
     /**

@@ -366,6 +366,12 @@ public final class OdkConversion {
         try {
             saveEdit(edit, editFile);
             log.line("wrote src/ontology/" + editFile.getName());
+            List<String> stamps = OdkMigration.stampsOf(current.ontology);
+            if (!stamps.isEmpty()) {
+                log.line("Left out of the edit file: " + String.join(", ", stamps) + " - ODK's "
+                        + "release writes each release's own version, beside any the edit file "
+                        + "holds, so every release would say two.");
+            }
         } catch (IOException cannot) {
             throw new IllegalStateException("Could not write the edit file: "
                     + cannot.getMessage(), cannot);
@@ -451,8 +457,12 @@ public final class OdkConversion {
                 withThisOne.add(label);
                 writeHistory(readme, readmeOfOdk, title, withThisOne);
             }
+            // The version as it was published, recorded after the earlier ones: what it removed
+            // or what cannot be compared is history, said and not stopped on (F6 stops a release
+            // somebody makes; this one repeats one that was made).
             OdkRelease.Outcome released = OdkRelease.run(new OdkRelease.Request(editFile, label,
-                    OdkRelease.proposedShape(editFile, recording), false, false), odk, recording,
+                    OdkRelease.proposedShape(editFile, recording), false, false, true), odk,
+                    recording,
                     git ? new OdkRelease.Asks() {
                         @Override
                         public boolean commit(ReleaseRun.Staging staging) {
@@ -677,7 +687,9 @@ public final class OdkConversion {
 
     /**
      * The ontology's own content in a manager of its own - axioms, annotations and imports - for
-     * the edit file without its version IRI (a release adds that), or as published with it.
+     * the edit file without its version IRI and its {@code owl:versionInfo} (a release adds
+     * both, and ODK's adds the version beside any the edit file holds), or as published with
+     * them.
      */
     static OWLOntology copyOf(OWLOntology source, boolean asEditFile) {
         try {
@@ -690,7 +702,9 @@ public final class OdkConversion {
             OWLOntology copy = manager.createOntology(kept);
             manager.addAxioms(copy, source.getAxioms());
             for (OWLAnnotation annotation : source.getAnnotations()) {
-                manager.applyChange(new AddOntologyAnnotation(copy, annotation));
+                if (!asEditFile || !OdkMigration.isVersionStamp(annotation)) {
+                    manager.applyChange(new AddOntologyAnnotation(copy, annotation));
+                }
             }
             for (OWLImportsDeclaration declaration : source.getImportsDeclarations()) {
                 manager.applyChange(new AddImport(copy, declaration));
@@ -1107,17 +1121,19 @@ public final class OdkConversion {
     }
 
     static String publishing(File root, String id, boolean git) {
+        // F3: after the push, what the new repository's workflows need to publish its pages.
+        String workflows = "\n" + OdkExtras.workflowPermissions(null, id);
         if (!git) {
             return "To publish it, install git, then in " + root.getAbsolutePath() + ":\n"
                     + "  git init && git add -A && git commit -m \"The ODK repository\"\n"
-                    + "and push it to a repository you create on GitHub.";
+                    + "and push it to a repository you create on GitHub." + workflows;
         }
         return "To publish it on GitHub, create an empty repository there (no README), then in "
                 + root.getAbsolutePath() + ":\n"
-                + "  git remote add origin https://github.com/<you>/" + id + ".git\n"
+                + "  git remote add origin https://github.com/<owner>/" + id + ".git\n"
                 + "  git push -u origin main --tags\n"
                 + "or, with the GitHub CLI: gh repo create " + id + " --source . --push, then "
-                + "git push --tags";
+                + "git push --tags" + workflows;
     }
 
     // ---------------------------------------------------------------- small things

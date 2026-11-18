@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
 import java.io.File;
@@ -677,10 +678,10 @@ class OdkRobotTest {
     @Test
     void whyNotNamesWhatQueryDoesNotRun(@TempDir File temp) {
         String why = OdkRobot.whyNot(Arrays.asList("query", "--input",
-                path(new File(temp, "a.ofn")), "--update", path(new File(temp, "u.ru"))));
+                path(new File(temp, "a.ofn")), "--tdb", "true"));
 
         assertNotNull(why);
-        assertTrue(why.contains("--update"), why);
+        assertTrue(why.contains("--tdb"), why);
     }
 
     /** Asking changes the host's logging no more than running does. */
@@ -958,6 +959,77 @@ class OdkRobotTest {
             assertTrue(new String(Files.readAllBytes(out.toPath()), StandardCharsets.UTF_8)
                     .contains("https://example.org/e/Egg"));
         }
+    }
+
+    /**
+     * obographs writes JSON through Jackson's pretty printer, which ends its lines as the
+     * platform does - CRLF on Windows. ODK's image writes LF, and so does the engine: the file
+     * is ODK's byte for byte (found by DosdpEquivalenceLiveTest on ptt.json).
+     */
+    @Test
+    void jsonIsWrittenWithTheLineEndsOfOdksImage(@TempDir File temp) throws Exception {
+        assumeFalse(System.getProperty("java.specification.version").startsWith("1."),
+                "JSON is written on Java 11 and later");
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:label :Egg \"egg\")\n");
+        File byName = new File(temp, "a.json");
+        File byFormat = new File(temp, "a.out");
+
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(a), "--output",
+                path(byName))).ok());
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(a), "--format", "json",
+                "--output", path(byFormat))).ok());
+
+        for (File json : new File[] {byName, byFormat}) {
+            String text = new String(Files.readAllBytes(json.toPath()), StandardCharsets.UTF_8);
+            assertTrue(text.contains("\n") && !text.contains("\r"), json.getName() + ": " + text);
+        }
+    }
+
+    /**
+     * OWL API 4.5.9 - Protégé 5.5.0's - leaves an OBO file it read open until the stream is
+     * collected; on Windows an open file cannot be renamed or deleted, so git cannot replace a
+     * project's OBO edit file (found by CorpusEquivalenceTest, whose test-edit-obo folders
+     * could not be removed). The engine lets it go after the line.
+     */
+    @Test
+    void anOboFileTheEngineReadIsLetGo(@TempDir File temp) throws Exception {
+        File obo = new File(temp, "edit.obo");
+        Files.write(obo.toPath(), "format-version: 1.2\nontology: x\n\n[Term]\nid: X:1\nname: one\n"
+                .getBytes(StandardCharsets.UTF_8));
+
+        assertTrue(OdkRobot.run(Arrays.asList("convert", "--input", path(obo), "--output",
+                path(new File(temp, "out.ofn")))).ok());
+
+        Files.delete(obo.toPath());
+    }
+
+    @Test
+    void anOboFileIsLeftOpenByTheOlderOwlApiOnWindowsOnly() {
+        assertTrue(OdkRobot.leavesOboOpen("4.5.9.2019-02-01T07:24:44Z", true));
+        assertFalse(OdkRobot.leavesOboOpen("4.5.29.2024-05-13T12:11:03Z", true));
+        assertFalse(OdkRobot.leavesOboOpen("4.5.9.2019-02-01T07:24:44Z", false));
+    }
+
+    @Test
+    void aLineReadsAnOboFileByWhatItsInputsName() {
+        assertTrue(OdkRobot.readsObo(Arrays.asList("convert", "--input", "/x/a.obo",
+                "--output", "/x/b.ofn")));
+        assertTrue(OdkRobot.readsObo(Arrays.asList("merge", "-i", "/x/a.owl", "-i",
+                "/x/B.OBO")));
+        assertFalse(OdkRobot.readsObo(Arrays.asList("convert", "--input", "/x/a.owl",
+                "--output", "/x/b.obo")));
+    }
+
+    @Test
+    void aFileWithWindowsLineEndsIsGivenOdks(@TempDir File temp) throws Exception {
+        File json = new File(temp, "a.json");
+        Files.write(json.toPath(), "{\r\n  \"graphs\" : [ ]\r\n}".getBytes(StandardCharsets.UTF_8));
+
+        OdkRobot.lineEndsAsInOdk(json);
+
+        assertEquals("{\n  \"graphs\" : [ ]\n}", new String(Files.readAllBytes(json.toPath()),
+                StandardCharsets.UTF_8));
     }
 
     @Test

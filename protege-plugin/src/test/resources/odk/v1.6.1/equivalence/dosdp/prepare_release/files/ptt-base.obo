@@ -1,0 +1,40 @@
+format-version: 1.2
+data-version: ptt/releases/1.0.0/ptt-base.owl
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: ptt/ptt-base
+property_value: dce:type IAO:8000001
+property_value: dcterms:description "None" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/unspecified
+property_value: dcterms:title "Pattern Test Ontology" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: PTT:0000000
+name: root node
+
+[Term]
+id: PTT:0000010
+name: shell
+is_a: PTT:0000000 ! root node
+
+[Term]
+id: PTT:0000011
+name: yolk
+is_a: PTT:0000000 ! root node
+
+[Term]
+id: PTT:0000020
+name: Part of shell
+relationship: BFO:0000050 PTT:0000010 ! shell
+
+[Term]
+id: PTT:0000021
+name: Part of yolk
+relationship: BFO:0000050 PTT:0000011 ! yolk
+
+[Term]
+id: PTT:0000030
+name: shell resident
+relationship: RO:0001025 PTT:0000010 ! shell
+

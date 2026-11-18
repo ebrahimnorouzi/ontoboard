@@ -380,11 +380,20 @@ public final class ReleaseRun {
         private final List<List<String>> commands;
         private final List<String> leftOut;
         private final String head;
+        private final List<String> committedFirst;
 
-        Staging(List<List<String>> commands, List<String> leftOut, String head) {
+        Staging(List<List<String>> commands, List<String> leftOut, String head,
+                List<String> committedFirst) {
             this.commands = Collections.unmodifiableList(commands);
             this.leftOut = Collections.unmodifiableList(leftOut);
             this.head = head == null ? "" : head.trim();
+            this.committedFirst = Collections.unmodifiableList(
+                    new ArrayList<String>(committedFirst));
+        }
+
+        /** The project's new files, committed before the release in a commit of their own. */
+        public List<String> committedFirst() {
+            return committedFirst;
         }
 
         /** The commands, in the order they are run, each from the project's root. */
@@ -475,6 +484,112 @@ public final class ReleaseRun {
         "src/ontology/target/"};
 
     /**
+     * New files as a sentence says them, after "the project's": files counted, and a folder
+     * git lists whole - all of it new - as a folder, not as one file.
+     */
+    public static String described(List<String> entries) {
+        int folders = 0;
+        for (String entry : entries) {
+            folders += entry.endsWith("/") ? 1 : 0;
+        }
+        int files = entries.size() - folders;
+        String filesSaid = files + " new file" + (files == 1 ? "" : "s");
+        if (folders == 0) {
+            return filesSaid;
+        }
+        if (files == 0) {
+            return folders == 1 ? "new folder" : folders + " new folders";
+        }
+        return filesSaid + " and " + folders + " new folder" + (folders == 1 ? "" : "s");
+    }
+
+    /**
+     * Of the files the box named, those git still lists as new: listed as they are, or inside a
+     * folder git now lists whole - the file then, not the folder, which may hold more.
+     */
+    static List<String> stillNew(List<String> named, List<String> newNow) {
+        List<String> still = new ArrayList<String>();
+        for (String path : named) {
+            for (String listed : newNow) {
+                if (path.equals(listed) || (listed.endsWith("/") && path.startsWith(listed))) {
+                    still.add(path);
+                    break;
+                }
+            }
+        }
+        return still;
+    }
+
+    /** The message of the commit that takes a project's new files in before its release. */
+    public static String newFilesMessage(String version) {
+        return "Files of the project before release " + version;
+    }
+
+    /**
+     * The files of the project git has never been told about, as the project names them; a
+     * folder git lists whole is one entry. Not what is elsewhere in the repository.
+     *
+     * @param repositoryRoot the top of the repository: the project's root, a folder above it,
+     *                       or null where it is not known
+     */
+    public static List<String> untrackedOfTheProject(File projectRoot, File repositoryRoot,
+            GitRepo.Status status) {
+        List<String> found = new ArrayList<String>();
+        if (status == null) {
+            return found;
+        }
+        String prefix = prefixOf(projectRoot, repositoryRoot);
+        for (String listed : status.getUntracked()) {
+            String path = inProject(listed, prefix);
+            if (path != null) {
+                found.add(path);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The project's new files: what git has never been told about under src/ - an import
+     * module and its term list, a test, the board's layout - and none of ODK's scratch
+     * folders'. A stray file elsewhere in the project is not one of them.
+     */
+    public static List<String> newFilesOfTheProject(File projectRoot, File repositoryRoot,
+            GitRepo.Status status) {
+        List<String> found = new ArrayList<String>();
+        for (String path : untrackedOfTheProject(projectRoot, repositoryRoot, status)) {
+            if (path.startsWith("src/") && !isScratch(path)) {
+                found.add(path);
+            }
+        }
+        return found;
+    }
+
+    /** As {@link #newFilesOfTheProject(File, File, GitRepo.Status)}, from git's status. */
+    public static List<String> newFilesOfTheProject(File projectRoot, File repositoryRoot,
+            List<String> gitStatus) {
+        return newFilesOfTheProject(projectRoot, repositoryRoot, GitRepo.parseStatus(
+                gitStatus == null ? Collections.<String>emptyList() : gitStatus));
+    }
+
+    /** As {@link #staging(File, File, String, String, List, List, boolean)}, as 1.153.0 did. */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus) {
+        return staging(projectRoot, repositoryRoot, ontologyId, version, assets, gitStatus,
+                false);
+    }
+
+    /**
+     * @param commitNewFirst whether the project's new files ({@link #newFilesOfTheProject})
+     *                       are committed first, in a commit of their own, so that the release's
+     *                       tag holds them; else they are left out, as 1.153.0 did
+     */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst) {
+        return staging(projectRoot, repositoryRoot, ontologyId, version, assets, gitStatus,
+                commitNewFirst, null);
+    }
+
+    /**
      * The commit and the tag of a release of a project that may be a folder of a larger
      * repository.
      *
@@ -489,11 +604,19 @@ public final class ReleaseRun {
      * older ODKs seeded - would be staged as deleted and go into the release's commit; it is
      * put back first, by a command that is shown with the others.
      *
+     * <p>Asked to, the new files the form's box named - from git's status before the build,
+     * those of them that are new still - are committed first. What the release's own build
+     * left new under src/ (a format ODK's .gitignore does not cover) is said as left out, not
+     * swept into that commit (the 1.154.0 review's M1).
+     *
      * @param repositoryRoot the top of the repository the project is in: the project's root,
      *                       or a folder above it
+     * @param named          the files the box named; null for the project's new files as git's
+     *                       status after the build lists them
      */
     public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
-            String version, List<File> assets, List<String> gitStatus) {
+            String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
+            List<String> named) {
         List<String> names = new ArrayList<String>();
         for (File asset : assets) {
             names.add(relative(projectRoot, asset));
@@ -518,6 +641,15 @@ public final class ReleaseRun {
         if (putBack.size() > 3) {
             commands.add(putBack);
         }
+        List<String> newNow = newFilesOfTheProject(projectRoot, repositoryRoot, gitStatus);
+        List<String> first = !commitNewFirst ? Collections.<String>emptyList()
+                : named == null ? newNow : stillNew(named, newNow);
+        if (!first.isEmpty()) {
+            List<String> addFirst = new ArrayList<String>(Arrays.asList("git", "add", "--"));
+            addFirst.addAll(first);
+            commands.add(addFirst);
+            commands.add(Arrays.asList("git", "commit", "-m", newFilesMessage(version)));
+        }
         commands.add(Arrays.asList("git", "add", "-u", "--", "."));
         List<String> add = new ArrayList<String>(Arrays.asList("git", "add", "-f", "--"));
         add.addAll(names);
@@ -538,12 +670,13 @@ public final class ReleaseRun {
                 continue;
             }
             String folder = path.endsWith("/") ? path : path + "/";
-            boolean added = names.contains(path) || (hasCopy && (kept + "/").startsWith(folder));
+            boolean added = names.contains(path) || (hasCopy && (kept + "/").startsWith(folder))
+                    || first.contains(path);
             if (!added) {
                 leftOut.add(path);
             }
         }
-        return new Staging(commands, leftOut, status.getBranch());
+        return new Staging(commands, leftOut, status.getBranch(), first);
     }
 
     /** The project's path from the repository's top, with a slash after it; empty at the top. */

@@ -338,7 +338,9 @@ public final class Guide {
         }
         File ontologyDirectory = editFile.getParentFile();
         File root = ReleaseAction.projectRootOf(editFile);
-        facts.inProject = editFile.getName().endsWith("-edit.owl") && ontologyDirectory != null
+        // In every format ODK writes an edit file in (ruling 17): OBO, Turtle and OFN as OWL.
+        facts.inProject = de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader.isEditFileName(
+                editFile.getName()) && ontologyDirectory != null
                 && "ontology".equals(ontologyDirectory.getName());
         facts.olderLayout = facts.inProject
                 && de.fizkarlsruhe.ise.ontoboard.odk.OdkMigration.isOntoBoards1x(root);

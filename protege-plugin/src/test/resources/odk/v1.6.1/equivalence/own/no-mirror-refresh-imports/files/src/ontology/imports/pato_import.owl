@@ -1,0 +1,39 @@
+Prefix(:=<http://purl.obolibrary.org/obo/obim/imports/pato_import.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/obim/imports/pato_import.owl>
+<http://purl.obolibrary.org/obo/obim/releases/1.0.0/imports/pato_import.owl>
+Annotation(<http://purl.org/dc/elements/1.1/source> <http://purl.obolibrary.org/obo/pato/releases/2026-01-01/pato.owl>)
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/PATO_0000001>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PATO_0000051>))
+Declaration(Class(<http://purl.obolibrary.org/obo/PATO_0000117>))
+Declaration(AnnotationProperty(<http://purl.org/dc/elements/1.1/source>))
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/PATO_0000001> (quality)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PATO_0000001> "quality"@en)
+
+# Class: <http://purl.obolibrary.org/obo/PATO_0000051> (morphology)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PATO_0000051> "morphology"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/PATO_0000051> <http://purl.obolibrary.org/obo/PATO_0000001>)
+
+# Class: <http://purl.obolibrary.org/obo/PATO_0000117> (size)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/PATO_0000117> "size"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/PATO_0000117> <http://purl.obolibrary.org/obo/PATO_0000051>)
+
+
+)

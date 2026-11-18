@@ -84,8 +84,7 @@ public class ProfileAction extends OntoBoardAction {
         List<ProfileCheck.Violation> violations = ProfileCheck.violations(ontology, target);
         if (violations.isEmpty()) {
             return result.summary("This ontology is in OWL 2 " + target.getLabel()
-                    + ". Every axiom is one a " + target.getLabel()
-                    + " reasoner can act on.").build();
+                    + ". " + everyAxiom(target.getLabel())).build();
         }
 
         int listed = 0;
@@ -130,5 +129,16 @@ public class ProfileAction extends OntoBoardAction {
             }
         }
         return text.length() == 0 ? "(the ontology itself)" : text.toString();
+    }
+
+    /**
+     * What an ontology in a profile is said to be: the reasoner named with the article its
+     * letters are said with - an EL, a QL, an RL.
+     */
+    static String everyAxiom(String profile) {
+        boolean vowelSound = !profile.isEmpty() && "AEFHILMNORSX".indexOf(
+                Character.toUpperCase(profile.charAt(0))) >= 0;
+        return "Every axiom is one " + (vowelSound ? "an " : "a ") + profile
+                + " reasoner can act on.";
     }
 }

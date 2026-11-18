@@ -1,12 +1,16 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.obolibrary.robot.CommandLineHelper;
@@ -263,8 +267,35 @@ final class RobotPaths {
     }
 
     private static List<String> placed(List<String> arguments, File folder,
-            List<String> named) {
-        String prefix = folder.getAbsolutePath() + File.separator;
+            final List<String> named) {
+        final String prefix = folder.getAbsolutePath() + File.separator;
+        return walked(arguments, new Values() {
+            @Override
+            public String value(String option, Kind kind, int taken, String value) {
+                if (kind != Kind.FILE && kind != Kind.FILES && kind != Kind.FILE_PAIRS) {
+                    return value;
+                }
+                String placed = absolute(value, prefix);
+                if (named != null) {
+                    named.add(placed);
+                }
+                return placed;
+            }
+        });
+    }
+
+    /** What a walk through a line is shown: each value of each option, with where it stands. */
+    private interface Values {
+        /**
+         * @param option the option's long name, or its short one when it has none
+         * @param taken  how many values of the option came before this one
+         * @return what stands in the value's place afterwards
+         */
+        String value(String option, Kind kind, int taken, String value);
+    }
+
+    /** The line cut as ROBOT's manager cuts it, each value of an option shown to values. */
+    private static List<String> walked(List<String> arguments, Values values) {
         List<String> line = new ArrayList<String>(arguments);
         String command = null;
         Options options = globalOptions();
@@ -285,21 +316,71 @@ final class RobotPaths {
                 continue;
             }
             Kind kind = kind(command, option);
-            boolean files = kind == Kind.FILE || kind == Kind.FILES || kind == Kind.FILE_PAIRS;
+            String name = option.getLongOpt() != null ? option.getLongOpt() : option.getOpt();
             int taken = 0;
             while (at < arguments.size() && wantsMore(option, taken)
                     && isArgument(arguments.get(at), options)) {
-                if (files) {
-                    line.set(at, absolute(arguments.get(at), prefix));
-                    if (named != null) {
-                        named.add(line.get(at));
-                    }
-                }
+                line.set(at, values.value(name, kind, taken, arguments.get(at)));
                 taken++;
                 at++;
             }
         }
         return line;
+    }
+
+    // ------------------------------------------------------------------ what a line writes
+
+    /** The options whose file ROBOT writes; and the second file of each query's pair. */
+    private static final Set<String> WRITTEN = new HashSet<String>(Arrays.asList("output",
+            "output-dir", "export", "explanation", "directory", "tdb-directory", "errors",
+            "dump-unsatisfiable", "write-to"));
+
+    /**
+     * Why a ROBOT line would write outside the project, or null. Each file the line writes -
+     * by {@code --output} and the other options that write, and the output of each query - is
+     * read against {@code folder}, where make runs, and held to the project's top. A rule of
+     * a project's own may write inside the project only, as the shell's own commands may; what
+     * a line only reads may be anywhere.
+     *
+     * @param arguments  a whole ROBOT command line without the word {@code robot}
+     * @param projectTop the project's top: {@code ../..} from where make runs
+     * @throws Unknown for what cannot be placed; the message names it
+     */
+    static String whyWrittenOutside(List<String> arguments, final File folder,
+            File projectTop) {
+        final Path top = projectTop.toPath().toAbsolutePath().normalize();
+        final String[] outside = {null};
+        walked(arguments, new Values() {
+            @Override
+            public String value(String option, Kind kind, int taken, String value) {
+                boolean written = kind == Kind.FILE && WRITTEN.contains(option)
+                        || kind == Kind.FILE_PAIRS && taken % 2 == 1;
+                if (outside[0] == null && written && isOutside(value, folder, top)) {
+                    outside[0] = value;
+                }
+                return value;
+            }
+        });
+        return outside[0] == null ? null : "'" + outside[0] + "', which this ROBOT line writes, "
+                + "is outside the project, and a recipe run by OntoBoard's own engine writes "
+                + "and removes inside the project only";
+    }
+
+    /** Whether a file named in a line lies outside the project, read as written. */
+    private static boolean isOutside(String value, File folder, Path top) {
+        String lower = value.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("http:") || lower.startsWith("https:")) {
+            return false;
+        }
+        if (lower.startsWith("file:")) {
+            return true;
+        }
+        File file = isAbsolute(value) ? new File(value) : new File(folder, value);
+        try {
+            return !file.toPath().toAbsolutePath().normalize().startsWith(top);
+        } catch (java.nio.file.InvalidPathException notAPath) {
+            return true;
+        }
     }
 
     private static String absolute(String value, String prefix) {

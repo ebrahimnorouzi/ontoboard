@@ -1,0 +1,51 @@
+Prefix(:=<https://nfdi.fiz-karlsruhe.de/ontology/test/synonyms.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(nfdicore:=<https://nfdi.fiz-karlsruhe.de/ontology/>)
+Prefix(oboInOwl:=<http://www.geneontology.org/formats/oboInOwl#>)
+
+
+Ontology(<https://nfdi.fiz-karlsruhe.de/ontology/test/synonyms.owl>
+
+Declaration(Class(obo:UBERON_0000061))
+Declaration(Class(nfdicore:NFDI_0000001))
+Declaration(AnnotationProperty(obo:OMO_0003000))
+Declaration(AnnotationProperty(oboInOwl:SynonymTypeProperty))
+Declaration(AnnotationProperty(oboInOwl:hasExactSynonym))
+Declaration(AnnotationProperty(oboInOwl:hasSynonymType))
+Declaration(AnnotationProperty(nfdicore:NFDI_0001000))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: obo:OMO_0003000 (obo:OMO_0003000)
+
+SubAnnotationPropertyOf(obo:OMO_0003000 oboInOwl:SynonymTypeProperty)
+
+# Annotation Property: nfdicore:NFDI_0001000 (nfdicore:NFDI_0001000)
+
+SubAnnotationPropertyOf(nfdicore:NFDI_0001000 oboInOwl:SynonymTypeProperty)
+
+
+
+############################
+#   Classes
+############################
+
+# Class: obo:UBERON_0000061 (anatomical structure)
+
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType obo:OMO_0003000) oboInOwl:hasExactSynonym obo:UBERON_0000061 "AS")
+AnnotationAssertion(rdfs:label obo:UBERON_0000061 "anatomical structure"@en)
+
+# Class: nfdicore:NFDI_0000001 (process)
+
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType <https://example.org/other#short>) oboInOwl:hasExactSynonym nfdicore:NFDI_0000001 "p")
+AnnotationAssertion(Annotation(oboInOwl:hasSynonymType nfdicore:NFDI_0001000) oboInOwl:hasExactSynonym nfdicore:NFDI_0000001 "proc.")
+AnnotationAssertion(rdfs:label nfdicore:NFDI_0000001 "process"@en)
+
+
+)

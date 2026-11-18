@@ -1,0 +1,41 @@
+Prefix(:=<http://purl.obolibrary.org/obo/obim/imports/iao_import.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/obim/imports/iao_import.owl>
+<http://purl.obolibrary.org/obo/obim/releases/1.0.0/imports/iao_import.owl>
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/BFO_0000031>))
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000030>))
+Declaration(Class(<http://purl.obolibrary.org/obo/IAO_0000310>))
+Declaration(AnnotationProperty(<http://purl.obolibrary.org/obo/IAO_0000115>))
+Declaration(AnnotationProperty(rdfs:label))
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/BFO_0000031> (generically dependent continuant)
+
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/BFO_0000031> "generically dependent continuant"@en)
+
+# Class: <http://purl.obolibrary.org/obo/IAO_0000030> (information content entity)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/IAO_0000030> "A generically dependent continuant that is about some thing."@en)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000030> "information content entity"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/IAO_0000030> <http://purl.obolibrary.org/obo/BFO_0000031>)
+
+# Class: <http://purl.obolibrary.org/obo/IAO_0000310> (document)
+
+AnnotationAssertion(<http://purl.obolibrary.org/obo/IAO_0000115> <http://purl.obolibrary.org/obo/IAO_0000310> "A collection of information content entities, as http://www.obolibrary.org/ontology/iao.html has it."@en)
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/IAO_0000310> "document"@en)
+SubClassOf(<http://purl.obolibrary.org/obo/IAO_0000310> <http://purl.obolibrary.org/obo/IAO_0000030>)
+
+
+)

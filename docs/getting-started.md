@@ -1,14 +1,12 @@
 # Getting Started
 
-New to ODK, ROBOT or eXtreme Design? After installing, open
-**OntoBoard → Start here: the guide...** — or read [the guide](guide.md) — for the steps from an
-idea to a released ontology.
-The [glossary](glossary.md) says what each word on the way means.
+New to ODK, ROBOT or eXtreme Design? Open **OntoBoard → Start here: the guide...** - or read
+[the guide](guide.md) - for the steps from an idea to a released ontology. The
+[glossary](glossary.md) explains the words.
 
 !!! tip "Only want the board?"
-    Open your `.owl` file in Protégé and go to the **OntoBoard** tab: the whole ontology is on it,
-    and you can draw, edit and arrange straight away. A project - below - is only needed for builds,
-    tests and versioned releases.
+    Open your `.owl` file in Protégé and go to the **OntoBoard** tab. A project is only needed for
+    builds, tests and releases.
 
 ## Protégé plugin
 
@@ -17,139 +15,69 @@ The [glossary](glossary.md) says what each word on the way means.
 [:material-download: **Download the latest OntoBoard**](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar){ .md-button .md-button--primary }
 [All releases](https://github.com/ebrahimnorouzi/ontoboard/releases){ .md-button }
 
-That first link always serves the newest build — it is an unversioned copy of the same jar every
-release publishes, so the URL never has to be rewritten. If you need a specific version, or want
-to read what was verified in it, take the versioned `ontoboard-<version>.jar` from
-[the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases); every release carries
-its host smoke receipt as its release notes, recording which Protégés it was checked on and what
-was *not* checked.
-
-Then:
-
-1. **Remove any older `ontoboard-*.jar`** from Protégé's `plugins/` folder. The bundle is
-   `singleton:=true`; two versions side by side stop it resolving and the tab silently never
-   appears.
+1. **Remove any older `ontoboard-*.jar`** from Protégé's `plugins/` folder - two versions side by
+   side stop the tab from appearing.
 2. Copy the jar into `plugins/`.
 3. Restart Protégé, then **Window → Tabs → OntoBoard**.
 
-Protégé **5.6.x** is recommended. It runs on 5.5.0 with fewer ROBOT operations available —
-see [Known constraints](limitations.md#known-constraints).
+Protégé **5.6.x** is recommended; 5.5.0 works with a few
+[known constraints](limitations.md#known-constraints).
 
 ### A first session
 
-**Start a project.** *OntoBoard → Project → New ODK project…* (also under *Tools*). Give it an
-ontology ID - a lowercase letter first, then lowercase letters, digits or underscores; it names
-the files - a title, and a folder. The **Base IRI** is the web address your ontology and its terms
-are named under, and it ends in the ID: OBO's address is filled in, which is right only for an
-ontology registered with the OBO Foundry; otherwise use an address on a domain you or your group
-control, such as `https://w3id.org/<id>/<id>.owl`. Since 1.153.0 it writes the project ODK
-itself writes - in ODK's container where Docker or Podman and ODK's image are there, otherwise
-from ODK's own templates, which OntoBoard carries, so nothing else is needed - makes it a git
-repository with a first commit where git is installed, and opens the edit file, the file you work
-in. Already have the ontology? Open it first and tick **Start from** your file in the same
-dialog. If your team already uses ODK, open its repository instead
-(*OntoBoard > Project > Open existing ODK project...*). A project made by OntoBoard 1.135 or before is carried over with
-*OntoBoard > Project > Update project files...* before it builds.
+**Start a project.** *OntoBoard → Project → New ODK project…* (also under *Tools*). Give it an ID
+(lowercase), a title, a folder and a **Base IRI** - an address on a domain you control, such as
+`https://w3id.org/<id>/<id>.owl`, unless the ontology is registered with the OBO Foundry. It
+writes the project ODK itself writes, makes it a git repository and opens the edit file. To start
+from an ontology you have, tick **Start from**. A team's existing ODK repository is opened with
+*OntoBoard > Project > Open existing ODK project...*; a project made by OntoBoard 1.135 or before
+is carried over with *OntoBoard > Project > Update project files...*.
 
-**The board shows the whole ontology.** Open the OntoBoard tab and every class, object property,
-data property and individual is on the board, laid out as an outline:
+**The board** shows every class, property and individual: imported design patterns in frames
+along the top, the classes as a tree read left to right, the properties in frames of their own.
+Select a term to bring its relations forward. Press **Tab** for a new subclass, double-click empty
+space for a new class, right-click a term to relate it, collapse it or hide it. The mouse wheel or
+a pinch zooms. [What the board draws](canvas.md) lists everything it shows.
 
-- each design pattern the ontology imports from OntoBoard's library — or has merged in, as a
-  release does — in a frame named after it, along the top;
-- the classes below, as a tree read left to right — a class, then its subclasses stacked in the
-  next column — with each class's individuals and the restrictions it is defined with beside it;
-- the object and data properties in frames of their own, each as its property hierarchy.
+**Relate two classes.** Right-click a node, *Relate to another term…*, pick a target and a
+property; the dialog explains how the arrow is read. The axioms appear in Protégé at once and
+Protégé's undo reverses them. The layout is saved beside the ontology in
+`<ontology>.ontoboard.json`; the ontology file is not touched by the diagram.
 
-A term made anywhere in Protégé appears next to its superclass as soon as it exists. Right-click
-a term and *Hide from board* to take it off; it stays off until *More → Show every term*. A
-board saved by an OntoBoard before 1.131.0 keeps the terms chosen then, and says so; *More → Show
-every term* switches it over. Above 1,500 terms the board shows the ontology's own first, and
-the entity trees on the left drag any other in.
-
-**Focus.** Select a term and it comes forward with everything it is connected to; the rest fades.
-On a large board — more than 150 relations — the lines that would cross it in every direction
-wait for this: disjointness, domains and ranges appear for the term in focus, and the other
-relations are drawn faintly until one of their ends is selected. *Focus* on the toolbar turns
-it off. *More → Show on the board* switches object properties, data properties, individuals and
-imported terms on and off, and *Arrange → Outline* lays the board out again. An edge between
-terms in two frames goes around any frame in between.
-
-**Work on it like a whiteboard.** Right-click a class and *Collapse subclasses* to fold away
-everything under it - the class then says how many terms it holds - and *Expand subclasses* to
-bring them back. *Frames* on the toolbar lists every frame on the board and jumps to the one you
-pick. Select a class and press **Tab** for a new subclass beside it, named in one dialog, as in a
-mind map; Ctrl+Tab moves the focus off the board. Double-click empty space for a new class there.
-
-Everything the ontology says is drawn - restrictions, unions, domains and ranges, disjointness,
-property chains, SWRL rules - and [What the board draws](canvas.md) lists each, with how it looks.
-
-**Zoom.** The mouse wheel zooms about the pointer; on a Mac trackpad, so does a pinch.
-
-**Grow the diagram.** Right-click a node and *Expand neighbours (1 hop)* to pull in what it
-is directly related to. Drag nodes to arrange them, or use the toolbar's layout algorithms.
-
-**Relate two classes.** Right-click a node, *Create relation from this node…*, pick a target
-and a property, then choose how the arrow should be read. The default — existential — means
-"every A is related to some B", which is usually what an arrow on a diagram means. The
-dialog explains each alternative.
-
-**Check where it went.** The new axioms are in Protégé's class hierarchy immediately, and
-Protégé's undo reverses them. The canvas layout is saved beside the ontology in
-`<ontology>.ontoboard.json`; the ontology file itself is untouched by the diagram.
-
-**Build it.** *OntoBoard > Build and release > Build...* and pick a target: `test` is ODK's own
-test - the reasoner, ODK's checks and your questions, the quality report, the ID ranges and the
-OWL profile. It runs in ODK's container where its image is on the machine, and otherwise
-OntoBoard runs ODK's Makefile itself, inside Protégé, with the embedded ROBOT - see [Working with
-ODK](odk-workflow.md#who-runs-odks-targets). When it fails, the result names the rule and the
-terms that break it - for example a class created without an `rdfs:label`, which OntoBoard's
-label check, `src/sparql/check_labels-violation.sparql`, rejects. The same Makefile runs from a
-terminal with `sh run.sh make test` in `src/ontology`, which needs Docker, and in the project's
-CI workflow, which runs ODK's `make test`, on the imports as they are, in ODK's own image on every
-push to `main` and every pull request.
+**Build it.** *OntoBoard > Build and release > Build...*, then *Check everything - make test*:
+the reasoner, ODK's checks and your questions, the quality report and the OWL profile. When it
+fails, the result names the rule and the terms. See
+[Working with ODK](odk-workflow.md#who-runs-odks-targets) for who runs the targets.
 
 ### The OntoBoard menu
 
-Grouped by what you came to do, in the order the [guide](guide.md) does it:
-
 | | What is in it |
 |---|---|
-| *Start here: the guide...* | The steps from an idea to a released ontology, ticked as your project does them |
-| *Project* | Start a project, open one from this computer or GitHub, or turn an ontology you have into one; its configuration, ID ranges and scripts; *Update project files...*, ODK's own update |
-| *Reuse* | Design patterns; terms from other ontologies, by label or from a list; what each import brings |
-| *Terms* | Notes and discussion links on a term; obsoleting, renaming and transforming; exporting terms |
-| *Spreadsheets* | Sheets of terms or data: edit them, check them, turn them into terms or a knowledge graph |
-| *Check and test* | Tests written from your questions, the quality report, explanations, profiles, measures, SPARQL, Konclude, project metadata |
-| *Build and release* | Build, release, every release's history, comparing two, the documentation page |
+| *Start here: the guide...* | The steps from an idea to a released ontology |
+| *Project* | Start or open a project, turn an ontology into one; its configuration, ID ranges and scripts; *Update project files...* |
+| *Reuse* | Design patterns; terms from other ontologies; what each import brings |
+| *Terms* | Notes and discussion links; obsoleting, renaming and transforming; exporting terms |
+| *Spreadsheets* | Sheets of terms or data: edit, check, turn into terms or a knowledge graph |
+| *Check and test* | Tests from your questions, the quality report, explanations, profiles, measures, SPARQL, Konclude, project metadata |
+| *Build and release* | Build, release, history, comparing releases, the documentation page |
 | *Share* | Git, pull requests, editing live together |
 | *Record who edits terms...* | Your ORCID, recorded with the date on each term you add or change |
-| *Check requirements...*, *Run self-test* | What this computer can do, and proof that the plugin works on it |
-
-**Moved in 1.133.0**, when the menu stopped being grouped by tool: *ROBOT* is split between
-*Reuse*, *Terms* and *Check and test*; *Notes* is part of *Terms*; *Knowledge graph* is
-*Spreadsheets*; *Provenance...* is *Record who edits terms...*; *Build...*, *Release...*,
-*History...*, *Compare releases...* and *Documentation...* moved from *Project* to *Build and
-release*; *Imports* is *Reuse → Check imports*.
+| *Check requirements...*, *Run self-test* | What this computer can do, and proof the plugin works on it |
 
 ### What works with nothing installed
 
-Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, no `make`. Since
-1.153.0 the targets are ODK's own, run by OntoBoard itself where nothing else is there:
+Only Protégé is needed - it brings its own Java.
 
 | Works with nothing installed | Needs something else |
 |---|---|
-| New ODK project, Turn an ontology into an ODK repository, Update project files, Build (`test`, `test_fast`, `reason_test`, `sparql_test`, `robot_reports`, `validate_idranges`, `clean`), Release with dated or semantic versions (`prepare_release`, `prepare_release_fast`), Refresh imports | A target a project changes in its own `<id>.Makefile`, a project's own `release.sh`, or a recipe that calls a program OntoBoard has no stand-in for: ODK's container (Docker or Podman with ODK's image) or, on Linux and macOS, ODK's tools installed. The same for a repository whose Makefile another ODK version wrote, until *Update project files...* brings it to ODK v1.6.1 |
-| Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the canvas, and *Record who edits terms* | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
-| | Imports fetched from their URLs, which need the network |
-| | WIDOCO and Konclude: the first time an action needs one, OntoBoard offers to download it (or to use a copy you downloaded yourself) |
+| New ODK project, Turn an ontology into an ODK repository, Update project files, Build, Release, Refresh imports - ODK's own targets, run by OntoBoard itself, and a project's own rules where every line of them can run here | A rule OntoBoard cannot run, a project's own `release.sh`, SSSOM or the `db` export: ODK's container (Docker or Podman) or, on Linux and macOS, ODK's tools |
+| Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the board, and *Record who edits terms* | Git, for commits, tags, pull and push; the network for imports fetched from the web |
+| | Widoco, Konclude and DOSDP-Tools: OntoBoard offers to download each the first time it is needed |
 
-*OntoBoard → Run self-test* checks this on your machine: it makes a throwaway project from ODK's
-templates, runs ODK's `test` on it by OntoBoard itself without starting any program, and lists
-whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH - none of them is used. *OntoBoard → Check requirements...* lists the rest. The self-test's result
-starts with the OntoBoard version, such as "OntoBoard 1.135.1"; give that number when you report
-a problem.
+*OntoBoard → Run self-test* checks this on your machine; *OntoBoard → Check requirements...* lists
+the rest. Give the version the self-test names when you report a problem.
 
 ## The web application, archived
 
-OntoBoard began as a browser application. It is no longer developed or shipped; its last state
-is kept at the tag [`web-app-final`](https://github.com/ebrahimnorouzi/ontoboard/tree/web-app-final).
+The browser application OntoBoard began as is kept at the tag
+[`web-app-final`](https://github.com/ebrahimnorouzi/ontoboard/tree/web-app-final).

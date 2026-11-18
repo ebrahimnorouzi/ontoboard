@@ -32,9 +32,9 @@ public final class RequirementsPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Color GREEN = new Color(0x2E, 0x7D, 0x32);
+    static final Color GREEN = new Color(0x2E, 0x7D, 0x32);
     private static final Color AMBER = new Color(0xB2, 0x6A, 0x00);
-    private static final Color GREY = new Color(0x8A, 0x90, 0x99);
+    static final Color GREY = new Color(0x8A, 0x90, 0x99);
     private static final Color INK = new Color(0x1A, 0x1D, 0x21);
 
     public RequirementsPanel(Toolchain.Report report) {
@@ -96,7 +96,7 @@ public final class RequirementsPanel extends JPanel {
         return hundred > 0 ? pixels * 100 / hundred : pixels;
     }
 
-    private static Color colourFor(Toolchain.State state) {
+    static Color colourFor(Toolchain.State state) {
         if (state == Toolchain.State.PRESENT) {
             return GREEN;
         }

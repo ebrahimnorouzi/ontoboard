@@ -9,11 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.formats.OWLXMLDocumentFormat;
 import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
@@ -299,8 +302,8 @@ class OdkMigrationTest {
         OdkMigration.Plan plan = OdkMigration.plan(root);
 
         assertFalse(plan.addsTheQuestionRule());
-        assertEquals(Arrays.asList(in(CONFIG).getAbsoluteFile()),
-                OdkMigration.convert(root, plan));
+        assertEquals(Arrays.asList(in(CONFIG).getAbsoluteFile(), in(EDIT).getAbsoluteFile()),
+                OdkMigration.convert(root, plan), "the configuration, and the edit file's stamp");
     }
 
     /** A project without a query gets no rule: there is nothing to ask. */
@@ -368,6 +371,107 @@ class OdkMigrationTest {
         }
         assertEquals(config, text(CONFIG));
         assertEquals(own, text(OWN));
+    }
+
+    // ------------------------------------------------------------------ the edit file's stamp
+
+    /** The line OntoBoard 1.135 wrote into the head of every edit file it made. */
+    private static final String STAMP = "        <owl:versionInfo>0.1.0</owl:versionInfo>\n";
+
+    /**
+     * F1. OntoBoard 1.135 wrote {@code owl:versionInfo "0.1.0"} into every edit file it made,
+     * and ODK's release adds each release's own version with ROBOT's annotate, beside it: every
+     * release of a carried-over project said two versions. The carry-over takes that stamp out
+     * - its line, and nothing else of the file.
+     */
+    @Test
+    void whatOntoBoard135StampedIntoTheEditFileIsTakenOut() throws Exception {
+        String before = text(EDIT);
+        assertTrue(before.contains(STAMP), "what 1.135.2 wrote");
+
+        OdkMigration.Plan plan = OdkMigration.plan(root);
+
+        assertEquals(Collections.singletonList("owl:versionInfo \"0.1.0\""),
+                plan.stampsTakenOut());
+        assertEquals(EDIT, plan.editFilePath());
+        String notes = String.join("\n", plan.notes());
+        assertTrue(notes.contains("Taken out of the edit file: owl:versionInfo \"0.1.0\" - "
+                + "OntoBoard 1.135 wrote it when it made the project; ODK's release writes each "
+                + "release's own"), notes);
+        assertEquals(before, text(EDIT), "looking writes nothing");
+
+        OdkMigration.convert(root, plan);
+
+        assertEquals(before.replace(STAMP, ""), text(EDIT), "only the stamp's line goes");
+        assertEquals(new ArrayList<String>(), RunComparisons.versionInfos(in(EDIT)));
+    }
+
+    /**
+     * A stamp whose line is not its own - the edit file saved as OWL/XML, where one annotation
+     * takes four lines - is taken out all the same, and the file stays in its syntax.
+     */
+    @Test
+    void aStampInAnotherSyntaxIsTakenOutAllTheSame() throws Exception {
+        OWLOntology read = byItself(in(EDIT));
+        try (OutputStream out = Files.newOutputStream(in(EDIT).toPath())) {
+            read.getOWLOntologyManager().saveOntology(read, new OWLXMLDocumentFormat(), out);
+        }
+        assertTrue(text(EDIT).contains("<Literal>0.1.0</Literal>"), text(EDIT));
+
+        OdkMigration.Plan plan = OdkMigration.plan(root);
+        OdkMigration.convert(root, plan);
+
+        assertEquals(Collections.singletonList("owl:versionInfo \"0.1.0\""),
+                plan.stampsTakenOut());
+        OWLOntology after = byItself(in(EDIT));
+        assertEquals(new ArrayList<String>(), RunComparisons.versionInfos(in(EDIT)));
+        assertEquals(read.getAnnotations().size() - 1, after.getAnnotations().size(),
+                "the other annotations stay: " + after.getAnnotations());
+        assertEquals(read.getAxioms(), after.getAxioms());
+        assertEquals(imported(read), imported(after));
+        assertTrue(text(EDIT).contains("<Ontology "), "still OWL/XML: " + text(EDIT));
+    }
+
+    /**
+     * Only the ontology's own owl:versionInfo is the stamp: one a term carries is the
+     * person's, and stays where it is.
+     */
+    @Test
+    void aVersionInfoATermCarriesStays() throws Exception {
+        replace(EDIT, "        <rdfs:label xml:lang=\"en\">egg</rdfs:label>\n",
+                "        <rdfs:label xml:lang=\"en\">egg</rdfs:label>\n" + STAMP);
+        String before = text(EDIT);
+
+        OdkMigration.Plan plan = OdkMigration.plan(root);
+        OdkMigration.convert(root, plan);
+
+        assertEquals(Collections.singletonList("owl:versionInfo \"0.1.0\""),
+                plan.stampsTakenOut());
+        assertEquals(before.replaceFirst(java.util.regex.Pattern.quote(STAMP), ""), text(EDIT),
+                "the head's line goes, the term's stays");
+    }
+
+    /**
+     * The edit file is somebody's work: changed after the look - saved from Protege meanwhile -
+     * nothing of the conversion is written, the edit file least of all.
+     */
+    @Test
+    void anEditFileThatChangedSinceTheLookStopsTheConversionBeforeItWrites() throws IOException {
+        OdkMigration.Plan plan = OdkMigration.plan(root);
+        String config = text(CONFIG);
+        String own = text(OWN);
+        replace(EDIT, ">egg</rdfs:label>", ">hen's egg</rdfs:label>");
+        String edit = text(EDIT);
+
+        try {
+            OdkMigration.convert(root, plan);
+            org.junit.jupiter.api.Assertions.fail("written although the edit file had changed");
+        } catch (IOException changed) {
+            assertTrue(changed.getMessage().contains("eggboil-edit.owl"), changed.getMessage());
+        }
+        assertEquals(config, text(CONFIG));
+        assertEquals(own, text(OWN));
+        assertEquals(edit, text(EDIT));
     }
 
     // ------------------------------------------------------------------ the modules
@@ -443,17 +547,18 @@ class OdkMigrationTest {
     // ------------------------------------------------------------------ the conversion
 
     @Test
-    void theConversionWritesTheConfigurationAndTheRuleAndNothingElse() throws IOException {
+    void theConversionWritesTheConfigurationTheRuleAndTheEditFileAndNothingElse()
+            throws IOException {
         Map<String, byte[]> before = tree(root);
         OdkMigration.Plan plan = OdkMigration.plan(root);
 
         List<File> written = OdkMigration.convert(root, plan);
 
-        assertEquals(new TreeSet<String>(Arrays.asList(CONFIG, OWN)),
+        assertEquals(new TreeSet<String>(Arrays.asList(CONFIG, OWN, EDIT)),
                 differing(before, tree(root)));
         assertEquals(plan.newConfig(), text(CONFIG));
-        assertEquals(Arrays.asList(in(CONFIG).getAbsoluteFile(), in(OWN).getAbsoluteFile()),
-                written);
+        assertEquals(Arrays.asList(in(CONFIG).getAbsoluteFile(), in(OWN).getAbsoluteFile(),
+                in(EDIT).getAbsoluteFile()), written, "the edit file last");
     }
 
     /**
@@ -534,7 +639,11 @@ class OdkMigrationTest {
         assertEquals(new java.util.HashSet<org.semanticweb.owlapi.model.OWLAxiom>(),
                 RunComparisons.onOdksOwlApi() ? withoutDatatypeDeclarations(added) : added,
                 "and none is added");
-        assertEquals(before.getAnnotations(), after.getAnnotations());
+        Set<org.semanticweb.owlapi.model.OWLAnnotation> kept =
+                new java.util.HashSet<org.semanticweb.owlapi.model.OWLAnnotation>(
+                        before.getAnnotations());
+        assertTrue(kept.removeIf(OdkMigration::isVersionStamp), "1.135's stamp was there");
+        assertEquals(kept, after.getAnnotations(), "every annotation but 1.135's version stamp");
         assertEquals(before.getOntologyID(), after.getOntologyID());
         assertEquals(new TreeSet<String>(Arrays.asList(MODULES + "measurement_import.owl",
                 MODULES + "mini_import.owl")), imported(after));

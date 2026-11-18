@@ -155,25 +155,6 @@ public final class OdkQuestions {
         return windows ? now.replace("\n", "\r\n") : now;
     }
 
-    /**
-     * The file reduced to the rule: every other line empty, so that the rule stands at the
-     * lines it has in the file. Null when the rule is not there as written - a changed one is
-     * the project's own, like anything else in the file.
-     */
-    public static String alone(String ownMakefile) {
-        int[] place = linesIn(ownMakefile);
-        if (place == null) {
-            return null;
-        }
-        List<String> lines = linesOf(ownMakefile);
-        StringBuilder kept = new StringBuilder();
-        for (int i = 0; i < lines.size(); i++) {
-            kept.append(i == 0 ? "" : "\n")
-                    .append(i + 1 >= place[0] && i + 1 <= place[1] ? lines.get(i) : "");
-        }
-        return kept.toString();
-    }
-
     /** The lines of a text, without their line endings; the rest after the last one included. */
     private static List<String> linesOf(String text) {
         return new ArrayList<String>(Arrays.asList(text.replace("\r\n", "\n").split("\n", -1)));

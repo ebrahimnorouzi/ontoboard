@@ -108,12 +108,65 @@ class OdkProjectLoaderTest {
         File root = scaffold(dir);
         File ontology = new File(new File(root, "src"), "ontology");
         assertTrue(new File(ontology, "other-edit.owl").createNewFile());
+        // No configuration to say which is ODK's (with one, it says: below).
+        assertTrue(new File(ontology, "mwo-odk.yaml").delete());
 
         OdkProjectLoader.NotAnOdkProjectException thrown =
                 assertThrows(OdkProjectLoader.NotAnOdkProjectException.class,
                         () -> OdkProjectLoader.detect(root));
         assertTrue(thrown.getMessage().contains("mwo-edit.owl"), thrown.getMessage());
         assertTrue(thrown.getMessage().contains("other-edit.owl"), thrown.getMessage());
+    }
+
+    /**
+     * Ruling 17: the configuration says which file is the edit file - ODK's Makefile builds
+     * from {@code $(ONT)-edit.$(EDIT_FORMAT)} and from nothing else - so another file named
+     * like one is not a second candidate.
+     */
+    @Test
+    void theConfigurationSaysWhichEditFileIsOdks(@TempDir Path dir) throws Exception {
+        File root = scaffold(dir);
+        File ontology = new File(new File(root, "src"), "ontology");
+        assertTrue(new File(ontology, "other-edit.owl").createNewFile());
+
+        assertEquals("mwo-edit.owl", OdkProjectLoader.detect(root).getEditFile().getName());
+        assertEquals(new File(ontology, "mwo-edit.owl").getAbsoluteFile(),
+                OdkProjectLoader.editFileOf(ontology).getAbsoluteFile());
+    }
+
+    /**
+     * Ruling 17: an ODK project edits in the format its configuration names - 15 of ODK's 79
+     * samples in OBO, one in Turtle - and it opens at that file, under its own id.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"tests__test-edit-obo, eto, eto-edit.obo",
+        "examples__chr, chr, chr-edit.ttl"})
+    void aProjectThatEditsInAnotherFormatOpensAtItsEditFile(String sample, String id,
+            String editFile, @TempDir Path dir) throws Exception {
+        File edit = SeededProject.ofCorpus(dir.toFile(), sample);
+        assertTrue(edit.isFile(), edit + " seeded");
+        File root = dir.resolve(sample).toFile();
+
+        OdkProjectLoader.Detected found = OdkProjectLoader.detect(root);
+
+        assertEquals(id, found.getOntologyId());
+        assertEquals(editFile, found.getEditFile().getName());
+        assertEquals(edit.getAbsoluteFile(), OdkProjectLoader.editFileOf(
+                edit.getParentFile()).getAbsoluteFile());
+    }
+
+    /** Ruling 17: a name is an edit file's in every format ODK writes one in, and only then. */
+    @Test
+    void anEditFileIsNamedSoInEveryFormatOdkWrites() {
+        for (String name : new String[] {"x-edit.owl", "x-edit.obo", "x-edit.ofn",
+            "x-edit.ttl"}) {
+            assertTrue(OdkProjectLoader.isEditFileName(name), name);
+        }
+        for (String name : new String[] {"x.owl", "x-edit.owl.bak", "x-edit.txt",
+            "x-editor.owl", "-edit.owl"}) {
+            org.junit.jupiter.api.Assertions.assertFalse(OdkProjectLoader.isEditFileName(name),
+                    name);
+        }
     }
 
     /** The release .owl is generated; selecting it would silently discard the user's work. */

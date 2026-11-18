@@ -18,11 +18,12 @@ import java.util.function.BooleanSupplier;
  * for the few other programs of ODK's image. What OntoBoard decides is only whether it may:
  *
  * <ol>
- *   <li>the Makefile is the one ODK writes for the project's configuration, and the project's
- *       own makefile changes nothing of what the target runs ({@link FallbackEligibility});</li>
+ *   <li>the Makefile is the one ODK writes for the project's configuration, and make can follow
+ *       it with the project's own makefile ({@link FallbackEligibility});</li>
  *   <li>every line the run is going to need can be run here - asked before the first line
  *       runs, so that a target is done or not started, never half done for want of a
- *       program.</li>
+ *       program. A line of the project's own makefile is asked as ODK's are, and named with
+ *       its file and line when it cannot be run.</li>
  * </ol>
  *
  * <p>Then make runs: it decides as it goes, says each line, and stops at the first one that
@@ -99,17 +100,6 @@ public final class OdkEngine {
         return whyNot(editFile, goal, commandLine, OdkTools.forProject());
     }
 
-    /** Where OntoBoard's rule for the questions stands in a project's own makefile; or null. */
-    private static int[] questionsIn(File own) {
-        try {
-            return own == null || !own.isFile() ? null : OdkQuestions.linesIn(new String(
-                    java.nio.file.Files.readAllBytes(own.toPath()),
-                    java.nio.charset.StandardCharsets.UTF_8));
-        } catch (java.io.IOException unreadable) {
-            return null;
-        }
-    }
-
     /**
      * Runs a target.
      *
@@ -130,11 +120,6 @@ public final class OdkEngine {
 
         // 3. make runs.
         final File ontology = editFile.getAbsoluteFile().getParentFile();
-        // OntoBoard's rule for the project's questions, where the project's own makefile
-        // holds it as written: the one thing in that file the engine runs.
-        final File own = ontology.getParentFile() == null ? null
-                : OdkQuestions.ownMakefileOf(ontology.getParentFile().getParentFile());
-        final int[] questions = questionsIn(own);
         final boolean[] ran = {false};
         final boolean[] wasStopped = {false};
         final String[] complaint = {null};
@@ -150,15 +135,9 @@ public final class OdkEngine {
                                 return STOPPED;
                             }
                             // A real run can reach what the look from before it did not show:
-                            // each line is asked again as it comes.
-                            boolean ontoBoards = questions != null
-                                    && own.getName().equals(step.file())
-                                    && step.line() >= questions[0]
-                                    && step.line() <= questions[1];
-                            String why = !MAKEFILE.equals(step.file()) && !ontoBoards
-                                    ? "a rule of the project's own, " + step.file() + ":"
-                                            + step.line() + ", which is make's to run"
-                                    : refusalOf(step.command(), tools);
+                            // each line is asked again as it comes, whichever makefile holds
+                            // it.
+                            String why = refusalOf(step, tools);
                             if (why != null) {
                                 complaint[0] = why;
                                 transcript.add(why);
@@ -250,7 +229,7 @@ public final class OdkEngine {
             Map<String, RecipeShell.Tool> tools) {
         for (MakeFile.Step step : plan) {
             String why = step.kind() == MakeFile.Step.Kind.COMMAND
-                    ? refusalOf(step.command(), tools) : firstRefusal(step.steps(), tools);
+                    ? refusalOf(step, tools) : firstRefusal(step.steps(), tools);
             if (why != null) {
                 return why;
             }
@@ -258,12 +237,19 @@ public final class OdkEngine {
         return null;
     }
 
-    private static String refusalOf(String command, Map<String, RecipeShell.Tool> tools) {
+    /**
+     * Why a line cannot be run here, or null; for a line of the project's own makefile, with
+     * where it stands there.
+     */
+    private static String refusalOf(MakeFile.Step step, Map<String, RecipeShell.Tool> tools) {
+        String why;
         try {
-            return RecipeShell.parse(command).whyNot(tools);
+            why = RecipeShell.parse(step.command()).whyNot(tools);
         } catch (RecipeShell.NotRead notRead) {
-            return notRead.getMessage();
+            why = notRead.getMessage();
         }
+        return why == null || step.file() == null || MAKEFILE.equals(step.file()) ? why
+                : why + " - " + step.file() + ":" + step.line();
     }
 
     /** The last line with something in it that was said from an index on, or null. */

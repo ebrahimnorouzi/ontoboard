@@ -120,6 +120,23 @@ class OdkCreateTest {
     }
 
     /**
+     * F2: with an owner, ODK's own README links the project's repository and its badge - and
+     * none of ODK's links is {@code https://github.com//...}, as every one was without it.
+     */
+    @Test
+    void theSeedsLinksNameTheOwner(@TempDir File temp) throws IOException {
+        OdkProjectConfig config = egg(temp);
+        config.setGithubOrg("kitchen-lab");
+
+        OdkCreate.create(config, null, nothingInstalled());
+
+        String readme = text(new File(temp, "eggboil"), "README.md");
+        assertTrue(readme.contains("https://github.com/kitchen-lab/eggboil/actions/workflows/"
+                + "qc.yml/badge.svg"), readme);
+        assertFalse(readme.contains("github.com//"), readme);
+    }
+
+    /**
      * An extra over a seed file would make the project something other than ODK's seed. For the
      * configuration Create writes there is no such file: it has no {@code documentation:} block,
      * so ODK writes no pages and no {@code mkdocs.yaml} of its own.

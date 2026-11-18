@@ -68,6 +68,14 @@ public final class OdkSync {
         public String why() {
             return why;
         }
+
+        /**
+         * Why nobody does, without what follows for a configuration that was written - for
+         * an action that writes nothing then; null when somebody does.
+         */
+        public String whyNobody() {
+            return why == null ? null : why.replace(LATER, "").trim();
+        }
     }
 
     private OdkSync() {

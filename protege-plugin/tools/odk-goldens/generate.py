@@ -35,12 +35,19 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import corpus_runs_goldens  # noqa: E402
+import dosdp_check_goldens  # noqa: E402
+import dosdp_equivalence_goldens  # noqa: E402
 import equivalence_goldens  # noqa: E402
 import imports_goldens  # noqa: E402
 import lexer_fixture  # noqa: E402
 import make_goldens  # noqa: E402
 import migration_goldens  # noqa: E402
 import odkimage  # noqa: E402
+import own_rules_goldens  # noqa: E402
+import robot_update_goldens  # noqa: E402
+import schema_goldens  # noqa: E402
+import sed_goldens  # noqa: E402
 import update_goldens  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -105,8 +112,9 @@ def log_tail(name, kind):
 SEED_COMMAND = "odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>"
 
 
-def provenance(tool, image, what, versions=None, command=SEED_COMMAND):
-    about = odkimage.describe(tool, image)
+def provenance(tool, image, what, versions=None, command=SEED_COMMAND, about=None):
+    if about is None:
+        about = odkimage.describe(tool, image)
     if versions is None:
         versions = read(os.path.join(WORK, "out", "versions.txt")).decode("utf-8").splitlines()
     path = os.path.join(RES, "PROVENANCE.txt")
@@ -255,6 +263,110 @@ def stage_update(tool, image):
                + ", ".join(update_goldens.CASES))
 
 
+def stage_robot_update(tool, image):
+    said, versions = robot_update_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-robot-update"))
+    for line in said:
+        print("robot-update " + line)
+    provenance(tool, image, "robot-update", versions,
+               "robot $(cat command.txt) in robot-update/<case>/, a copy of the case's folder, "
+               "for " + ", ".join(robot_update_goldens.CASES))
+
+
+DOSDP_MANIFEST = os.path.join(PLUGIN, "src", "main", "resources", "odk",
+                              "dosdp-tools-0.19.3.sha256")
+
+
+def stage_dosdp(tool, image):
+    """The SHA-256 of each jar of dosdp-tools as ODK's image has it, which OntoBoard checks a
+    download of the release against before it runs one (odk/DosdpTools); and the verdicts of
+    ODK's pattern check on OntoBoard's own cases (dosdp_check_goldens, odk/DosdpCheck)."""
+    said, versions = dosdp_check_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-dosdp"))
+    for line in said:
+        print("dosdp check " + line)
+    provenance(tool, image, "dosdp", versions,
+               "dosdp validate -i /work/check/<input> for each input of dosdp/verdicts.txt; "
+               "the cases are dosdp_check_goldens.py's")
+    said, versions = dosdp_equivalence_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-dosdp-equivalence"))
+    for line in said:
+        print("dosdp equivalence " + line)
+    provenance(tool, image, "dosdp-equivalence", versions,
+               "odk.py seed --skipgit -C tests__test-patterns.yaml; equivalence/dosdp/overlay "
+               "over it; then each on a fresh copy, in /tmp/odk/ptt/src/ontology, with "
+               "VERSION=%s TODAY=%s OBODATE=\"%s\": %s"
+               % (equivalence_goldens.VERSION, equivalence_goldens.DATE,
+                  equivalence_goldens.OBODATE, dosdp_equivalence_goldens.described()))
+    _, out, _ = odkimage.in_image(tool, image, ["sh", "-c", "cd /tools/dosdptools/lib && "
+                                                "sha256sum *.jar | LC_ALL=C sort -k2"])
+    lines = [line for line in out.decode("utf-8").replace("\r\n", "\n").split("\n") if line]
+    odkimage.write_text(DOSDP_MANIFEST, "# dosdp-tools 0.19.3's lib/, as ODK " + odkimage.PIN
+                        + "'s image has it at /tools/dosdptools/lib (generate.py dosdp)\n"
+                        + "".join(line + "\n" for line in lines))
+    print("dosdp %d jars -> %s" % (len(lines), os.path.relpath(DOSDP_MANIFEST, PLUGIN)))
+
+
+def stage_corpus_runs(tool, image):
+    said, versions = corpus_runs_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-corpus-runs"))
+    for line in said:
+        print("corpus-runs " + line)
+    provenance(tool, image, "corpus-runs", versions,
+               "odk.py seed --skipgit -C corpus/configs/<sample>.yaml; then on a fresh copy of "
+               "the seed, every file of one age, make <target> VERSION=%s TODAY=%s "
+               "OBODATE=\"%s\" for %s, in <project>/src/ontology; samples: %s"
+               % (equivalence_goldens.VERSION, equivalence_goldens.DATE,
+                  equivalence_goldens.OBODATE, ", ".join(corpus_runs_goldens.TARGETS),
+                  ", ".join(corpus_runs_goldens.SAMPLES)))
+
+
+def stage_schema(tool, image, checkout=None):
+    """ODK's own description of each key of a project's configuration (schema_goldens), which
+    Project configuration shows beside the keys (odk/OdkSchema): from the image's odk.py, or -
+    with --odk-checkout, and no container needed - from odk/odk.py of ODK's source at the tag."""
+    path = os.path.join(PLUGIN, "src", "main", "odk", odkimage.PIN, "schema", "descriptions.tsv")
+    command = ("python3 -I -c schema_goldens.SCRIPT <odk.py>: the docstring under each field "
+               "of odk.py's dataclasses, flattened to a configuration's dotted keys from "
+               "OntologyProject down -> src/main/odk/" + odkimage.PIN + "/schema/descriptions.tsv")
+    if checkout:
+        count, odk_py = schema_goldens.run_on_source(os.path.join(checkout, "odk", "odk.py"),
+                                                     odkimage, path)
+        about = {"reference": "none - ODK's source at tag " + odkimage.PIN + " (--odk-checkout)",
+                 "id": "-", "digests": [], "created": "-"}
+        provenance(tool, image, "schema", ["odk.py:       odk/odk.py of the source, SHA-256 "
+                                           "(LF) " + odk_py], command, about)
+    else:
+        count, odk_py = schema_goldens.run(tool, image, odkimage, path)
+        provenance(tool, image, "schema", ["odk.py:       /tools/odk.py, SHA-256 (LF) " + odk_py],
+                   command)
+    print("schema %d keys -> %s" % (count, os.path.relpath(path, PLUGIN)))
+
+
+def stage_own(tool, image):
+    said, versions = own_rules_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-own"))
+    for line in said:
+        print("own " + line)
+    provenance(tool, image, "own", versions,
+               "make <target> VERSION=%s TODAY=%s OBODATE=\"%s\" for %s, each on a fresh copy "
+               "of seed/oboimports with equivalence/own/overlay over it, in "
+               "/tmp/odk/obim/src/ontology" % (equivalence_goldens.VERSION,
+                                                 equivalence_goldens.DATE,
+                                                 equivalence_goldens.OBODATE,
+                                                 ", ".join(own_rules_goldens.TARGETS)))
+
+
+def stage_sed(tool, image):
+    said, versions = sed_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-sed"))
+    for line in said:
+        print("sed " + line)
+    provenance(tool, image, "sed", versions,
+               "sed -i \"$(cat script.txt)\" file.txt in sed/<case>/, file.txt a copy of "
+               "before.txt, for " + ", ".join(case for case, _, _ in sed_goldens.CASES))
+
+
 def stage_migration(tool, image, converted):
     if not converted:
         raise SystemExit("the migration stage needs --converted <folder>: the project "
@@ -290,14 +402,20 @@ def stage_imports(tool, image):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
-                                          "update", "imports", "migration", "all"])
+                                          "update", "imports", "robot-update", "sed", "own",
+                                          "dosdp", "corpus-runs", "schema", "migration", "all"])
     parser.add_argument("--converted", help="the 1.135.x project as OntoBoard's conversion "
                         "leaves it, written by MigrationConvertedWriter (for the migration "
                         "stage, which is not part of 'all')")
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
+    if options.stage == "schema" and options.odk_checkout:
+        # ODK's source is enough for this one: no container is asked.
+        stage_schema(None, None, options.odk_checkout)
+        return
     if options.stage in ("seed", "corpus", "make", "equivalence", "update", "imports",
+                         "robot-update", "sed", "own", "dosdp", "corpus-runs", "schema",
                          "migration", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
@@ -313,6 +431,18 @@ def main():
             stage_update(tool, image)
         if options.stage in ("imports", "all"):
             stage_imports(tool, image)
+        if options.stage in ("robot-update", "all"):
+            stage_robot_update(tool, image)
+        if options.stage in ("sed", "all"):
+            stage_sed(tool, image)
+        if options.stage in ("own", "all"):
+            stage_own(tool, image)
+        if options.stage in ("dosdp", "all"):
+            stage_dosdp(tool, image)
+        if options.stage in ("corpus-runs", "all"):
+            stage_corpus_runs(tool, image)
+        if options.stage in ("schema", "all"):
+            stage_schema(tool, image)
         if options.stage == "migration":
             stage_migration(tool, image, options.converted)
     if options.stage in ("lexer", "all"):

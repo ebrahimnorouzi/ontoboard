@@ -794,7 +794,7 @@ public final class OdkUpdate {
      * one away first, and an edit file that then cannot be put there - Windows refuses while
      * another program looks at the new file - would be gone, with work in it nobody committed.
      */
-    private static void replace(File editFile, File rewritten) throws IOException {
+    static void replace(File editFile, File rewritten) throws IOException {
         try {
             Files.move(rewritten.toPath(), editFile.toPath(), StandardCopyOption.ATOMIC_MOVE,
                     StandardCopyOption.REPLACE_EXISTING);

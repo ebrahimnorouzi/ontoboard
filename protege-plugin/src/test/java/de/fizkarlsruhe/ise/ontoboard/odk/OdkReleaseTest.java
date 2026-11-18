@@ -180,6 +180,60 @@ class OdkReleaseTest {
 
     // ------------------------------------------------------------------ the whole of it
 
+    /** What git says in {@code folder}, line by line. */
+    private static List<String> gitSays(File folder, String... arguments) throws IOException {
+        List<String> command = new ArrayList<String>(Arrays.asList("git"));
+        command.addAll(Arrays.asList(arguments));
+        ProcessRunner.Outcome outcome = ProcessRunner.real().run(folder, command, 1, null);
+        assertTrue(outcome.isSuccess(), command + ": " + outcome.getOutput());
+        return outcome.getOutput();
+    }
+
+    /**
+     * After an import - a new module and its term list that git has never been told about -
+     * the release commits them first, in a commit of their own, and then itself: the tag holds
+     * the module, and the project builds for whoever fetches it. With git itself.
+     */
+    @Test
+    void afterAnImportTheReleasesTagHoldsTheModule() throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        Files.delete(new File(root, ".git").toPath());
+        ReleaseHistoryTest.git(root, "init", "-q");
+        for (String[] setting : new String[][] {{"user.name", "Test"},
+            {"user.email", "test@example.org"}, {"commit.gpgsign", "false"},
+            {"tag.gpgsign", "false"}}) {
+            ReleaseHistoryTest.git(root, "config", setting[0], setting[1]);
+        }
+        ReleaseHistoryTest.git(root, "add", "-A");
+        ReleaseHistoryTest.git(root, "commit", "-q", "-m", "the project");
+        write(new File(ontology, "imports/egg_import.owl"), owl("Spoon"));
+        write(new File(ontology, "imports/egg_terms.txt"), "https://example.org/eggboil/Spoon\n");
+
+        OdkRelease.Outcome outcome = OdkRelease.run(new OdkRelease.Request(edit, "1.0.0", null,
+                true, true, false, true), odk(), ProcessRunner.real(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return true;
+                    }
+
+                    @Override
+                    public boolean stopped() {
+                        return false;
+                    }
+                });
+
+        assertTrue(outcome.isOk() && outcome.isCommitted(), outcome.getSummary());
+        assertEquals(Arrays.asList("release(1.0.0)", "Files of the project before release 1.0.0",
+                "the project"), gitSays(root, "log", "--format=%s"));
+        List<String> tagged = gitSays(root, "ls-tree", "-r", "--name-only", "v1.0.0");
+        assertTrue(tagged.contains("src/ontology/imports/egg_import.owl"), tagged.toString());
+        assertTrue(tagged.contains("src/ontology/imports/egg_terms.txt"), tagged.toString());
+        assertTrue(outcome.getSummary().contains("after the project's new folder in a commit of "
+                + "its own (\"Files of the project before release 1.0.0\")"),
+                "git lists the new imports folder whole: " + outcome.getSummary());
+    }
+
     @Test
     void aReleaseIsBuiltKeptAndRecorded() {
         OdkRelease.Outcome outcome = release("1.0.0");
@@ -315,6 +369,64 @@ class OdkReleaseTest {
         assertFalse(new File(root, "releases/1.0.0").exists());
         assertEquals(Collections.<List<String>>emptyList(), gitRan);
         assertEquals(0, asked.size());
+    }
+
+    /** A last release that no reader takes for an ontology. */
+    private static final String UNREADABLE = "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf="
+            + "\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n<owl:Ontology rdf:about=";
+
+    /**
+     * F6: a last release that cannot be read leaves the new one uncompared, and the comparison
+     * is the last check before the release is a commit somebody pulls - so it stops there, as
+     * for a term that is gone, and says how to go on.
+     */
+    @Test
+    void aReleaseThatCannotBeComparedWithTheLastStopsBeforeTheCommit() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), UNREADABLE);
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk(), "released uncompared");
+        assertTrue(outcome.getFailure().contains("Could not compare with the 0.9.0 release"),
+                outcome.getFailure());
+        assertTrue(outcome.getFailure().contains(OdkRelease.UNCOMPARED_LABEL),
+                outcome.getFailure());
+        assertFalse(new File(root, "releases/1.0.0").exists());
+        assertEquals(Collections.<List<String>>emptyList(), gitRan);
+        assertEquals(0, asked.size());
+    }
+
+    /**
+     * The 1.154.0 review's M2: when it is the release just built that cannot be read, the
+     * failure says so - not that the last release is to be put where it is kept.
+     */
+    @Test
+    void anUnreadableNewReleaseIsNotBlamedOnTheLastOne() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), owl("Egg"));
+        released = UNREADABLE;
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk(), "released uncompared");
+        assertTrue(outcome.getFailure().contains("just built"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("eggboil.owl"), outcome.getFailure());
+        assertFalse(outcome.getFailure().contains("Put the 0.9.0 release"), outcome.getFailure());
+        assertFalse(new File(root, "releases/1.0.0").exists());
+    }
+
+    /** With the box ticked the person has said they know: it is released, and the warning stays. */
+    @Test
+    void aReleaseUncomparedOnPurposeGoesOnAndTheWarningStays() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), UNREADABLE);
+
+        OdkRelease.Outcome outcome = OdkRelease.run(new OdkRelease.Request(edit, "1.0.0",
+                VersionIriShape.of(VersionIriShape.Kind.ODK), true, true, true), odk(), git(),
+                staging -> true);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertTrue(outcome.getWarnings().toString().contains("Could not compare with the 0.9.0 "
+                + "release"), outcome.getWarnings().toString());
+        assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile());
     }
 
     /** With the check off, the person has said they know: it is released, and the notes say so. */

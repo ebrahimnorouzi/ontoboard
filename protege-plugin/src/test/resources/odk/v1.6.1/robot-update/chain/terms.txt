@@ -1,0 +1,2 @@
+http://purl.obolibrary.org/obo/UBERON_0000061
+https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000001

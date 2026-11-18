@@ -169,6 +169,26 @@ class MakeRunTest {
         assertEquals("/work/src/ontology", command.get(command.indexOf("-w") + 1));
     }
 
+    /** Build's switches that are off go on make's command line on every route that runs make. */
+    @Test
+    void theSwitchesThatAreOffGoOnMakesCommandLineOnEveryRoute(@TempDir File root)
+            throws Exception {
+        File ontology = MakeRun.workingDirectory(odkProject(root));
+        java.util.Map<String, String> off = BuildSwitches.variables(java.util.EnumSet.of(
+                BuildSwitches.Switch.IMP, BuildSwitches.Switch.MIR));
+
+        assertEquals(Arrays.asList("make", "test", "IMP=false", "MIR=false"),
+                MakeRun.command("test", off));
+        List<String> container = MakeRun.containerCommand("docker", ontology,
+                "obolibrary/odkfull:v1.6.1", OdkContainer.Host.unknown(), "test", off);
+        assertEquals(Arrays.asList("make", "test", "IMP=false", "MIR=false"),
+                container.subList(container.size() - 4, container.size()));
+        List<String> inTheEnvironment = Toolchain.nativeCommand(new File("/odk/activate"), "test",
+                off);
+        assertTrue(inTheEnvironment.get(2).endsWith(" && make test IMP=false MIR=false"),
+                inTheEnvironment.get(2));
+    }
+
     /** A target is still required, and a directory that is not src/ontology is refused. */
     @Test
     void theDockerCommandRefusesWhatItCannotPlace(@TempDir File root) {
@@ -470,6 +490,33 @@ class MakeRunTest {
      * make target 'mirror/ro.owl', needed by 'imports/ro_import.owl'" - and the result said
      * make has no rule for 'test_fast'. The rule that is missing is the one make names.
      */
+    /**
+     * Build's switches on a fresh clone, in ODK's container (Review Focus 5; the 1.154.0
+     * review's I2): test with "Download the imports' sources again" unticked, and no mirror/ -
+     * make stops on the mirror it may not download. The way out is that box, named as the
+     * engine's route names it; not "test or prepare_release", which they ran.
+     */
+    @Test
+    void aMissingMirrorWithItsDownloadUntickedNamesTheBox() {
+        String explanation = MakeRun.explain("test", failedWith(
+                "make[1]: *** No rule to make target 'mirror/iao.owl', needed by "
+                        + "'imports/iao_import.owl'.  Stop.",
+                "make: *** [Makefile:116: test] Error 2"),
+                java.util.EnumSet.of(BuildSwitches.Switch.MIR));
+
+        assertTrue(explanation.contains("Tick \"" + BuildSwitches.Switch.MIR.words() + "\""),
+                explanation);
+        assertTrue(explanation.contains("mirror/iao.owl"), explanation);
+        assertFalse(explanation.contains("needs test or prepare_release"), explanation);
+        assertFalse(explanation.contains("own rules"), explanation);
+        // With the box ticked, as before: the fast targets are the ones that download nothing.
+        assertTrue(MakeRun.explain("test_fast", failedWith(
+                "make[1]: *** No rule to make target 'mirror/ro.owl', needed by "
+                        + "'imports/ro_import.owl'.  Stop."),
+                java.util.EnumSet.noneOf(BuildSwitches.Switch.class))
+                .contains("test or prepare_release"));
+    }
+
     @Test
     void aMissingRuleForSomethingElseIsNotSaidOfTheTarget() {
         String explanation = MakeRun.explain("test_fast", failedWith(

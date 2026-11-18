@@ -144,6 +144,7 @@ nav:
   - Try it:
       - 'A pizza ontology': examples/pizza.md
       - 'BFO and a knowledge graph': examples/pizza-bfo.md
+      - 'Boiling eggs, an ODK project': examples/egg-boiling-ontology.md
       - Made with OntoBoard: made-with-ontoboard.md
   - Using it:
       - 'Start here: the guide': guide.md

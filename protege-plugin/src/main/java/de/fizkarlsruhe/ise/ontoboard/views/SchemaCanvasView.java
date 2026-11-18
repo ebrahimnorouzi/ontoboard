@@ -6700,23 +6700,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return false;
     }
 
-    /** The short name of a term here or in an import whose label is {@code name}, or null. */
-    static String termNamed(OWLOntology ontology, String name) {
-        String wanted = name.trim();
-        for (OWLOntology part : ontology.getImportsClosure()) {
-            for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
-                    : part.getAxioms(org.semanticweb.owlapi.model.AxiomType.ANNOTATION_ASSERTION)) {
-                if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()
-                        && axiom.getValue().asLiteral().get().getLiteral().trim()
-                                .equalsIgnoreCase(wanted)
-                        && axiom.getSubject() instanceof IRI) {
-                    return ((IRI) axiom.getSubject()).getShortForm();
-                }
-            }
-        }
-        return null;
-    }
-
     /** The same, as a subclass of {@code parent} when one is given. */
     private void createEntityAt(EntityFactory.Kind kind, int x, int y, IRI parent) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
@@ -6740,21 +6723,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         // Found by a tester: OK on an empty field made a class with no label, which the board
-        // then showed by its bare identifier.
-        if (name.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Give the new " + what + " a name.",
-                    "No name", JOptionPane.WARNING_MESSAGE);
+        // then showed by its bare identifier. A second term with a name already taken is allowed
+        // - it can be meant - but asked about: until the build reported duplicate_label, nothing
+        // said two boxes now read alike. Checked as Create relation checks a property's (F7).
+        EntityFactory.NameCheck check = EntityFactory.checkName(ontology, name, what);
+        if (check.verdict() == EntityFactory.NameCheck.Verdict.REFUSED) {
+            JOptionPane.showMessageDialog(this, check.sentence(), "No name",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
-        name = name.trim();
-        // A second term with a name already taken is allowed - it can be meant - but asked about:
-        // until the build reported duplicate_label, nothing said two boxes now read alike.
-        String twin = ontology == null ? null : termNamed(ontology, name);
-        if (twin != null && JOptionPane.showConfirmDialog(this,
-                "\"" + name + "\" is already the name of " + twin
-                        + ".\nMake another " + what + " with the same name?",
-                "Name already used", JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
+        name = check.name();
+        if (check.verdict() == EntityFactory.NameCheck.Verdict.ASK
+                && JOptionPane.showConfirmDialog(this, check.sentence(), "Name already used",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE)
+                        != JOptionPane.YES_OPTION) {
             return;
         }
         minter = afterClaimingARange(minter, what);
@@ -6963,10 +6945,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         for (int i = 0; i < choices.length; i++) {
             choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
         }
-        Object chosen = JOptionPane.showInputDialog(this,
+        Object chosen = RangeChoice.ask(this,
                 TermMinter.onLines(TermMinter.claimQuestion(editorName(),
-                        minter.getRangesFile().getName(), term), 90),
-                "Which range is yours?", JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+                        minter.getRangesFile().getName(), term), 90), choices);
         if (chosen == null) {
             return null;
         }
@@ -6982,16 +6963,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Who is minting, for matching against the ID ranges.
-     *
-     * <p>The collaboration display name when one is configured, since that is the name a team has
-     * already agreed on and the one their ranges are likely allocated to; otherwise the OS account,
-     * which is what the scaffold allocates the first range to.
+     * Who is minting, for matching against the ID ranges: the name Protege's own ID ranges know
+     * the person by, so the range the board claims is the one Protege finds.
      */
     private String editorName() {
         // One rule for every place that mints or allocates: the sheet editor and ID ranges...
         // call the same function, so a block allocated there is the block the board mints from.
-        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName();
+        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(currentOntologyFile);
     }
 
     /**

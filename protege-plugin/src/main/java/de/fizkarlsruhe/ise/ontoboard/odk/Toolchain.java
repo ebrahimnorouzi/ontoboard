@@ -34,7 +34,12 @@ public final class Toolchain {
         /** Installed, but not currently able to do the job - Docker with its daemon stopped. */
         NOT_WORKING,
         /** Not found at all. */
-        ABSENT
+        ABSENT,
+        /**
+         * Not used, as the person's settings say - neither needed nor missing: a container
+         * when the setting is "Never in a container".
+         */
+        NOT_USED
     }
 
     /** One program, and what to do when it is not there. */
@@ -274,7 +279,7 @@ public final class Toolchain {
         OdkRoute.Use use = OdkRoute.use();
         boolean off = use == OdkRoute.Use.NEVER_CONTAINER;
         tools.add(new Tool("Container for ODK's targets",
-                program != null || off ? State.PRESENT : State.ABSENT,
+                program != null ? State.PRESENT : off ? State.NOT_USED : State.ABSENT,
                 program != null ? program + " answers" + (OdkRoute.containerProgram() != null
                         ? " - the program chosen in the settings" : "")
                         : off ? "not used: the setting is \"" + use.label() + "\"" : "none",
@@ -372,9 +377,9 @@ public final class Toolchain {
                     + "Start one, or change the setting."));
         } else {
             list.add(new Capability(odk, true, "By OntoBoard itself, with nothing to install: "
-                    + "ODK's own Makefile and recipes run inside Protege. A rule a project "
-                    + "adds in its own makefile is make's to run - in ODK's container, or "
-                    + "with ODK's tools installed."));
+                    + "ODK's own Makefile and recipes run inside Protege, and the rules a "
+                    + "project adds in its own makefile when every line of them can be run "
+                    + "here."));
         }
 
         if (!nativeEnv && containerProgram == null && make) {
@@ -434,6 +439,9 @@ public final class Toolchain {
         if (state == State.PRESENT) {
             return "[ok  ]";
         }
+        if (state == State.NOT_USED) {
+            return "[off ]";
+        }
         return state == State.NOT_WORKING ? "[idle]" : "[none]";
     }
 
@@ -456,10 +464,26 @@ public final class Toolchain {
      * <p>Harmless when the directory does not exist: a non-existent PATH entry is skipped.
      */
     public static List<String> nativeCommand(File activationScript, String target) {
+        return nativeCommand(activationScript, target,
+                java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, with variables on make's command line - Build's switches that are off,
+     * {@code IMP=false} - each value quoted for {@code sh} where it has to be.
+     */
+    public static List<String> nativeCommand(File activationScript, String target,
+            java.util.Map<String, String> variables) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
-        return nativeCommandFor(activationScript, "make " + target.trim());
+        StringBuilder make = new StringBuilder("make ").append(target.trim());
+        for (java.util.Map.Entry<String, String> variable : variables.entrySet()) {
+            String value = variable.getValue();
+            make.append(' ').append(variable.getKey()).append('=')
+                    .append(value.matches("[A-Za-z0-9_.,/-]+") ? value : quote(value));
+        }
+        return nativeCommandFor(activationScript, make.toString());
     }
 
     /**

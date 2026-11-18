@@ -254,6 +254,101 @@ class ReleaseRunTest {
         assertEquals(Arrays.asList("src/ontology/Untitled.ttl", "notes.txt"), staging.leftOut());
     }
 
+    /**
+     * The project's new files are the files under src/ git has never been told about - an
+     * import module and its term list, a test, the board's layout - not a stray file at the
+     * top, and not what ODK's scratch folders hold.
+     */
+    @Test
+    void theProjectsNewFilesAreItsUntrackedFilesUnderSrc(@TempDir File root) {
+        List<String> status = Arrays.asList("## main", "?? src/ontology/imports/egg_import.owl",
+                "?? src/ontology/imports/egg_terms.txt", "?? notes.txt",
+                "?? src/ontology/tmp/scratch.owl", " M src/ontology/eggboil-edit.owl",
+                "?? src/sparql/");
+
+        assertEquals(Arrays.asList("src/ontology/imports/egg_import.owl",
+                "src/ontology/imports/egg_terms.txt", "src/sparql/"),
+                ReleaseRun.newFilesOfTheProject(root, root, status));
+    }
+
+    /** In a folder of a larger repository, the project's own, named as the project names them. */
+    @Test
+    void inALargerRepositoryTheProjectsOwnAreNamedAsItNamesThem(@TempDir File repository) {
+        File root = new File(repository, "ontologies/egg");
+
+        assertEquals(Arrays.asList("src/ontology/imports/"), ReleaseRun.newFilesOfTheProject(
+                root, repository, Arrays.asList("## main", "?? ontologies/egg/src/ontology/imports/",
+                        "?? other/src/x.owl", "?? ontologies/egg/notes.txt")));
+    }
+
+    /**
+     * Said as git lists them: files counted, and a folder git lists whole - a new imports
+     * folder - as a folder, not as one file.
+     */
+    @Test
+    void theNewFilesAreSaidAsGitListsThem() {
+        assertEquals("2 new files", ReleaseRun.described(Arrays.asList("a.owl", "b.txt")));
+        assertEquals("1 new file", ReleaseRun.described(Arrays.asList("a.owl")));
+        assertEquals("new folder", ReleaseRun.described(Arrays.asList("src/ontology/imports/")));
+        assertEquals("2 new folders", ReleaseRun.described(Arrays.asList("a/", "b/")));
+        assertEquals("1 new file and 1 new folder",
+                ReleaseRun.described(Arrays.asList("x.owl", "src/sparql/")));
+    }
+
+    /**
+     * Asked to, the release commits them first, in a commit of their own, and then itself: the
+     * tag holds them. They are no longer what it leaves out; a stray file still is.
+     */
+    @Test
+    void theNewFilesAreCommittedFirstWhenAsked(@TempDir File root) throws IOException {
+        File owl = write(root, "eggboil.owl", "owl");
+        List<String> status = Arrays.asList("## main", "?? src/ontology/imports/egg_import.owl",
+                "?? src/ontology/imports/egg_terms.txt", "?? notes.txt",
+                " M src/ontology/eggboil-edit.owl");
+
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), status, true);
+
+        assertEquals(Arrays.asList(
+                Arrays.asList("git", "add", "--", "src/ontology/imports/egg_import.owl",
+                        "src/ontology/imports/egg_terms.txt"),
+                Arrays.asList("git", "commit", "-m", "Files of the project before release 1.0.0"),
+                Arrays.asList("git", "add", "-u", "--", "."),
+                Arrays.asList("git", "add", "-f", "--", "eggboil.owl"),
+                Arrays.asList("git", "commit", "-m", "release(1.0.0)"),
+                Arrays.asList("git", "tag", "-a", "v1.0.0", "-m", "eggboil 1.0.0")),
+                staging.commands());
+        assertEquals(Collections.singletonList("notes.txt"), staging.leftOut());
+
+        ReleaseRun.Staging asBefore = ReleaseRun.staging(root, root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), status, false);
+        assertEquals("release(1.0.0)", asBefore.commands().get(2).get(3), "not asked: as 1.153.0");
+        assertEquals(Arrays.asList("src/ontology/imports/egg_import.owl",
+                "src/ontology/imports/egg_terms.txt", "notes.txt"), asBefore.leftOut());
+    }
+
+    /**
+     * The 1.154.0 review's M1: what is committed first is what the box named, from git's status
+     * before the build - not what the release's own build left new under src/ (a turtle file of
+     * the release's formats, which ODK's .gitignore does not cover). That one is said as left out.
+     */
+    @Test
+    void onlyTheFilesTheBoxNamedAreCommittedFirst(@TempDir File root) throws IOException {
+        File owl = write(root, "eggboil.owl", "owl");
+        List<String> afterTheBuild = Arrays.asList("## main", "?? src/sparql/question.rq",
+                "?? src/ontology/eggboil.ttl", " M src/ontology/eggboil-edit.owl");
+
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), afterTheBuild, true,
+                Collections.singletonList("src/sparql/question.rq"));
+
+        assertEquals(Arrays.asList("git", "add", "--", "src/sparql/question.rq"),
+                staging.commands().get(0));
+        assertFalse(staging.commands().toString().contains("eggboil.ttl"),
+                staging.commands().toString());
+        assertEquals(Collections.singletonList("src/ontology/eggboil.ttl"), staging.leftOut());
+    }
+
     /** An ODK repository OntoBoard did not make has no releases/ folder to add. */
     @Test
     void withoutACopyThereIsNothingOfItToAdd(@TempDir File root) throws IOException {

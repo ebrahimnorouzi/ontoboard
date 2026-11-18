@@ -1,0 +1,28 @@
+Prefix(:=<http://purl.obolibrary.org/obo/ro.owl#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/ro.owl>
+<http://purl.obolibrary.org/obo/ro/releases/2026-01-01/ro.owl>
+Annotation(rdfs:comment "A small piece of RO, for OntoBoard's tests.")
+
+Declaration(ObjectProperty(obo:BFO_0000050))
+Declaration(ObjectProperty(obo:BFO_0000051))
+Declaration(ObjectProperty(obo:RO_0000052))
+Declaration(ObjectProperty(obo:RO_0000053))
+Declaration(ObjectProperty(obo:RO_0002131))
+AnnotationAssertion(rdfs:label obo:BFO_0000050 "part of"@en)
+AnnotationAssertion(rdfs:label obo:BFO_0000051 "has part"@en)
+InverseObjectProperties(obo:BFO_0000050 obo:BFO_0000051)
+TransitiveObjectProperty(obo:BFO_0000050)
+AnnotationAssertion(rdfs:label obo:RO_0000052 "characteristic of"@en)
+AnnotationAssertion(rdfs:label obo:RO_0000053 "has characteristic"@en)
+InverseObjectProperties(obo:RO_0000052 obo:RO_0000053)
+AnnotationAssertion(rdfs:label obo:RO_0002131 "overlaps"@en)
+SubObjectPropertyOf(obo:BFO_0000050 obo:RO_0002131)
+)

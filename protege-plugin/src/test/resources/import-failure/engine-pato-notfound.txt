@@ -1,0 +1,8 @@
+make --assume-new=obim-edit.owl --assume-new=imports/pato_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/pato_import.owl
+make[1]: Entering directory 'C:/tmp/ob-1154/i2/runs/pato-notfound/src/ontology'
+robot --catalog catalog-v001.xml convert -I http://127.0.0.1:8765/missing.owl -o tmp/mirror-pato.owl
+java.io.IOException: org.semanticweb.owlapi.io.OWLOntologyCreationIOException: http://127.0.0.1:8765/missing.owl
+make[1]: *** [Makefile:523: mirror-pato] Error 1
+make[1]: Leaving directory 'C:/tmp/ob-1154/i2/runs/pato-notfound/src/ontology'
+make: *** [Makefile:479: refresh-pato] Error 2

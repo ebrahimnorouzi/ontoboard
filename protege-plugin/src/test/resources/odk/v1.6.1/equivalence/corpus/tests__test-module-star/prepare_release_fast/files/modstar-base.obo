@@ -1,0 +1,16 @@
+format-version: 1.2
+data-version: modstar/releases/1.0.0/modstar-base.owl
+idspace: dc http://purl.org/dc/elements/1.1/ 
+idspace: oboInOwl http://www.geneontology.org/formats/oboInOwl# 
+idspace: terms http://purl.org/dc/terms/ 
+ontology: modstar/modstar-base
+property_value: dc:type IAO:8000001
+property_value: owl:versionInfo "1.0.0" xsd:string
+property_value: terms:description "None" xsd:string
+property_value: terms:license https://creativecommons.org/licenses/unspecified
+property_value: terms:title "Test ROBOT extract star" xsd:string
+
+[Term]
+id: MODSTAR:0000000
+name: root node
+

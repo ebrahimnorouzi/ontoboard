@@ -14,7 +14,6 @@ Annotation(dcterms:description "Application ontology for boiling eggs in a test 
 Annotation(dcterms:license <https://creativecommons.org/licenses/by/4.0/>)
 Annotation(dcterms:title "Test kitchen ontology"@en)
 Annotation(rdfs:label "Test kitchen ontology"@en)
-Annotation(owl:versionInfo "0.1.0")
 
 Declaration(Class(<https://example.org/eggboil/EGGBOIL_0001000>))
 Declaration(Class(<https://example.org/eggboil/EGGBOIL_0001001>))

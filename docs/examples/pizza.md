@@ -2,8 +2,7 @@
 
 A small ontology of pizzas - their bases, toppings, spiciness and prices - made with OntoBoard
 from three ontology design patterns (Componency, Classification and Price) and released five
-times. Every step that built it was an OntoBoard menu action, and every release is a git tag, so
-you can follow how it grew.
+times. Every step that built it was an OntoBoard menu action, and every release is a git tag.
 
 [:material-github: The pizza ontology on GitHub](https://github.com/ebrahimnorouzi/pizza-ontology){ .md-button .md-button--primary }
 [:material-download: Download it as a ZIP](https://github.com/ebrahimnorouzi/pizza-ontology/archive/refs/heads/main.zip){ .md-button }
@@ -14,15 +13,14 @@ example anywhere and open `src/ontology/pizza-edit.owl` with *File → Open...*
 
 ## 1. See it whole
 
-Click the **OntoBoard** tab. Every class, property and individual is on the board, and the three
-patterns sit in frames along the top. Type `named pizza` in the board's *Find* field, then
-right-click it → *Show only this and its neighbours*. The ⋮ button → *Show the whole board*
-brings everything back.
+Click the **OntoBoard** tab: every class, property and individual, with the three patterns in
+frames along the top. Type `named pizza` in the board's *Find* field, then right-click it →
+*Show only this and its neighbours*. The ⋮ button → *Show the whole board* brings everything back.
 
 ## 2. Get your own identifiers
 
-New terms in this project are numbered from a block reserved for each editor.
-*OntoBoard → Project → ID ranges...* → *Allocate a block to an editor* → *OK* gives you yours.
+*OntoBoard → Project → ID ranges...* → *Allocate a block to an editor* → *OK* gives you a block of
+identifiers for your new terms.
 
 ## 3. Add a topping
 
@@ -38,25 +36,22 @@ that dotted edge → *Why is this inferred?...* to see the axioms behind it.
 
 ## 5. Run the project's checks
 
-*OntoBoard → Check and test → SPARQL...* → *Run this project's checks (src/sparql)*. It asks
-ODK's checks and the project's questions - what the ontology must answer: every pizza has a base,
-every pizza has a price - and each says pass or FAIL. *OntoBoard → Build and release → Build...*
-→ `test` asks the same as part of ODK's own test, with the reasoner and the quality report.
+*OntoBoard → Check and test → SPARQL...* → *Run this project's checks (src/sparql)* asks ODK's
+checks and the project's questions - every pizza has a base, every pizza has a price - and each
+says pass or FAIL. *OntoBoard → Build and release → Build...* → `test` asks them as part of ODK's
+own test.
 
 ## 6. Look back
 
-*OntoBoard → Build and release → History...* lists the five releases. *Compare releases...*
-between `0.1.0` and `1.0.0` shows, term by term, what each iteration added.
-
-When you are happy, *File → Save*. If you cloned the example rather than downloading it,
-*OntoBoard → Share → Git...* shows what you changed.
+*OntoBoard → Build and release → History...* lists the five releases; *Compare releases...*
+between `0.1.0` and `1.0.0` shows what each iteration added. When you are happy, *File → Save*; in
+a clone, *OntoBoard → Share → Git...* shows what you changed.
 
 ## 7. Make its documentation page
 
 *OntoBoard → Build and release → Documentation...* runs [Widoco](https://github.com/dgarijo/Widoco)
-on the release and opens the page it writes: every class and property - and, with *Include the
-WebVowl diagram* ticked, a diagram of how they connect. If Widoco is not installed, the dialog
-offers to download it.
+on the release and opens the page it writes, with a WebVowl diagram if you tick *Include the
+WebVowl diagram*.
 [The page this example publishes](https://ebrahimnorouzi.github.io/pizza-ontology/ontology/index-en.html)
 was made that way.
 

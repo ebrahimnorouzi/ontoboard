@@ -1,0 +1,38 @@
+Prefix(:=<http://purl.obolibrary.org/obo/rta.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(terms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/rta.owl>
+<http://purl.obolibrary.org/obo/rta/releases/1.0.0/rta.owl>
+Annotation(terms:description "None")
+Annotation(terms:license <https://creativecommons.org/licenses/unspecified>)
+Annotation(terms:title "Release Test A Ontology")
+Annotation(owl:versionInfo "1.0.0")
+
+Declaration(AnnotationProperty(terms:description))
+Declaration(AnnotationProperty(terms:license))
+Declaration(AnnotationProperty(terms:title))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: terms:description (description)
+
+AnnotationAssertion(rdfs:label terms:description "description")
+
+# Annotation Property: terms:license (license)
+
+AnnotationAssertion(rdfs:label terms:license "license")
+
+# Annotation Property: terms:title (title)
+
+AnnotationAssertion(rdfs:label terms:title "title")
+
+
+
+)

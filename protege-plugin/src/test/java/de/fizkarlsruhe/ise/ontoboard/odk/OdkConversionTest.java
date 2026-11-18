@@ -337,6 +337,53 @@ class OdkConversionTest {
         assertEquals(Arrays.asList("0.1.0", "1.0.0"), made.getVersions(), log.toString());
     }
 
+    /**
+     * F3, for an ontology converted into a project: after the commands that push it, what a new
+     * GitHub repository's workflows need before ODK's documentation workflow can publish - and
+     * one name for the owner throughout.
+     */
+    @Test
+    void publishingSaysTheWorkflowMustBeAllowedToWrite() {
+        String sentence = OdkExtras.workflowPermissions(null, "shop");
+        for (boolean git : new boolean[] {true, false}) {
+            String said = OdkConversion.publishing(new File("out"), "shop", git);
+
+            assertTrue(said.contains(sentence), said);
+            int push = said.indexOf(git ? "git push" : "push it to");
+            assertTrue(push >= 0 && push < said.indexOf(sentence), "after the push: " + said);
+            assertFalse(said.contains("<you>"), "<owner>, as the sentence says it: " + said);
+        }
+    }
+
+    /**
+     * F1's cause in a converted ontology: ODK's release adds owl:versionInfo with ROBOT's
+     * annotate, beside any the edit file holds. So the edit file is made without it, as it is
+     * made without the version IRI; what was released keeps its own.
+     */
+    @Test
+    void theEditFileIsMadeWithoutTheVersionEachReleaseWrites(@TempDir File folder)
+            throws Exception {
+        File mine = new File(folder, "shop.ttl");
+        Files.write(mine.toPath(), ("@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+                + "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                + "<https://example.org/shop.owl> a owl:Ontology ; rdfs:label \"Shop\" ;\n"
+                + "  owl:versionInfo \"1.0.0\" .\n"
+                + "<https://example.org/shop#Pizza> a owl:Class ; rdfs:label \"pizza\" .\n")
+                .getBytes(StandardCharsets.UTF_8));
+        List<String> log = new ArrayList<String>();
+
+        OdkConversion.Result made = convert(new OdkConversion.Request()
+                .current(mine.getAbsolutePath()).into(new File(folder, "out")).git(false), log);
+
+        File root = made.getRoot();
+        String edit = text(root, "src/ontology/shop-edit.owl");
+        assertFalse(edit.contains("versionInfo"), edit);
+        assertTrue(edit.contains("rdfs:label"), "the rest of the head stays: " + edit);
+        assertTrue(text(root, "releases/1.0.0/shop.owl").contains(
+                "<owl:versionInfo>1.0.0</owl:versionInfo>"), "the release keeps its own");
+        assertTrue(String.join("\n", log).contains("owl:versionInfo \"1.0.0\""), log.toString());
+    }
+
     // ------------------------------------------------------------------ earlier versions
 
     /**

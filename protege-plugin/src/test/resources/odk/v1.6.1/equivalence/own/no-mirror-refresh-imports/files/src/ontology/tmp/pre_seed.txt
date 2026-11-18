@@ -1,0 +1,7 @@
+term
+https://creativecommons.org/licenses/unspecified
+http://purl.obolibrary.org/obo/obim.owl
+http://purl.org/dc/terms/license
+http://purl.org/dc/terms/description
+http://purl.org/dc/terms/title
+http://purl.obolibrary.org/obo/OBIM_0000000

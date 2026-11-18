@@ -1,16 +1,20 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.BuildSwitches;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
+import de.fizkarlsruhe.ise.ontoboard.odk.TargetWords;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
@@ -31,6 +35,12 @@ public class BuildAction extends OntoBoardAction {
 
     private static final String OPTION_TARGET = "target";
 
+    /** ODK's update as a target of make: not offered for ODK's Makefile. */
+    private static final String ODKS_UPDATE = "update_repo";
+
+    /** Each of ODK's switches is an option of its own: this, then the switch's name. */
+    private static final String OPTION_SWITCH = "switch.";
+
     /**
      * How much of the transcript to keep.
      *
@@ -41,6 +51,9 @@ public class BuildAction extends OntoBoardAction {
     private static final int MAX_LINES = 4000;
 
     private volatile String target = "";
+
+    /** ODK's switches whose boxes were not ticked: on make's command line as NAME=false. */
+    private volatile Set<BuildSwitches.Switch> off = EnumSet.noneOf(BuildSwitches.Switch.class);
 
     /** Decided in {@link #configure()} so the run does not probe the machine a second time. */
     private volatile MakeRun.Route route = MakeRun.Route.NOT_RUNNABLE;
@@ -80,6 +93,35 @@ public class BuildAction extends OntoBoardAction {
                 == SaveFirst.Answer.CANCELLED) {
             return false;
         }
+        // Asking the machine and the engine takes a moment before the form is on screen to say
+        // anything (minor 9): the wait cursor says it meanwhile.
+        java.awt.Component window = getOWLWorkspace();
+        java.awt.Cursor was = window.getCursor();
+        window.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        List<String> targets;
+        try {
+            if (!askTheMachineAndTheEngine(editFile)) {
+                return false;
+            }
+            targets = engine != null ? engine.targets() : MakeRun.targetsFor(editFile);
+        } finally {
+            window.setCursor(was);
+        }
+        if (targets.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    "The Makefile in " + MakeRun.workingDirectory(editFile).getAbsolutePath()
+                            + " declares no targets this can run.",
+                    "Nothing to build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        return chooseTheTarget(editFile, targets);
+    }
+
+    /**
+     * Who builds - the container, ODK's tools, OntoBoard itself - and whether it can; a refusal
+     * is shown. False when nothing can build.
+     */
+    private boolean askTheMachineAndTheEngine(File editFile) {
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
         String found = MakeRun.containerRuntime(ProcessRunner.real());
         runtime = found == null ? "docker" : found;
@@ -112,6 +154,21 @@ public class BuildAction extends OntoBoardAction {
                     de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.withoutContainer(editFile,
                             de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(), noContainer,
                             howToGetOne);
+            // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is
+            // there. Declined where nothing runs, the offer was the refusal.
+            String cure = DosdpOffer.forBuild(without.plan() == null ? without.refusal() : null,
+                    without.plan() == null ? java.util.Collections.<String, String>emptyMap()
+                            : without.plan().refused());
+            if (cure != null) {
+                if (DosdpOffer.ask(getOWLWorkspace(), cure, "Cannot build",
+                        without.plan() != null)) {
+                    without = de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.withoutContainer(
+                            editFile, de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(),
+                            noContainer, howToGetOne);
+                } else if (without.plan() == null) {
+                    return false;
+                }
+            }
             if (without.plan() == null) {
                 javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                         ReleaseAction.commandsShown(without.refusal()), "Cannot build",
@@ -128,37 +185,137 @@ public class BuildAction extends OntoBoardAction {
                 return false;
             }
         }
-        List<String> targets = engine != null ? engine.targets()
-                : MakeRun.targetsFor(editFile);
-        if (targets.isEmpty()) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
-                    "The Makefile in " + MakeRun.workingDirectory(editFile).getAbsolutePath()
-                            + " declares no targets this can run.",
-                    "Nothing to build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
-        }
-
-        List<Parameter> parameters = Arrays.asList(
-                Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
-                        .choices(targets.toArray(new String[0]))
-                        // test, which the guide and the docs say to run: it is the one that runs
-                        // your own tests as well. all came first in the list and was preselected.
-                        .defaultValue(engine != null ? engine.defaultTarget()
-                                : targets.contains("test") ? "test" : targets.get(0))
-                        .required()
-                        .help(engine != null ? engine.help()
-                                : helpFor(route, editFile, image, runtime))
-                        .build());
-
-        Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
-                engine != null ? engine.explanation()
-                        : explanationFor(route, editFile, image, runtime),
-                parameters);
-        if (chosen == null) {
-            return false;
-        }
-        target = chosen.get(OPTION_TARGET);
         return true;
+    }
+
+    /**
+     * The form: which target, of those there are, and - for an ODK project - ODK's switches,
+     * each box ticked as ODK's default has it, with the make command they come to under them.
+     * Where OntoBoard's own engine builds, the target is asked about again with the switches
+     * that are off; refused, the form comes back with what was chosen. False when cancelled.
+     */
+    private boolean chooseTheTarget(File editFile, List<String> targets) {
+        Map<String, String> was = null;
+        boolean switches = takesOdksSwitches();
+        while (true) {
+            // test, which the guide and the docs say to run: it is the one that runs your own
+            // tests as well. all came first in the list and was preselected.
+            String first = engine != null ? engine.defaultTarget()
+                    : targets.contains("test") ? "test" : targets.get(0);
+            Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
+                    engine != null ? engine.explanation()
+                            : explanationFor(route, editFile, image, runtime),
+                    form(targets, first, engine != null ? engine.help()
+                            : helpFor(route, editFile, image, runtime), switches, was),
+                    switches ? BuildAction::commandShown : null);
+            if (chosen == null) {
+                return false;
+            }
+            target = targetIn(chosen);
+            off = switches ? offIn(chosen) : EnumSet.noneOf(BuildSwitches.Switch.class);
+            String why = engine == null || off.isEmpty() ? null
+                    : de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.whyNotWith(editFile, target,
+                            off);
+            if (why == null) {
+                return true;
+            }
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    ReleaseAction.wrapped(why), "Cannot build with those boxes",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            was = chosen;
+        }
+    }
+
+    /**
+     * Build's form: the target, then - for an ODK project - ODK's four switches, each ticked as
+     * ODK's default has it, or as it was chosen when the form comes back. An ODK project's
+     * targets are offered in plain words, each with make's command (E3); a plain Makefile's as
+     * its Makefile names them.
+     *
+     * @param switches whether the Makefile is ODK's, whose switches and words the form offers
+     * @param was what was chosen when the form comes back, or null the first time
+     */
+    static List<Parameter> form(List<String> targets, String first, String targetHelp,
+            boolean switches, Map<String, String> was) {
+        List<String> choices = new ArrayList<String>();
+        for (String target : targets) {
+            if (switches && ODKS_UPDATE.equals(target)) {
+                // ODK's update is Update project files...: ODK v1.6.1 calls its make target
+                // deprecated, and through make it stops where a clean or a fresh clone left
+                // tmp/plugins empty (the 1.154.0 review's I1).
+                continue;
+            }
+            choices.add(switches ? TargetWords.choice(target) : target);
+        }
+        List<Parameter> parameters = new ArrayList<Parameter>();
+        parameters.add(Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
+                .choices(choices.toArray(new String[0]))
+                .defaultValue(was != null ? was.get(OPTION_TARGET)
+                        : switches && first != null ? TargetWords.choice(first) : first)
+                .required()
+                .help(targetHelp)
+                .build());
+        if (switches) {
+            for (BuildSwitches.Switch one : BuildSwitches.Switch.values()) {
+                parameters.add(Parameter.of(OPTION_SWITCH + one.name(), one.words(),
+                        Parameter.Kind.FLAG)
+                        .defaultValue(was != null ? was.get(OPTION_SWITCH + one.name())
+                                : "true")
+                        .help(switchHelp(one))
+                        .build());
+            }
+        }
+        return parameters;
+    }
+
+    /** What the form's values come to, as the line under it says it: make's command. */
+    static String commandShown(Map<String, String> values) {
+        return BuildSwitches.command(String.valueOf(targetIn(values)), offIn(values));
+    }
+
+    /** The target chosen: the one the choice names, whose words are only said. */
+    static String targetIn(Map<String, String> values) {
+        return TargetWords.target(values.get(OPTION_TARGET));
+    }
+
+    /** Whether the Makefile is ODK's, whose switches the form then offers. */
+    private boolean takesOdksSwitches() {
+        return engine != null || route == MakeRun.Route.ODK_IN_CONTAINER
+                || route == MakeRun.Route.ODK_NATIVE;
+    }
+
+    /** The switches whose boxes are not ticked. */
+    private static Set<BuildSwitches.Switch> offIn(Map<String, String> values) {
+        Set<BuildSwitches.Switch> off = EnumSet.noneOf(BuildSwitches.Switch.class);
+        for (BuildSwitches.Switch one : BuildSwitches.Switch.values()) {
+            if (!"true".equalsIgnoreCase(values.get(OPTION_SWITCH + one.name()))) {
+                off.add(one);
+            }
+        }
+        return off;
+    }
+
+    private static String switchHelp(BuildSwitches.Switch one) {
+        switch (one) {
+            case IMP:
+                return "ODK's IMP. Ticked, as ODK's default, the import modules are built again "
+                        + "from their sources, as ODK's test does. Unticked (IMP=false), they are "
+                        + "used as they are: quicker, and nothing is downloaded for them.";
+            case MIR:
+                return "ODK's MIR. Ticked, as ODK's default, the imports' sources - the mirrors - "
+                        + "are downloaded again before the modules are built from them. Unticked "
+                        + "(MIR=false), the mirrors already in src/ontology/mirror are used; a "
+                        + "fresh clone has none, and then this box has to be ticked.";
+            case PAT:
+                return "ODK's PAT. Ticked, as ODK's default, the DOSDP patterns' files - each "
+                        + "pipeline's axioms, definitions.owl - are made again. Unticked "
+                        + "(PAT=false), they are used as they are. It matters only in a project "
+                        + "with patterns.";
+            default:
+                return "ODK's COMP. Ticked, as ODK's default, the components are built again. "
+                        + "Unticked (COMP=false), they are used as they are. It matters only in "
+                        + "a project with components.";
+        }
     }
 
     @Override
@@ -202,7 +359,7 @@ public class BuildAction extends OntoBoardAction {
                     + " (command: " + join(command) + ")").build();
         }
         long seconds = (System.currentTimeMillis() - started) / 1000;
-        return processResult(result, target, outcome, seconds, editFile, ontology);
+        return processResult(result, target, outcome, seconds, editFile, ontology, off);
     }
 
     /**
@@ -214,10 +371,17 @@ public class BuildAction extends OntoBoardAction {
             OperationResult.Builder result) {
         result.note("Run by OntoBoard itself: ODK's own Makefile and recipes, inside Protege, "
                 + "without a container.");
+        // As ODK's make would be run for it, so that the same can be run in a terminal.
+        result.note("Command: " + BuildSwitches.command(target, off));
+        String memory = de.fizkarlsruhe.ise.ontoboard.odk.RobotMemory.noteHere(
+                MakeRun.workingDirectory(editFile));
+        if (memory != null) {
+            result.warn(memory);
+        }
         long started = System.currentTimeMillis();
         de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome =
                 de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.run(editFile, target,
-                        java.util.Collections.<String, String>emptyMap(),
+                        BuildSwitches.variables(off),
                         new java.util.function.BooleanSupplier() {
                             @Override
                             public boolean getAsBoolean() {
@@ -246,7 +410,7 @@ public class BuildAction extends OntoBoardAction {
                             ontology)).build();
         }
         return passed(result, target + " succeeded in " + seconds + "s, run by OntoBoard "
-                + "itself", transcript, true, ontology);
+                + "itself", transcript, true, ontology, new ArrayList<String>());
     }
 
     /**
@@ -255,16 +419,36 @@ public class BuildAction extends OntoBoardAction {
      */
     static OperationResult processResult(OperationResult.Builder result, String target,
             ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology) {
+        return processResult(result, target, outcome, seconds, editFile, ontology,
+                EnumSet.noneOf(BuildSwitches.Switch.class));
+    }
+
+    /**
+     * The same, for a run with Build's switches: a failure is explained knowing which were off
+     * (the 1.154.0 review's I2).
+     */
+    static OperationResult processResult(OperationResult.Builder result, String target,
+            ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology,
+            Set<BuildSwitches.Switch> off) {
+        List<String> warnings = new ArrayList<String>();
+        // F5: make ran the Makefile as it is, where OntoBoard's engine would have refused it.
+        String notOdks = de.fizkarlsruhe.ise.ontoboard.odk.FallbackEligibility.notOdksMakefile(
+                editFile);
+        if (notOdks != null) {
+            result.warn(notOdks);
+            warnings.add(notOdks);
+        }
         List<String> transcript = outcome.getOutput();
         noteTheTranscript(result, transcript, seconds);
-        String failure = MakeRun.explain(target, outcome);
+        String failure = MakeRun.explain(target, outcome, off);
         if (failure != null) {
             // The transcript is above; this is the sentence that says where to look in it.
             return result.failed(outcome.wasCancelled() || outcome.timedOut() ? failure
                     : whyItFailed(target, transcript, failure, editFile, ontology)).build();
         }
         return passed(result, "make " + target + " succeeded in " + seconds + "s", transcript,
-                de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile), ontology);
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile), ontology,
+                warnings);
     }
 
     /**
@@ -292,13 +476,13 @@ public class BuildAction extends OntoBoardAction {
      * <p>The summary is the part nobody has to scroll to (1.135.1): the result dialog cannot
      * be resized, its log box shows six lines, and a passing test's PASS is far below them.
      *
-     * @param odks whether the checks are an ODK project's: ODK's own and the project's
+     * @param odks     whether the checks are an ODK project's: ODK's own and the project's
+     * @param warnings what was already warned of in the result, said first in the summary
      */
     private static OperationResult passed(OperationResult.Builder result, String ran,
-            List<String> transcript, boolean odks, OWLOntology ontology) {
+            List<String> transcript, boolean odks, OWLOntology ontology, List<String> warnings) {
         List<String> passed =
                 de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.passed(transcript);
-        List<String> warnings = new ArrayList<String>();
         if (de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.reasonedWithElk(transcript)) {
             String second = de.fizkarlsruhe.ise.ontoboard.odk.OdkTargets.secondOpinion(
                     ontology,
@@ -334,15 +518,17 @@ public class BuildAction extends OntoBoardAction {
     /** The command this route runs, already decided in {@link #configure()}. */
     private List<String> commandForRoute(File directory, File editFile) {
         if (route == MakeRun.Route.ODK_IN_CONTAINER) {
-            return MakeRun.containerCommand(runtime, directory, image, host, target);
+            return MakeRun.containerCommand(runtime, directory, image, host, target,
+                    BuildSwitches.variables(off));
         }
         if (route == MakeRun.Route.ODK_NATIVE) {
             return de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeCommand(
                     de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(
                             de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment()),
-                    target);
+                    target, BuildSwitches.variables(off));
         }
-        return MakeRun.command(target);
+        // Some other Makefile: ODK's switches are not offered, and none is off.
+        return MakeRun.command(target, BuildSwitches.variables(off));
     }
 
     /** How many passing tests the summary names before it counts the rest. */

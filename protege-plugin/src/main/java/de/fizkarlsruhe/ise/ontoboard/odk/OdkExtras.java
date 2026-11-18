@@ -31,6 +31,44 @@ public final class OdkExtras {
     private OdkExtras() {
     }
 
+    /** What makes a repository's workflows able to write, for its owner and name to fill. */
+    private static final String WORKFLOW_COMMAND = "gh api -X PUT repos/<owner>/<repo>/actions/"
+            + "permissions/workflow -f default_workflow_permissions=write";
+
+    /**
+     * F3: why ODK's documentation workflow cannot publish on a new GitHub repository, and the
+     * one setting that lets it. ODK's {@code docs.yml} declares no {@code permissions}, and a new
+     * repository gives its workflows a token that can only read, so the push to
+     * {@code gh-pages} fails. Said where OntoBoard says how to publish; ODK's file stays ODK's.
+     * {@code <owner>/<repo>} is filled by {@link #workflowPermissions}.
+     */
+    public static final String WORKFLOW_PERMISSIONS = "ODK's documentation workflow pushes to "
+            + "the gh-pages branch, and a new GitHub repository lets workflows only read: allow "
+            + "writing once in Settings > Actions > General > Workflow permissions (or: "
+            + WORKFLOW_COMMAND + ").";
+
+    /**
+     * {@link #WORKFLOW_PERMISSIONS} for a repository: its owner where it is known, else
+     * {@code <owner>}.
+     */
+    public static String workflowPermissions(String owner, String repo) {
+        return filled(WORKFLOW_PERMISSIONS, owner, repo);
+    }
+
+    /**
+     * The same for a page: its command in code, where Markdown shows {@code <owner>} as it is
+     * rather than taking it for a tag.
+     */
+    static String workflowPermissionsOnAPage(String owner, String repo) {
+        return filled(WORKFLOW_PERMISSIONS.replace(WORKFLOW_COMMAND, "`" + WORKFLOW_COMMAND + "`"),
+                owner, repo);
+    }
+
+    private static String filled(String text, String owner, String repo) {
+        return text.replace("<owner>/<repo>", (owner == null || owner.trim().isEmpty()
+                ? "<owner>" : owner.trim()) + "/" + repo);
+    }
+
     /** The extra files of a new project: path from the project's root, with {@code /}, to text. */
     public static LinkedHashMap<String, String> files(OdkProjectConfig config) {
         LinkedHashMap<String, String> files = new LinkedHashMap<String, String>();
@@ -137,6 +175,7 @@ public final class OdkExtras {
                 + "Edit the **edit file**, never a released one: the released files are made by\n"
                 + "a release and overwritten by the next.\n\n"
                 + "## Turning this site on\n\n"
+                + workflowPermissionsOnAPage(c.getGithubOrg(), id) + "\n\n"
                 + "GitHub does not publish Pages until it is asked. Once, in the repository's\n"
                 + "**Settings > Pages**, set the source to **Deploy from a branch** and choose\n"
                 + "the `gh-pages` branch - the workflow creates that branch the first time it\n"
@@ -242,6 +281,7 @@ public final class OdkExtras {
                                 + "/releases/1.0.0/" + id + ".owl`. Commit and push that too.\n"
                         : "")
                 + "\n"
+                + workflowPermissionsOnAPage(c.getGithubOrg(), id) + "\n\n"
                 + "From a terminal, the build alone is `sh run.sh make prepare_release` in\n"
                 + "`src/ontology`, which needs Docker.\n\n"
                 + "A version IRI cannot be taken back once somebody has imported it, so a version\n"

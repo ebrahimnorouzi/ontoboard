@@ -17,6 +17,7 @@ import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -57,29 +58,24 @@ public final class ParameterDialog {
      */
     public static Map<String, String> show(Component parent, String title, String explanation,
             List<Parameter> parameters) {
+        return show(parent, title, explanation, parameters, null);
+    }
+
+    /**
+     * Asks for values, with a line under the form that says what they come to - Build's make
+     * command - written again as soon as any value changes.
+     *
+     * @param preview what the values come to, or null for no such line
+     * @return the values keyed by parameter key, or null if the user cancelled
+     */
+    public static Map<String, String> show(Component parent, String title, String explanation,
+            List<Parameter> parameters,
+            java.util.function.Function<Map<String, String>, String> preview) {
         if (parameters == null || parameters.isEmpty()) {
             return new LinkedHashMap<String, String>();
         }
         Map<String, Component> controls = new LinkedHashMap<String, Component>();
-        JPanel form = buildForm(parent, parameters, controls);
-
-        JPanel content = new JPanel(new BorderLayout(0, 10));
-        if (explanation != null && !explanation.trim().isEmpty()) {
-            JLabel header = new JLabel("<html><body style='width:400px'>" + escape(explanation)
-                    + "</body></html>");
-            header.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
-            content.add(header, BorderLayout.NORTH);
-        }
-        // Scrolled, and only when it has to be - see TallForm for what goes wrong otherwise.
-        content.add(TallForm.scrolledIfTall(form), BorderLayout.CENTER);
-
-        JButton reset = new JButton("Reset");
-        reset.setToolTipText("Put every option back to its default");
-        reset.addActionListener(a -> applyValues(parameters, controls,
-                Parameter.defaultsOf(parameters)));
-        JPanel south = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
-        south.add(reset);
-        content.add(south, BorderLayout.SOUTH);
+        JPanel content = content(parent, explanation, parameters, controls, preview);
 
         // Loop rather than one shot: on invalid input the same dialog reopens with what was
         // typed, instead of discarding it and making the user start again.
@@ -103,6 +99,105 @@ public final class ParameterDialog {
                             : problems.size() + " values need changing",
                     JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    /** The name of the line that says what the values come to, for a test to find it. */
+    static final String PREVIEW = "ontoboard.preview";
+
+    /**
+     * The width a line under the form wraps at: within the explanation's 400 px, so that the
+     * line never makes the dialog wider than the explanation does.
+     */
+    private static final int LINE_WIDTH = 380;
+
+    /**
+     * The line under the form as its label shows it: as it is when it fits, else as HTML that
+     * wraps at {@link #LINE_WIDTH} - a release's command with a version IRI of its own is
+     * longer than any dialog should be wide.
+     */
+    private static String wrappedIfLong(JLabel line, String text) {
+        if (text == null || line.getFontMetrics(line.getFont()).stringWidth(text) <= LINE_WIDTH) {
+            return text;
+        }
+        return "<html><body style='width:" + LINE_WIDTH + "px'>" + escape(text)
+                + "</body></html>";
+    }
+
+    /**
+     * Makes the window the line is in as large as what it holds, when that has grown: a line
+     * that wraps to more lines after the dialog was laid out - Release's, once another version
+     * IRI is chosen - pushed OK and Cancel below the edge of a dialog that cannot be resized
+     * (found by hand in 1.154.0's release check). It only grows, so that typing does not make
+     * the dialog jump back and forth.
+     */
+    private static void grownToFit(Component line) {
+        java.awt.Window window = javax.swing.SwingUtilities.getWindowAncestor(line);
+        if (window == null) {
+            return;
+        }
+        java.awt.Dimension wanted = window.getPreferredSize();
+        if (wanted.height > window.getHeight() || wanted.width > window.getWidth()) {
+            window.setSize(Math.max(wanted.width, window.getWidth()),
+                    Math.max(wanted.height, window.getHeight()));
+            window.validate();
+        }
+    }
+
+    /**
+     * What the dialog shows: the explanation, the form, the line of what the values come to
+     * when there is one, and Reset. Visible to the package so a test can render it and work
+     * its controls.
+     */
+    static JPanel content(Component parent, String explanation, List<Parameter> parameters,
+            Map<String, Component> controls,
+            java.util.function.Function<Map<String, String>, String> preview) {
+        JPanel form = buildForm(parent, parameters, controls);
+        JLabel previewed = null;
+        if (preview != null) {
+            final JLabel line = new JLabel(" ");
+            line.setName(PREVIEW);
+            line.setFont(new Font(Font.MONOSPACED, Font.PLAIN, new JTextField().getFont()
+                    .getSize()));
+            line.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
+            Runnable again = () -> {
+                line.setText(wrappedIfLong(line,
+                        preview.apply(readValues(parameters, controls))));
+                // After the change, not inside it: a document's listeners run while it is
+                // locked, and laying out a window there can wait on a painter that waits on it.
+                javax.swing.SwingUtilities.invokeLater(() -> grownToFit(line));
+            };
+            for (Component control : controls.values()) {
+                whenItChanges(control, again);
+            }
+            again.run();
+            previewed = line;
+        }
+
+        JPanel content = new JPanel(new BorderLayout(0, 10));
+        if (explanation != null && !explanation.trim().isEmpty()) {
+            JLabel header = new JLabel("<html><body style='width:400px'>" + escape(explanation)
+                    + "</body></html>");
+            header.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+            content.add(header, BorderLayout.NORTH);
+        }
+        // Scrolled, and only when it has to be - see TallForm for what goes wrong otherwise.
+        content.add(TallForm.scrolledIfTall(form), BorderLayout.CENTER);
+
+        JButton reset = new JButton("Reset");
+        reset.setToolTipText("Put every option back to its default");
+        reset.addActionListener(a -> applyValues(parameters, controls,
+                Parameter.defaultsOf(parameters)));
+        JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
+        buttons.add(reset);
+        if (previewed == null) {
+            content.add(buttons, BorderLayout.SOUTH);
+        } else {
+            JPanel south = new JPanel(new BorderLayout(0, 6));
+            south.add(previewed, BorderLayout.NORTH);
+            south.add(buttons, BorderLayout.SOUTH);
+            content.add(south, BorderLayout.SOUTH);
+        }
+        return content;
     }
 
     /**
@@ -276,6 +371,41 @@ public final class ParameterDialog {
             return new File(hint);
         }
         return null;
+    }
+
+    /** Runs {@code again} whenever what a control holds changes, whatever kind it is. */
+    private static void whenItChanges(Component control, Runnable again) {
+        if (control instanceof JCheckBox) {
+            ((JCheckBox) control).addItemListener(e -> again.run());
+        } else if (control instanceof JComboBox) {
+            ((JComboBox<?>) control).addActionListener(e -> again.run());
+        } else {
+            Object inner = control instanceof JComponent
+                    ? ((JComponent) control).getClientProperty("ontoboard.field") : null;
+            if (inner == null && control instanceof JComponent) {
+                inner = ((JComponent) control).getClientProperty("ontoboard.area");
+            }
+            Component typed = inner instanceof Component ? (Component) inner : control;
+            if (typed instanceof javax.swing.text.JTextComponent) {
+                ((javax.swing.text.JTextComponent) typed).getDocument().addDocumentListener(
+                        new javax.swing.event.DocumentListener() {
+                            @Override
+                            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                                again.run();
+                            }
+
+                            @Override
+                            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                                again.run();
+                            }
+
+                            @Override
+                            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                                again.run();
+                            }
+                        });
+            }
+        }
     }
 
     private static Map<String, String> readValues(List<Parameter> parameters,

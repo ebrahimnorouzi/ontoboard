@@ -1,0 +1,27 @@
+Prefix(:=<http://purl.obolibrary.org/obo/ro.owl#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/ro.owl>
+<http://purl.obolibrary.org/obo/ro/releases/2026-01-01/ro.owl>
+Annotation(dcterms:title "Relation Ontology"@en)
+Annotation(rdfs:comment "A small piece of the Relation Ontology, for OntoBoard's tests.")
+Annotation(owl:versionInfo "2026-01-01")
+
+Declaration(Class(obo:BFO_0000001))
+Declaration(Class(obo:BFO_0000002))
+Declaration(ObjectProperty(obo:RO_0000052))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+Declaration(AnnotationProperty(dcterms:title))
+AnnotationAssertion(rdfs:label obo:BFO_0000001 "entity"@en)
+AnnotationAssertion(obo:IAO_0000115 obo:BFO_0000002 "An entity that persists, endures, or continues to exist through time while maintaining its identity."@en)
+AnnotationAssertion(rdfs:label obo:BFO_0000002 "continuant"@en)
+SubClassOf(obo:BFO_0000002 obo:BFO_0000001)
+AnnotationAssertion(rdfs:label obo:RO_0000052 "characteristic of"@en)
+)

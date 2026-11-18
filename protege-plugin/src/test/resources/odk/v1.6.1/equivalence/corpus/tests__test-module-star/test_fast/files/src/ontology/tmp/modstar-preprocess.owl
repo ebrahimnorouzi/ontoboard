@@ -1,0 +1,67 @@
+Prefix(:=<http://purl.obolibrary.org/obo/modstar.owl#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/modstar.owl>
+Import(<http://purl.obolibrary.org/obo/modstar/imports/pato_import.owl>)
+Import(<http://purl.obolibrary.org/obo/modstar/imports/ro_import.owl>)
+Annotation(<http://purl.org/dc/terms/description> "None")
+Annotation(<http://purl.org/dc/terms/license> <https://creativecommons.org/licenses/unspecified>)
+Annotation(<http://purl.org/dc/terms/title> "Test ROBOT extract star")
+Annotation(<http://www.geneontology.org/formats/oboInOwl#hasOBOFormatVersion> "1.2")
+
+Declaration(Class(<http://purl.obolibrary.org/obo/MODSTAR_0000000>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/description>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/license>))
+Declaration(AnnotationProperty(<http://purl.org/dc/terms/title>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#hasOBOFormatVersion>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#id>))
+Declaration(AnnotationProperty(<http://www.geneontology.org/formats/oboInOwl#is_metadata_tag>))
+Declaration(AnnotationProperty(rdfs:label))
+############################
+#   Annotation Properties
+############################
+
+# Annotation Property: <http://purl.org/dc/terms/description> (description)
+
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#id> <http://purl.org/dc/terms/description> "http://purl.org/dc/terms/description")
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#is_metadata_tag> <http://purl.org/dc/terms/description> "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label <http://purl.org/dc/terms/description> "description")
+
+# Annotation Property: <http://purl.org/dc/terms/license> (license)
+
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#id> <http://purl.org/dc/terms/license> "http://purl.org/dc/terms/license")
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#is_metadata_tag> <http://purl.org/dc/terms/license> "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label <http://purl.org/dc/terms/license> "license")
+
+# Annotation Property: <http://purl.org/dc/terms/title> (title)
+
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#id> <http://purl.org/dc/terms/title> "http://purl.org/dc/terms/title")
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#is_metadata_tag> <http://purl.org/dc/terms/title> "true"^^xsd:boolean)
+AnnotationAssertion(rdfs:label <http://purl.org/dc/terms/title> "title")
+
+# Annotation Property: <http://www.geneontology.org/formats/oboInOwl#hasOBOFormatVersion> (has_obo_format_version)
+
+AnnotationAssertion(rdfs:label <http://www.geneontology.org/formats/oboInOwl#hasOBOFormatVersion> "has_obo_format_version")
+
+# Annotation Property: <http://www.geneontology.org/formats/oboInOwl#id> (id)
+
+AnnotationAssertion(rdfs:label <http://www.geneontology.org/formats/oboInOwl#id> "id")
+
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://purl.obolibrary.org/obo/MODSTAR_0000000> (root node)
+
+AnnotationAssertion(<http://www.geneontology.org/formats/oboInOwl#id> <http://purl.obolibrary.org/obo/MODSTAR_0000000> "MODSTAR:0000000")
+AnnotationAssertion(rdfs:label <http://purl.obolibrary.org/obo/MODSTAR_0000000> "root node")
+
+
+)

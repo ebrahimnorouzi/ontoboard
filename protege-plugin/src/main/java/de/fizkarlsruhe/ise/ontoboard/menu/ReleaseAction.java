@@ -168,6 +168,17 @@ public class ReleaseAction extends OntoBoardAction {
                 }
             }
             if (problems.isEmpty()) {
+                // Ruling 18: the same date again replaces that release - asked, not warned of
+                // afterwards. Cancel is the default; it releases nothing.
+                String sameDay = sameDayQuestion(projectRoot, ontologyId,
+                        OntologyVersion.parseOrNull(chosen.get(OPTION_DATE).trim()));
+                if (sameDay != null && javax.swing.JOptionPane.showOptionDialog(
+                        getOWLWorkspace(), sameDay, "A release of that date is there",
+                        javax.swing.JOptionPane.DEFAULT_OPTION,
+                        javax.swing.JOptionPane.QUESTION_MESSAGE, null,
+                        new Object[] {"Replace", "Cancel"}, "Cancel") != 0) {
+                    return false;
+                }
                 break;
             }
             StringBuilder message = new StringBuilder();
@@ -224,13 +235,36 @@ public class ReleaseAction extends OntoBoardAction {
      * fetched on the quiet - it is five gigabytes.
      */
     private boolean configureOdk(File editFile, OntologyVersion declared, String today) {
+        // Asking the machine and the engine takes a moment before the form is on screen to say
+        // anything (minor 9): the wait cursor says it meanwhile.
+        java.awt.Component window = getOWLWorkspace();
+        java.awt.Cursor was = window.getCursor();
+        window.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        OdkReleaseForm.Start start;
+        try {
+            start = whoReleases(editFile, declared, today);
+        } finally {
+            window.setCursor(was);
+        }
+        if (start == null) {
+            return false;
+        }
+        return chooseTheRelease(start);
+    }
+
+    /**
+     * Who releases - the container, ODK's tools, OntoBoard itself - and whether anybody can; a
+     * refusal is shown. The form's start, with the route; null when nobody can release.
+     */
+    private OdkReleaseForm.Start whoReleases(File editFile, OntologyVersion declared,
+            String today) {
         ProcessRunner.Runner real = ProcessRunner.real();
         OdkReleaseForm.Start start = OdkReleaseForm.start(editFile, declared, today, real);
         if (start.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(start.refusal()), "Cannot release",
                     javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
+            return null;
         }
         String found = MakeRun.containerRuntime(real);
         OdkImage.Choice choice = found == null ? null : OdkImage.forProject(
@@ -246,10 +280,11 @@ public class ReleaseAction extends OntoBoardAction {
         // the Makefile through for two targets takes a moment.
         String whyNotFast = null;
         String whyNotFull = null;
+        Map<String, String> variables = null;
         if (!container && script == null && OdkRoute.mayRunWithoutContainer(use)
                 && !nativeEnvironment) {
             // As the release runs it, after make clean.
-            Map<String, String> variables = new java.util.LinkedHashMap<String, String>();
+            variables = new java.util.LinkedHashMap<String, String>();
             variables.put("VERSION",
                     OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
             String[] cannot = whyTheEngineCannot(editFile, variables);
@@ -259,13 +294,24 @@ public class ReleaseAction extends OntoBoardAction {
         ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
                 container || choice == null ? null : choice.note(), script, whyNotFast,
                 whyNotFull);
+        // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is there.
+        // Declined, the offer was the refusal.
+        String cure = variables == null ? null : DosdpOffer.forRelease(route.refusal());
+        if (cure != null) {
+            if (!DosdpOffer.ask(getOWLWorkspace(), cure, "Cannot release", false)) {
+                return null;
+            }
+            String[] cannot = whyTheEngineCannot(editFile, variables);
+            route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
+                    container || choice == null ? null : choice.note(), script, cannot[0],
+                    cannot[1]);
+        }
         if (route.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(route.refusal()), "Cannot release",
                     javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
+            return null;
         }
-        start = start.withRoute(route);
         odkRoute = route;
         odkEditFile = editFile;
         imageNote = null;
@@ -275,7 +321,11 @@ public class ReleaseAction extends OntoBoardAction {
             imageNote = choice.note();
             host = OdkContainer.Host.detect(found, real);
         }
+        return start.withRoute(route);
+    }
 
+    /** What is said before the form, and the form: the release as chosen. False when cancelled. */
+    private boolean chooseTheRelease(OdkReleaseForm.Start start) {
         // Before the build, not in the question after it: a release's commit leaves new files
         // out, and a tag without a new import module is a project that does not build.
         String notice = OdkReleaseForm.newFilesNotice(start);
@@ -293,8 +343,10 @@ public class ReleaseAction extends OntoBoardAction {
         // Re-shown with what was typed, as the older form is: a correction, not a new start.
         Map<String, String> values = OdkReleaseForm.defaults(start);
         while (true) {
+            // Under the form, the release in plain words and make's commands (E3).
             Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Release",
-                    OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values));
+                    OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values),
+                    OdkReleaseForm.lineUnder(start));
             if (chosen == null) {
                 return false;
             }
@@ -351,6 +403,12 @@ public class ReleaseAction extends OntoBoardAction {
             odk = OdkRelease.inContainer(runtime, image, host, start.facts().ontology(),
                     ProcessRunner.real(), null);
         }
+        // Said first: the image, when it is not the project's own ODK; ROBOT's memory, when
+        // OntoBoard builds it and the project asks for more than Protégé has.
+        String routeNote = by == ReleaseRoute.Kind.ITSELF
+                ? de.fizkarlsruhe.ise.ontoboard.odk.RobotMemory.noteHere(
+                        start.facts().ontology())
+                : imageNote;
         return OdkReleaseForm.run(operationName(), start, odkChosen, odk,
                 ProcessRunner.real(), new OdkRelease.Asks() {
                     @Override
@@ -362,7 +420,38 @@ public class ReleaseAction extends OntoBoardAction {
                     public boolean stopped() {
                         return BackgroundRun.abandoned();
                     }
-                }, imageNote, protegeReadsAgain());
+                }, routeNote, protegeReadsAgain());
+    }
+
+    /**
+     * A release that kept its import statements: said, with the button that releases it again
+     * as one self-contained file - "imports not merged", which the testers of 1.132.0 asked a
+     * button for.
+     *
+     * @param mergedAgain the same release again, the imports merged in
+     */
+    static void keepsItsImports(OperationResult.Builder result, int imports,
+            final java.util.function.Supplier<OperationResult> mergedAgain) {
+        // Found by releasing a real project: the dated copy sits under releases/, outside the
+        // directory catalog-v001.xml covers, so its imports resolve only over the network.
+        // That is how OBO publishes - the PURL layer answers for them - but it means the file
+        // is not self-contained, and somebody opening the dated copy offline gets an ontology
+        // missing everything the imports hold.
+        result.warn("This release keeps its " + imports + " import statement"
+                + (imports == 1 ? "" : "s") + ", and the dated copy sits outside the directory "
+                + "catalog-v001.xml covers - so opening it will try to fetch them over the "
+                + "network. That is what OBO publishes; for a file that stands on its own, "
+                + "release it again as one self-contained file.", new OperationResult.Fix() {
+                    @Override
+                    public String label() {
+                        return "Release it again as one self-contained file";
+                    }
+
+                    @Override
+                    public OperationResult apply() {
+                        return mergedAgain.get();
+                    }
+                });
     }
 
     /** The git commands of a release as the question shows them, in a view that scrolls. */
@@ -552,6 +641,25 @@ public class ReleaseAction extends OntoBoardAction {
         return "releases/ already has " + newest.getText() + ", which is newer than "
                 + releasing.getText() + ", so " + releasing.getText() + " would be published "
                 + "below a version that is already out. " + instead;
+    }
+
+    /**
+     * What a dated release asks when its date is the newest release's own (ruling 18), or null:
+     * cut again it replaces {@code releases/<date>}, as OBO's generated Makefile does - and that
+     * release may have been taken already, so it is not replaced unseen. A number is never
+     * released again ({@link #clashWithReleases}), so it asks nothing.
+     */
+    static String sameDayQuestion(File projectRoot, String ontologyId,
+            OntologyVersion releasing) {
+        if (releasing == null || releasing.getScheme() != OntologyVersion.Scheme.DATE) {
+            return null;
+        }
+        OntologyVersion newest = newestRelease(projectRoot, ontologyId, releasing.getScheme());
+        if (newest == null || releasing.compareTo(newest) != 0) {
+            return null;
+        }
+        return "Replace the " + releasing.getText() + " release? releases/" + releasing.getText()
+                + " holds a release made under that date, and somebody may already have taken it.";
     }
 
     /** The form, with whatever was typed last time already in it. */
@@ -866,18 +974,12 @@ public class ReleaseAction extends OntoBoardAction {
         result.note("The copy at the project root is the same file under the name a PURL resolves "
                 + "to, which is where `make prepare_release` puts it as well.");
         if (!merge && !release.getImportsDeclarations().isEmpty()) {
-            // Found by releasing a real project: the dated copy sits under releases/, outside the
-            // directory catalog-v001.xml covers, so its imports resolve only over the network.
-            // That is how OBO publishes - the PURL layer answers for them - but it means the file
-            // is not self-contained, and somebody opening the dated copy offline gets an ontology
-            // missing everything the imports hold.
-            result.warn("This release keeps its " + release.getImportsDeclarations().size()
-                    + " import statement"
-                    + (release.getImportsDeclarations().size() == 1 ? "" : "s")
-                    + ", and the dated copy sits outside the directory catalog-v001.xml covers - "
-                    + "so opening it will try to fetch them over the network. That is what OBO "
-                    + "publishes; tick 'One self-contained file' if you want a file that stands on "
-                    + "its own.");
+            // Its button makes the same release again with the imports merged in: the same
+            // version, so it takes the place of this one, as releasing it again would.
+            keepsItsImports(result, release.getImportsDeclarations().size(), () -> {
+                merge = true;
+                return run(ontology);
+            });
         }
         return result.summary("Released " + id + " " + version.getText() + ": "
                 + release.getAxiomCount() + " axioms, "

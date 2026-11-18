@@ -1,0 +1,33 @@
+make --assume-new=obim-edit.owl --assume-new=imports/ro_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/ro_import.owl
+make[1]: Entering directory 'C:/tmp/ob-1154/i2/runs/page/src/ontology'
+curl -L http://127.0.0.1:8765/obo/ro.owl --create-dirs -o tmp/ro-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/ro-download.owl -o tmp/mirror-ro.owl
+mkdir -p mirror
+if [ -f tmp/mirror-ro.owl ]; then if cmp -s tmp/mirror-ro.owl mirror/ro.owl ; then echo "Mirror identical, ignoring."; else echo "Mirrors different, updating." &&\
+	cp tmp/mirror-ro.owl mirror/ro.owl; fi; fi
+Mirrors different, updating.
+robot --catalog catalog-v001.xml convert --input obim-edit.owl --format ofn --output tmp/obim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/obim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-obim-edit.ofn
+robot --catalog catalog-v001.xml query --input tmp/merged-obim-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+robot --catalog catalog-v001.xml annotate --input mirror/ro.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	         --force true --copy-ontology-annotations true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/obim/imports/ro_import.owl annotate -V http://purl.obolibrary.org/obo/obim/releases/2026-11-17/imports/ro_import.owl --annotation owl:versionInfo 2026-11-17 convert -f ofn --output imports/ro_import.owl.tmp.owl && mv imports/ro_import.owl.tmp.owl imports/ro_import.owl
+Ontology IRI cannot be null
+make[1]: *** [Makefile:396: imports/ro_import.owl] Error 1
+make[1]: Leaving directory 'C:/tmp/ob-1154/i2/runs/page/src/ontology'
+make: *** [Makefile:479: refresh-ro] Error 2

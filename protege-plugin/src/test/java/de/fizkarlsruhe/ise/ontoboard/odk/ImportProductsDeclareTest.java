@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,102 @@ class ImportProductsDeclareTest {
             ids.add(product.getId());
         }
         return ids;
+    }
+
+    // ------------------------------------------------------------------ ODK's module types
+
+    /** Each kind of import declares ODK's module type for it, which ODK's own reading takes. */
+    @Test
+    void eachKindDeclaresOdksModuleType() {
+        String[][] expected = {{"MODULE", "slme", "BOT"}, {"ONLY_THESE", "filter", null},
+            {"WITH_RELATIONS", "minimal", null}, {"WHOLE", "mirror", null}};
+        for (String[] kind : expected) {
+            String after = ImportProducts.declare(seeded(), "uberon", null,
+                    ImportProducts.Kind.valueOf(kind[0]));
+
+            ImportProducts.Product uberon = ImportProducts.named(
+                    ImportProducts.declaredIn(after), "uberon");
+            OdkProjectModel.load(after);
+            assertEquals(kind[1], uberon.getModuleType(), kind[0]);
+            if (kind[2] != null) {
+                assertEquals(kind[2], uberon.getSlmeMethod(), kind[0]);
+            }
+        }
+    }
+
+    /**
+     * Each kind in plain words, with ODK's name for it for those who know ODK's - the words as
+     * measured in ODK's image: asked for a, its parent b and d (what a is part of), filter kept
+     * a, b and "a is a b"; minimal kept those and "a is part of d" with part of; neither kept
+     * b's own parent. Filter and minimal are told apart by their own words: "is a" against
+     * every relation (the 1.154.0 review's M5 - "links" and "relations" read alike).
+     */
+    @Test
+    void eachKindSaysWhatTheModuleHolds() {
+        assertEquals("The terms you chose and what they need",
+                ImportProducts.Kind.MODULE.words());
+        assertEquals("Only the terms you chose, with their \"is a\" links",
+                ImportProducts.Kind.ONLY_THESE.words());
+        assertEquals("The terms you chose, with every relation between them",
+                ImportProducts.Kind.WITH_RELATIONS.words());
+        assertEquals("The whole ontology", ImportProducts.Kind.WHOLE.words());
+        assertEquals("filter", ImportProducts.Kind.ONLY_THESE.odkName());
+        assertEquals("slme, BOT", ImportProducts.Kind.MODULE.odkName());
+    }
+
+    /** A source of this machine is kept as it is, whatever the kind: as 1.153.0 decided. */
+    @Test
+    void aFileOfThisMachineIsKeptAsItIsWhateverTheKind() {
+        String after = ImportProducts.declare(seeded(), "uberon", "file:/C:/x/uberon.owl",
+                ImportProducts.Kind.WHOLE);
+
+        ImportProducts.Product uberon = ImportProducts.named(ImportProducts.declaredIn(after),
+                "uberon");
+        assertTrue(ImportProducts.isKeptAsItIs(uberon), after);
+    }
+
+    /**
+     * ODK's update gives the module ODK's own rule for its type, and OntoBoard's own engine
+     * can run the refresh of each, on ODK's oboimports seed.
+     */
+    @Test
+    void odksUpdateGivesEachKindItsRuleAndTheEngineRunsItsRefresh(
+            @org.junit.jupiter.api.io.TempDir java.io.File top) throws Exception {
+        String[][] expected = {{"ONLY_THESE", "filter"}, {"WITH_RELATIONS", "minimal"},
+            {"WHOLE", "mirror"}, {"MODULE", "slme"}};
+        for (String[] kind : expected) {
+            java.io.File root = new java.io.File(top, kind[0]);
+            for (java.util.Map.Entry<String, byte[]> file : Goldens.seedTree("oboimports")
+                    .entrySet()) {
+                java.io.File target = new java.io.File(root, file.getKey());
+                java.nio.file.Files.createDirectories(target.getParentFile().toPath());
+                java.nio.file.Files.write(target.toPath(), file.getValue());
+            }
+            java.io.File config = new java.io.File(root, "src/ontology/obim-odk.yaml");
+            java.io.File terms = new java.io.File(root, "src/ontology/imports/uberon_terms.txt");
+            java.nio.file.Files.write(terms.toPath(), "UBERON:0000062\n"
+                    .getBytes(StandardCharsets.UTF_8));
+            java.nio.file.Files.write(config.toPath(), ImportProducts.declare(
+                    new String(java.nio.file.Files.readAllBytes(config.toPath()),
+                            StandardCharsets.UTF_8), "uberon", null,
+                    ImportProducts.Kind.valueOf(kind[0])).getBytes(StandardCharsets.UTF_8));
+
+            OdkUpdate.apply(root, OdkUpdate.plan(root));
+
+            String makefile = new String(java.nio.file.Files.readAllBytes(
+                    new java.io.File(root, "src/ontology/Makefile").toPath()),
+                    StandardCharsets.UTF_8);
+            assertTrue(java.util.regex.Pattern.compile("(?m)^IMPORTS =.*\\buberon\\b")
+                    .matcher(makefile).find(), kind[0] + ": among ODK's imports");
+            // slme with BOT is the group's own default: ODK's generic rule builds that one,
+            // as it builds the seed's ro; every other type gets a rule of its own.
+            assertEquals(!kind[1].equals("slme"),
+                    makefile.contains("## Module for ontology: uberon (" + kind[1] + ")"),
+                    kind[0] + ": ODK's rule for " + kind[1]);
+            assertNull(OdkEngine.whyNot(new java.io.File(root, "src/ontology/obim-edit.owl"),
+                    "refresh-uberon", java.util.Collections.<String, String>emptyMap()),
+                    kind[0]);
+        }
     }
 
     @Test

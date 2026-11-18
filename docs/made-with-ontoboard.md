@@ -25,6 +25,16 @@ nine ROBOT templates. Six releases, the last one the graph's.
 [Try it](examples/pizza-bfo.md)
 </div>
 
+<div class="ob-card" markdown>
+### :material-egg: Boiling eggs
+A test kitchen's eggs, boiled by a recipe and weighed first, as an ODK project: PMDco and
+NFDIcore patterns and one term of IAO, with two questions it must answer. Two releases.
+
+[Repository](https://github.com/ebrahimnorouzi/egg-boiling-ontology) ·
+[Documentation](https://ebrahimnorouzi.github.io/egg-boiling-ontology/ontology/index-en.html) ·
+[Try it](examples/egg-boiling-ontology.md)
+</div>
+
 </div>
 
 ## Add yours

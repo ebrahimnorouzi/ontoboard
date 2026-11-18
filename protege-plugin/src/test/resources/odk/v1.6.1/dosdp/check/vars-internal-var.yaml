@@ -1,0 +1,14 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+vars:
+  x: "owl:Thing"
+list_vars:
+  xs: "owl:Thing"
+internal_vars:
+  - var_name: iv
+    input: xs
+    apply:
+      sep: " "
+name:
+  text: "%s"
+  vars: [iv]

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.VersionIriShape;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
@@ -139,6 +140,174 @@ class OdkReleaseFormTest {
 
     private OdkReleaseForm.Start start() {
         return OdkReleaseForm.start(edit, null, "2026-11-12", git());
+    }
+
+    /**
+     * F6: the form offers to release even when the release cannot be compared with the last
+     * one - off unless ticked, after the box for a term that is gone - and the request carries
+     * what was chosen.
+     */
+    @Test
+    void theFormOffersToReleaseUncomparedOffUnlessTicked() {
+        OdkReleaseForm.Start start = start();
+
+        Parameter uncompared = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.UNCOMPARED);
+
+        assertNotNull(uncompared);
+        assertEquals(OdkRelease.UNCOMPARED_LABEL, uncompared.getLabel());
+        assertEquals("false", uncompared.getDefaultValue());
+        assertFalse(OdkReleaseForm.request(start, chosen(start)).releasesUncompared());
+        assertTrue(OdkReleaseForm.request(start, chosen(start, OdkReleaseForm.UNCOMPARED,
+                "true")).releasesUncompared());
+    }
+
+    /**
+     * A picture of the release form as its dialog lays it out, for a person to look at (memory:
+     * a box a test can tick may be one nobody can reach). Only with
+     * {@code -Dontoboard.pictures=<folder>}.
+     */
+    @Test
+    void aPictureOfTheFormWhenAsked() throws IOException {
+        String into = System.getProperty("ontoboard.pictures");
+        org.junit.jupiter.api.Assumptions.assumeTrue(into != null && !into.trim().isEmpty(),
+                "Pictures only with -Dontoboard.pictures=<folder>.");
+        OdkReleaseForm.Start start = start();
+        javax.swing.JPanel form = ParameterDialog.buildForm(null, OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), new LinkedHashMap<String, java.awt.Component>());
+        javax.swing.JOptionPane pane = new javax.swing.JOptionPane(form,
+                javax.swing.JOptionPane.PLAIN_MESSAGE, javax.swing.JOptionPane.OK_CANCEL_OPTION);
+        java.awt.Dimension size = pane.getPreferredSize();
+        pane.setSize(size);
+        pane.addNotify();
+        pane.validate();
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(size.width,
+                size.height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = image.createGraphics();
+        pane.paint(graphics);
+        graphics.dispose();
+        File png = new File(into, "release-form.png");
+        assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
+        javax.imageio.ImageIO.write(image, "png", png);
+    }
+
+    // ------------------------------------------------------------------ the line under the form
+
+    /**
+     * E3: the line under the form says the release in plain words, then make's commands as the
+     * release runs them - make clean, then ODK's target with the version, and the version IRI
+     * where it is not ODK's shape - for those who know ODK.
+     */
+    @Test
+    void theLineUnderTheFormSaysTheReleaseInWordsThenMakesCommands() {
+        OdkReleaseForm.Start start = start();
+
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.0", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+        assertEquals("Release, with the imports as they are - make clean, then make "
+                + "prepare_release_fast VERSION=1.0.0", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.REFRESH, "false")));
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V " + BASE
+                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0'", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.SHAPE,
+                                BASE + "/<version>/eggboil.owl")));
+        // Not a version yet: what was typed; the form says what is wrong when it is sent.
+        assertEquals("Release, with fresh imports - make clean, then make prepare_release "
+                + "VERSION=1.0.x", OdkReleaseForm.lineUnder(start)
+                        .apply(chosen(start, OdkReleaseForm.VERSION, "1.0.x")));
+    }
+
+    /**
+     * The 1.154.0 review's M1: the release is asked to commit first the files the box named -
+     * read before the build - so what the build itself leaves new is not swept in with them.
+     */
+    @Test
+    void theRequestCarriesTheNewFilesTheBoxNamed() {
+        status = Arrays.asList("## main", "?? src/sparql/question.rq", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        assertEquals(Collections.singletonList("src/sparql/question.rq"),
+                OdkReleaseForm.request(start, chosen(start)).newFiles());
+    }
+
+    /** OntoBoard itself, where it cannot fetch the imports, builds the fast release: said. */
+    @Test
+    void aReleaseOnTheImportsAsTheyAreSaysTheFastTarget() {
+        OdkReleaseForm.Start start = start().withRoute(ReleaseRoute.decide(false, false,
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC,
+                "Docker is not running", null, null, null, "It needs the network."));
+
+        assertEquals("Release, with the imports as they are - make clean, then make "
+                + "prepare_release_fast VERSION=1.0.0",
+                OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+    }
+
+    /** A project released by its own script: the explanation names the script; no make line. */
+    @Test
+    void aProjectsOwnScriptHasNoMakeLine() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+
+        assertNull(OdkReleaseForm.lineUnder(start()));
+    }
+
+    /**
+     * The release form with its line, at the size its dialog lays it out, for a person to look
+     * at (target/design/release-form.png): the line of a version IRI of its own wraps, so the
+     * dialog is no wider for it.
+     */
+    @Test
+    void theReleaseFormAndItsLineRenderAtTheirRealSize() throws IOException {
+        final OdkReleaseForm.Start start = start();
+        Map<String, String> values = chosen(start, OdkReleaseForm.SHAPE,
+                BASE + "/<version>/eggboil.owl");
+        javax.swing.JPanel with = ParameterDialog.content(null, OdkReleaseForm.explanation(start),
+                OdkReleaseForm.parameters(start, values),
+                new LinkedHashMap<String, java.awt.Component>(), OdkReleaseForm.lineUnder(start));
+        javax.swing.JPanel without = ParameterDialog.content(null,
+                OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values),
+                new LinkedHashMap<String, java.awt.Component>(), null);
+
+        java.awt.Dimension size = with.getPreferredSize();
+        assertTrue(size.width <= without.getPreferredSize().width,
+                size.width + " px with the line, " + without.getPreferredSize().width
+                        + " px without");
+        with.setSize(size);
+        with.addNotify();
+        with.validate();
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(size.width,
+                size.height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = image.createGraphics();
+        graphics.setColor(java.awt.Color.WHITE);
+        graphics.fillRect(0, 0, size.width, size.height);
+        with.paint(graphics);
+        graphics.dispose();
+        File png = new File("target/design/release-form.png");
+        assertTrue(png.getParentFile().isDirectory() || png.getParentFile().mkdirs());
+        javax.imageio.ImageIO.write(image, "png", png);
+        assertTrue(png.length() > 2048, png.getAbsolutePath());
+    }
+
+    /**
+     * F5: a release made by make - in ODK's container, or with ODK's tools - of a Makefile
+     * somebody edited says so; OntoBoard's engine is no such route: it refuses that Makefile.
+     */
+    @Test
+    void aReleaseByMakeOfAnEditedMakefileSaysSo() throws IOException {
+        File makefile = new File(ontology, "Makefile");
+        write(makefile, read(makefile) + "\n# a line of their own\n");
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null);
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, result.getStatus(),
+                result.getSummary());
+        assertTrue(String.join("\n", result.getLog()).contains("This project's Makefile is not "
+                + "the one ODK v1.6.1 writes for its configuration"), result.getLog().toString());
+        assertTrue(odk().runsTheMakefileAsItIs(), "a container, ODK's tools");
+        assertFalse(OdkRelease.byOntoBoardItself(edit, null).runsTheMakefileAsItIs(),
+                "the engine refuses it instead, with its reason");
     }
 
     private static Parameter named(List<Parameter> parameters, String key) {
@@ -332,7 +501,7 @@ class OdkReleaseFormTest {
         List<Parameter> parameters = OdkReleaseForm.parameters(start, defaults);
 
         assertEquals(Arrays.asList(OdkReleaseForm.VERSION, OdkReleaseForm.PRIOR,
-                OdkReleaseForm.REFUSE), keys(parameters));
+                OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED), keys(parameters));
         assertEquals("3.0.6", defaults.get(OdkReleaseForm.VERSION));
         assertEquals("3.0.5", defaults.get(OdkReleaseForm.PRIOR));
         String explanation = OdkReleaseForm.explanation(start);
@@ -398,10 +567,10 @@ class OdkReleaseFormTest {
 
     /**
      * A release's commit takes changed files with it and leaves new ones out, as decided: a
-     * stray file stays where it is. But a new import module that the changed edit file
-     * imports, left out, makes a tag whose project does not build - seen in a live run, where
-     * the pattern library had just written one. So new files are said before the release is
-     * built, with the way to commit them, instead of only in the question after it.
+     * stray file stays where it is - and is said before the release is built, with the way to
+     * commit it. The project's own new files under src/ - a new import module that the changed
+     * edit file imports, left out, makes a tag whose project does not build (seen in a live run
+     * of 1.153.0) - are offered in the form instead, to be committed first.
      */
     @Test
     void newFilesAreSaidBeforeTheReleaseIsBuilt() {
@@ -411,9 +580,9 @@ class OdkReleaseFormTest {
 
         String notice = OdkReleaseForm.newFilesNotice(start());
 
-        assertTrue(notice.contains("2 new files"), notice);
-        assertTrue(notice.contains("src/ontology/imports/") && notice.contains("my notes.txt"),
-                notice);
+        assertTrue(notice.contains("1 new file"), notice);
+        assertTrue(notice.contains("my notes.txt"), notice);
+        assertFalse(notice.contains("src/ontology/imports/"), "offered in the form: " + notice);
         assertTrue(notice.contains("OntoBoard > Share > Git..."), notice);
         assertTrue(notice.contains("Commit everything, with a message"), notice);
         assertFalse(notice.contains("eggboil-edit.owl"), "a changed file goes along and is not "
@@ -422,13 +591,51 @@ class OdkReleaseFormTest {
 
     @Test
     void oneNewFileIsSaidInTheSingular() {
-        status = Arrays.asList("## main", "?? src/sparql/every_egg_has_a_timer-violation.sparql");
+        status = Arrays.asList("## main", "?? docs/the-release.md");
 
         String notice = OdkReleaseForm.newFilesNotice(start());
 
-        assertTrue(notice.contains("1 new file in this project: "
-                + "src/sparql/every_egg_has_a_timer-violation.sparql."), notice);
+        assertTrue(notice.contains("1 new file in this project: docs/the-release.md."), notice);
         assertTrue(notice.contains("leaves it out"), notice);
+    }
+
+    /**
+     * After an import its module and term list are new files of the project: the form offers
+     * to commit them first, on unless unticked, so the release's tag holds them (1.153.0 left
+     * them out, by its ruling 79, and said so before the build).
+     */
+    @Test
+    void theFormOffersToCommitTheProjectsNewFilesFirst() {
+        status = Arrays.asList("## main", "?? src/ontology/imports/egg_import.owl",
+                "?? src/ontology/imports/egg_terms.txt", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        Parameter first = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.COMMIT_NEW);
+
+        assertNotNull(first);
+        assertEquals("Commit the project's 2 new files first", first.getLabel());
+        assertEquals("true", first.getDefaultValue());
+        assertTrue(first.getHelp().contains("src/ontology/imports/egg_import.owl"),
+                first.getHelp());
+        assertTrue(first.getHelp().contains("\"Files of the project before release"),
+                first.getHelp());
+        assertTrue(OdkReleaseForm.request(start, chosen(start)).commitsNewFilesFirst());
+        assertFalse(OdkReleaseForm.request(start, chosen(start, OdkReleaseForm.COMMIT_NEW,
+                "false")).commitsNewFilesFirst());
+        String notice = OdkReleaseForm.newFilesNotice(start);
+        assertTrue(notice.contains("1 new file") && notice.contains("notes.txt"), notice);
+        assertFalse(notice.contains("egg_import.owl"), "offered in the form: " + notice);
+    }
+
+    @Test
+    void withoutNewFilesOfTheProjectThereIsNoBoxForThem() {
+        status = Arrays.asList("## main", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        assertNull(named(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)),
+                OdkReleaseForm.COMMIT_NEW));
+        assertFalse(OdkReleaseForm.request(start, chosen(start)).commitsNewFilesFirst());
     }
 
     /** A dozen new files are not a dozen lines: the first five are named. */

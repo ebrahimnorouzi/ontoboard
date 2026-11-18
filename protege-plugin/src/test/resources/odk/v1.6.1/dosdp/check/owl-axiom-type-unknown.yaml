@@ -1,0 +1,10 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes:
+  thing: owl:Thing
+vars:
+  x: "'thing'"
+logical_axioms:
+  - axiom_type: sameAs
+    text: "%s"
+    vars: [x]

@@ -1,0 +1,1 @@
+query --input input.ofn --update preprocess-module.ru extract --method BOT --term-file terms.txt --copy-ontology-annotations true --force true --individuals exclude query --update inject-subset-declaration.ru --update inject-synonymtype-declaration.ru --update postprocess-module.ru --output robot.ofn

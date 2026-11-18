@@ -1,8 +1,8 @@
 # Try it: BFO and a knowledge graph
 
-The same pizzas, aligned to **BFO 2020** with design patterns from BFO and NFDIcore - and a knowledge graph
-beside the ontology: which pizza was baked, by whom, in which oven and when, kept in nine
-spreadsheets and turned into individuals by OntoBoard.
+The same pizzas, aligned to **BFO 2020** with design patterns from BFO and NFDIcore, and a
+knowledge graph beside the ontology: which pizza was baked, by whom, in which oven and when, kept
+in nine spreadsheets and turned into individuals by OntoBoard.
 
 [:material-github: Pizza BFO on GitHub](https://github.com/ebrahimnorouzi/pizza-bfo){ .md-button .md-button--primary }
 [:material-download: Download it as a ZIP](https://github.com/ebrahimnorouzi/pizza-bfo/archive/refs/heads/main.zip){ .md-button }
@@ -15,19 +15,16 @@ example anywhere and open `src/ontology/pizzabfo-edit.owl` with *File → Open..
 
 Click the **OntoBoard** tab. A pizza is a BFO *object*, its base a *fiat object part*, its
 spiciness a *quality* and the baking a *process*. Right-click `pizza baking` → *Show only this and
-its neighbours* to see who and what takes part in it.
-
-*OntoBoard → Reuse → Imported terms...* shows each import - BFO 2020, two BFO patterns and four
-NFDIcore patterns - with the terms it brings.
+its neighbours* to see who and what takes part in it. *OntoBoard → Reuse → Imported terms...*
+shows each import - BFO 2020, two BFO patterns and four NFDIcore patterns - with its terms.
 
 ## 2. Open the knowledge graph
 
 *File → Open...* → `kg/pizzabfo-kg.ttl`, in a new window. It imports a release of the ontology
 and holds the data: cities, pizzerias, bakers, ovens, pizzas and bakings.
-
-*OntoBoard → Spreadsheets → Sheet editor* opens the nine sheets it is made from - the toolbar says
-*Folder: kg/templates (9 sheets)*. Row 1 of each sheet is the heading, row 2 says what each
-column means to ROBOT, and every row after that is one individual.
+*OntoBoard → Spreadsheets → Sheet editor* opens the nine sheets it is made from. Row 1 of each
+sheet is the heading, row 2 says what each column means to ROBOT, and every row after that is one
+individual.
 
 ## 3. Declare the identifiers' prefix
 
@@ -58,9 +55,7 @@ what the graph says.
 ## 7. Make its documentation page
 
 Back in the ontology's window, *OntoBoard → Build and release → Documentation...* runs
-[Widoco](https://github.com/dgarijo/Widoco) on the release and opens the page it writes: every
-class and property - and, with *Include the WebVowl diagram* ticked, a diagram of how they
-connect. If Widoco is not installed, the dialog offers to download it.
+[Widoco](https://github.com/dgarijo/Widoco) on the release and opens the page it writes.
 [The page this example publishes](https://ebrahimnorouzi.github.io/pizza-bfo/ontology/index-en.html)
 was made that way.
 

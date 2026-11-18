@@ -1,0 +1,190 @@
+allow_equivalents	can be all, none or asserted-only (see ROBOT documentation: http://robot.obolibrary.org/reason)
+babelon_translation_group	Block that includes information on all babelon tables used
+babelon_translation_group.oak_adapter	The oak adapter that should be used to process the translation tables. Should match the 'translate_ontology' field.
+babelon_translation_group.predicates	The list of predicates that are considered during translation preparation.
+babelon_translation_group.products	
+babelon_translation_group.products.auto_translate	if auto_translate is true, missing values are being translated using the babelon toolkit during preprocessing. By default, the toolkit employs LLM-mediated translations using the OpenAI API. This default may change at any time.
+babelon_translation_group.products.babelon_tool_options	Babelon toolkit options passed to the command used to generate this product command
+babelon_translation_group.products.description	A concise textual description of the product
+babelon_translation_group.products.drop_unknown_columns	if drop_unknown_columns is 'true' columns that are not part of the babelon standard are removed during preprocessing.
+babelon_translation_group.products.id	ontology project identifier / shorthand; e.g. go, obi, envo
+babelon_translation_group.products.include_not_translated	if include_not_translated is 'false' NOT_TRANSLATED values are removed during preprocessing.
+babelon_translation_group.products.include_robot_template_synonyms	if include_robot_template_synonyms is true, a ROBOT template synonym table is added in addition to the babelon translation table.
+babelon_translation_group.products.language	Language tag (IANA/ISO), e.g 'en', 'fr'.
+babelon_translation_group.products.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+babelon_translation_group.products.mirror_babelon_from	if specified this URL is used to mirror the translation.
+babelon_translation_group.products.mirror_synonyms_from	if specified this URL is used to mirror the synonym template from.
+babelon_translation_group.products.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+babelon_translation_group.products.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+babelon_translation_group.products.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+babelon_translation_group.products.update_translation_status	if update_translation_status is 'true', translations where the source_value has changed are relegated to CANDIDATE status.
+babelon_translation_group.release_merged_translations	If true, a big table and JSON file is created which contains all translations.
+babelon_translation_group.translate_ontology	The name of the ontology that should be translated. Should match the 'oak_adapter' field.
+catalog_file	Name of the catalog file to be used by the build.
+ci	continuous integration defaults; currently available: travis, github_actions, gitlab-ci
+components	Block that includes information on all ontology components to be generated
+components.disabled	if set then this is not used
+components.ids	potentially deprecated, specify explicit product list instead
+components.products	all component products
+components.products.base_iris	A list of URI prefixes used to identify terms belonging to the component.
+components.products.filename	The filename of this component
+components.products.make_base	if make_base is true, the file is turned into a base (works with `source`).
+components.products.mappings	A list of SSSOM template names. If set, these will be used to source this component.
+components.products.source	The URL source for which the component should be obtained.
+components.products.sssom_tool_options	SSSOM toolkit options passed to the sssom command used to generate this product command
+components.products.template_options	ROBOT options passed to the template command
+components.products.templates	A list of ROBOT template names. If set, these will be used to source this component.
+components.products.use_mappings	If true, the component will be sourced from one or more SSSOM mapping files
+components.products.use_template	If true, the component will be sourced by a template
+components.rebuild_if_source_changes	if false then upstream ontology is re-downloaded any time edit file changes
+contact	Single contact for ontology as required by OBO
+contributors	List of ontology contributors (currently setting this has no effect)
+create_obo_metadata	if true OBO Markdown and PURL configs are created.
+creators	List of ontology creators (currently setting this has no effect)
+custom_makefile_header	A multiline string that is added to the Makefile
+description	Provide a short description of the ontology
+documentation	Block that includes information on all ontology components to be generated
+documentation.documentation_system	Currently, only mkdocs is supported.
+dosdp_tools_options	default parameters for dosdp-tools
+edit_format	Format in which the edit file is managed, either obo or owl
+ensure_valid_rdfxml	When enabled, ensure that any RDF/XML product file is valid
+exclude_tautologies	Remove tautologies such as A SubClassOf: owl:Thing or owl:Nothing SubclassOf: A. For more information see http://robot.obolibrary.org/reason#excluding-tautologies
+export_formats	A list of export formats you wish your release artefacts to be exported to, such as owl, obo, gz, ttl, db.
+export_project_yaml	Flag to set if you want a full project.yaml to be exported, including all the default options.
+extra_rdfxml_checks	When enabled, RDF/XML product files are checked against additional parsers
+git_main_branch	The main branch for your repo, such as main, or (now discouraged) master.
+git_user	GIT user name (necessary for generating releases)
+github_org	Name of github org or username where repo will live. Examples: obophenotype, cmungall
+gzip_main	if true add a gzipped version of the main artefact
+id	OBO id for this ontology. Must be lowercase Examples: uberon, go, cl, envo, chebi
+import_component_format	The default serialisation for all components and imports.
+import_group	Block that includes information on all ontology imports to be generated
+import_group.annotate_defined_by	If set to true, the annotation rdfs:definedBy is added for each external class. In the case of use_base_merging is also true, this will be added to the imports/merged_import.owl file. When imports are not merged, the annotation is added during the release process to the full release artefact.
+import_group.annotation_properties	Define which annotation properties to pull in.
+import_group.base_merge_drop_equivalent_class_axioms	If set to true, equivalent class axioms will be removed before extracting a module with the base-merging process. Do not activate this feature unless you are positive that your base merging process only leverages true base files, with asserted subclass axioms.
+import_group.disabled	if set then this is not used
+import_group.exclude_iri_patterns	List of IRI patterns. If set, IRIs matching and IRI pattern will be removed from the import.
+import_group.export_obo	If set to true, modules will not only be created in OWL, but also OBO format
+import_group.ids	potentially deprecated, specify explicit product list instead
+import_group.mirror_max_time_download	Corresponds to the cURL --max-time parameter (in seconds), see http://www.ipgp.fr/~arnaudl/NanoCD/software/win32/curl/docs/curl.html
+import_group.mirror_retry_download	Corresponds to the cURL --retry parameter, see http://www.ipgp.fr/~arnaudl/NanoCD/software/win32/curl/docs/curl.html
+import_group.module_type	Module type. Supported: slme, minimal, custom
+import_group.module_type_slme	SLME module type. Supported: BOT, TOP, STAR
+import_group.products	all import products
+import_group.products.annotation_properties	Define which annotation properties to pull in.
+import_group.products.base_iris	if specified this URL is used rather than the default OBO PURL for the main OWL product
+import_group.products.description	A concise textual description of the product
+import_group.products.id	ontology project identifier / shorthand; e.g. go, obi, envo
+import_group.products.is_large	if large, ODK may take measures to reduce the memory footprint of the import.
+import_group.products.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+import_group.products.make_base	if make_base is true, try to extract a base file from the mirror.
+import_group.products.mirror_from	if specified this URL is used rather than the default OBO PURL for the main OWL product
+import_group.products.mirror_type	Define the type of the mirror for your import. Supported: base, custom, no_mirror.
+import_group.products.module_type	Module type. Supported: slme, minimal, custom, mirror
+import_group.products.module_type_slme	SLME module type. Supported: BOT, TOP, STAR
+import_group.products.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+import_group.products.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+import_group.products.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+import_group.products.slme_individuals	See http://robot.obolibrary.org/extract#syntactic-locality-module-extractor-slme
+import_group.products.use_base	if use_base is true, try use the base IRI instead of normal one to mirror from.
+import_group.products.use_gzipped	if use_gzipped is true, try use the base IRI instead of normal one to mirror from.
+import_group.rebuild_if_source_changes	if false then upstream ontology is re-downloaded any time edit file changes
+import_group.release_imports	If set to True, imports are copied to the release directory.
+import_group.scan_signature	If true, the edit file is scanned for additional terms to import. Otherwise, imports are seeded solely from the manually maintained *_terms.txt files. Note that setting this option to False makes Protégé-based declarations of terms to import impossible.
+import_group.slme_individuals	See http://robot.obolibrary.org/extract#syntactic-locality-module-extractor-slme
+import_group.strip_annotation_properties	If set to true, strip away annotation properties from imports, apart from explicitly imported properties and properties listed in annotation_properties.
+import_group.use_base_merging	If set to true, mirrors will be merged before determining a suitable seed. This can be a quite costly process.
+import_pattern_ontology	if true import pattern.owl
+license	Which license is ontology supplied under - must be an IRI.
+manage_import_declarations	if true, import declarations in the -edit file and redirections in the XML catalog will be entirely managed by the ODK.
+namespaces	A list of namespaces that are considered at home in this ontology. Used for certain filter commands.
+obo_format_options	Additional args to pass to robot when saving to obo. The default is '--clean-obo "strict drop-untranslatable-axioms"'.
+owltools_memory	OWLTools memory, for example 4GB.
+pattern_pipelines_group	Block that includes information on all DOSDP templates used
+pattern_pipelines_group.disabled	if set then this is not used
+pattern_pipelines_group.ids	potentially deprecated, specify explicit product list instead
+pattern_pipelines_group.matches	pipelines specifically configured for matching, NOT generating.
+pattern_pipelines_group.matches.description	A concise textual description of the product
+pattern_pipelines_group.matches.dosdp_tools_options	
+pattern_pipelines_group.matches.id	ontology project identifier / shorthand; e.g. go, obi, envo
+pattern_pipelines_group.matches.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+pattern_pipelines_group.matches.ontology	
+pattern_pipelines_group.matches.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+pattern_pipelines_group.matches.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+pattern_pipelines_group.matches.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+pattern_pipelines_group.products	all pipeline products
+pattern_pipelines_group.products.description	A concise textual description of the product
+pattern_pipelines_group.products.dosdp_tools_options	
+pattern_pipelines_group.products.id	ontology project identifier / shorthand; e.g. go, obi, envo
+pattern_pipelines_group.products.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+pattern_pipelines_group.products.ontology	
+pattern_pipelines_group.products.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+pattern_pipelines_group.products.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+pattern_pipelines_group.products.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+pattern_pipelines_group.rebuild_if_source_changes	if false then upstream ontology is re-downloaded any time edit file changes
+primary_release	Which release file should be published as the primary release artefact, i.e. foo.owl
+public_release	if true add functions to run automated releases (experimental). Current options are: github_curl, github_python.
+public_release_assets	A list of files that gets added to a github/gitlab/etc release (as assets). If this option is not set (None), the standard ODK assets will be deployed.
+reasoner	Name of reasoner to use in ontology pipeline, see robot reason docs for allowed values
+release_annotate_inferred_axioms	If set to True, axioms that are inferred during the reasoning process are annotated accordingly, see https://robot.obolibrary.org/reason.
+release_artefacts	A list of release artefacts you wish to be exported. Supported: base, full, baselite, simple, non-classified, simple-non-classified, basic.
+release_date	if true, releases will be tagged with a release date (oboInOwl:date)
+release_diff	When enabled, a diff is generated between the current release and the new one
+release_materialize_object_properties	Define which object properties to materialise at release time.
+release_use_reasoner	If set to True, the reasoner will be used during the release process. The reasoner is used for three operations: reason (the classification/subclassOf hierarchy computation); materialize (the materialisation of simple existential/ object property restrictions); reduce (the removal of redundant subclassOf axioms).
+remove_owl_nothing	Flag to set if you want odk to remove owl:Nothing from releases.
+repo	Name of repo (do not include org). E.g. cell-ontology
+repo_url	URL of the online repository. If set, this must point to a browsable version of the repository root.
+robot_java_args	Java args to pass to ROBOT at runtime, such as -Xmx6G
+robot_plugins	Block that includes information on the extra ROBOT plugins used by this project
+robot_plugins.plugins	The list of plugins to use
+robot_plugins.plugins.mirror_from	Automatically download the plugin from this URL
+robot_plugins.plugins.name	Basename for the plugin
+robot_reduce_options	Additional options to pass to robot's reduce command.
+robot_relax_options	Additional options to pass to robot's relax command.
+robot_report	Block that includes settings for ROBOT report, ROBOT verify and additional reports that are generated
+robot_settings	Settings to pass to ROBOT such as amount of memory to be used
+robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+robot_version	Only set this if you want to pin to a specific robot version
+run_as_root	if true, all commands will be executed into the container under the identity of the super-user. Use this if you have custom workflows that require admin rights (e.g. to install Debian packages not provided in the ODK).
+sssom_mappingset_group	Block that includes information on all SSSOM mapping tables used
+sssom_mappingset_group.mapping_extractor	The tool to use to extract mappings from an ontology ('sssom-py' or 'sssom-java').
+sssom_mappingset_group.products	
+sssom_mappingset_group.products.description	A concise textual description of the product
+sssom_mappingset_group.products.id	ontology project identifier / shorthand; e.g. go, obi, envo
+sssom_mappingset_group.products.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+sssom_mappingset_group.products.mirror_from	if specified this URL is used to mirror the mapping set.
+sssom_mappingset_group.products.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+sssom_mappingset_group.products.release_mappings	If set to True, this mapping set is treated as an artifact to be released.
+sssom_mappingset_group.products.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+sssom_mappingset_group.products.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+sssom_mappingset_group.products.source_file	The name of the file from which the mappings should be extracted
+sssom_mappingset_group.products.source_mappings	The mapping sets to merge to create this product.
+sssom_mappingset_group.products.sssom_tool_options	SSSOM toolkit options passed to the sssom command used to generate this product command
+sssom_mappingset_group.release_mappings	If set to True, mappings are copied to the release directory.
+subset_group	Block that includes information on all subsets (aka slims) to be generated
+subset_group.disabled	if set then this is not used
+subset_group.ids	potentially deprecated, specify explicit product list instead
+subset_group.products	all subset products
+subset_group.products.creators	list of people that are credited as creators/maintainers of the subset
+subset_group.products.description	A concise textual description of the product
+subset_group.products.id	ontology project identifier / shorthand; e.g. go, obi, envo
+subset_group.products.maintenance	A setting that can be used to change certain assets that are typically managed automatically (by ODK) to manual or other maintenance strategies.
+subset_group.products.rebuild_if_source_changes	If false then previously downloaded versions of external ontologies are used
+subset_group.products.robot_settings	Amount of memory to provide for robot. Working with large products such as CHEBI imports may require additional memory
+subset_group.products.robot_settings.memory_gb	Amount of memory in GB to provide for tool such as robot
+subset_group.rebuild_if_source_changes	if false then upstream ontology is re-downloaded any time edit file changes
+title	Concise descriptive text about this ontology
+travis_emails	Emails to use in travis configurations.
+uribase	Base URI for PURLs. For an example see https://gitlab.c-path.org/c-pathontology/critical-path-ontology.
+uribase_suffix	Suffix for the uri base. If not set, the suffix will be the ontology id by default.
+use_context	If True, a context file is created that allows the user to specify prefixes used across the project.
+use_custom_import_module	if true add a custom import module which is managed through a robot template. This can also be used to manage your module seed.
+use_dosdps	if true use dead simple owl design patterns
+use_edit_file_imports	If True, ODK will release the ontology with imports explicitly specified by owl:imports in the edit file. If False, ODK will build and release the ontology with _all_ imports and _all_ components specified in the ODK config file.
+use_env_file_docker	if true environment variables are collected by the docker wrapper and passed into the container.
+use_external_date	Flag to set if you want odk to use the host `date` rather than the docker internal `date`
+use_mappings	if true use SSSOM mapping files.
+use_templates	if true use ROBOT templates.
+use_translations	if true enable babelon multilingual support.
+workflows	Workflows that are synced when updating the repo. Currently available: docs, diff, qc, release-diff.

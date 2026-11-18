@@ -1,0 +1,15 @@
+pattern_name: x
+pattern_iri: http://purl.obolibrary.org/obo/myont/patterns/x.yaml
+classes:
+  thing: owl:Thing
+relations:
+  part_of: BFO:0000050
+vars:
+  a: "'thing'"
+  b: "'thing'"
+GCI:
+  text: "%s and ('part_of' some %s)"
+  vars: [a, b]
+disjointWith:
+  text: "%s"
+  vars: [b]

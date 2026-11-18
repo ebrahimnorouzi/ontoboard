@@ -76,19 +76,30 @@ final class OdkTools {
 
     /**
      * Every program ODK's recipes name that OntoBoard runs itself: the shell's own
-     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml.
+     * ({@link RecipeShell#builtins()}), robot, odk-info, dicer-cli, check-rdfxml, curl, sed -
+     * for the substitutions projects' own rules make ({@link OdkSed}) - dosdp-tools, the
+     * release ODK's image carries, downloaded on first use ({@link DosdpToolsRun}), and dosdp,
+     * ODK's check of a project's patterns ({@link DosdpCheck}).
      */
     static Map<String, RecipeShell.Tool> forProject() {
         return forProject(null);
     }
 
     /**
-     * The programs of a run the person can stop.
+     * The programs of a run the person can stop, dosdp-tools from where OntoBoard installs it
+     * ({@link DosdpTools#home()}).
      *
      * @param stopped whether the person has stopped the run, for a program that takes its
-     *                time over one line - a fetch; may be null
+     *                time over one line - a fetch, dosdp-tools; may be null
      */
     static Map<String, RecipeShell.Tool> forProject(BooleanSupplier stopped) {
+        return forProject(stopped, DosdpTools.home());
+    }
+
+    /**
+     * The programs of a run the person can stop, with dosdp-tools installed in {@code dosdpHome}.
+     */
+    static Map<String, RecipeShell.Tool> forProject(BooleanSupplier stopped, File dosdpHome) {
         Map<String, RecipeShell.Tool> tools = new LinkedHashMap<String, RecipeShell.Tool>(
                 RecipeShell.builtins());
         tools.put("robot", new Robot());
@@ -96,6 +107,10 @@ final class OdkTools {
         tools.put("dicer-cli", new Dicer());
         tools.put("check-rdfxml", new CheckRdfXml());
         tools.put("curl", new OdkCurl(stopped));
+        tools.put("sed", new OdkSed());
+        tools.put("dosdp-tools", new DosdpToolsRun(dosdpHome, DosdpToolsRun::onThisMachine,
+                stopped));
+        tools.put("dosdp", new DosdpCheck());
         return tools;
     }
 
@@ -118,10 +133,18 @@ final class OdkTools {
         /** Stands for the folder make runs in while a line is only asked about. */
         private static final File ASKING = new File(System.getProperty("java.io.tmpdir"),
                 "ontoboard-recipe-folder").getAbsoluteFile();
+        /** A project's top and where make runs in it, for what a line writes, asked as text. */
+        private static final File ASKING_TOP = new File(ASKING, "project");
+        private static final File ASKING_IN = new File(ASKING_TOP, "src/ontology");
 
         @Override
         public String whyNot(List<String> arguments) {
             try {
+                // A project's own rule may write inside the project only (1.154.0).
+                String outside = RobotPaths.whyWrittenOutside(arguments, ASKING_IN, ASKING_TOP);
+                if (outside != null) {
+                    return outside;
+                }
                 String why = OdkRobot.whyNot(RobotPaths.absolute(arguments, ASKING), ASKING);
                 return why == null ? null : asWritten(why, ASKING);
             } catch (RobotPaths.Unknown unknown) {
@@ -140,7 +163,9 @@ final class OdkTools {
                 for (String named : RobotPaths.files(call.arguments(), folder)) {
                     before.put(new File(named), stampOf(new File(named)));
                 }
-                final List<String> line = RobotPaths.absolute(call.arguments(), folder);
+                // An address to load from, through a move from http to https (IriRedirects).
+                final List<String> line = RobotPaths.absolute(
+                        IriRedirects.inputIrisAcrossToHttps(call.arguments()), folder);
                 // With this Java's certificates; and where it does not know a server's
                 // authority, once more with the operating system's as well.
                 result = HttpsOpener.alsoWithOperatingSystemsTrust(

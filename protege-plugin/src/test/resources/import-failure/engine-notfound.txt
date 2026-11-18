@@ -1,0 +1,9 @@
+make --assume-new=obim-edit.owl --assume-new=imports/iao_terms.txt \
+	IMP=true IMP_LARGE=true MIR=true PAT=false imports/iao_import.owl
+make[1]: Entering directory 'C:/tmp/ob-1154/i2/runs/notfound/src/ontology'
+curl -L http://127.0.0.1:8765/obo/iao.owl --create-dirs -o tmp/iao-download.owl --retry 4 --max-time 200 && \
+robot --catalog catalog-v001.xml convert -i tmp/iao-download.owl -o tmp/mirror-iao.owl
+curl: (22) 127.0.0.1 answered 404 File not found for http://127.0.0.1:8765/obo/iao.owl, so nothing was fetched
+make[1]: *** [Makefile:506: mirror-iao] Error 22
+make[1]: Leaving directory 'C:/tmp/ob-1154/i2/runs/notfound/src/ontology'
+make: *** [Makefile:479: refresh-iao] Error 2

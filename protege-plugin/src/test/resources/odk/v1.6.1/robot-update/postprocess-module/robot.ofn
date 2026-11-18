@@ -1,0 +1,45 @@
+Prefix(:=<http://purl.obolibrary.org/obo/ro.owl#>)
+Prefix(dc:=<http://purl.org/dc/elements/1.1/>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+
+Ontology(<http://purl.obolibrary.org/obo/ro.owl>
+Annotation(dc:source <http://purl.obolibrary.org/obo/ro/releases/2026-01-01/ro.owl>)
+
+Declaration(Class(obo:BFO_0000001))
+Declaration(Class(obo:BFO_0000002))
+Declaration(ObjectProperty(obo:RO_0000052))
+Declaration(AnnotationProperty(dc:source))
+Declaration(AnnotationProperty(dcterms:title))
+
+############################
+#   Object Properties
+############################
+
+# Object Property: obo:RO_0000052 (characteristic of)
+
+AnnotationAssertion(rdfs:label obo:RO_0000052 "characteristic of"@en)
+
+
+
+############################
+#   Classes
+############################
+
+# Class: obo:BFO_0000001 (entity)
+
+AnnotationAssertion(rdfs:label obo:BFO_0000001 "entity"@en)
+
+# Class: obo:BFO_0000002 (continuant)
+
+AnnotationAssertion(rdfs:label obo:BFO_0000002 "continuant"@en)
+SubClassOf(obo:BFO_0000002 obo:BFO_0000001)
+
+
+)

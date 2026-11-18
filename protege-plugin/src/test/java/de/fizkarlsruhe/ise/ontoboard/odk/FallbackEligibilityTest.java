@@ -77,6 +77,70 @@ class FallbackEligibilityTest {
         return FallbackEligibility.why(edit, goal);
     }
 
+    // ------------------------------------------------------------------ minor 9, the look-ahead
+
+    /**
+     * A configuration no other test renders, so that what was rendered before in this run
+     * cannot hide a count: the seed's, with a line of its own.
+     */
+    private void aConfigurationOfItsOwn(String which) throws IOException {
+        write("eggboil-odk.yaml", read("eggboil-odk.yaml") + "# " + which + "\n");
+    }
+
+    /**
+     * Minor 9: the Build form asks the engine about every target it offers before it opens, and
+     * each ask rendered ODK's whole seed to compare its Makefile - a pause of seconds on a click.
+     * The render is kept per configuration: seven targets, one render.
+     */
+    @Test
+    void askingAboutSevenTargetsRendersTheSeedOnce() throws IOException {
+        project("eggboil", "eggboil");
+        aConfigurationOfItsOwn("seven targets");
+        int before = FallbackEligibility.rendersSoFar();
+
+        for (String goal : java.util.Arrays.asList("test", "test_fast", "reason_test",
+                "sparql_test", "robot_reports", "validate_idranges", "prepare_release_fast")) {
+            FallbackEligibility.why(edit, goal);
+        }
+
+        assertEquals(1, FallbackEligibility.rendersSoFar() - before);
+    }
+
+    /** A configuration that changed - by one byte - is rendered again, and its Makefile with it. */
+    @Test
+    void aChangedConfigurationIsRenderedAgain() throws IOException {
+        project("eggboil", "eggboil");
+        aConfigurationOfItsOwn("changed");
+        FallbackEligibility.why(edit, "test");
+        int before = FallbackEligibility.rendersSoFar();
+
+        write("eggboil-odk.yaml", read("eggboil-odk.yaml") + "\n");
+
+        org.junit.jupiter.api.Assertions.assertNotNull(why("test"),
+                "the Makefile is not the render of this configuration");
+        assertEquals(1, FallbackEligibility.rendersSoFar() - before);
+    }
+
+    // ------------------------------------------------------------------ F5, make's own route
+
+    /**
+     * F5: whether the Makefile is ODK's render of the configuration, said for make's own runs -
+     * in ODK's container, with ODK's tools - which run it as it is where the engine refuses it.
+     */
+    @Test
+    void anEditedMakefileIsSaidForMakesRunsAndOdksIsNot() throws IOException {
+        project("eggboil", "eggboil");
+        assertNull(FallbackEligibility.notOdksMakefile(edit), "the seed's Makefile is ODK's");
+
+        write("Makefile", read("Makefile") + "\n# a line of their own\n");
+
+        String said = FallbackEligibility.notOdksMakefile(edit);
+        assertTrue(said != null && said.startsWith("This project's Makefile is not the one "
+                + "ODK v1.6.1 writes for its configuration"), said);
+        assertTrue(said.contains("make runs it as it is"), said);
+        assertTrue(said.contains("OntoBoard > Project > Update project files..."), said);
+    }
+
     // ------------------------------------------------------------------ nothing of their own
 
     @Test
@@ -122,56 +186,77 @@ class FallbackEligibilityTest {
 
     // ------------------------------------------------------------------ something of their own
 
+    // Since 1.154.0 the engine runs a project's own rules as make does, when every line of
+    // them can be run here: what is theirs is no longer refused for being theirs.
+
     @Test
-    void aRuleOfTheirsThatTheRunReachesIsNamedWithItsLine() throws IOException {
+    void aRuleOfTheirsWhoseLinesRunHereIsRun() throws IOException {
         project("eggboil", "eggboil");
         write("eggboil.Makefile", "## mine\n\nreason_test:\n\techo hi\n");
 
-        String why = why("test_fast");
-
-        assertTrue(why.contains("eggboil.Makefile:3"), why);
-        assertTrue(why.contains("reason_test"), why);
-        assertNamesTheOtherWays(why);
+        assertNull(why("test_fast"));
+        assertNull(OdkEngine.whyNot(edit, "test_fast", noVariables()));
     }
 
     @Test
-    void aSettingOfTheirsThatARecipeReadsIsNamedWithItsLine() throws IOException {
+    void aSettingOfTheirsIsMakesOwn() throws IOException {
         project("eggboil", "eggboil");
         write("eggboil.Makefile", "## mine\nREPORT_FAIL_ON = WARN\n");
 
-        String why = why("test_fast");
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, "test_fast",
+                noVariables());
 
-        assertTrue(why.contains("eggboil.Makefile:2"), why);
-        assertTrue(why.contains("REPORT_FAIL_ON"), why);
-        assertNull(why("clean"), "a target whose recipes do not read it runs");
+        assertTrue(verdict.allowed(), verdict.why());
+        assertTrue(String.join("\n", commands(verdict.plan())).contains("--fail-on WARN"),
+                commands(verdict.plan()).toString());
     }
 
     @Test
-    void aTargetOfTheirOwnIsNoObstacleAndIsNotOneTheEngineRuns() throws IOException {
+    void aTargetOfTheirOwnIsOneTheEngineRunsToo() throws IOException {
         project("eggboil", "eggboil");
         write("eggboil.Makefile", "## mine\nmytarget:\n\techo mine\n");
 
         assertNull(why("test_fast"));
-        String own = why("mytarget");
-        assertTrue(own.contains("eggboil.Makefile:2") && own.contains("mytarget"), own);
+        assertNull(why("mytarget"));
+        assertNull(OdkEngine.whyNot(edit, "mytarget", noVariables()));
     }
 
     /**
-     * A rule of theirs for one import module - how a project builds a module its own way -
-     * changes a refresh of the imports. It does not change the fast test, which takes the
-     * modules as they are.
+     * A rule of theirs for one import module - how a project builds a module its own way - is
+     * run when its programs are here; one the engine has no stand-in for is named, with the
+     * line of their makefile it stands on, before anything runs. The fast test takes the
+     * modules as they are and does not reach it.
      */
     @Test
-    void aRuleForAnImportModuleStopsTheRefreshAndNotTheFastTest() throws IOException {
+    void aRuleOfTheirsWithAProgramTheEngineHasNotIsNamedWithItsLine() throws IOException {
         project("oboimports", "obim");
         write("obim.Makefile", "## mine\n$(IMPORTDIR)/ro_import.owl: $(MIRRORDIR)/ro.owl\n"
                 + "\tmy-extract $< $@\n");
         write("mirror/ro.owl", "the mirror their rule builds from");
 
         assertNull(why("test_fast"));
-        String refresh = why("refresh-imports");
-        assertTrue(refresh.contains("obim.Makefile:2"), refresh);
-        assertTrue(refresh.contains("imports/ro_import.owl"), refresh);
+        assertNull(OdkEngine.whyNot(edit, "test_fast", noVariables()));
+        String refresh = OdkEngine.whyNot(edit, "refresh-imports", noVariables());
+        assertTrue(refresh.contains("my-extract") && refresh.contains("obim.Makefile:3"),
+                refresh);
+        assertNamesTheOtherWays(refresh);
+    }
+
+    @Test
+    void aRuleOfTheirsThatWritesOutsideTheProjectIsRefusedBeforeAnythingRuns()
+            throws IOException {
+        project("eggboil", "eggboil");
+        write("eggboil.Makefile", "## mine\nreason_test:\n\trobot convert -i eggboil-edit.owl "
+                + "-o ../../../outside.owl\n");
+
+        String why = OdkEngine.whyNot(edit, "test_fast", noVariables());
+
+        assertTrue(why != null && why.contains("../../../outside.owl"), why);
+        assertFalse(new File(temp, "outside.owl").exists());
+    }
+
+    private static Map<String, String> noVariables() {
+        return new LinkedHashMap<String, String>();
     }
 
     /**

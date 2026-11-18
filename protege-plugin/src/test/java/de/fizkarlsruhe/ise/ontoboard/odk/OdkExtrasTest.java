@@ -133,6 +133,53 @@ class OdkExtrasTest {
         assertTrue(page.contains("`releases/`"), page);
     }
 
+    // ------------------------------------------------------------------ F3, the workflow's token
+
+    /** A page as a reader reads it: without Markdown's code marks, its lines joined. */
+    private static String said(String page) {
+        return page.replace("`", "").replace("\n", " ");
+    }
+
+    /**
+     * F3: ODK's documentation workflow pushes the site to {@code gh-pages}, and a new GitHub
+     * repository lets workflows only read, so its first run fails. The page that says how to
+     * turn the site on says so first - with the command for this repository, its owner known.
+     */
+    @Test
+    void theIndexPageSaysTheWorkflowMustBeAllowedToWriteFirst() {
+        OdkProjectConfig owned = project("Test kitchen ontology",
+                "https://example.org/eggboil/eggboil.owl");
+        owned.setGithubOrg("kitchen-lab");
+
+        String page = OdkExtras.files(owned).get("docs/index.md");
+
+        assertTrue(said(page).contains(OdkExtras.workflowPermissions("kitchen-lab", "eggboil")),
+                page);
+        assertTrue(page.contains("`gh api -X PUT repos/kitchen-lab/eggboil/actions/permissions/"
+                + "workflow -f default_workflow_permissions=write`"), page);
+        assertTrue(page.indexOf("Workflow permissions") < page.indexOf("**Settings > Pages**"),
+                "before Pages is turned on: " + page);
+    }
+
+    /**
+     * The release page says it after the push - the push starts the workflow - and without an
+     * owner both pages say {@code <owner>}, in code, where Markdown shows it as it is.
+     */
+    @Test
+    void withoutAnOwnerThePagesSayOwnerAfterThePush() {
+        Map<String, String> files = pages("https://example.org/eggboil/eggboil.owl");
+
+        for (String path : new String[] {"docs/index.md", "docs/release.md"}) {
+            String page = files.get(path);
+            assertTrue(said(page).contains(OdkExtras.workflowPermissions(null, "eggboil")),
+                    path + ":\n" + page);
+            assertTrue(page.contains("`gh api -X PUT repos/<owner>/eggboil/"), path + ":\n" + page);
+        }
+        String release = files.get("docs/release.md");
+        assertTrue(release.indexOf("git push --follow-tags") < release.indexOf(
+                "Workflow permissions"), release);
+    }
+
     /** Git must not turn ODK's files into CRLF on a Windows clone: its container runs them. */
     @Test
     void lineEndingsArePinnedForEveryTextFile() {
