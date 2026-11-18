@@ -151,6 +151,16 @@ record for that version.
   `ProfileActionTest.theReasonerIsNamedWithItsArticle`,
   `ToolchainTest.aContainerTheSettingsDoNotUseIsSaidAsNotUsed`,
   `RangeChoiceTest.theChosenRangeHasRoomUnderItsTextForTheFocusBorder`.
+- ***Build...* offered ODK's `update_repo`, which stops after a clean, fixed in 1.154.0.** Found
+  handing a project from OntoBoard to ODK and back with ODK's container: ODK v1.6.1 has deprecated
+  `make update_repo` - its Makefile says to run `sh run.sh odk.py update` - and run through make
+  after `make clean`, or in a fresh clone, it looks for ROBOT's ODK plugin in an empty
+  `tmp/plugins/` and stops with "UNKNOWN ARG ERROR unknown command or option: odk:import".
+  *Build...* listed it among the targets a person types on ODK's container route and with ODK's
+  tools installed. The first fix took it out of the list Build explains, not the one it offers;
+  the review of the whole branch found that. Build no longer offers it for ODK's Makefile, and
+  *OntoBoard > Project > Update project files...* runs ODK's update.
+  `DialogDesignProofTest.buildDoesNotOfferOdksUpdateForOdksMakefile`, red first.
 - **A project OntoBoard made was not an ODK project, fixed in 1.153.0.** Found by having ODK
   v1.6.1 seed a project from the very configuration OntoBoard's wizard wrote, and holding the two
   side by side. ODK's had a Makefile of several hundred lines - `update_repo`, `refresh-imports`,
