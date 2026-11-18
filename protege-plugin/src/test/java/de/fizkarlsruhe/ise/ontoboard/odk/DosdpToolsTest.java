@@ -104,4 +104,62 @@ class DosdpToolsTest {
         assertTrue(new File(home, "lib").mkdirs());
         assertFalse(DosdpTools.isInstalled(home), "no launcher");
     }
+
+    /**
+     * Found by hand in 1.154.0's release check: inside Protégé on Windows the install failed
+     * every time at its last step, the unpacked folder's move into place - "AccessDenied",
+     * reproduced outside Protégé with Protégé's javaw.exe and not with java.exe, so something on
+     * the machine was still reading the 192 libraries just written. Refused at first, the move
+     * is tried again.
+     */
+    @Test
+    void aMoveRefusedAtFirstIsTriedAgain(@TempDir File temp) throws IOException {
+        java.nio.file.Path staging = java.nio.file.Files.createDirectories(
+                new File(temp, "dosdp-tools-0.19.3.unpacking-1").toPath());
+        java.nio.file.Files.write(staging.resolve("lib.jar"), new byte[] {1});
+        java.nio.file.Path target = new File(temp, "dosdp-tools-0.19.3").toPath();
+        final int[] refusals = {2};
+
+        int tries = DosdpTools.moveIntoPlace(staging, target, (from, to) -> {
+            if (refusals[0]-- > 0) {
+                throw new java.nio.file.AccessDeniedException(from.toString(), to.toString(),
+                        null);
+            }
+            java.nio.file.Files.move(from, to);
+        }, 10000);
+
+        assertEquals(3, tries);
+        assertTrue(java.nio.file.Files.isRegularFile(target.resolve("lib.jar")));
+        assertFalse(java.nio.file.Files.exists(staging));
+    }
+
+    /** Refused for longer than it is given, the move says why; it does not wait for ever. */
+    @Test
+    void aMoveRefusedForLongerThanItIsGivenSaysWhy(@TempDir File temp) {
+        java.nio.file.Path staging = new File(temp, "a").toPath();
+        java.nio.file.Path target = new File(temp, "b").toPath();
+        long started = System.nanoTime();
+
+        assertThrows(java.nio.file.AccessDeniedException.class,
+                () -> DosdpTools.moveIntoPlace(staging, target, (from, to) -> {
+                    throw new java.nio.file.AccessDeniedException(from.toString());
+                }, 300));
+
+        assertTrue(System.nanoTime() - started < 5_000_000_000L, "it waited too long");
+    }
+
+    /** A folder already there is no passing refusal: said at once, not tried again. */
+    @Test
+    void aFolderAlreadyThereIsNotTriedAgain(@TempDir File temp) {
+        final int[] tries = {0};
+
+        assertThrows(java.nio.file.FileAlreadyExistsException.class,
+                () -> DosdpTools.moveIntoPlace(new File(temp, "a").toPath(),
+                        new File(temp, "b").toPath(), (from, to) -> {
+                            tries[0]++;
+                            throw new java.nio.file.FileAlreadyExistsException(to.toString());
+                        }, 10000));
+
+        assertEquals(1, tries[0]);
+    }
 }

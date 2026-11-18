@@ -173,11 +173,56 @@ public final class DosdpTools {
             if (target.exists()) {
                 delete(target);
             }
-            Files.move(staging.toPath(), target.toPath());
+            moveIntoPlace(staging.toPath(), target.toPath(), (from, to) -> Files.move(from, to),
+                    MOVE_PATIENCE_MILLIS);
             installed = true;
         } finally {
             if (!installed) {
                 delete(staging);
+            }
+        }
+    }
+
+    /** How long the unpacked folder's move into place is tried for. */
+    static final long MOVE_PATIENCE_MILLIS = 30000;
+
+    /** A move of one folder to another name; {@code Files.move} outside the tests. */
+    interface Mover {
+        void move(Path from, Path to) throws IOException;
+    }
+
+    /**
+     * Moves the unpacked folder into place, and tries again while Windows refuses: a folder
+     * cannot be renamed while something holds a file in it, and right after 192 libraries are
+     * written something on the machine may still be reading them. Inside Protégé on Windows the
+     * move was refused every time ("AccessDenied"; reproduced with Protégé's javaw.exe and not
+     * with java.exe - 1.154.0's release check). A folder already there, or none to move, is no
+     * passing refusal and is said at once.
+     *
+     * @return how many tries it took
+     */
+    static int moveIntoPlace(Path staging, Path target, Mover mover, long patienceMillis)
+            throws IOException {
+        long deadline = System.nanoTime() + patienceMillis * 1_000_000L;
+        long pause = 50;
+        for (int tries = 1; ; tries++) {
+            try {
+                mover.move(staging, target);
+                return tries;
+            } catch (java.nio.file.FileAlreadyExistsException
+                    | java.nio.file.NoSuchFileException notPassing) {
+                throw notPassing;
+            } catch (java.nio.file.FileSystemException refused) {
+                if (System.nanoTime() + pause * 1_000_000L > deadline) {
+                    throw refused;
+                }
+                try {
+                    Thread.sleep(pause);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw refused;
+                }
+                pause = Math.min(pause * 2, 1000);
             }
         }
     }
