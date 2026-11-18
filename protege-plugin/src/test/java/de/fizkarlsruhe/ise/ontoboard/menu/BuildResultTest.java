@@ -106,6 +106,30 @@ class BuildResultTest {
     }
 
     /**
+     * The 1.154.0 review's I2: a run in ODK's container with "Download the imports' sources
+     * again" unticked, on a clone without mirror/, stops on a mirror it may not download - and
+     * Build's result names that box, as the engine's route does before it runs.
+     */
+    @Test
+    void aContainerRunWithoutMirrorsNamesTheBoxThatDownloadsThem(@TempDir File where)
+            throws Exception {
+        File edit = SeededProject.in(where);
+        OWLOntology ontology = SeededProject.open(edit);
+        ProcessRunner.Outcome stopped = new ProcessRunner.Outcome(2, Arrays.asList(
+                "make[1]: *** No rule to make target 'mirror/iao.owl', needed by "
+                        + "'imports/iao_import.owl'.  Stop.",
+                "make: *** [Makefile:116: test] Error 2"), false);
+
+        OperationResult result = BuildAction.processResult(OperationResult.of("Build"), "test",
+                stopped, 1, edit, ontology, java.util.EnumSet.of(
+                        de.fizkarlsruhe.ise.ontoboard.odk.BuildSwitches.Switch.MIR));
+
+        assertEquals(OperationResult.Status.FAILED, result.getStatus(), result.getSummary());
+        assertTrue(result.getSummary().contains("Download the imports' sources again"),
+                result.getSummary());
+    }
+
+    /**
      * What ELK cannot see, HermiT is asked about after a run that passed, and the answer stands
      * above the log: the build keeps ODK's verdict and says what a fuller reasoner adds.
      */

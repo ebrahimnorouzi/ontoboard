@@ -327,6 +327,28 @@ class ReleaseRunTest {
                 "src/ontology/imports/egg_terms.txt", "notes.txt"), asBefore.leftOut());
     }
 
+    /**
+     * The 1.154.0 review's M1: what is committed first is what the box named, from git's status
+     * before the build - not what the release's own build left new under src/ (a turtle file of
+     * the release's formats, which ODK's .gitignore does not cover). That one is said as left out.
+     */
+    @Test
+    void onlyTheFilesTheBoxNamedAreCommittedFirst(@TempDir File root) throws IOException {
+        File owl = write(root, "eggboil.owl", "owl");
+        List<String> afterTheBuild = Arrays.asList("## main", "?? src/sparql/question.rq",
+                "?? src/ontology/eggboil.ttl", " M src/ontology/eggboil-edit.owl");
+
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, root, "eggboil", "1.0.0",
+                Collections.singletonList(owl), afterTheBuild, true,
+                Collections.singletonList("src/sparql/question.rq"));
+
+        assertEquals(Arrays.asList("git", "add", "--", "src/sparql/question.rq"),
+                staging.commands().get(0));
+        assertFalse(staging.commands().toString().contains("eggboil.ttl"),
+                staging.commands().toString());
+        assertEquals(Collections.singletonList("src/ontology/eggboil.ttl"), staging.leftOut());
+    }
+
     /** An ODK repository OntoBoard did not make has no releases/ folder to add. */
     @Test
     void withoutACopyThereIsNothingOfItToAdd(@TempDir File root) throws IOException {

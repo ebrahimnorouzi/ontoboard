@@ -12,12 +12,17 @@ import org.junit.jupiter.api.Test;
  */
 class TargetWordsTest {
 
+    /**
+     * What each target is, whatever Build's boxes say: test and prepare_release fetch the imports
+     * only with "Download the imports' sources again" ticked, so their words do not claim it
+     * (the 1.154.0 review's M3); the fast targets never fetch them.
+     */
     @Test
     void eachOfOdksMainTargetsHasPlainWords() {
-        assertEquals("Check everything (downloads the imports again)", TargetWords.of("test"));
+        assertEquals("Check everything", TargetWords.of("test"));
         assertEquals("Check quickly (keeps the imports as they are)",
                 TargetWords.of("test_fast"));
-        assertEquals("Release, with fresh imports", TargetWords.of("prepare_release"));
+        assertEquals("Release", TargetWords.of("prepare_release"));
         assertEquals("Release, with the imports as they are",
                 TargetWords.of("prepare_release_fast"));
         assertEquals("Download and rebuild every import", TargetWords.of("refresh-imports"));
@@ -32,8 +37,7 @@ class TargetWordsTest {
     /** The words, then make's command; a target without words is said once, as the command. */
     @Test
     void aChoiceSaysTheWordsAndMakesCommand() {
-        assertEquals("Check everything (downloads the imports again) - make test",
-                TargetWords.choice("test"));
+        assertEquals("Check everything - make test", TargetWords.choice("test"));
         assertEquals("Release, with the imports as they are - make prepare_release_fast",
                 TargetWords.choice("prepare_release_fast"));
         assertEquals("make reason_test", TargetWords.choice("reason_test"));

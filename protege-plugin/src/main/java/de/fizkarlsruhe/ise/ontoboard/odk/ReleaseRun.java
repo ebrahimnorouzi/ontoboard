@@ -484,24 +484,6 @@ public final class ReleaseRun {
         "src/ontology/target/"};
 
     /**
-     * The commit and the tag of a release of a project that may be a folder of a larger
-     * repository.
-     *
-     * <p>Everything is said from the project's root, where the commands run: {@code git add
-     * -u -- .} takes in the tracked files of the project the release changed - without the
-     * path it would take the whole repository, somebody's unrelated work with it - and git's
-     * status, which names files from the repository's top, is read back into the project's
-     * own names.
-     *
-     * <p>A release cleans first (ODK's {@code make clean}), which empties ODK's scratch
-     * folders. A file there that git tracks - {@code src/ontology/tmp/README.md}, which
-     * older ODKs seeded - would be staged as deleted and go into the release's commit; it is
-     * put back first, by a command that is shown with the others.
-     *
-     * @param repositoryRoot the top of the repository the project is in: the project's root,
-     *                       or a folder above it
-     */
-    /**
      * New files as a sentence says them, after "the project's": files counted, and a folder
      * git lists whole - all of it new - as a folder, not as one file.
      */
@@ -519,6 +501,23 @@ public final class ReleaseRun {
             return folders == 1 ? "new folder" : folders + " new folders";
         }
         return filesSaid + " and " + folders + " new folder" + (folders == 1 ? "" : "s");
+    }
+
+    /**
+     * Of the files the box named, those git still lists as new: listed as they are, or inside a
+     * folder git now lists whole - the file then, not the folder, which may hold more.
+     */
+    static List<String> stillNew(List<String> named, List<String> newNow) {
+        List<String> still = new ArrayList<String>();
+        for (String path : named) {
+            for (String listed : newNow) {
+                if (path.equals(listed) || (listed.endsWith("/") && path.startsWith(listed))) {
+                    still.add(path);
+                    break;
+                }
+            }
+        }
+        return still;
     }
 
     /** The message of the commit that takes a project's new files in before its release. */
@@ -586,6 +585,38 @@ public final class ReleaseRun {
      */
     public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
             String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst) {
+        return staging(projectRoot, repositoryRoot, ontologyId, version, assets, gitStatus,
+                commitNewFirst, null);
+    }
+
+    /**
+     * The commit and the tag of a release of a project that may be a folder of a larger
+     * repository.
+     *
+     * <p>Everything is said from the project's root, where the commands run: {@code git add
+     * -u -- .} takes in the tracked files of the project the release changed - without the
+     * path it would take the whole repository, somebody's unrelated work with it - and git's
+     * status, which names files from the repository's top, is read back into the project's
+     * own names.
+     *
+     * <p>A release cleans first (ODK's {@code make clean}), which empties ODK's scratch
+     * folders. A file there that git tracks - {@code src/ontology/tmp/README.md}, which
+     * older ODKs seeded - would be staged as deleted and go into the release's commit; it is
+     * put back first, by a command that is shown with the others.
+     *
+     * <p>Asked to, the new files the form's box named - from git's status before the build,
+     * those of them that are new still - are committed first. What the release's own build
+     * left new under src/ (a format ODK's .gitignore does not cover) is said as left out, not
+     * swept into that commit (the 1.154.0 review's M1).
+     *
+     * @param repositoryRoot the top of the repository the project is in: the project's root,
+     *                       or a folder above it
+     * @param named          the files the box named; null for the project's new files as git's
+     *                       status after the build lists them
+     */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
+            List<String> named) {
         List<String> names = new ArrayList<String>();
         for (File asset : assets) {
             names.add(relative(projectRoot, asset));
@@ -610,9 +641,9 @@ public final class ReleaseRun {
         if (putBack.size() > 3) {
             commands.add(putBack);
         }
-        List<String> first = commitNewFirst
-                ? newFilesOfTheProject(projectRoot, repositoryRoot, gitStatus)
-                : Collections.<String>emptyList();
+        List<String> newNow = newFilesOfTheProject(projectRoot, repositoryRoot, gitStatus);
+        List<String> first = !commitNewFirst ? Collections.<String>emptyList()
+                : named == null ? newNow : stillNew(named, newNow);
         if (!first.isEmpty()) {
             List<String> addFirst = new ArrayList<String>(Arrays.asList("git", "add", "--"));
             addFirst.addAll(first);

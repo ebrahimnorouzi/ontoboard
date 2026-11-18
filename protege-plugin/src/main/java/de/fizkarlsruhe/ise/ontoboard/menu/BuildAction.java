@@ -35,6 +35,9 @@ public class BuildAction extends OntoBoardAction {
 
     private static final String OPTION_TARGET = "target";
 
+    /** ODK's update as a target of make: not offered for ODK's Makefile. */
+    private static final String ODKS_UPDATE = "update_repo";
+
     /** Each of ODK's switches is an option of its own: this, then the switch's name. */
     private static final String OPTION_SWITCH = "switch.";
 
@@ -236,6 +239,12 @@ public class BuildAction extends OntoBoardAction {
             boolean switches, Map<String, String> was) {
         List<String> choices = new ArrayList<String>();
         for (String target : targets) {
+            if (switches && ODKS_UPDATE.equals(target)) {
+                // ODK's update is Update project files...: ODK v1.6.1 calls its make target
+                // deprecated, and through make it stops where a clean or a fresh clone left
+                // tmp/plugins empty (the 1.154.0 review's I1).
+                continue;
+            }
             choices.add(switches ? TargetWords.choice(target) : target);
         }
         List<Parameter> parameters = new ArrayList<Parameter>();
@@ -350,7 +359,7 @@ public class BuildAction extends OntoBoardAction {
                     + " (command: " + join(command) + ")").build();
         }
         long seconds = (System.currentTimeMillis() - started) / 1000;
-        return processResult(result, target, outcome, seconds, editFile, ontology);
+        return processResult(result, target, outcome, seconds, editFile, ontology, off);
     }
 
     /**
@@ -410,6 +419,17 @@ public class BuildAction extends OntoBoardAction {
      */
     static OperationResult processResult(OperationResult.Builder result, String target,
             ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology) {
+        return processResult(result, target, outcome, seconds, editFile, ontology,
+                EnumSet.noneOf(BuildSwitches.Switch.class));
+    }
+
+    /**
+     * The same, for a run with Build's switches: a failure is explained knowing which were off
+     * (the 1.154.0 review's I2).
+     */
+    static OperationResult processResult(OperationResult.Builder result, String target,
+            ProcessRunner.Outcome outcome, long seconds, File editFile, OWLOntology ontology,
+            Set<BuildSwitches.Switch> off) {
         List<String> warnings = new ArrayList<String>();
         // F5: make ran the Makefile as it is, where OntoBoard's engine would have refused it.
         String notOdks = de.fizkarlsruhe.ise.ontoboard.odk.FallbackEligibility.notOdksMakefile(
@@ -420,7 +440,7 @@ public class BuildAction extends OntoBoardAction {
         }
         List<String> transcript = outcome.getOutput();
         noteTheTranscript(result, transcript, seconds);
-        String failure = MakeRun.explain(target, outcome);
+        String failure = MakeRun.explain(target, outcome, off);
         if (failure != null) {
             // The transcript is above; this is the sentence that says where to look in it.
             return result.failed(outcome.wasCancelled() || outcome.timedOut() ? failure

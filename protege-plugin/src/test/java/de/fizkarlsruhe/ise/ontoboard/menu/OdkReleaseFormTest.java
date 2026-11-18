@@ -218,6 +218,19 @@ class OdkReleaseFormTest {
                         .apply(chosen(start, OdkReleaseForm.VERSION, "1.0.x")));
     }
 
+    /**
+     * The 1.154.0 review's M1: the release is asked to commit first the files the box named -
+     * read before the build - so what the build itself leaves new is not swept in with them.
+     */
+    @Test
+    void theRequestCarriesTheNewFilesTheBoxNamed() {
+        status = Arrays.asList("## main", "?? src/sparql/question.rq", "?? notes.txt");
+        OdkReleaseForm.Start start = start();
+
+        assertEquals(Collections.singletonList("src/sparql/question.rq"),
+                OdkReleaseForm.request(start, chosen(start)).newFiles());
+    }
+
     /** OntoBoard itself, where it cannot fetch the imports, builds the fast release: said. */
     @Test
     void aReleaseOnTheImportsAsTheyAreSaysTheFastTarget() {

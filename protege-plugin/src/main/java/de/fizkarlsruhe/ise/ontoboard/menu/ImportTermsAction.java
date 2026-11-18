@@ -390,22 +390,23 @@ public class ImportTermsAction extends OntoBoardAction {
                         + "module types - its name is in brackets - and it is declared in the "
                         + "project's configuration, so ODK's Makefile builds the module by its own "
                         + "rule for it, now and at every refresh and release.\n\n"
-                        + "The terms you chose and what they need (slme, BOT): each term with "
+                        + kindLabel(ImportProducts.Kind.MODULE) + ": each term with "
                         + "its parents up to the top, and what it is defined by - for a term "
                         + "that is part of a heart, the heart and 'part of'. ODK's default, and "
                         + "what an import almost always wants.\n\n"
-                        + "Only the terms you chose and the links between them (filter): "
-                        + "nothing but the terms you chose and what is said between them - "
-                        + "'a is a b' when you chose both. Their other parents are left out, "
-                        + "and so is a link through a relation you did not choose.\n\n"
-                        + "The terms you chose and the relations between them (minimal): "
-                        + "the same, and links through relations as well - 'a is part of d' "
-                        + "when you chose both, with 'part of'. Their other parents are left "
-                        + "out.\n\n"
-                        + "The whole ontology (mirror): all of it, as the source has it - for "
-                        + "a small ontology you use most of.\n\n"
+                        + kindLabel(ImportProducts.Kind.ONLY_THESE) + ": nothing but the "
+                        + "terms you chose, and which of them is a kind of which - 'a is a b' "
+                        + "when you chose both. Their other parents are left out, and so is a "
+                        + "link through any other relation.\n\n"
+                        + kindLabel(ImportProducts.Kind.WITH_RELATIONS) + ": the same, and "
+                        + "the links through other relations as well - 'a is part of d' when "
+                        + "you chose both, with 'part of'. Their other parents are left out.\n\n"
+                        + kindLabel(ImportProducts.Kind.WHOLE) + ": all of it, as the source "
+                        + "has it - for a small ontology you use most of.\n\n"
                         + "The module is first extracted here, so that it works at once; ODK's "
-                        + "own refresh of the import then builds it as chosen.")
+                        + "own refresh of the import then builds it as chosen. An import "
+                        + "already declared keeps the kind it has; "
+                        + "OntoBoard > Project > Project configuration... changes it.")
                 .build();
     }
 
@@ -1335,6 +1336,25 @@ public class ImportTermsAction extends OntoBoardAction {
      * import is ordinary - it is how a term list grows - and a second product with the same id
      * would give ODK two rules for one module.
      */
+    /**
+     * What Import terms says of an import already declared: it keeps the kind it is declared
+     * with (Task 18's ruling), so a kind chosen that is another is not taken - said, with where
+     * an import's kind is changed (the 1.154.0 review's M4). The same kind needs no word.
+     */
+    static String alreadyDeclared(String id, ImportProducts.Product declared,
+            ImportProducts.Kind chosen) {
+        String left = id + " is already declared in import_group.products, so the list was "
+                + "left alone.";
+        ImportProducts.Kind has = declared == null ? null : ImportProducts.Kind.of(declared);
+        if (chosen == null || declared == null || chosen == has) {
+            return left;
+        }
+        return left + " It keeps the kind it is declared with ("
+                + (has != null ? "\"" + has.words() + "\"" : declared.describeModuleType())
+                + "): \"" + chosen.words() + "\", chosen here, is not taken. "
+                + "OntoBoard > Project > Project configuration... changes an import's kind.";
+    }
+
     private boolean declareProduct(OperationResult.Builder result, OWLOntology ontology,
             OWLOntology source, IRI sourceIri, boolean pattern, boolean odk) {
         File projectRoot = projectRootFor(ontology);
@@ -1351,9 +1371,10 @@ public class ImportTermsAction extends OntoBoardAction {
         }
 
         String id = moduleName(source);
-        if (ImportProducts.named(ImportProducts.declaredIn(ontologyDirectory), id) != null) {
-            result.note(id + " is already declared in import_group.products, so the list was "
-                    + "left alone.");
+        ImportProducts.Product declared = ImportProducts.named(
+                ImportProducts.declaredIn(ontologyDirectory), id);
+        if (declared != null) {
+            result.note(alreadyDeclared(id, declared, odk && !pattern ? kind : null));
             return false;
         }
 

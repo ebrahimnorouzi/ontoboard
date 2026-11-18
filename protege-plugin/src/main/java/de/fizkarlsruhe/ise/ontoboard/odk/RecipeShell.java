@@ -206,8 +206,14 @@ final class RecipeShell {
         int run(Running running, String in, StringBuilder out) throws IOException {
             List<String> arguments = new ArrayList<String>();
             boolean matched = false;
+            boolean computed = false;
             for (Word word : words) {
                 if (word.glob == null) {
+                    // A word whose value is computed - "$(cat x)", "$x" - was looked at before
+                    // the run as its text only, which is no file: its tool is asked again below,
+                    // with the value (the 1.154.0 review's C1 - an empty one is the make folder
+                    // itself, one that climbs out is outside the project).
+                    computed |= word.text() == null;
                     arguments.add(running.value(word));
                     continue;
                 }
@@ -236,8 +242,9 @@ final class RecipeShell {
                 running.said.add(name + ": command not found");
                 return 127;
             }
-            if (matched) {
-                // The look before the run saw the pattern; the tool is asked about its files.
+            if (matched || computed) {
+                // The look before the run saw the pattern, or the words' text and not their
+                // values: the tool is asked about the files it gets.
                 String why = tool.whyNot(arguments);
                 if (why != null) {
                     throw new Refused(why);

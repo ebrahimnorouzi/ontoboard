@@ -396,6 +396,24 @@ class OdkReleaseTest {
         assertEquals(0, asked.size());
     }
 
+    /**
+     * The 1.154.0 review's M2: when it is the release just built that cannot be read, the
+     * failure says so - not that the last release is to be put where it is kept.
+     */
+    @Test
+    void anUnreadableNewReleaseIsNotBlamedOnTheLastOne() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), owl("Egg"));
+        released = UNREADABLE;
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk(), "released uncompared");
+        assertTrue(outcome.getFailure().contains("just built"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("eggboil.owl"), outcome.getFailure());
+        assertFalse(outcome.getFailure().contains("Put the 0.9.0 release"), outcome.getFailure());
+        assertFalse(new File(root, "releases/1.0.0").exists());
+    }
+
     /** With the box ticked the person has said they know: it is released, and the warning stays. */
     @Test
     void aReleaseUncomparedOnPurposeGoesOnAndTheWarningStays() throws IOException {

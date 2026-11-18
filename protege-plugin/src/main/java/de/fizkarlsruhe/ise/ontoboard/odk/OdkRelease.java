@@ -188,6 +188,7 @@ public final class OdkRelease {
         private final boolean refuseRemovedTerms;
         private final boolean releaseUncompared;
         private final boolean commitNewFiles;
+        private final List<String> newFiles;
 
         /**
          * A release that stops where it cannot be compared with the last release.
@@ -224,6 +225,18 @@ public final class OdkRelease {
         public Request(File editFile, String version, VersionIriShape shape,
                 boolean refreshImports, boolean refuseRemovedTerms, boolean releaseUncompared,
                 boolean commitNewFiles) {
+            this(editFile, version, shape, refreshImports, refuseRemovedTerms, releaseUncompared,
+                    commitNewFiles, null);
+        }
+
+        /**
+         * @param newFiles the new files the form's box named, from git's status before the
+         *                 build: only those are committed first (the 1.154.0 review's M1); null
+         *                 for the project's new files as git lists them after the build
+         */
+        public Request(File editFile, String version, VersionIriShape shape,
+                boolean refreshImports, boolean refuseRemovedTerms, boolean releaseUncompared,
+                boolean commitNewFiles, List<String> newFiles) {
             this.editFile = editFile;
             this.version = version == null ? "" : version.trim();
             this.shape = shape == null ? VersionIriShape.of(VersionIriShape.Kind.ODK) : shape;
@@ -231,6 +244,8 @@ public final class OdkRelease {
             this.refuseRemovedTerms = refuseRemovedTerms;
             this.releaseUncompared = releaseUncompared;
             this.commitNewFiles = commitNewFiles;
+            this.newFiles = newFiles == null ? null
+                    : Collections.unmodifiableList(new ArrayList<String>(newFiles));
         }
 
         public File editFile() {
@@ -261,6 +276,11 @@ public final class OdkRelease {
         /** Whether the project's new files are committed first, in a commit of their own. */
         public boolean commitsNewFilesFirst() {
             return commitNewFiles;
+        }
+
+        /** The new files the form's box named; null where none were named. */
+        public List<String> newFiles() {
+            return newFiles;
         }
     }
 
@@ -665,24 +685,43 @@ public final class OdkRelease {
         File primary = new File(facts.root(), facts.id() + ".owl");
         Last last = assets.contains(primary) ? lastRelease(facts, tags, version) : null;
         if (last != null) {
+            // F6 (ruling 16): the comparison is the last check before the release is a commit
+            // somebody pulls - so it stops here, as for a term that is gone, unless the person
+            // said to go on without it. Which file could not be read is said: the release just
+            // built, or the last one (the 1.154.0 review's M2).
+            String uncompared = null;
             try {
                 after = load(primary);
-                diff = ReleaseDiff.between(last.load(), after);
-                log.note("Compared with the " + last.version + " release: " + diff.summary());
-            } catch (RuntimeException cannotCompare) {
-                // F6 (ruling 16): the comparison is the last check before the release is a
-                // commit somebody pulls - so it stops here, as for a term that is gone, unless
-                // the person said to go on without it.
-                String uncompared = "Could not compare with the " + last.version + " release: "
-                        + firstLineOf(cannotCompare);
-                log.note("What reading the " + last.version + " release said: "
-                        + cannotCompare.getMessage());
+            } catch (RuntimeException cannotRead) {
+                uncompared = "Could not compare with the " + last.version + " release: the "
+                        + "release just built, " + primary.getName() + ", could not be read - "
+                        + firstLineOf(cannotRead);
+                log.note("What reading " + primary.getName() + " said: "
+                        + cannotRead.getMessage());
+            }
+            if (uncompared == null) {
+                try {
+                    diff = ReleaseDiff.between(last.load(), after);
+                    log.note("Compared with the " + last.version + " release: "
+                            + diff.summary());
+                } catch (RuntimeException cannotCompare) {
+                    uncompared = "Could not compare with the " + last.version + " release: "
+                            + firstLineOf(cannotCompare);
+                    log.note("What reading the " + last.version + " release said: "
+                            + cannotCompare.getMessage());
+                }
+            }
+            if (uncompared != null) {
                 if (!request.releaseUncompared) {
                     return log.failed(uncompared + " ODK built the release files and put them "
-                            + "at the top of the project; nothing was copied to releases/, committed "
-                            + "or tagged. Put the " + last.version + " release right where it "
-                            + "is kept (releases/" + last.version + "/ or its tag) and release "
-                            + "again - or tick \"" + UNCOMPARED_LABEL + "\".");
+                            + "at the top of the project; nothing was copied to releases/, "
+                            + "committed or tagged. " + (after == null
+                                    ? "Look at " + primary.getName() + ", which ODK's build "
+                                            + "wrote, and release again"
+                                    : "Put the " + last.version + " release right where it is "
+                                            + "kept (releases/" + last.version + "/ or its tag) "
+                                            + "and release again")
+                            + " - or tick \"" + UNCOMPARED_LABEL + "\".");
                 }
                 log.warn(uncompared);
             }
@@ -728,7 +767,7 @@ public final class OdkRelease {
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
         return recorded(facts, version, assets, git, asks, log, done,
-                request.commitsNewFilesFirst());
+                request.commitsNewFilesFirst(), request.newFiles());
     }
 
     /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
@@ -1150,7 +1189,8 @@ public final class OdkRelease {
      *                       of their own, so that the tag holds them
      */
     private static Outcome recorded(Facts facts, String version, List<File> assets,
-            ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst) {
+            ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst,
+            List<String> newFiles) {
         String where = facts.root().getAbsolutePath();
         String tag = GitTags.tagFor(version);
         if (GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")) == null) {
@@ -1187,7 +1227,7 @@ public final class OdkRelease {
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
                 GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
-                version, assets, status, commitNewFirst);
+                version, assets, status, commitNewFirst, newFiles);
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "

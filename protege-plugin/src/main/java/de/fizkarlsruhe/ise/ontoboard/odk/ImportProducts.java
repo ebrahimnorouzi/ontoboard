@@ -672,10 +672,10 @@ public final class ImportProducts {
     public enum Kind {
         /** ODK's default: {@code module_type: slme}, {@code module_type_slme: BOT}. */
         MODULE("The terms you chose and what they need", "slme", "BOT"),
-        /** {@code module_type: filter}. */
-        ONLY_THESE("Only the terms you chose and the links between them", "filter", null),
-        /** {@code module_type: minimal}. */
-        WITH_RELATIONS("The terms you chose and the relations between them", "minimal", null),
+        /** {@code module_type: filter}: of what holds between them, only "is a". */
+        ONLY_THESE("Only the terms you chose, with their \"is a\" links", "filter", null),
+        /** {@code module_type: minimal}: what holds between them through any relation too. */
+        WITH_RELATIONS("The terms you chose, with every relation between them", "minimal", null),
         /** {@code module_type: mirror}. */
         WHOLE("The whole ontology", "mirror", null);
 
@@ -703,6 +703,22 @@ public final class ImportProducts {
         public static Kind byWords(String words) {
             for (Kind kind : values()) {
                 if (kind.words.equals(words)) {
+                    return kind;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * The kind a declared import is - its module type, and its SLME method where it has
+         * one, ODK's defaults filled in - or null for one that is none of the four (an SLME
+         * module by TOP or STAR).
+         */
+        public static Kind of(Product product) {
+            for (Kind kind : values()) {
+                if (kind.moduleType.equalsIgnoreCase(product.getModuleType())
+                        && (kind.slme == null || kind.slme.equalsIgnoreCase(
+                                product.getSlmeMethod()))) {
                     return kind;
                 }
             }

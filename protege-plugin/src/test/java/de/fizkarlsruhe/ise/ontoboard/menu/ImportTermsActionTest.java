@@ -260,4 +260,30 @@ class ImportTermsActionTest {
         assertEquals("Wrote a module of 1 axiom for 2 terms, and imported it.",
                 ImportTermsAction.moduleSummary(1, 2));
     }
+
+    /**
+     * The 1.154.0 review's M4: an import already declared keeps its kind (Task 18's ruling), so
+     * a kind chosen for it is not taken - and the result says so, with where an import's kind is
+     * changed; the form's help says it before. The same kind as declared needs no word.
+     */
+    @Test
+    void anImportAlreadyDeclaredSaysTheKindChosenIsNotTaken() {
+        de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Product ro =
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.named(
+                        de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.declaredIn(
+                                "id: egg\nimport_group:\n  products:\n    - id: ro\n"), "ro");
+
+        String note = ImportTermsAction.alreadyDeclared("ro", ro,
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.WHOLE);
+
+        assertTrue(note.contains("not taken"), note);
+        assertTrue(note.contains(
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.WHOLE.words()), note);
+        assertTrue(note.contains("OntoBoard > Project > Project configuration..."), note);
+        assertFalse(ImportTermsAction.alreadyDeclared("ro", ro,
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts.Kind.MODULE)
+                .contains("not taken"));
+        assertTrue(ImportTermsAction.kindParameter(null).getHelp().contains("already declared"),
+                ImportTermsAction.kindParameter(null).getHelp());
+    }
 }

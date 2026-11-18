@@ -22,7 +22,8 @@ import java.util.List;
 final class IriRedirects {
 
     private static final int HOPS = 5;
-    private static final int TIMEOUT_MILLIS = 20000;
+    /** Long enough for a server that answers; a probe that is not answered is given up soon. */
+    private static final int TIMEOUT_MILLIS = 5000;
     /** What the OWL API asks for when it loads from an address. */
     private static final String ACCEPT = "application/rdf+xml, application/xml; q=0.7, "
             + "text/xml; q=0.6, text/plain; q=0.1, */*; q=0.09";
@@ -50,15 +51,59 @@ final class IriRedirects {
         return iri;
     }
 
-    /** A ROBOT line with the value of each {@code -I} and {@code --input-iri} through those moves. */
-    static List<String> inputIrisAcrossToHttps(List<String> arguments) {
+    /**
+     * Whether an OWL API of this version follows a move from http to https itself: 4.5.29 -
+     * ODK's, Protégé 5.6.9's - and later do; 4.5.9, Protégé 5.5.0's, does not. A version that
+     * cannot be read is taken for one that does not, and its addresses are probed.
+     */
+    static boolean followsMovesItself(String owlApiVersion) {
+        java.util.regex.Matcher number = java.util.regex.Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)")
+                .matcher(owlApiVersion == null ? "" : owlApiVersion.trim());
+        if (!number.find()) {
+            return false;
+        }
+        int major = Integer.parseInt(number.group(1));
+        int minor = Integer.parseInt(number.group(2));
+        int patch = Integer.parseInt(number.group(3));
+        return major > 4 || major == 4 && (minor > 5 || minor == 5 && patch >= 29);
+    }
+
+    /**
+     * A ROBOT line with the value of each {@code -I} and {@code --input-iri} through those moves,
+     * where the OWL API does not follow them itself: where it does, nothing is probed - offline,
+     * or behind a firewall that answers nothing, each probe waited for nothing (the 1.154.0
+     * review's M6).
+     *
+     * @param across where an address leads, for one the OWL API does not follow itself
+     */
+    static List<String> inputIrisAcrossToHttps(List<String> arguments, boolean followsItself,
+            java.util.function.UnaryOperator<String> across) {
         List<String> line = new ArrayList<String>(arguments);
+        if (followsItself) {
+            return line;
+        }
         for (int i = 0; i + 1 < line.size(); i++) {
             if (line.get(i).equals("-I") || line.get(i).equals("--input-iri")) {
-                line.set(i + 1, acrossToHttps(line.get(i + 1)));
+                line.set(i + 1, across.apply(line.get(i + 1)));
             }
         }
         return line;
+    }
+
+    /** A ROBOT line with the value of each {@code -I} and {@code --input-iri} through those moves. */
+    static List<String> inputIrisAcrossToHttps(List<String> arguments) {
+        return inputIrisAcrossToHttps(arguments, followsMovesItself(owlApiVersion()),
+                IriRedirects::acrossToHttps);
+    }
+
+    /** The version of the OWL API this runs with; empty where it cannot be told. */
+    private static String owlApiVersion() {
+        try {
+            String version = org.semanticweb.owlapi.util.VersionInfo.getVersionInfo().getVersion();
+            return version == null ? "" : version;
+        } catch (RuntimeException | LinkageError unknown) {
+            return "";
+        }
     }
 
     /** Where the address says it has moved to; null when it answers otherwise, or not at all. */

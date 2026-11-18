@@ -66,6 +66,7 @@ class IriRedirectsTest {
                 "http://127.0.0.1:9/nobody"), "nobody answers: as written, ROBOT says why");
     }
 
+    /** Where the OWL API does not follow the move itself - Protégé 5.5.0's 4.5.9. */
     @Test
     void theInputIriOfALineIsTheOneTheMoveLeadsTo() {
         List<String> line = Arrays.asList("--catalog", "catalog-v001.xml", "convert", "-I",
@@ -73,6 +74,33 @@ class IriRedirectsTest {
 
         assertEquals(Arrays.asList("--catalog", "catalog-v001.xml", "convert", "-I",
                 "https://example.org/ns/dcat3", "-o", "tmp/mirror-dcat.owl"),
-                IriRedirects.inputIrisAcrossToHttps(line));
+                IriRedirects.inputIrisAcrossToHttps(line, false, IriRedirects::acrossToHttps));
+    }
+
+    /**
+     * The 1.154.0 review's M6: an OWL API that follows a move from http to https itself - 4.5.29,
+     * Protégé 5.6.9's and ODK's - needs no probe, and is not given one: offline, or behind a
+     * firewall that answers nothing, each -I waited on it for nothing. Protégé 5.5.0's OWL API
+     * (4.5.9) does not follow the move, and its addresses are probed as before.
+     */
+    @Test
+    void anOwlApiThatFollowsTheMoveItselfIsNotProbedFor() {
+        final List<String> probed = new java.util.ArrayList<String>();
+        java.util.function.UnaryOperator<String> prober = address -> {
+            probed.add(address);
+            return "https://example.org/moved";
+        };
+        List<String> line = Arrays.asList("extract", "-I", "http://example.org/ns/dcat3",
+                "-o", "tmp/mirror-dcat.owl");
+
+        assertEquals(line, IriRedirects.inputIrisAcrossToHttps(line, true, prober));
+        assertEquals(java.util.Collections.<String>emptyList(), probed);
+        assertEquals("https://example.org/moved",
+                IriRedirects.inputIrisAcrossToHttps(line, false, prober).get(2));
+        assertEquals(Arrays.asList("http://example.org/ns/dcat3"), probed);
+        assertEquals(true, IriRedirects.followsMovesItself("4.5.29"));
+        assertEquals(true, IriRedirects.followsMovesItself("5.1.20"));
+        assertEquals(false, IriRedirects.followsMovesItself("4.5.9"));
+        assertEquals(false, IriRedirects.followsMovesItself("not a version"));
     }
 }

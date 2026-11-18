@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -151,6 +152,10 @@ class DialogDesignProofTest {
         assertEquals("make test MIR=false", line.getText());
         ((javax.swing.JCheckBox) controls.get("switch.IMP")).setSelected(false);
         assertEquals("make test IMP=false MIR=false", line.getText());
+        // The chosen words stay true with the boxes unticked (the 1.154.0 review's M3).
+        String chosen = String.valueOf(((javax.swing.JComboBox<?>) controls.get("target"))
+                .getSelectedItem());
+        assertFalse(chosen.toLowerCase(java.util.Locale.ROOT).contains("download"), chosen);
         ((javax.swing.JComboBox<?>) controls.get("target")).setSelectedItem(
                 de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice("test_fast"));
         assertEquals("make test_fast IMP=false MIR=false", line.getText());
@@ -188,13 +193,44 @@ class DialogDesignProofTest {
             words.add(de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice(one));
         }
         assertEquals(words, target.getChoices());
-        assertEquals("Check everything (downloads the imports again) - make test",
-                target.getDefaultValue());
+        assertEquals("Check everything - make test", target.getDefaultValue());
         assertTrue(target.getChoices().contains("Check quickly (keeps the imports as they are)"
                 + " - make test_fast"), target.getChoices().toString());
         assertEquals(Arrays.asList("all", "test"), BuildAction.form(Arrays.asList("all", "test"),
                 "test", "Read from this project's own Makefile.", false, null).get(0)
                 .getChoices());
+    }
+
+    /**
+     * ODK's update is not a target Build offers for ODK's Makefile, whichever list the form is
+     * given - the Makefile's own, as the container's and ODK's tools' routes give it (the 1.154.0
+     * review's I1: 83dbf29 filtered another list). Update project files... runs it. A plain
+     * Makefile's targets are offered as they are.
+     */
+    @Test
+    void buildDoesNotOfferOdksUpdateForOdksMakefile(@org.junit.jupiter.api.io.TempDir File temp)
+            throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            java.nio.file.Files.createDirectories(target.getParentFile().toPath());
+            java.nio.file.Files.write(target.toPath(), file.getValue());
+        }
+        List<String> makefiles = de.fizkarlsruhe.ise.ontoboard.odk.MakeRun.targetsFor(
+                new File(root, "src/ontology/eggboil-edit.owl"));
+        assertTrue(makefiles.contains("update_repo"), makefiles.toString());
+
+        List<String> offered = BuildAction.form(makefiles, "test",
+                "Read from this project's own Makefile.", true, null).get(0).getChoices();
+
+        assertTrue(offered.contains(de.fizkarlsruhe.ise.ontoboard.odk.TargetWords.choice("test")),
+                offered.toString());
+        assertTrue(offered.stream().noneMatch(choice -> choice.endsWith("update_repo")),
+                offered.toString());
+        assertTrue(BuildAction.form(Arrays.asList("all", "update_repo"), "all",
+                "Read from this project's own Makefile.", false, null).get(0).getChoices()
+                .contains("update_repo"));
     }
 
     /** What Build runs is the target a choice names - the words are only said. */

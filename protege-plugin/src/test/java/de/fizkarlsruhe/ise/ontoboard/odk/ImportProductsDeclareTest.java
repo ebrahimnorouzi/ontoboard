@@ -78,15 +78,16 @@ class ImportProductsDeclareTest {
      * Each kind in plain words, with ODK's name for it for those who know ODK's - the words as
      * measured in ODK's image: asked for a, its parent b and d (what a is part of), filter kept
      * a, b and "a is a b"; minimal kept those and "a is part of d" with part of; neither kept
-     * b's own parent.
+     * b's own parent. Filter and minimal are told apart by their own words: "is a" against
+     * every relation (the 1.154.0 review's M5 - "links" and "relations" read alike).
      */
     @Test
     void eachKindSaysWhatTheModuleHolds() {
         assertEquals("The terms you chose and what they need",
                 ImportProducts.Kind.MODULE.words());
-        assertEquals("Only the terms you chose and the links between them",
+        assertEquals("Only the terms you chose, with their \"is a\" links",
                 ImportProducts.Kind.ONLY_THESE.words());
-        assertEquals("The terms you chose and the relations between them",
+        assertEquals("The terms you chose, with every relation between them",
                 ImportProducts.Kind.WITH_RELATIONS.words());
         assertEquals("The whole ontology", ImportProducts.Kind.WHOLE.words());
         assertEquals("filter", ImportProducts.Kind.ONLY_THESE.odkName());

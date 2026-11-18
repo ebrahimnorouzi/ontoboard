@@ -424,6 +424,32 @@ public final class MakeRun {
      * are the ones worth naming; everything else is handed over with the last meaningful line,
      * which is where a build tool puts its complaint.
      */
+    /**
+     * As {@link #explain(String, ProcessRunner.Outcome)}, for a run with Build's switches: where
+     * "Download the imports' sources again" was unticked and make stops on a mirror it has no
+     * rule for - a fresh clone has none - the way out is that box, said as the engine's route
+     * says it before a run (Review Focus 5; the 1.154.0 review's I2).
+     *
+     * @param off Build's switches that were off; null or empty for ODK's defaults
+     */
+    public static String explain(String target, ProcessRunner.Outcome outcome,
+            java.util.Set<BuildSwitches.Switch> off) {
+        if (off != null && off.contains(BuildSwitches.Switch.MIR) && !outcome.isSuccess()
+                && !outcome.wasCancelled() && !outcome.timedOut()) {
+            java.util.regex.Matcher noRule = NO_RULE.matcher(joined(outcome.getOutput()));
+            if (noRule.find() && noRule.group(1).startsWith("mirror/")) {
+                String box = BuildSwitches.Switch.MIR.words();
+                return "make has no rule to make '" + noRule.group(1) + "'"
+                        + (noRule.group(2) == null ? "" : ", which '" + noRule.group(2)
+                                + "' needs") + ", so '" + target + "' stopped: a file under "
+                        + "mirror/ is an imported ontology as it was downloaded, and with \""
+                        + box + "\" unticked nothing downloads it - a fresh clone has none. "
+                        + "Tick \"" + box + "\" and make downloads the imports' sources first.";
+            }
+        }
+        return explain(target, outcome);
+    }
+
     public static String explain(String target, ProcessRunner.Outcome outcome) {
         if (outcome.isSuccess()) {
             return null;

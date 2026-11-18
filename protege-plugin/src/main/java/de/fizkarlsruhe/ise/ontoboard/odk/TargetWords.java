@@ -22,9 +22,12 @@ public final class TargetWords {
 
     static {
         Map<String, String> words = new LinkedHashMap<String, String>();
-        words.put("test", "Check everything (downloads the imports again)");
+        // test and prepare_release fetch the imports again only with Build's box "Download the
+        // imports' sources again" ticked, so their words do not claim it (the 1.154.0 review's
+        // M3); the fast targets never fetch them, whatever the boxes say.
+        words.put("test", "Check everything");
         words.put("test_fast", "Check quickly (keeps the imports as they are)");
-        words.put("prepare_release", "Release, with fresh imports");
+        words.put("prepare_release", "Release");
         words.put("prepare_release_fast", "Release, with the imports as they are");
         words.put("refresh-imports", "Download and rebuild every import");
         WORDS = Collections.unmodifiableMap(words);

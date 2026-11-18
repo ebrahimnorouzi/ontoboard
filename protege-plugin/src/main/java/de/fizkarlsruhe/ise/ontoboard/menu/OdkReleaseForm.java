@@ -552,7 +552,9 @@ final class OdkReleaseForm {
                 !"false".equalsIgnoreCase(chosen.get(REFUSE)),
                 "true".equalsIgnoreCase(chosen.get(UNCOMPARED)),
                 !newFilesOfTheProject(start).isEmpty()
-                        && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)));
+                        && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)),
+                // The files the box named, and only those, are committed first (M1).
+                newFilesOfTheProject(start));
     }
 
     /**
@@ -580,8 +582,10 @@ final class OdkReleaseForm {
             // says what is wrong with it when it is sent.
             make = Arrays.asList("make", target, "VERSION=" + version);
         }
-        return TargetWords.of(target) + " - " + String.join(" ", ReleaseRun.cleanArguments())
-                + ", then " + asTyped(make);
+        // Here the box "Refresh the imports first" is what chooses the target, so a release
+        // that fetches them can say so.
+        return (fresh ? "Release, with fresh imports" : TargetWords.of(target)) + " - "
+                + String.join(" ", ReleaseRun.cleanArguments()) + ", then " + asTyped(make);
     }
 
     /**

@@ -514,6 +514,29 @@ class RecipeShellTest {
         assertTrue(outside.isFile());
     }
 
+    /**
+     * A word whose value is computed - {@code "$(cat x)"} - is held to the project as a written
+     * one is. Looked at before the run it is only its text, so its tool is asked again with its
+     * value before it runs: an empty one names the make folder itself, which {@code rm -rf} would
+     * empty (sh's {@code rm -rf ""} removes nothing); one that climbs out is outside the project.
+     * The 1.154.0 review's C1: since Task 10 the engine runs a project's own rules.
+     */
+    @Test
+    void aComputedFileIsHeldToTheProjectAsAWrittenOneIs() throws IOException {
+        write("x-edit.owl", "the edit file");
+        write("empty.txt", "");
+        write("a.owl", "a release file");
+
+        assertEquals(1, run("rm -rf \"$(cat empty.txt)\""));
+        assertTrue(file("x-edit.owl").isFile(), "the make folder is still there");
+        assertTrue(String.join("\n", said).contains("the project's own folder"), said.toString());
+
+        said.clear();
+        assertEquals(1, run("cp a.owl \"$(echo ../../..)/b.owl\""));
+        assertFalse(new File(folder, "../../../b.owl").exists(), "nothing written outside");
+        assertTrue(String.join("\n", said).contains("outside the project"), said.toString());
+    }
+
     // ------------------------------------------------------------------ what is refused
 
     @Test

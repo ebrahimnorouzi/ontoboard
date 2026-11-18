@@ -58,6 +58,24 @@ class HandOverLiveTest {
     private static final String EGG = "https://example.org/eggboil/";
     private static final String OBO = "http://purl.obolibrary.org/obo/";
 
+    /** A small ontology to import from upstream/: an egg, a hen egg that is one, a shell. */
+    private static final String EGGS = "<?xml version=\"1.0\"?>\n"
+            + "<rdf:RDF xmlns:owl=\"http://www.w3.org/2002/07/owl#\"\n"
+            + "     xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+            + "     xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n"
+            + "  <owl:Ontology rdf:about=\"http://purl.obolibrary.org/obo/eggs.owl\"/>\n"
+            + "  <owl:Class rdf:about=\"http://purl.obolibrary.org/obo/EGGS_0000001\">\n"
+            + "    <rdfs:label>egg</rdfs:label>\n"
+            + "  </owl:Class>\n"
+            + "  <owl:Class rdf:about=\"http://purl.obolibrary.org/obo/EGGS_0000002\">\n"
+            + "    <rdfs:subClassOf rdf:resource=\"http://purl.obolibrary.org/obo/EGGS_0000001\"/>\n"
+            + "    <rdfs:label>hen egg</rdfs:label>\n"
+            + "  </owl:Class>\n"
+            + "  <owl:Class rdf:about=\"http://purl.obolibrary.org/obo/EGGS_0000003\">\n"
+            + "    <rdfs:label>shell</rdfs:label>\n"
+            + "  </owl:Class>\n"
+            + "</rdf:RDF>\n";
+
     private static String runtime;
     private static String image;
     private static OdkContainer.Host host;
@@ -85,7 +103,9 @@ class HandOverLiveTest {
                         + "kitchen", "https://example.org/eggboil/eggboil.owl",
                 "https://creativecommons.org/licenses/by/4.0/", temp), null,
                 ProcessRunner.real());
-        assumeTrue(made.committed(), "git made no first commit here: " + made.notRecorded());
+        // git is there (assumed above): a first commit that did not happen is a failure of New
+        // ODK project, not a reason to skip (the 1.154.0 review's M7).
+        assertTrue(made.committed(), "git made no first commit: " + made.notRecorded());
         File root = new File(temp, "eggboil");
         File edit = new File(root, "src/ontology/eggboil-edit.owl");
         identify(root);
@@ -150,19 +170,38 @@ class HandOverLiveTest {
         odk(root, "make", "test", offline);
         releasedByOdk(root, "1.0.0", offline);
 
-        // OntoBoard: one more term of RO in its term list (Import terms...), its module built
-        // again, a class on the imported terms, a question, Build..., Release....
+        // OntoBoard, as Import terms writes an ODK import (the 1.154.0 review's M7): one more
+        // term of RO in its term list, and a new import, eggs, declared in plain words - only
+        // the terms chosen and their "is a" links, ODK's filter - with its term list and source;
+        // then OntoBoard's own update, which Import terms runs after declaring (Update project
+        // files...), and the engine's refresh of each. Then a class on the imported terms, a
+        // question, Build..., Release....
         File edit = new File(root, "src/ontology/loim-edit.owl");
         Map<String, String> upstream = Collections.singletonMap("OBOBASE",
                 ImportCases.upstream(root));
-        ImportCases.lay(root, "equivalence/loim/more");
-        OdkEngine.Outcome refreshed = OdkEngine.run(edit, "refresh-ro", upstream, null);
-        assertTrue(refreshed.isOk(), said(refreshed));
+        ImportModules.writeTerms(root, "ro", Arrays.asList(IRI.create(OBO + "RO_0002234"),
+                IRI.create(OBO + "RO_0002577")), OBO + "ro.owl");
+        Files.write(new File(root, "upstream/eggs.owl").toPath(),
+                EGGS.getBytes(StandardCharsets.UTF_8));
+        File config = new File(root, "src/ontology/loim-odk.yaml");
+        Files.write(config.toPath(), ImportProducts.declare(read(config), "eggs", null,
+                ImportProducts.Kind.ONLY_THESE).getBytes(StandardCharsets.UTF_8));
+        ImportModules.writeTerms(root, "eggs", Arrays.asList(IRI.create(OBO + "EGGS_0000001"),
+                IRI.create(OBO + "EGGS_0000002")), OBO + "eggs.owl");
+        OdkUpdate.apply(root, OdkUpdate.plan(root));
+        for (String id : Arrays.asList("ro", "eggs")) {
+            OdkEngine.Outcome refreshed = OdkEngine.run(edit, "refresh-" + id, upstream, null);
+            assertTrue(refreshed.isOk(), said(refreshed));
+        }
         assertTrue(read(new File(root, "src/ontology/imports/ro_import.owl"))
                 .contains("RO_0002577"), "the module has the term asked for");
+        String eggs = read(new File(root, "src/ontology/imports/eggs_import.owl"));
+        assertTrue(eggs.contains("EGGS_0000002") && !eggs.contains("EGGS_0000003"),
+                "ODK's filter: the terms chosen and nothing else:\n" + eggs);
+        assertTrue(read(edit).contains("eggs_import.owl"), "the edit file imports the module");
         String timer = OBO + "LOIM_0000100";
         add(edit, klass(timer, "egg timer") + someOf(timer, OBO + "RO_0002234",
-                OBO + "BFO_0000015"));
+                OBO + "EGGS_0000002"));
         String outputs = question(root, QuestionTests.Template.EVERY_SUBCLASS_HAS_SOME,
                 "Does every kind of egg timer have some output?", timer, OBO + "RO_0002234");
         builtByOntoBoard(edit, upstream, outputs);
