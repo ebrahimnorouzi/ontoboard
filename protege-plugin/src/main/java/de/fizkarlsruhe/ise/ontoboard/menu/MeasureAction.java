@@ -67,13 +67,31 @@ public class MeasureAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
-        List<OntologyMeasurements.Measurement> measurements =
-                OntologyMeasurements.run(ontology, depth);
-
+        // Made first: its clock starts here. Made after the measuring, it said "0 ms" for
+        // nfdicore (1.155.0).
         OperationResult.Builder result = OperationResult.of(operationName())
-                .columns("Group", "Metric", "Value")
-                .summary(measurements.size() + " metrics for "
-                        + ontology.getOntologyID().toString());
+                .columns("Group", "Metric", "Value");
+        java.io.File file = fileOf(ontology);
+        List<OntologyMeasurements.Measurement> measurements = OntologyMeasurements.run(ontology,
+                depth, file == null ? null : ownName(file));
+
+        String name = file == null ? ontology.getOntologyID().toString() : file.getName();
+        String said = OntologyMeasurements.summary(measurements, name);
+        result.summary(said.isEmpty() ? measurements.size() + " metrics for " + name : said);
+        // An import that did not arrive is missing from every count with its imports: said
+        // before the counts are read (1.155.0).
+        java.io.File catalog = file == null || file.getParentFile() == null ? null
+                : new java.io.File(file.getParentFile(), "catalog-v001.xml");
+        List<de.fizkarlsruhe.ise.ontoboard.odk.ImportHealth.Missing> missing =
+                de.fizkarlsruhe.ise.ontoboard.odk.ImportHealth.missingFrom(ontology,
+                        getOWLModelManager().getOWLOntologyManager(),
+                        catalog != null && catalog.isFile() ? catalog : null);
+        if (!missing.isEmpty()) {
+            result.warn(missing.size() + (missing.size() == 1 ? " import" : " imports")
+                    + " of this ontology did not arrive, and the counts with its imports leave "
+                    + "out what " + (missing.size() == 1 ? "it holds" : "they hold") + ": "
+                    + missing + ". OntoBoard > Reuse > Check imports says why.");
+        }
         // Recorded so a saved report says what produced it. A table of numbers with no record of
         // the settings behind them cannot be compared with another run.
         result.note("Depth: " + depth);
@@ -90,15 +108,36 @@ public class MeasureAction extends OntoBoardAction {
         return result.build();
     }
 
-    /** A count above zero, or an explicit "true" for the boolean ones. */
-    private static boolean isConcerning(String label, String value) {
-        if ("true".equalsIgnoreCase(value)) {
+    /**
+     * The name the ontology's default prefix goes by in the counts by prefix: the file's, as ODK
+     * names a project's edit file - nfdicore-edit.owl is "nfdicore".
+     */
+    static String ownName(java.io.File file) {
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) {
+            name = name.substring(0, dot);
+        }
+        return name.endsWith("-edit") ? name.substring(0, name.length() - "-edit".length())
+                : name;
+    }
+
+    /**
+     * A count above nought, a "true", or a breakdown that names something - ROBOT says why
+     * nfdicore is not in OWL 2 DL as "UseOfUndeclaredAnnotationProperty 1" (1.155.0).
+     */
+    static boolean isConcerning(String label, String value) {
+        String said = value == null ? "" : value.trim();
+        if (said.isEmpty() || "false".equalsIgnoreCase(said)) {
+            return false;
+        }
+        if ("true".equalsIgnoreCase(said)) {
             return true;
         }
         try {
-            return Long.parseLong(value.trim()) > 0;
+            return Long.parseLong(said) > 0;
         } catch (NumberFormatException notANumber) {
-            return false;
+            return true;
         }
     }
 }
