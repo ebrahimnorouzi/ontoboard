@@ -349,6 +349,11 @@ public final class OdkRelease {
         default boolean runsScriptsInAShell() {
             return true;
         }
+
+        /** What builds the release, with its versions, as the release's record says it. */
+        default String describe() {
+            return "ODK";
+        }
     }
 
     /** The person, asked before git records anything. */
@@ -405,6 +410,12 @@ public final class OdkRelease {
             public String shown(List<String> command, boolean passThroughRunSh) {
                 return ReleaseRun.shown(command) + "   (in the native ODK environment)";
             }
+
+            @Override
+            public String describe() {
+                return "ODK's own tools installed on this machine (" + activationScript
+                        + ")";
+            }
         };
     }
 
@@ -423,6 +434,11 @@ public final class OdkRelease {
             @Override
             public String shown(List<String> inContainer, boolean passThroughRunSh) {
                 return ReleaseRun.shown(command(inContainer, passThroughRunSh));
+            }
+
+            @Override
+            public String describe() {
+                return "ODK's container, " + image + " (" + runtime + ")";
             }
 
             private List<String> command(List<String> inContainer, boolean passThroughRunSh) {
@@ -521,6 +537,14 @@ public final class OdkRelease {
             }
 
             @Override
+            public String describe() {
+                String robot = robotVersion();
+                return "OntoBoard's own engine (ODK " + de.fizkarlsruhe.ise.ontoboard.odk.seed
+                        .OdkPin.VERSION + "'s Makefile, ROBOT" + (robot == null ? "" : " " + robot)
+                        + ", inside Protégé)";
+            }
+
+            @Override
             public boolean runsTheMakefileAsItIs() {
                 // The engine says itself, first in its transcript, how a Makefile differs from
                 // ODK's (1.155.0): the note for make's own routes is not said again.
@@ -558,6 +582,22 @@ public final class OdkRelease {
                 return new ProcessRunner.Outcome(1, Collections.singletonList(why), false);
             }
         };
+    }
+
+    /** The version of the ROBOT inside OntoBoard, as its jar says it; null when it does not. */
+    static String robotVersion() {
+        try (java.io.InputStream in = org.obolibrary.robot.CommandLineHelper.class
+                .getClassLoader().getResourceAsStream(
+                        "META-INF/maven/org.obolibrary.robot/robot-core/pom.properties")) {
+            if (in == null) {
+                return null;
+            }
+            java.util.Properties pom = new java.util.Properties();
+            pom.load(in);
+            return pom.getProperty("version");
+        } catch (IOException | RuntimeException unread) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------ what came of it
@@ -918,11 +958,34 @@ public final class OdkRelease {
             }
         }
 
+        // What the release records of itself (1.155.0): its log always; RELEASE.md beside its
+        // copy - and the tag's message - where the project keeps one.
+        String record = ReleaseRecord.markdown(ReleaseRecord.collect(facts.root(), facts.id(),
+                version, java.time.LocalDate.now().toString(), odk.describe(),
+                log.verdict == null ? null : log.verdict.said(),
+                last == null ? null : last.version, diff == null ? null : diff.summary()));
+        log.note("");
+        for (String line : record.split("\n")) {
+            log.note(line);
+        }
+        String tagMessage = null;
+        if (kept) {
+            File recorded = new File(facts.root(), "releases/" + version + "/RELEASE.md");
+            try {
+                Files.write(recorded.toPath(), record.getBytes(StandardCharsets.UTF_8));
+                log.written.add(recorded);
+                tagMessage = "releases/" + version + "/RELEASE.md";
+            } catch (IOException cannotWrite) {
+                log.warn("The release's record could not be written to " + recorded + ": "
+                        + cannotWrite.getMessage() + ". It is in this log.");
+            }
+        }
+
         String done = "Released " + facts.id() + " " + version + ": " + assets.size()
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
         return recorded(facts, version, assets, git, asks, log, done,
-                request.commitsNewFilesFirst(), request.newFiles());
+                request.commitsNewFilesFirst(), request.newFiles(), tagMessage);
     }
 
     /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
@@ -1339,7 +1402,7 @@ public final class OdkRelease {
      */
     private static Outcome recorded(Facts facts, String version, List<File> assets,
             ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst,
-            List<String> newFiles) {
+            List<String> newFiles, String tagMessage) {
         String where = facts.root().getAbsolutePath();
         String tag = GitTags.tagFor(version);
         if (GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")) == null) {
@@ -1376,7 +1439,7 @@ public final class OdkRelease {
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
                 GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
-                version, assets, status, commitNewFirst, newFiles);
+                version, assets, status, commitNewFirst, newFiles, tagMessage);
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "

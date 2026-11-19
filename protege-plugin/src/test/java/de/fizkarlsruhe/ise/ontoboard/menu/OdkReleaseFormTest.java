@@ -771,7 +771,7 @@ class OdkReleaseFormTest {
 
         List<String> log = result.getLog();
         assertEquals(Arrays.asList("git commit -m \"release(1.0.0)\"",
-                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                "git tag -a v1.0.0 -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 log.subList(log.size() - 3, log.size()));
         assertTrue(log.indexOf("To record the release later, in " + root.getAbsolutePath()
                 + ":") > log.size() - 9, log.toString());

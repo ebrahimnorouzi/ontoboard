@@ -107,6 +107,8 @@ class ReleaseByItselfTest {
             expected.add(product);
             expected.add("releases/1.0.0/" + product);
         }
+        // 1.155.0: what the release records of itself, beside its copy.
+        expected.add("releases/1.0.0/RELEASE.md");
         assertEquals(expected, written, "the files ODK's Makefile names as the release, at the "
                 + "project's top - and, since OntoBoard made this project, their copy under "
                 + "releases/1.0.0, where ODK's version IRIs point");
@@ -118,8 +120,8 @@ class ReleaseByItselfTest {
                 "the tests ran as part of it: " + log);
         assertTrue(outcome.isCommitted());
         assertEquals("v1.0.0", outcome.getTag());
-        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-m",
-                "eggboil 1.0.0")), gitRan.toString());
+        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-F",
+                "releases/1.0.0/RELEASE.md")), gitRan.toString());
     }
 
     /**

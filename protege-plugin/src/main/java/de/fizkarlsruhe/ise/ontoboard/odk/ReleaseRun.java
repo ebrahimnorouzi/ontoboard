@@ -659,6 +659,20 @@ public final class ReleaseRun {
     public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
             String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
             List<String> named) {
+        return staging(projectRoot, repositoryRoot, ontologyId, version, assets, gitStatus,
+                commitNewFirst, named, null);
+    }
+
+    /**
+     * As {@link #staging(File, File, String, String, List, List, boolean, List)}, the tag's
+     * message read from a file of the release - its record (1.155.0) - when one is given.
+     *
+     * @param tagMessageFile from the project's top, as git in it reads it; null for
+     *                       "{@code <id> <version>}"
+     */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
+            List<String> named, String tagMessageFile) {
         List<String> names = new ArrayList<String>();
         for (File asset : assets) {
             names.add(relative(projectRoot, asset));
@@ -700,8 +714,11 @@ public final class ReleaseRun {
             commands.add(Arrays.asList("git", "add", "--", kept));
         }
         commands.add(Arrays.asList("git", "commit", "-m", "release(" + version + ")"));
-        commands.add(Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
-                ontologyId + " " + version));
+        commands.add(tagMessageFile == null
+                ? Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
+                        ontologyId + " " + version)
+                : Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-F",
+                        tagMessageFile));
 
         GitRepo.Status status = GitRepo.parseStatus(gitStatus);
         List<String> leftOut = new ArrayList<String>();
