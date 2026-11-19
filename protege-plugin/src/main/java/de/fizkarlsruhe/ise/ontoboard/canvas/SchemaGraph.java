@@ -215,6 +215,9 @@ public class SchemaGraph extends mxGraph {
         try {
             tooltipsById.clear();
             notedIds.clear();
+            Map<String, java.util.List<String>> rowsBefore =
+                    new HashMap<String, java.util.List<String>>(rowsById);
+            rowsById.clear();
 
             // Node labels, so an edge's tooltip can name its two ends the way they are drawn
             // rather than by IRI.
@@ -330,18 +333,36 @@ public class SchemaGraph extends mxGraph {
                 String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
                         node.getCurie(), node.getLabel(), node.getId());
                 String style = styleFor(node, colours);
+                java.util.List<String> rows = node.getRows();
+                java.util.List<String> rowsWere = rowsBefore.containsKey(node.getId())
+                        ? rowsBefore.get(node.getId()) : java.util.Collections.<String>emptyList();
+                if (!rows.isEmpty()) {
+                    rowsById.put(node.getId(), rows);
+                }
                 Object cell = cellsById.get(node.getId());
                 if (cell != null) {
                     com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
                     double w = stored != null && stored.w > 0 ? stored.w : at.getWidth();
                     double h = stored != null && stored.h > 0 ? stored.h : at.getHeight();
-                    if (!label.equals(getModel().getValue(cell))) {
+                    if (!rows.equals(rowsWere)) {
+                        // Rows came or went - a class's data properties drawn in its box, or not
+                        // any more: the box takes the size they need, and keeps what it had been
+                        // given beyond the size its rows needed before.
+                        double[] was = fittedSize(String.valueOf(getModel().getValue(cell)),
+                                getModel().getStyle(cell), rowsWere);
+                        double[] fits = fittedSize(label, style, rows);
+                        w = fits[0] + Math.max(0, w - was[0]);
+                        h = fits[1] + Math.max(0, h - was[1]);
+                    } else if (!label.equals(getModel().getValue(cell)) || !rows.isEmpty()) {
                         // A new label - renamed, or a folded class's count - gets a box it fits,
-                        // never smaller than one somebody sized by hand.
-                        double[] fits = fittedSize(label, style);
+                        // never smaller than one somebody sized by hand. So does a box with rows,
+                        // at every drawing: a size stored before its rows were drawn in it, as
+                        // every board of 1.154.0 was, is never one they spill out of.
+                        double[] fits = fittedSize(label, style, rows);
                         w = Math.max(w, fits[0]);
                         h = Math.max(h, fits[1]);
                     }
+                    keepTheSize(stored, w, h);
                     boolean changed = stored == null
                             ? update(cell, label, style, at.getX(), at.getY(), w, h)
                             : update(cell, label, style, stored.x, stored.y, w, h);
@@ -349,10 +370,16 @@ public class SchemaGraph extends mxGraph {
                         moved.add(cell);
                     }
                 } else {
-                    double[] fitted = stored != null && stored.w > 0 && stored.h > 0 ? null
-                            : fittedSize(label, style);
-                    double w = fitted == null ? stored.w : fitted[0];
-                    double h = fitted == null ? stored.h : fitted[1];
+                    boolean sized = stored != null && stored.w > 0 && stored.h > 0;
+                    double[] fitted = sized && rows.isEmpty() ? null
+                            : fittedSize(label, style, rows);
+                    double w = fitted == null ? stored.w
+                            : sized ? Math.max(stored.w, fitted[0]) : fitted[0];
+                    double h = fitted == null ? stored.h
+                            : sized ? Math.max(stored.h, fitted[1]) : fitted[1];
+                    if (sized) {
+                        keepTheSize(stored, w, h);
+                    }
                     double x;
                     double y;
                     if (stored != null) {
@@ -482,6 +509,63 @@ public class SchemaGraph extends mxGraph {
         box.setHeight(h);
         getModel().setGeometry(cell, box);
         return true;
+    }
+
+    /**
+     * Writes a size this drawing gave a box back into its stored place, where it has one. The next
+     * drawing reads the stored size again and would undo it: a renamed class's box went back to
+     * the width of its old name at the next edit anywhere, its new name wrapped and spilling out,
+     * and a box grown for its rows would have shrunk under them. Only the size: where the box
+     * stands is the arrangement's, or the hand's.
+     */
+    private static void keepTheSize(CanvasLayout.NodeLayout stored, double w, double h) {
+        if (stored == null) {
+            return;
+        }
+        if (stored.w > 0) {
+            stored.w = w;
+        }
+        if (stored.h > 0) {
+            stored.h = h;
+        }
+    }
+
+    /**
+     * A box its label and its rows fit in (1.155.0): the label as {@link #fittedSize(String,
+     * String)} fits it, and below it a rule and one line for each row, as {@link RowsShape} paints
+     * them. As wide as its longest row, up to {@link #WIDEST}; a longer row is cut short with an
+     * ellipsis.
+     */
+    double[] fittedSize(String label, String style, java.util.List<String> rows) {
+        double[] fits = fittedSize(label, style);
+        if (rows == null || rows.isEmpty()) {
+            return fits;
+        }
+        Map<String, Object> resolved = getStylesheet().getCellStyle(style,
+                getStylesheet().getDefaultVertexStyle());
+        java.awt.Font font = mxUtils.getFont(resolved);
+        java.awt.FontMetrics title = mxUtils.getFontMetrics(font);
+        java.awt.FontMetrics plain = mxUtils.getFontMetrics(font.deriveFont(java.awt.Font.PLAIN));
+        double longest = 0;
+        for (String row : rows) {
+            longest = Math.max(longest, plain.stringWidth(row) * MEASURED_TO_DRAWN);
+        }
+        double w = Math.max(fits[0],
+                Math.ceil(Math.min(WIDEST, longest + 2 * RowsShape.INSET + 4) / 20) * 20);
+        double spacing = mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6);
+        double sides = 2 * spacing
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_LEFT, 0)
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_RIGHT, 0);
+        int lines = 0;
+        for (String line : (label == null ? "" : label).split("\n")) {
+            lines += Math.max(1, (int) Math.ceil(
+                    title.stringWidth(line) * MEASURED_TO_DRAWN / (w - sides - 4)));
+        }
+        double h = RowsShape.heightOf(
+                spacing + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_TOP, 0),
+                lines * title.getHeight(),
+                rows.size() * (plain.getHeight() + mxConstants.LINESPACING));
+        return new double[] {w, Math.max(fits[1], Math.ceil(h / 20) * 20)};
     }
 
     /**
@@ -1352,6 +1436,20 @@ public class SchemaGraph extends mxGraph {
     private final Map<String, String> tooltipsById = new HashMap<String, String>();
 
     /**
+     * Cell id to the rows {@link #render} drew in its box below its name (1.155.0): a class's data
+     * properties and keys, drawn UML-like. Cleared and rebuilt with the cells, as the tooltips are,
+     * and read at paint time by {@link RowsShape}.
+     */
+    private final Map<String, java.util.List<String>> rowsById =
+            new HashMap<String, java.util.List<String>>();
+
+    /** The rows a class's box holds below its name - its data properties and keys - or none. */
+    public java.util.List<String> rowsOf(Object cell) {
+        java.util.List<String> rows = cell == null ? null : rowsById.get(getIdForCell(cell));
+        return rows == null ? java.util.Collections.<String>emptyList() : rows;
+    }
+
+    /**
      * Which drawn terms carry an editorial note, for {@link NoteBadgeLayer}.
      *
      * <p>Filled during {@code render} from the projection, like the tooltips, rather than read from the
@@ -1494,12 +1592,16 @@ public class SchemaGraph extends mxGraph {
         // not visible.
         String stroke = node.isUnsatisfiable()
                 ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
+        boolean cls = node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.CLASS;
+        // A defined class has a badge as well as its label's ≡, which reads as = at 13 px.
+        boolean defined = cls && node.getLabel() != null && node.getLabel().startsWith("≡ ");
+        // A class drawn UML-like holds its rows below its name, so the name goes to the top.
+        boolean rows = cls && !node.getRows().isEmpty();
+        String shape = rows ? (defined ? RowsShape.DEFINED : RowsShape.NAME)
+                : defined ? DefinedClassShape.NAME : null;
         return baseStyleFor(node) + ";strokeColor=" + stroke
-                // A defined class has a badge as well as its label's ≡, which reads as = at 13 px.
-                + (node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.CLASS
-                        && node.getLabel() != null
-                        && node.getLabel().startsWith("≡ ")
-                        ? ";shape=" + DefinedClassShape.NAME : "")
+                + (shape == null ? "" : ";shape=" + shape)
+                + (rows ? ";" + mxConstants.STYLE_VERTICAL_ALIGN + "=" + mxConstants.ALIGN_TOP : "")
                 + (node.hasNote() || node.isUnsatisfiable()
                         ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "")
                 // Opacity for an imported term - the one channel the four above leave free, and the

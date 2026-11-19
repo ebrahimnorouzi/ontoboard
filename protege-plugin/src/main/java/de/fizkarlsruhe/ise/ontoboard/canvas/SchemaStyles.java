@@ -206,6 +206,9 @@ public final class SchemaStyles {
         mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
         com.mxgraph.canvas.mxGraphics2DCanvas.putShape(DefinedClassShape.NAME,
                 new DefinedClassShape());
+        // A class drawn UML-like, its data properties and keys as rows below its name (1.155.0).
+        com.mxgraph.canvas.mxGraphics2DCanvas.putShape(RowsShape.NAME, new RowsShape());
+        com.mxgraph.canvas.mxGraphics2DCanvas.putShape(RowsShape.DEFINED, new RowsShape.Defined());
         // Every label on the board and in an exported PNG: the family above, with the symbols it
         // has no glyph for drawn from a font that has them - Segoe UI has no ∃ (1.135.1).
         com.mxgraph.canvas.mxGraphics2DCanvas.putTextShape(
