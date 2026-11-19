@@ -1,82 +1,127 @@
 @prefix : <http://www.irit.fr/recherches/MELODI/ontologies/SAN#> .
+@prefix cc: <http://creativecommons.org/ns#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix dul: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix san: <http://www.irit.fr/recherches/MELODI/ontologies/SAN#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix voaf: <http://purl.org/vocommons/voaf#> .
+@prefix terms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.irit.fr/recherches/MELODI/ontologies/SAN> .
 
 <http://www.irit.fr/recherches/MELODI/ontologies/SAN> rdf:type owl:Ontology ;
-                                                       <http://creativecommons.org/ns#license> <http://creativecommons.org/licenses/by/4.0/> ;
-                                                       <http://purl.org/dc/elements/1.1/creator> <http://www.irit.fr/recherches/MELODI/ontologies/contributors#ben_alaya> ,
-                                                                                                 <http://www.irit.fr/recherches/MELODI/ontologies/contributors#drira> ,
-                                                                                                 <http://www.irit.fr/recherches/MELODI/ontologies/contributors#hernandez> ,
-                                                                                                 <http://www.irit.fr/recherches/MELODI/ontologies/contributors#monteil> ,
-                                                                                                 <http://www.irit.fr/recherches/MELODI/ontologies/contributors#seydoux> ,
-                                                                                                 "Nicolas Seydoux, Mahdi Ben Alaya, Khalil Drira, Nathalie Hernandez, Thierry Monteil" ;
-                                                       <http://purl.org/dc/elements/1.1/description> """SAN stands for Semantic Actuator Network. It is intended to describe Semantic Actuator Networks, as a counterpoint to SSN definition of Semantic Sensor Networks. An actuator is a physical device having an effect on the world (see Actuator for more information).
+                                                       cc:license <http://creativecommons.org/licenses/by/4.0/> ;
+                                                       dc:creator <http://www.irit.fr/recherches/MELODI/ontologies/contributors#ben_alaya> ,
+                                                                  <http://www.irit.fr/recherches/MELODI/ontologies/contributors#drira> ,
+                                                                  <http://www.irit.fr/recherches/MELODI/ontologies/contributors#hernandez> ,
+                                                                  <http://www.irit.fr/recherches/MELODI/ontologies/contributors#monteil> ,
+                                                                  <http://www.irit.fr/recherches/MELODI/ontologies/contributors#seydoux> ,
+                                                                  "Nicolas Seydoux, Mahdi Ben Alaya, Khalil Drira, Nathalie Hernandez, Thierry Monteil" ;
+                                                       dc:description """SAN stands for Semantic Actuator Network. It is intended to describe Semantic Actuator Networks, as a counterpoint to SSN definition of Semantic Sensor Networks. An actuator is a physical device having an effect on the world (see Actuator for more information).
 
 It is worth noticing that some concepts are imported from SSN, but not SSN as a whole. This is a design choice intended to separate as much as possible the definition on actuator from the definition of sensor, which are completely different concept that can be used independantly from each other.
 
 This ontology is used as a ontological module in IoT-O ontology.""" ;
-                                                       <http://purl.org/dc/elements/1.1/publisher> "IRIT (https://www.irit.fr/)" ,
-                                                                                                   "LAAS-CNRS (https://www.laas.fr)" ;
-                                                       <http://purl.org/dc/elements/1.1/title> "SAN" ;
-                                                       <http://purl.org/dc/terms/issued> "2015-02-20" ;
-                                                       <http://purl.org/dc/terms/modified> "2016-02-26" ;
-                                                       <http://purl.org/vocab/vann/preferredNamespacePrefix> "san" ;
-                                                       <http://purl.org/vocab/vann/preferredNamespaceURI> "http://www.irit.fr/recherches/MELODI/ontologies/SAN" ;
-                                                       <http://purl.org/vocommons/voaf#reliesOn> <http://purl.oclc.org/NET/ssnx/ssn> ;
+                                                       dc:publisher "IRIT (https://www.irit.fr/)" ,
+                                                                    "LAAS-CNRS (https://www.laas.fr)" ;
+                                                       dc:title "SAN" ;
+                                                       terms:issued "2015-02-20" ;
+                                                       terms:license <http://creativecommons.org/licenses/by/4.0/> ;
+                                                       terms:modified "2016-02-26" ;
+                                                       vann:preferredNamespacePrefix "san" ;
+                                                       vann:preferredNamespaceURI "http://www.irit.fr/recherches/MELODI/ontologies/SAN" ;
+                                                       voaf:reliesOn <http://purl.oclc.org/NET/ssnx/ssn> ;
+                                                       rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x47; term declared x1;
+- header: dcterms:license <http://creativecommons.org/licenses/by/4.0/> - the pattern's own cc:license
+- file: pattern.owl declares <http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#Object> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.w3.org/2006/time#Instant> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://creativecommons.org/ns#license> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/elements/1.1/creator> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/elements/1.1/description> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/elements/1.1/publisher> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/elements/1.1/title> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/terms/issued> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/terms/modified> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/vocab/vann/preferredNamespacePrefix> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/vocab/vann/preferredNamespaceURI> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/vocommons/voaf#reliesOn> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://xmlns.com/foaf/0.1/primaryTopic> as an annotation property, as pattern.ttl did
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
+                                                       rdfs:label "Actuation Actuator Effect Pattern"@en ;
                                                        rdfs:seeAlso "http://www.irit.fr/recherches/MELODI/ontologies/IoT-O" ;
                                                        owl:versionInfo "2.0.0" ;
-                                                       <http://xmlns.com/foaf/0.1/primaryTopic> "Actuators and actuation" .
+                                                       foaf:primaryTopic "Actuators and actuation" .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://creativecommons.org/ns#license
-<http://creativecommons.org/ns#license> rdf:type owl:AnnotationProperty .
+cc:license rdf:type owl:AnnotationProperty ;
+           rdfs:label "license"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/creator
-<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+dc:creator rdf:type owl:AnnotationProperty ;
+           rdfs:label "Creator"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/description
-<http://purl.org/dc/elements/1.1/description> rdf:type owl:AnnotationProperty .
+dc:description rdf:type owl:AnnotationProperty ;
+               rdfs:label "Description (Dublin Core)"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/publisher
-<http://purl.org/dc/elements/1.1/publisher> rdf:type owl:AnnotationProperty .
+dc:publisher rdf:type owl:AnnotationProperty ;
+             rdfs:label "Publisher"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/title
-<http://purl.org/dc/elements/1.1/title> rdf:type owl:AnnotationProperty .
+dc:title rdf:type owl:AnnotationProperty ;
+         rdfs:label "Title"@en .
 
 
 ###  http://purl.org/dc/terms/issued
-<http://purl.org/dc/terms/issued> rdf:type owl:AnnotationProperty .
+terms:issued rdf:type owl:AnnotationProperty ;
+             rdfs:label "Date Issued"@en .
+
+
+###  http://purl.org/dc/terms/license
+terms:license rdf:type owl:AnnotationProperty ;
+              rdfs:label "License"@en .
 
 
 ###  http://purl.org/dc/terms/modified
-<http://purl.org/dc/terms/modified> rdf:type owl:AnnotationProperty .
+terms:modified rdf:type owl:AnnotationProperty ;
+               rdfs:label "Date Modified"@en .
 
 
 ###  http://purl.org/vocab/vann/preferredNamespacePrefix
-<http://purl.org/vocab/vann/preferredNamespacePrefix> rdf:type owl:AnnotationProperty .
+vann:preferredNamespacePrefix rdf:type owl:AnnotationProperty ;
+                              rdfs:label "preferred namespace prefix"@en .
 
 
 ###  http://purl.org/vocab/vann/preferredNamespaceURI
-<http://purl.org/vocab/vann/preferredNamespaceURI> rdf:type owl:AnnotationProperty .
+vann:preferredNamespaceURI rdf:type owl:AnnotationProperty ;
+                           rdfs:label "preferred namespace URI"@en .
 
 
 ###  http://purl.org/vocommons/voaf#reliesOn
-<http://purl.org/vocommons/voaf#reliesOn> rdf:type owl:AnnotationProperty .
+voaf:reliesOn rdf:type owl:AnnotationProperty ;
+              rdfs:label "relies on"@en .
 
 
 ###  http://xmlns.com/foaf/0.1/primaryTopic
-<http://xmlns.com/foaf/0.1/primaryTopic> rdf:type owl:AnnotationProperty .
+foaf:primaryTopic rdf:type owl:AnnotationProperty ;
+                  rdfs:label "primary topic"^^xsd:string .
 
 
 #################################################################
@@ -84,7 +129,8 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
 #################################################################
 
 ###  xsd:integer
-<xsd:integer> rdf:type rdfs:Datatype .
+<xsd:integer> rdf:type rdfs:Datatype ;
+              rdfs:label "xsd:integer"@en .
 
 
 #################################################################
@@ -92,177 +138,186 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
 #################################################################
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#forProperty
-<http://purl.oclc.org/NET/ssnx/ssn#forProperty> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#forProperty> rdf:type owl:ObjectProperty ;
+                                                rdfs:label "for property"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#hasProperty
-<http://purl.oclc.org/NET/ssnx/ssn#hasProperty> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#hasProperty> rdf:type owl:ObjectProperty ;
+                                                rdfs:label "has property"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#hasValue
-<http://purl.oclc.org/NET/ssnx/ssn#hasValue> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#hasValue> rdf:type owl:ObjectProperty ;
+                                             rdfs:label "has value"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#implements
-<http://purl.oclc.org/NET/ssnx/ssn#implements> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#implements> rdf:type owl:ObjectProperty ;
+                                               rdfs:label "implements"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf
 <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> rdf:type owl:ObjectProperty ;
-                                                 rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" .
+                                                 rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" ;
+                                                 rdfs:label "is property of"@en .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#actsOn
-:actsOn rdf:type owl:ObjectProperty ;
-        owl:inverseOf :isActedUponBy ;
-        rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-        rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-        rdfs:comment "Relationship between an entity that acts upon a quantity or another entity" ;
-        rdfs:label "acts on" .
+san:actsOn rdf:type owl:ObjectProperty ;
+           owl:inverseOf san:isActedUponBy ;
+           rdfs:domain dul:Entity ;
+           rdfs:range dul:Entity ;
+           rdfs:comment "Relationship between an entity that acts upon a quantity or another entity" ;
+           rdfs:label "acts on" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#actuationMethodUsed
-:actuationMethodUsed rdf:type owl:ObjectProperty ;
-                     rdfs:domain :Actuation ;
-                     rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Process> ;
-                     rdfs:comment "Process involved in the Actuation" ;
-                     rdfs:label "actuation method used" .
+san:actuationMethodUsed rdf:type owl:ObjectProperty ;
+                        rdfs:domain san:Actuation ;
+                        rdfs:range dul:Process ;
+                        rdfs:comment "Process involved in the Actuation" ;
+                        rdfs:label "actuation method used" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#actuationResults
-:actuationResults rdf:type owl:ObjectProperty ;
-                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor> ;
-                  rdfs:domain :Actuation ;
-                  rdfs:range :ActuatorInput ;
-                  rdfs:comment "Relation between an actuation and an actuator input, its result. Implements the ODP Effect-Actuator-Observation" ;
-                  rdfs:label "actuation results" .
+san:actuationResults rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf dul:isSettingFor ;
+                     rdfs:domain san:Actuation ;
+                     rdfs:range san:ActuatorInput ;
+                     rdfs:comment "Relation between an actuation and an actuator input, its result. Implements the ODP Effect-Actuator-Observation" ;
+                     rdfs:label "actuation results" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#consumes
-:consumes rdf:type owl:ObjectProperty ;
-          owl:inverseOf :isConsumedBy ;
-          rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-          rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-          rdfs:comment "Relation between an consumer entity and a consumee entity. Consumption can be destructive, transformative or neutral for the consumed entity." ;
-          rdfs:label "consumes" .
+san:consumes rdf:type owl:ObjectProperty ;
+             owl:inverseOf san:isConsumedBy ;
+             rdfs:domain dul:Entity ;
+             rdfs:range dul:Entity ;
+             rdfs:comment "Relation between an consumer entity and a consumee entity. Consumption can be destructive, transformative or neutral for the consumed entity." ;
+             rdfs:label "consumes" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#controlledBy
-:controlledBy rdf:type owl:ObjectProperty ;
-              owl:inverseOf :isController ;
-              rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:comment "Describes the relationship between a controlledentity and a controller  one. The controlled entity can be a situation (state of a system, property of an environment), a device, a piece of software..." ;
-              rdfs:label "controlled by" .
+san:controlledBy rdf:type owl:ObjectProperty ;
+                 owl:inverseOf san:isController ;
+                 rdfs:domain dul:Entity ;
+                 rdfs:range dul:Entity ;
+                 rdfs:comment "Describes the relationship between a controlledentity and a controller  one. The controlled entity can be a situation (state of a system, property of an environment), a device, a piece of software..." ;
+                 rdfs:label "controlled by" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#hasActuatingCapability
-:hasActuatingCapability rdf:type owl:ObjectProperty ;
-                        rdfs:subPropertyOf <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
-                        rdfs:domain :Actuator ;
-                        rdfs:range :ActuatingCapability ;
-                        rdfs:comment "Relation between an Actuator and an ActuatingCapability, describing the actuating properties of an actuator." ;
-                        rdfs:label "has actuation capability" .
+san:hasActuatingCapability rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
+                           rdfs:domain san:Actuator ;
+                           rdfs:range san:ActuatingCapability ;
+                           rdfs:comment "Relation between an Actuator and an ActuatingCapability, describing the actuating properties of an actuator." ;
+                           rdfs:label "has actuation capability" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#hasActuatingProperty
-:hasActuatingProperty rdf:type owl:ObjectProperty ;
-                      rdfs:subPropertyOf <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
-                      rdfs:domain :ActuatingCapability ;
-                      rdfs:range :ActuatingProperty ;
-                      rdfs:comment "Relation from an actuation capability to an actuation property." ;
-                      rdfs:label "has actuation property" .
+san:hasActuatingProperty rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
+                         rdfs:domain san:ActuatingCapability ;
+                         rdfs:range san:ActuatingProperty ;
+                         rdfs:comment "Relation from an actuation capability to an actuation property." ;
+                         rdfs:label "has actuation property" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#hasDateTime
-:hasDateTime rdf:type owl:ObjectProperty ;
-             rdfs:subPropertyOf <http://www.linkedmodel.org/schema/vaem#date> ;
-             rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region> ;
-             rdfs:range <http://www.w3.org/2006/time#Instant> ;
-             rdfs:comment "Relationship between an event (DUL:Region) and a point in time." ;
-             rdfs:label "has date time" .
+san:hasDateTime rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf <http://www.linkedmodel.org/schema/vaem#date> ;
+                rdfs:domain dul:Region ;
+                rdfs:range <http://www.w3.org/2006/time#Instant> ;
+                rdfs:comment "Relationship between an event (DUL:Region) and a point in time." ;
+                rdfs:label "has date time" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#hasEffect
-:hasEffect rdf:type owl:ObjectProperty ;
-           rdfs:domain :Actuator ;
-           rdfs:range :Effect ;
-           rdfs:comment "Relationship between an Actuator and the effect that it induces. The Effect will be linked to a physical property that the actuator impacts" ;
-           rdfs:label "has effect" .
+san:hasEffect rdf:type owl:ObjectProperty ;
+              rdfs:domain san:Actuator ;
+              rdfs:range san:Effect ;
+              rdfs:comment "Relationship between an Actuator and the effect that it induces. The Effect will be linked to a physical property that the actuator impacts" ;
+              rdfs:label "has effect" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#impactedProperty
-:impactedProperty rdf:type owl:ObjectProperty ;
-                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor> ;
-                  rdfs:domain :Actuation ;
-                  rdfs:range <http://purl.oclc.org/NET/ssnx/ssn#Property> ;
-                  rdfs:comment "Property on which an Actuation has an impact" ;
-                  rdfs:label "impacted property" .
+san:impactedProperty rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf dul:isSettingFor ;
+                     rdfs:domain san:Actuation ;
+                     rdfs:range <http://purl.oclc.org/NET/ssnx/ssn#Property> ;
+                     rdfs:comment "Property on which an Actuation has an impact" ;
+                     rdfs:label "impacted property" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#impacts
-:impacts rdf:type owl:ObjectProperty ;
-         rdfs:domain :Effect ;
-         rdfs:range <http://purl.oclc.org/NET/ssnx/ssn#Property> ;
-         rdfs:comment "Relationship between an effect and the property it impacts. Used in the Effect-Actuator-Actuation design pattern to describe the link between an actuator and the physical property it acts upon." ;
-         rdfs:label "impacts" .
+san:impacts rdf:type owl:ObjectProperty ;
+            rdfs:domain san:Effect ;
+            rdfs:range <http://purl.oclc.org/NET/ssnx/ssn#Property> ;
+            rdfs:comment "Relationship between an effect and the property it impacts. Used in the Effect-Actuator-Actuation design pattern to describe the link between an actuator and the physical property it acts upon." ;
+            rdfs:label "impacts" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#isActedUponBy
-:isActedUponBy rdf:type owl:ObjectProperty ;
-               rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-               rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-               rdfs:comment "Relation between an entity that is acted upen by another acting entity" ;
-               rdfs:label "is acted upon by" .
+san:isActedUponBy rdf:type owl:ObjectProperty ;
+                  rdfs:domain dul:Entity ;
+                  rdfs:range dul:Entity ;
+                  rdfs:comment "Relation between an entity that is acted upen by another acting entity" ;
+                  rdfs:label "is acted upon by" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#isConsumedBy
-:isConsumedBy rdf:type owl:ObjectProperty ;
-              rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:comment "Describes a relation between a consumer and a consumee" ;
-              rdfs:label "is consumed by" .
+san:isConsumedBy rdf:type owl:ObjectProperty ;
+                 rdfs:domain dul:Entity ;
+                 rdfs:range dul:Entity ;
+                 rdfs:comment "Describes a relation between a consumer and a consumee" ;
+                 rdfs:label "is consumed by" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#isController
-:isController rdf:type owl:ObjectProperty ;
-              rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> ;
-              rdfs:comment "An entity is controller of another one when it has influence on its decision process or evolution in time." ;
-              rdfs:label "is controller" .
+san:isController rdf:type owl:ObjectProperty ;
+                 rdfs:domain dul:Entity ;
+                 rdfs:range dul:Entity ;
+                 rdfs:comment "An entity is controller of another one when it has influence on its decision process or evolution in time." ;
+                 rdfs:label "is controller" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#receivedActuation
-:receivedActuation rdf:type owl:ObjectProperty ;
-                   owl:inverseOf :wasActuationSent ;
-                   rdfs:domain :Actuator ;
-                   rdfs:range :Actuation ;
-                   rdfs:comment "Relationship between an actuator and an Actuation it received in order to modify its action." ;
-                   rdfs:label "receives actuation" .
+san:receivedActuation rdf:type owl:ObjectProperty ;
+                      owl:inverseOf san:wasActuationSent ;
+                      rdfs:domain san:Actuator ;
+                      rdfs:range san:Actuation ;
+                      rdfs:comment "Relationship between an actuator and an Actuation it received in order to modify its action." ;
+                      rdfs:label "receives actuation" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#wasActuationSent
-:wasActuationSent rdf:type owl:ObjectProperty ;
-                  rdfs:domain :Actuation ;
-                  rdfs:range :Actuator ;
-                  rdfs:comment "Relationship between an actuation that was sent and the actuator that received it" ;
-                  rdfs:label "is actuation sent" .
+san:wasActuationSent rdf:type owl:ObjectProperty ;
+                     rdfs:domain san:Actuation ;
+                     rdfs:range san:Actuator ;
+                     rdfs:comment "Relationship between an actuation that was sent and the actuator that received it" ;
+                     rdfs:label "is actuation sent" .
 
 
 ###  http://www.linkedmodel.org/schema/vaem#date
-<http://www.linkedmodel.org/schema/vaem#date> rdf:type owl:ObjectProperty .
+<http://www.linkedmodel.org/schema/vaem#date> rdf:type owl:ObjectProperty ;
+                                              rdfs:label "date"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesEvent
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesEvent> rdf:type owl:ObjectProperty .
+dul:includesEvent rdf:type owl:ObjectProperty ;
+                  rdfs:label "includes event"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParametrizedBy
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParametrizedBy> rdf:type owl:ObjectProperty .
+dul:isParametrizedBy rdf:type owl:ObjectProperty ;
+                     rdfs:label "is parametrized by"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor> rdf:type owl:ObjectProperty .
+dul:isSettingFor rdf:type owl:ObjectProperty ;
+                 rdfs:label "is setting for"@en .
 
 
 #################################################################
@@ -271,27 +326,32 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
 
 ###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#Object
 <http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#Object> rdf:type owl:Class ;
-                                                                       rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Object> .
+                                                                       rdfs:subClassOf dul:Object ;
+                                                                       rdfs:label "Object (ObjectWithStates)"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Device
 <http://purl.oclc.org/NET/ssnx/ssn#Device> rdf:type owl:Class ;
                                            rdfs:subClassOf <http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#Object> ,
-                                                           <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> .
+                                                           dul:PhysicalObject ;
+                                           rdfs:label "device"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#FeatureOfInterest
 <http://purl.oclc.org/NET/ssnx/ssn#FeatureOfInterest> rdf:type owl:Class ;
-                                                      rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" .
+                                                      rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" ;
+                                                      rdfs:label "feature of interest"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Input
-<http://purl.oclc.org/NET/ssnx/ssn#Input> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#Input> rdf:type owl:Class ;
+                                          rdfs:label "input"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Process
 <http://purl.oclc.org/NET/ssnx/ssn#Process> rdf:type owl:Class ;
-                                            rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Method> .
+                                            rdfs:subClassOf dul:Method ;
+                                            rdfs:label "process"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Property
@@ -301,232 +361,251 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
                                                                owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> ;
                                                                owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#FeatureOfInterest>
                                                              ] ;
-                                             rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" .
+                                             rdfs:isDefinedBy "http://purl.oclc.org/NET/ssnx/ssn" ;
+                                             rdfs:label "property"@en .
 
 
 ###  http://purl.org/vocommons/voaf#Vocabulary
-<http://purl.org/vocommons/voaf#Vocabulary> rdf:type owl:Class .
+voaf:Vocabulary rdf:type owl:Class ;
+                rdfs:label "vocabulary"@en .
 
 
 ###  http://qudt.org/schema/qudt#QuantityKind
 <http://qudt.org/schema/qudt#QuantityKind> rdf:type owl:Class ;
-                                           rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality> .
+                                           rdfs:subClassOf dul:Quality ;
+                                           rdfs:label "quantity kind"@en .
 
 
 ###  http://qudt.org/schema/qudt#Unit
 <http://qudt.org/schema/qudt#Unit> rdf:type owl:Class ;
-                                   rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#UnitOfMeasure> .
+                                   rdfs:subClassOf dul:UnitOfMeasure ;
+                                   rdfs:label "unit"@en .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#Acting
-:Acting rdf:type owl:Class ;
-        rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Process> ;
-        rdfs:comment "Acting is the process that results in an action on the physical world, might it be a motion, a display, the emission of a sound..." ;
-        rdfs:label "Acting" .
+san:Acting rdf:type owl:Class ;
+           rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Process> ;
+           rdfs:comment "Acting is the process that results in an action on the physical world, might it be a motion, a display, the emission of a sound..." ;
+           rdfs:label "Acting" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatingCapability
-:ActuatingCapability rdf:type owl:Class ;
-                     rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Property> ,
-                                     [ rdf:type owl:Restriction ;
-                                       owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#forProperty> ;
-                                       owl:someValuesFrom <http://qudt.org/schema/qudt#QuantityKind>
-                                     ] ,
-                                     [ rdf:type owl:Restriction ;
-                                       owl:onProperty :hasActuatingProperty ;
-                                       owl:someValuesFrom :ActuatingProperty
-                                     ] ;
-                     rdfs:comment "Represents actuation properties such as precision, latency, power consumption, and the environmental conditions in which these actuation can take place normally." ;
-                     rdfs:label "Actuating Capability" .
+san:ActuatingCapability rdf:type owl:Class ;
+                        rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Property> ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#forProperty> ;
+                                          owl:someValuesFrom <http://qudt.org/schema/qudt#QuantityKind>
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty san:hasActuatingProperty ;
+                                          owl:someValuesFrom san:ActuatingProperty
+                                        ] ;
+                        rdfs:comment "Represents actuation properties such as precision, latency, power consumption, and the environmental conditions in which these actuation can take place normally." ;
+                        rdfs:label "Actuating Capability" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatingDevice
-:ActuatingDevice rdf:type owl:Class ;
-                 rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Device> ,
-                                 :Actuator ;
-                 rdfs:comment "A device that implements actuating" ;
-                 rdfs:label "Actuating device" .
+san:ActuatingDevice rdf:type owl:Class ;
+                    rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Device> ,
+                                    san:Actuator ;
+                    rdfs:comment "A device that implements actuating" ;
+                    rdfs:label "Actuating device" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatingProperty
-:ActuatingProperty rdf:type owl:Class ;
-                   rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Property> ,
-                                   [ rdf:type owl:Restriction ;
-                                     owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasValue> ;
-                                     owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Amount>
-                                   ] ;
-                   rdfs:comment "A characteristic of an Actuator that gives information about the Actuations it is able to perform." ;
-                   rdfs:label "Actuating Property" .
+san:ActuatingProperty rdf:type owl:Class ;
+                      rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Property> ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasValue> ;
+                                        owl:someValuesFrom dul:Amount
+                                      ] ;
+                      rdfs:comment "A characteristic of an Actuator that gives information about the Actuations it is able to perform." ;
+                      rdfs:label "Actuating Property" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatingRange
-:ActuatingRange rdf:type owl:Class ;
-                rdfs:subClassOf :ActuatingProperty ;
-                rdfs:comment "Range of commands that the actuator can receive and transduce into the physical world without damage to itself or security issues to its surrounding environment." ;
-                rdfs:label "Actuating Range" .
+san:ActuatingRange rdf:type owl:Class ;
+                   rdfs:subClassOf san:ActuatingProperty ;
+                   rdfs:comment "Range of commands that the actuator can receive and transduce into the physical world without damage to itself or security issues to its surrounding environment." ;
+                   rdfs:label "Actuating Range" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatingTime
-:ActuatingTime rdf:type owl:Class ;
-               rdfs:subClassOf :ActuatingProperty ;
-               rdfs:comment "Time between the moment when the actuator receives an actuation command and the actual actuation." ;
-               rdfs:label "Actuating Time" .
+san:ActuatingTime rdf:type owl:Class ;
+                  rdfs:subClassOf san:ActuatingProperty ;
+                  rdfs:comment "Time between the moment when the actuator receives an actuation command and the actual actuation." ;
+                  rdfs:label "Actuating Time" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#Actuation
-:Actuation rdf:type owl:Class ;
-           rdfs:subClassOf :Situation ,
-                           [ rdf:type owl:Restriction ;
-                             owl:onProperty :wasActuationSent ;
-                             owl:someValuesFrom :Actuator
-                           ] ,
-                           [ rdf:type owl:Restriction ;
-                             owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesEvent> ;
-                             owl:someValuesFrom :Effect
-                           ] ,
-                           [ rdf:type owl:Restriction ;
-                             owl:onProperty :actuationMethodUsed ;
-                             owl:allValuesFrom :Acting
-                           ] ;
-           rdfs:comment "An Actuation is the abstract representation of the command that will be translated into Effect by the Actuator (cf http://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect for more information)." ;
-           rdfs:label "Actuation" .
+san:Actuation rdf:type owl:Class ;
+              rdfs:subClassOf san:Situation ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty san:wasActuationSent ;
+                                owl:someValuesFrom san:Actuator
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty dul:includesEvent ;
+                                owl:someValuesFrom san:Effect
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty san:actuationMethodUsed ;
+                                owl:allValuesFrom san:Acting
+                              ] ;
+              rdfs:comment "An Actuation is the abstract representation of the command that will be translated into Effect by the Actuator (cf http://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect for more information)." ;
+              rdfs:label "Actuation" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuationValue
-:ActuationValue rdf:type owl:Class ;
-                rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region> ,
-                                [ rdf:type owl:Restriction ;
-                                  owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParametrizedBy> ;
-                                  owl:someValuesFrom <http://qudt.org/schema/qudt#Unit>
-                                ] ,
-                                [ rdf:type owl:Restriction ;
-                                  owl:onProperty :hasDateTime ;
-                                  owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
-                                  owl:onClass <http://www.w3.org/2006/time#Instant>
-                                ] ;
-                rdfs:comment "Value of the command sent to an actuator" ;
-                rdfs:label "Actuation Value" .
+san:ActuationValue rdf:type owl:Class ;
+                   rdfs:subClassOf dul:Region ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty dul:isParametrizedBy ;
+                                     owl:someValuesFrom <http://qudt.org/schema/qudt#Unit>
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty san:hasDateTime ;
+                                     owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                     owl:onClass <http://www.w3.org/2006/time#Instant>
+                                   ] ;
+                   rdfs:comment "Value of the command sent to an actuator" ;
+                   rdfs:label "Actuation Value" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#Actuator
-:Actuator rdf:type owl:Class ;
-          rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent> ,
-                          <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> ,
-                          [ rdf:type owl:Restriction ;
-                            owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#implements> ;
-                            owl:someValuesFrom :Acting
-                          ] ,
-                          [ rdf:type owl:Restriction ;
-                            owl:onProperty :actsOn ;
-                            owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Property>
-                          ] ,
-                          [ rdf:type owl:Restriction ;
-                            owl:onProperty :hasActuatingCapability ;
-                            owl:someValuesFrom :ActuatingCapability
-                          ] ,
-                          [ rdf:type owl:Restriction ;
-                            owl:onProperty :hasEffect ;
-                            owl:someValuesFrom :Effect
-                          ] ;
-          rdfs:comment "An actuator is an entity which is able to act upon the physical world. Whether it is a light bulb or a servomotor, an actuator receives inputs represented by Actuations and produces an effect on the world." ;
-          rdfs:label "Actuator" .
+san:Actuator rdf:type owl:Class ;
+             rdfs:subClassOf dul:Agent ,
+                             dul:PhysicalObject ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#implements> ;
+                               owl:someValuesFrom san:Acting
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty san:actsOn ;
+                               owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Property>
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty san:hasActuatingCapability ;
+                               owl:someValuesFrom san:ActuatingCapability
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty san:hasEffect ;
+                               owl:someValuesFrom san:Effect
+                             ] ;
+             rdfs:comment "An actuator is an entity which is able to act upon the physical world. Whether it is a light bulb or a servomotor, an actuator receives inputs represented by Actuations and produces an effect on the world." ;
+             rdfs:label "Actuator" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatorInput
-:ActuatorInput rdf:type owl:Class ;
-               rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Input> ,
-                               <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject> ,
-                               [ rdf:type owl:Restriction ;
-                                 owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasValue> ;
-                                 owl:someValuesFrom :ActuationValue
-                               ] ,
-                               [ rdf:type owl:Restriction ;
-                                 owl:onProperty :isConsumedBy ;
-                                 owl:someValuesFrom :Actuator
-                               ] ;
-               rdfs:comment "An actuator input is a piece of information provided to an actuator describing its expected behaviour, and it is described by an Actuation Value" ;
-               rdfs:label "Actuator Input" .
+san:ActuatorInput rdf:type owl:Class ;
+                  rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Input> ,
+                                  dul:InformationObject ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasValue> ;
+                                    owl:someValuesFrom san:ActuationValue
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty san:isConsumedBy ;
+                                    owl:someValuesFrom san:Actuator
+                                  ] ;
+                  rdfs:comment "An actuator input is a piece of information provided to an actuator describing its expected behaviour, and it is described by an Actuation Value" ;
+                  rdfs:label "Actuator Input" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#ActuatorOutput
-:ActuatorOutput rdf:type owl:Class ;
-                owl:equivalentClass :Effect ;
-                rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event> ;
-                rdfs:comment "Behaviour of an actuator after it has been given an input. To stick to its definition, an actuator output must have an effect on the physical world." ;
-                rdfs:label "Actuator Output" .
+san:ActuatorOutput rdf:type owl:Class ;
+                   owl:equivalentClass san:Effect ;
+                   rdfs:subClassOf dul:Event ;
+                   rdfs:comment "Behaviour of an actuator after it has been given an input. To stick to its definition, an actuator output must have an effect on the physical world." ;
+                   rdfs:label "Actuator Output" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#Effect
-:Effect rdf:type owl:Class ;
-        rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event> ,
-                        [ rdf:type owl:Restriction ;
-                          owl:onProperty :impacts ;
-                          owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Property>
-                        ] ;
-        rdfs:comment "Concept bound to the definition of an actuator as an agent havong an effect on the physical world. Therefore, an effect is any kind of physical modification induced by an actuator." ;
-        rdfs:label "Effect" .
+san:Effect rdf:type owl:Class ;
+           rdfs:subClassOf dul:Event ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty san:impacts ;
+                             owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Property>
+                           ] ;
+           rdfs:comment "Concept bound to the definition of an actuator as an agent havong an effect on the physical world. Therefore, an effect is any kind of physical modification induced by an actuator." ;
+           rdfs:label "Effect" .
 
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN#Situation
-:Situation rdf:type owl:Class ;
-           rdfs:subClassOf :Situation ,
-                           <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> .
+san:Situation rdf:type owl:Class ;
+              rdfs:subClassOf san:Situation ,
+                              <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+              rdfs:label "situation"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
-<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class .
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class ;
+                                                                       rdfs:label "Situation"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent> rdf:type owl:Class .
+dul:Agent rdf:type owl:Class ;
+          rdfs:label "Agent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Amount
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Amount> rdf:type owl:Class .
+dul:Amount rdf:type owl:Class ;
+           rdfs:label "Amount"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> rdf:type owl:Class .
+dul:Entity rdf:type owl:Class ;
+           rdfs:label "Entity"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event> rdf:type owl:Class .
+dul:Event rdf:type owl:Class ;
+          rdfs:label "Event"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject> rdf:type owl:Class .
+dul:InformationObject rdf:type owl:Class ;
+                      rdfs:label "Information object"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Method
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Method> rdf:type owl:Class .
+dul:Method rdf:type owl:Class ;
+           rdfs:label "Method"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Object
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Object> rdf:type owl:Class .
+dul:Object rdf:type owl:Class ;
+           rdfs:label "Object (DUL)"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> rdf:type owl:Class .
+dul:PhysicalObject rdf:type owl:Class ;
+                   rdfs:label "Physical object"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Process
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Process> rdf:type owl:Class .
+dul:Process rdf:type owl:Class ;
+            rdfs:label "Process"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality> rdf:type owl:Class .
+dul:Quality rdf:type owl:Class ;
+            rdfs:label "Quality"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region> rdf:type owl:Class .
+dul:Region rdf:type owl:Class ;
+           rdfs:label "Region"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#UnitOfMeasure
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#UnitOfMeasure> rdf:type owl:Class .
+dul:UnitOfMeasure rdf:type owl:Class ;
+                  rdfs:label "Unit of measure"@en .
 
 
 ###  http://www.w3.org/2006/time#Instant
-<http://www.w3.org/2006/time#Instant> rdf:type owl:Class .
+<http://www.w3.org/2006/time#Instant> rdf:type owl:Class ;
+                                      rdfs:label "Time instant"@en .
 
 
 #################################################################
@@ -535,7 +614,7 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
 
 ###  http://www.irit.fr/recherches/MELODI/ontologies/SAN
 <http://www.irit.fr/recherches/MELODI/ontologies/SAN> rdf:type owl:NamedIndividual ,
-                                                               <http://purl.org/vocommons/voaf#Vocabulary> .
+                                                               voaf:Vocabulary .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

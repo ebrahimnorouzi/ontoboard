@@ -1,61 +1,184 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rdf:RDF
-   xmlns:ns1="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
-   xmlns:owl="http://www.w3.org/2002/07/owl#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
->
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEntity">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
-    <rdfs:subClassOf rdf:nodeID="nf8a41f19d11c4ce58930b9863d52190ab1"/>
-    <rdfs:comment>The Transport Entity concept represents the identity of the circumscribed portion of energy or mass that is moved.</rdfs:comment>
-    <rdfs:label xml:lang="en">Transport Entity</rdfs:label>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
-    <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
-    <ns1:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">What is the extent of a point source pollution event? Where did a voyage begin, and where did it end?</ns1:coversRequirements>
-    <ns1:hasConsequences rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This CP allows data modellers and ontology creators the ability to filter and categorise large geoscience data stores.</ns1:hasConsequences>
-    <ns1:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To reduce dimensionality of large data collections.</ns1:hasIntent>
-    <ns1:relatedCPs rdf:datatype="http://www.w3.org/2001/XMLSchema#string">No known CPs at this time.</ns1:relatedCPs>
-    <ns1:scenarios rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The rive water has pollution from a location, after a certain time.  A package left Auckland, New Zealand, at 5:45am on 01/06/2012 and arrived in Los Angeles, USA, on 01/12/2012.</ns1:scenarios>
-    <rdfs:label>Transport Pattern</rdfs:label>
-    <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.1</owl:versionInfo>
-    <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Brandon Whitehead</owl:versionInfo>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="nf8a41f19d11c4ce58930b9863d52190ab2">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:onProperty rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#partOf"/>
-    <owl:someValuesFrom rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="nf8a41f19d11c4ce58930b9863d52190ab1">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:onProperty rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#partOf"/>
-    <owl:someValuesFrom rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#referenceFrame">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-    <rdfs:domain rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
-    <rdfs:range rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
-    <rdfs:comment>This property is significant in that it serves to restrict and disambiguate a myriad of inherent facets, often in juxtaposition, associated with the Earths complex phenomena. The reference frame is provided to restrict the input values for a given instantiation, inherently providing context to the local representation.</rdfs:comment>
-    <rdfs:label xml:lang="en">reference frame</rdfs:label>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportMechanim">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
-    <rdfs:subClassOf rdf:nodeID="nf8a41f19d11c4ce58930b9863d52190ab2"/>
-    <rdfs:comment>The transportMechanism concept captures the nature of the source that acts upon the transportEntity, and thus induces a transportEvent.</rdfs:comment>
-    <rdfs:label xml:lang="en">Transport Mechanism</rdfs:label>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <rdfs:comment>A Transport Event describes a specific transport phenomenon, as movement of some mass or energy (measurable entity) from one location to another, based on a common and persistent frame of reference.</rdfs:comment>
-    <rdfs:label xml:lang="en">Transport Event</rdfs:label>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#partOf">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
-    <rdfs:label xml:lang="en">part of</rdfs:label>
-  </rdf:Description>
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.descartes-core.org/patterns/owl/transportPattern#"
+     xml:base="http://www.descartes-core.org/patterns/owl/transportPattern"
+     xmlns:ns1="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/">
+    <owl:Ontology rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern">
+        <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To reduce dimensionality of large data collections.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Transportpattern</dcterms:title>
+        <ns1:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">What is the extent of a point source pollution event? Where did a voyage begin, and where did it end?</ns1:coversRequirements>
+        <ns1:hasConsequences rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This CP allows data modellers and ontology creators the ability to filter and categorise large geoscience data stores.</ns1:hasConsequences>
+        <ns1:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To reduce dimensionality of large data collections.</ns1:hasIntent>
+        <ns1:relatedCPs rdf:datatype="http://www.w3.org/2001/XMLSchema#string">No known CPs at this time.</ns1:relatedCPs>
+        <ns1:scenarios rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The rive water has pollution from a location, after a certain time.  A package left Auckland, New Zealand, at 5:45am on 01/06/2012 and arrived in Los Angeles, USA, on 01/12/2012.</ns1:scenarios>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x7; term declared x7;
+- header: dcterms:title &quot;Transportpattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:label>Transport Pattern</rdfs:label>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.1</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Brandon Whitehead</owl:versionInfo>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences">
+        <rdfs:label xml:lang="en">has consequences</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs">
+        <rdfs:label xml:lang="en">related c ps</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios">
+        <rdfs:label xml:lang="en">scenarios</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.descartes-core.org/patterns/owl/transportPattern#partOf -->
+
+    <owl:ObjectProperty rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#partOf">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label xml:lang="en">part of</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.descartes-core.org/patterns/owl/transportPattern#referenceFrame -->
+
+    <owl:ObjectProperty rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#referenceFrame">
+        <rdfs:domain rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
+        <rdfs:range rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
+        <rdfs:comment>This property is significant in that it serves to restrict and disambiguate a myriad of inherent facets, often in juxtaposition, associated with the Earths complex phenomena. The reference frame is provided to restrict the input values for a given instantiation, inherently providing context to the local representation.</rdfs:comment>
+        <rdfs:label xml:lang="en">reference frame</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.descartes-core.org/patterns/owl/transportPattern#TransportEntity -->
+
+    <owl:Class rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEntity">
+        <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#partOf"/>
+                <owl:someValuesFrom rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:comment>The Transport Entity concept represents the identity of the circumscribed portion of energy or mass that is moved.</rdfs:comment>
+        <rdfs:label xml:lang="en">Transport Entity</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent -->
+
+    <owl:Class rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent">
+        <rdfs:comment>A Transport Event describes a specific transport phenomenon, as movement of some mass or energy (measurable entity) from one location to another, based on a common and persistent frame of reference.</rdfs:comment>
+        <rdfs:label xml:lang="en">Transport Event</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- http://www.descartes-core.org/patterns/owl/transportPattern#TransportMechanim -->
+
+    <owl:Class rdf:about="http://www.descartes-core.org/patterns/owl/transportPattern#TransportMechanim">
+        <rdfs:subClassOf rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#partOf"/>
+                <owl:someValuesFrom rdf:resource="http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:comment>The transportMechanism concept captures the nature of the source that acts upon the transportEntity, and thus induces a transportEvent.</rdfs:comment>
+        <rdfs:label xml:lang="en">Transport Mechanism</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
+

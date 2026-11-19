@@ -1,34 +1,110 @@
 <?xml version="1.0"?>
-<rdf:RDF xmlns="https://w3id.org/smartenvironment/patterns/geometry.owl#"
-     xml:base="https://w3id.org/smartenvironment/patterns/geometry.owl"
+<rdf:RDF xmlns="http://observedchange.com/tisc/ns#"
+     xml:base="http://observedchange.com/tisc/ns"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:ns="http://purl.org/net/provenance/ns#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
-     xmlns:se-geometry="https://w3id.org/smartenvironment/patterns/geometry.owl#"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
-     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:voaf="http://purl.org/vocommons/voaf#"
-     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:terms="http://purl.org/dc/terms/"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:vocab="http://www.w3.org/1999/xhtml/vocab#"
-     xmlns:vann="http://purl.org/vocab/vann/"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:foaf="http://xmlns.com/foaf/0.1/"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <owl:Ontology rdf:about="https://w3id.org/smartenvironment/patterns/geometry.owl">
+     xmlns:prez="https://prez.dev/"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:vann="http://purl.org/vocab/vann/"
+     xmlns:voaf="http://purl.org/vocommons/voaf#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:vocab="http://www.w3.org/1999/xhtml/vocab#"
+     xmlns:schema="https://schema.org/"
+     xmlns:se-geometry="https://w3id.org/smartenvironment/patterns/geometry.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
+    <owl:Ontology>
         <owl:imports rdf:resource="http://www.opengis.net/ont/geosparql"/>
-        <terms:title xml:lang="en">Smart Environment Geometry Ontology Pattern</terms:title>
-        <cpannotationschema:coversRequirements xml:lang="en">What are the spatial relations among objects or sections in a smart environment?</cpannotationschema:coversRequirements>
-        <terms:description xml:lang="en">This ontology describes the spatial features of things used in a smart environment. Thease feartures include the geometerical representation of objects along with the spatial and directional relations between them. This ontology relies on the two other spatial related ontologies http://www.opengis.net/ont/geosparql and http://www.observedchange.com/tisc/ns/</terms:description>
-        <cpannotationschema:isSpecializationOf rdf:resource="http://www.opengis.net/ont/geosparql"/>
-        <cpannotationschema:isSpecializationOf rdf:resource="http://www.observedchange.com/tisc/ns"/>
-        <rdfs:seeAlso rdf:resource="http://www.opengis.net/ont/geosparql"/>
-        <vann:preferredNamespaceUri rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl"/>
-        <rdfs:seeAlso rdf:resource="http://www.observedchange.com/tisc/ns/"/>
-        <vann:preferredNamespacePrefix xml:lang="en">se-geometry</vann:preferredNamespacePrefix>
         <terms:created xml:lang="en">2017-10-22</terms:created>
+        <terms:description xml:lang="en">This ontology describes the spatial features of things used in a smart environment. Thease feartures include the geometerical representation of objects along with the spatial and directional relations between them. This ontology relies on the two other spatial related ontologies http://www.opengis.net/ont/geosparql and http://www.observedchange.com/tisc/ns/</terms:description>
+        <terms:title xml:lang="en">Smart Environment Geometry Ontology Pattern</terms:title>
+        <vann:preferredNamespacePrefix xml:lang="en">se-geometry</vann:preferredNamespacePrefix>
+        <vann:preferredNamespaceUri rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl"/>
+        <cpannotationschema:coversRequirements xml:lang="en">What are the spatial relations among objects or sections in a smart environment?</cpannotationschema:coversRequirements>
+        <cpannotationschema:isSpecializationOf rdf:resource="http://www.observedchange.com/tisc/ns"/>
+        <cpannotationschema:isSpecializationOf rdf:resource="http://www.opengis.net/ont/geosparql"/>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x37; term declared x2;
+- file: pattern.owl declares &lt;http://purl.org/dc/terms/created&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://purl.org/dc/terms/description&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://purl.org/dc/terms/title&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf&gt; as an annotation property, as pattern.ttl did
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:seeAlso rdf:resource="http://www.observedchange.com/tisc/ns/"/>
+        <rdfs:seeAlso rdf:resource="http://www.opengis.net/ont/geosparql"/>
     </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/created -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/created">
+        <rdfs:label xml:lang="en">Date Created</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/vocab/vann/preferredNamespacePrefix -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/vocab/vann/preferredNamespacePrefix">
+        <rdfs:label xml:lang="en">preferred namespace prefix</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/vocab/vann/preferredNamespaceUri -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/vocab/vann/preferredNamespaceUri">
+        <rdfs:label xml:lang="en">preferred namespace uri</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf">
+        <rdfs:label xml:lang="en">is specialization of</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -47,6 +123,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#here">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">here</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -55,6 +132,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#insideOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">inside of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -63,6 +141,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#leftOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">left of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -71,6 +150,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#locatedAt">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">located at</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -79,6 +159,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#near">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">near</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -87,6 +168,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#nearest">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">nearest</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -95,6 +177,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#next">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">next</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -103,6 +186,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#nextTo">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">next to</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -111,6 +195,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#northEastOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">north east of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -119,6 +204,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#northOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">north of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -127,6 +213,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#northWestOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">north west of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -135,6 +222,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#outsideOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">outside of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -143,6 +231,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#partialOverlapArea">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">partial overlap area</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -151,6 +240,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#rightOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">right of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -159,6 +249,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#sharesPathWith">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">shares path with</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -167,6 +258,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#southEastOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">south east of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -175,6 +267,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#southOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">south of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -183,6 +276,7 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#southWestOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">south west of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -191,13 +285,16 @@
 
     <owl:ObjectProperty rdf:about="http://observedchange.com/tisc/ns#westOf">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation"/>
+        <rdfs:label xml:lang="en">west of</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.opengis.net/ont/geosparql#hasGeometry -->
 
-    <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#hasGeometry"/>
+    <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#hasGeometry">
+        <rdfs:label xml:lang="en">has geometry</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -205,6 +302,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfContains">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf contains</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -213,6 +311,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfCrosses">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf crosses</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -221,6 +320,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfDisjoint">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf disjoint</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -229,6 +329,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfEquals">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf equals</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -237,6 +338,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfIntersects">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf intersects</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -245,6 +347,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfOverlaps">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf overlaps</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -253,6 +356,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfTouches">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf touches</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -261,6 +365,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfWithin">
         <rdfs:subPropertyOf rdf:resource="https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf within</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -299,13 +404,17 @@
 
     <!-- http://www.opengis.net/ont/geosparql#Feature -->
 
-    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Feature"/>
+    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Feature">
+        <rdfs:label xml:lang="en">feature</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.opengis.net/ont/geosparql#Geometry -->
 
-    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Geometry"/>
+    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Geometry">
+        <rdfs:label xml:lang="en">geometry</rdfs:label>
+    </owl:Class>
     
 
 
@@ -332,5 +441,5 @@
 
 
 
-<!-- Generated by the OWL API (version 4.2.6.20160910-2108) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

@@ -1,30 +1,76 @@
 <?xml version="1.0"?>
-<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+<rdf:RDF xmlns="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#"
      xml:base="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:terms="http://purl.org/dc/terms/"
-     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:ns="http://creativecommons.org/ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl">
-        <imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl"/>
-        <imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl"/>
-        <imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
+    <owl:Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl">
+        <owl:imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl"/>
+        <owl:imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl"/>
+        <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <terms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern relies on both the SSN ontology and DUL in order to represent an object in the context of Smart Home. Using this model we categorize the objects in to two groups of Smart Objects and NodeHolder based on the reason behind their existance in a smart home. 
+
+Due to usual difficulties to install sensors in a smart home environment it is common that some other objects (i.e. NodeHolder) are used to attache sensors on so as to observe the situation of other objects (i.e. SmartObject) specifically for the configuration planner. Using this pattern we are able to diffrentiate between these two types of objects.
+
+This pattern also allows us to extend the definition of an object&apos;s properties in the context of smart home. The properties of a SmartObject which are the interest of the sensing process can be defined as either a subclass of the class  http://purl.oclc.org/NET/ssnx/ssn#Property  (e.g. the temperature of a stove) or as part of the smart object (e.g. the door of a friedge)</terms:description>
+        <terms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Smarthome Object Pattern</terms:title>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Where is the location of a given object?</cpannotationschema:coversRequirements>
-        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which objects are used as the holder of sensors in the smart home environment?</cpannotationschema:coversRequirements>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which devices (e.g. sensors) are attached to a NodeHolder?</cpannotationschema:coversRequirements>
-        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which objects are there in a smart home environment?</cpannotationschema:coversRequirements>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which objects are the interest of the observation process?</cpannotationschema:coversRequirements>
+        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which objects are there in a smart home environment?</cpannotationschema:coversRequirements>
+        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which objects are used as the holder of sensors in the smart home environment?</cpannotationschema:coversRequirements>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x26; term declared x6;
+- header: dcterms:title &quot;Smarthome Object Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
         <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern relies on both the SSN ontology and DUL in order to represent an object in the context of Smart Home. Using this model we categorize the objects in to two groups of Smart Objects and NodeHolder based on the reason behind their existance in a smart home. 
 
 Due to usual difficulties to install sensors in a smart home environment it is common that some other objects (i.e. NodeHolder) are used to attache sensors on so as to observe the situation of other objects (i.e. SmartObject) specifically for the configuration planner. Using this pattern we are able to diffrentiate between these two types of objects.
 
 This pattern also allows us to extend the definition of an object&apos;s properties in the context of smart home. The properties of a SmartObject which are the interest of the sensing process can be defined as either a subclass of the class  http://purl.oclc.org/NET/ssnx/ssn#Property  (e.g. the temperature of a stove) or as part of the smart object (e.g. the door of a friedge)</rdfs:comment>
-    </Ontology>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -41,31 +87,57 @@ This pattern also allows us to extend the definition of an object&apos;s propert
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#attachedSystem -->
 
-    <ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#attachedSystem"/>
+    <owl:ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#attachedSystem">
+        <rdfs:label xml:lang="en">attached system</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://purl.oclc.org/NET/ssnx/ssn#hasProperty -->
+
+    <owl:ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#hasProperty">
+        <rdfs:label xml:lang="en">has property</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf -->
+
+    <owl:ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf">
+        <rdfs:label xml:lang="en">is property of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent">
+        <rdfs:label xml:lang="en">has constituent</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation">
+        <rdfs:label xml:lang="en">has location</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn">
+        <rdfs:label xml:lang="en">is object included in</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn">
+        <rdfs:label xml:lang="en">is participant in</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -82,166 +154,190 @@ This pattern also allows us to extend the definition of an object&apos;s propert
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">location</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#hasProperty"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#hasProperty"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-        <disjointWith rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject"/>
-    </Class>
+        <owl:disjointWith rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject"/>
+        <rdfs:label xml:lang="en">mobile object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NodeHolder -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NodeHolder">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NodeHolder">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
         <rdfs:subClassOf rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Platform"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#attachedSystem"/>
-                <someValuesFrom rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Device"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#attachedSystem"/>
+                <owl:someValuesFrom rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Device"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">node holder</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
-    </Class>
+        <rdfs:label xml:lang="en">non mobile object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeAgent -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeAgent">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeAgent">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject"/>
         <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn"/>
-                <someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn"/>
+                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">smart home agent</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject">
         <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation"/>
-                <someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation"/>
+                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">smart home object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#hasProperty"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#hasProperty"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">smart object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty -->
 
-    <rdf:Description rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty">
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </rdf:Description>
+        <rdfs:label xml:lang="en">smart home property</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#Device -->
 
-    <Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Device"/>
+    <owl:Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Device">
+        <rdfs:label xml:lang="en">device</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#Platform -->
 
-    <Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Platform"/>
+    <owl:Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Platform">
+        <rdfs:label xml:lang="en">platform</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent">
+        <rdfs:label xml:lang="en">Agent</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event">
+        <rdfs:label xml:lang="en">Event</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson">
+        <rdfs:label xml:lang="en">Natural person</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject">
+        <rdfs:label xml:lang="en">Physical object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace">
+        <rdfs:label xml:lang="en">Physical place</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation">
+        <rdfs:label xml:lang="en">Situation</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 4.1.3.20151118-2017) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

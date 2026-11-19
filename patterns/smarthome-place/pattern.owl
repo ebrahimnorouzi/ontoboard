@@ -1,25 +1,83 @@
 <?xml version="1.0"?>
-<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+<rdf:RDF xmlns="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#"
      xml:base="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:terms="http://purl.org/dc/terms/"
-     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:ns="http://creativecommons.org/ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl">
-        <imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl"/>
-        <imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
-        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent a SmartHome as a place (specialization of http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace) which contains a number of sections (other physical places) and is also seen as a platform (e.g. a platform for a sensor network).</cpannotationschema:hasIntent>
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
+    <owl:Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl">
+        <owl:imports rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl"/>
+        <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <terms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent a SmartHome as a place (specialization of http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace) which contains a number of sections (other physical places) and is also seen as a platform (e.g. a platform for a sensor network).</terms:description>
+        <terms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Smarthome Place Pattern</terms:title>
+        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">How many and what sections are there in the SmartHome?</cpannotationschema:coversRequirements>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">What are the spatial/directional relations between sections of a smart home?</cpannotationschema:coversRequirements>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Which physical objects are located in a section of a smart environment?</cpannotationschema:coversRequirements>
-        <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">How many and what sections are there in the SmartHome?</cpannotationschema:coversRequirements>
-        <rdfs:isDefinedBy rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern also used the ODP Geometry (http://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Geometry) to represent the spatial and directional relations between existing sections in a smart home.</rdfs:isDefinedBy>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent a SmartHome as a place (specialization of http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace) which contains a number of sections (other physical places) and is also seen as a platform (e.g. a platform for a sensor network).</cpannotationschema:hasIntent>
         <cpannotationschema:isSpecializationOf rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The pattern extends both the SSN ontology and DUL. The extension is in the form of specialization of the two classes: http://purl.oclc.org/NET/ssnx/ssn#Platform and http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace.</cpannotationschema:isSpecializationOf>
-    </Ontology>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x16; term declared x6;
+- header: dcterms:title &quot;Smarthome Place Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:isDefinedBy rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern also used the ODP Geometry (http://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Geometry) to represent the spatial and directional relations between existing sections in a smart home.</rdfs:isDefinedBy>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf">
+        <rdfs:label xml:lang="en">is specialization of</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -36,25 +94,33 @@
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#inDeployment -->
 
-    <ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#inDeployment"/>
+    <owl:ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#inDeployment">
+        <rdfs:label xml:lang="en">in deployment</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart">
+        <rdfs:label xml:lang="en">has part</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf">
+        <rdfs:label xml:lang="en">is location of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf -->
 
-    <ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf">
+        <rdfs:label xml:lang="en">is part of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -69,73 +135,91 @@
     
 
 
+    <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature -->
+
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature">
+        <rdfs:label xml:lang="en">smart home geo feature</rdfs:label>
+    </owl:Class>
+    
+
+
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome">
         <rdfs:subClassOf rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Platform"/>
         <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#inDeployment"/>
-                <someValuesFrom rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Deployment"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#inDeployment"/>
+                <owl:someValuesFrom rdf:resource="http://purl.oclc.org/NET/ssnx/ssn#Deployment"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
-    </Class>
+        <rdfs:label xml:lang="en">smart home</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection -->
 
-    <Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection">
+    <owl:Class rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection">
         <rdfs:subClassOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature"/>
         <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf"/>
-                <someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf"/>
+                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
-            <Restriction>
-                <onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf"/>
-                <someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome"/>
-            </Restriction>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf"/>
+                <owl:someValuesFrom rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome"/>
+            </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:comment>Sections belonging to a SmartHome</rdfs:comment>
-    </Class>
+        <rdfs:label xml:lang="en">smart home section</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#Deployment -->
 
-    <Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Deployment"/>
+    <owl:Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Deployment">
+        <rdfs:label xml:lang="en">deployment</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://purl.oclc.org/NET/ssnx/ssn#Platform -->
 
-    <Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Platform"/>
+    <owl:Class rdf:about="http://purl.oclc.org/NET/ssnx/ssn#Platform">
+        <rdfs:label xml:lang="en">platform</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject">
+        <rdfs:label xml:lang="en">Physical object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace -->
 
-    <Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace">
+        <rdfs:label xml:lang="en">Physical place</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 4.1.3.20151118-2017) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

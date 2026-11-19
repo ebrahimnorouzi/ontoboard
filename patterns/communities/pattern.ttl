@@ -4,17 +4,38 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix agentrole: <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#> .
+@prefix communities: <http://www.ontologydesignpatterns.org/cp/owl/communities.owl#> .
+@prefix collectionentity: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/communities.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/communities.owl> rdf:type owl:Ontology ;
                                                                 owl:imports <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl> ,
                                                                             <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ;
+                                                                dcterms:description "Diagram (this article has no graphical representation)"^^xsd:string ;
+                                                                dcterms:title "Communities Pattern"^^xsd:string ;
+                                                                rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label rewritten x1; label moved to skos:prefLabel x1; label added x6; term declared x3;
+- header: dcterms:title \"Communities Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
                                                                 owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
                                                                                 "Created with TopBraid Composer"^^xsd:string .
 
 #################################################################
 #    Annotation properties
 #################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
 rdfs:comment rdf:type owl:AnnotationProperty .
@@ -32,12 +53,18 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember
-<http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember> rdf:type owl:ObjectProperty .
+collectionentity:hasMember rdf:type owl:ObjectProperty ;
+                           rdfs:label "has member"@en .
 
 
 #################################################################
@@ -45,24 +72,26 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent
-<http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> rdf:type owl:Class .
+agentrole:Agent rdf:type owl:Class ;
+                rdfs:label "Agent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection
-<http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> rdf:type owl:Class .
+collectionentity:Collection rdf:type owl:Class ;
+                            rdfs:label "Collection"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/communities.owl#Community
-:Community rdf:type owl:Class ;
-           rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> ,
-                           [ rdf:type owl:Restriction ;
-                             owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember> ;
-                             owl:allValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent>
-                           ] ;
-           rdfs:comment "A Collection whose members are agents, e.g. \"the nurses\", \"the Italian rockabilly fans\"." ;
-           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/community.owl> ;
-           rdfs:label "Community {@en}"^^xsd:string ,
-                      "Comunità {@it}"^^xsd:string .
+communities:Community rdf:type owl:Class ;
+                      rdfs:subClassOf collectionentity:Collection ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty collectionentity:hasMember ;
+                                        owl:allValuesFrom agentrole:Agent
+                                      ] ;
+                      rdfs:comment "A Collection whose members are agents, e.g. \"the nurses\", \"the Italian rockabilly fans\"." ;
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/community.owl> ;
+                      rdfs:label "Community"@en ;
+                      skos:prefLabel "Comunità"@it .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

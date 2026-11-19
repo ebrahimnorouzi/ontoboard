@@ -1,31 +1,40 @@
 <?xml version="1.0"?>
 <rdf:RDF xmlns="http://w3id.org/daselab/onto/spatiotemporalextent#"
      xml:base="http://w3id.org/daselab/onto/spatiotemporalextent"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:spatime="http://w3id.org/daselab/onto/spatiotemporalextent#"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:spatime="http://w3id.org/daselab/onto/spatiotemporalextent#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://w3id.org/daselab/onto/spatiotemporalextent">
         <owl:imports rdf:resource="http://w3id.org/daselab/onto/trajectory"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
-        <cpannotationschema:hasIntent>This pattern models a spatiotemporal extent, i.e., a combination of spatial and temporal extent as a set of generalized trajectories which cannot have temporal overlap. This pattern reuses semantic trajectory pattern as component.</cpannotationschema:hasIntent>
-        <cpannotationschema:relatedCPs>Trajectory</cpannotationschema:relatedCPs>
-        <cpannotationschema:hasComponent>Trajectory</cpannotationschema:hasComponent>
         <dc:creator>Adila Krisnadhi, Pascal Hitzler</dc:creator>
-        <cpannotationschema:hasComponent rdf:resource="http://w3id.org/daselab/onto/trajectory"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern models a spatiotemporal extent, i.e., a combination of spatial and temporal extent as a set of generalized trajectories which cannot have temporal overlap. This pattern reuses semantic trajectory pattern as component.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Spatiotemporalextent Pattern</dcterms:title>
         <cpannotationschema:coversRequirements>Where is Poland located in 1700?, 
 List all places and time in which the 1990 World Chess Championship Match take place.,
 Where and when did the oceanographic cruise A01132 go?</cpannotationschema:coversRequirements>
+        <cpannotationschema:hasComponent rdf:resource="http://ontologydesignpatterns.org/wiki/Submissions:Trajectory"/>
+        <cpannotationschema:hasComponent rdf:resource="http://w3id.org/daselab/onto/trajectory"/>
+        <cpannotationschema:hasComponent>Trajectory</cpannotationschema:hasComponent>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern models a spatiotemporal extent, i.e., a combination of spatial and temporal extent as a set of generalized trajectories which cannot have temporal overlap. This pattern reuses semantic trajectory pattern as component.</cpannotationschema:hasIntent>
+        <cpannotationschema:relatedCPs>Trajectory</cpannotationschema:relatedCPs>
         <cpannotationschema:scenarios>The World Chess Championship Match 1990 was held in two parts: New York (October 8 to November 7) and Lyons - France (November 26 to December 30).
 
 The Renaissance occured in different places at different times.
 
 A hurricane moves through the spacetime.</cpannotationschema:scenarios>
-        <cpannotationschema:hasComponent rdf:resource="http://ontologydesignpatterns.org/wiki/Submissions:Trajectory"/>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x10; term declared x8;
+- header: dcterms:title &quot;Spatiotemporalextent Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+- file: pattern.owl declares &lt;http://w3id.org/daselab/onto/trajectory#Trajectory&gt; as a class, as pattern.ttl did
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
     </owl:Ontology>
     
 
@@ -43,7 +52,65 @@ A hurricane moves through the spacetime.</cpannotationschema:scenarios>
 
     <!-- http://purl.org/dc/elements/1.1/creator -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator">
+        <rdfs:label xml:lang="en">Creator</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent">
+        <rdfs:label xml:lang="en">has component</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs">
+        <rdfs:label xml:lang="en">related c ps</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios">
+        <rdfs:label xml:lang="en">scenarios</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -80,7 +147,9 @@ A hurricane moves through the spacetime.</cpannotationschema:scenarios>
 
     <!-- http://w3id.org/daselab/onto/trajectory#hasTrajectory -->
 
-    <rdf:Description rdf:about="http://w3id.org/daselab/onto/trajectory#hasTrajectory"/>
+    <owl:ObjectProperty rdf:about="http://w3id.org/daselab/onto/trajectory#hasTrajectory">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">hasTrajectory (trajectory)</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -128,10 +197,12 @@ A hurricane moves through the spacetime.</cpannotationschema:scenarios>
 
     <!-- http://w3id.org/daselab/onto/trajectory#Trajectory -->
 
-    <rdf:Description rdf:about="http://w3id.org/daselab/onto/trajectory#Trajectory"/>
+    <owl:Class rdf:about="http://w3id.org/daselab/onto/trajectory#Trajectory">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Trajectory (trajectory)</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 4.2.5.20160517-0735) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

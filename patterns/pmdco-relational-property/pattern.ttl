@@ -1,35 +1,72 @@
-@prefix : <https://ontoboard.org/patterns/pmdco-relational-property.owl#> .
+@prefix : <https://w3id.org/pmd/co/> .
+@prefix ns1: <http://www.geneontology.org/formats/oboInOwl#> .
+@prefix ns2: <http://purl.obolibrary.org/obo/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <https://ontoboard.org/patterns/pmdco-relational-property.owl> .
 
-<https://ontoboard.org/patterns/pmdco-relational-property.owl> rdf:type owl:Ontology .
+<https://ontoboard.org/patterns/pmdco-relational-property.owl> rdf:type owl:Ontology ;
+                                                                dcterms:description "Relational qualities hold between two or more entities rather than inhering in one. The example is a mass proportion relating a portion of iron to a metal sheet with a magnitude of 97.7 mass-%, expressed through a fraction value specification."^^xsd:string ;
+                                                                dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+                                                                dcterms:title "Relational property"^^xsd:string ;
+                                                                rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x1; label added x9; term declared x4;
+- header: dcterms:title \"Relational property\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- header: dcterms:license <https://creativecommons.org/licenses/by/4.0/> - https://github.com/materialdigital/core-ontology
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000112
-<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+ns2:IAO_0000112 rdf:type owl:AnnotationProperty ;
+                rdfs:label "example of usage"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000115
-<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+ns2:IAO_0000115 rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000116
-<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+ns2:IAO_0000116 rdf:type owl:AnnotationProperty ;
+                rdfs:label "editor note"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/license
+dcterms:license rdf:type owl:AnnotationProperty ;
+                rdfs:label "License"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
 
 ###  http://www.geneontology.org/formats/oboInOwl#hasDbXref
-<http://www.geneontology.org/formats/oboInOwl#hasDbXref> rdf:type owl:AnnotationProperty .
+ns1:hasDbXref rdf:type owl:AnnotationProperty ;
+              rdfs:label "database_cross_reference"^^xsd:string .
 
 
 ###  http://www.w3.org/2004/02/skos/core#definition
-<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+skos:definition rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition (SKOS)"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
 
 
 #################################################################
@@ -37,33 +74,34 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000039
-<http://purl.obolibrary.org/obo/IAO_0000039> rdf:type owl:ObjectProperty ,
-                                                      owl:FunctionalProperty ;
-                                             rdfs:label "has measurement unit label"@en .
+ns2:IAO_0000039 rdf:type owl:ObjectProperty ,
+                         owl:FunctionalProperty ;
+                rdfs:label "has measurement unit label"@en .
 
 
 ###  http://purl.obolibrary.org/obo/OBI_0001927
-<http://purl.obolibrary.org/obo/OBI_0001927> rdf:type owl:ObjectProperty ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and an entity which the specification is about."@en ;
-                                             rdfs:label "specifies value of" .
+ns2:OBI_0001927 rdf:type owl:ObjectProperty ;
+                ns2:IAO_0000115 "A relation between a value specification and an entity which the specification is about."@en ;
+                rdfs:label "specifies value of" .
 
 
 ###  http://purl.obolibrary.org/obo/RO_0000086
-<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
-                                            rdfs:label "has quality"@en .
+ns2:RO_0000086 rdf:type owl:ObjectProperty ;
+               rdfs:range ns2:BFO_0000019 ;
+               ns2:IAO_0000112 "this apple has quality this red color"@en ;
+               ns2:IAO_0000115 "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+               ns2:IAO_0000116 "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+               rdfs:label "has quality"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0025999
-<https://w3id.org/pmd/co/PMD_0025999> rdf:type owl:ObjectProperty ;
-                                      <http://purl.obolibrary.org/obo/IAO_0000116> """The 'relational quality of' is more strict that 'quality of' from RO, since domain is 'relational quality'. The motivtion to introduce an object property for relational qualities is the following:
+:PMD_0025999 rdf:type owl:ObjectProperty ;
+             ns2:IAO_0000116 """The 'relational quality of' is more strict that 'quality of' from RO, since domain is 'relational quality'. The motivtion to introduce an object property for relational qualities is the following:
 RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is relevant for most of the SDC -> IC triples, expect for relational qualities, which per definiton can be simultaneously inherited in >=2 ICs. Thus,  'relational quality of'  has the same intention to connect SDC to IC, however, without cardinality constraints."""@en ;
-                                      rdfs:label "relational property of"@en ,
-                                                 "relationale Eigenschaft von"@de ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "a relation between a relational quality and an independent continuant (the bearer), in which the quality specifically depends on the bearer for its existence"@en ,
-                                                                                       "eine Beziehung zwischen einer relationalen Qualität und einem unabhängigen Kontinuum (dem Träger), bei der die Existenz der Qualität speziell vom Träger abhängt"@de .
+             rdfs:label "relational property of"@en ;
+             skos:definition "a relation between a relational quality and an independent continuant (the bearer), in which the quality specifically depends on the bearer for its existence"@en ,
+                             "eine Beziehung zwischen einer relationalen Qualität und einem unabhängigen Kontinuum (dem Träger), bei der die Existenz der Qualität speziell vom Träger abhängt"@de ;
+             skos:prefLabel "relationale Eigenschaft von"@de .
 
 
 #################################################################
@@ -71,10 +109,10 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/OBI_0001937
-<http://purl.obolibrary.org/obo/OBI_0001937> rdf:type owl:DatatypeProperty ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a number that quantifies it."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
-                                             rdfs:label "has specified numeric value" .
+ns2:OBI_0001937 rdf:type owl:DatatypeProperty ;
+                ns2:IAO_0000115 "A relation between a value specification and a number that quantifies it."@en ;
+                ns2:IAO_0000116 "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
+                rdfs:label "has specified numeric value" .
 
 
 #################################################################
@@ -82,74 +120,87 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000019
-<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
-                                             rdfs:label "quality"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+ns2:BFO_0000019 rdf:type owl:Class ;
+                rdfs:label "quality"@en ;
+                skos:definition "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000030
-<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
-                                             rdfs:label "object"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+ns2:BFO_0000030 rdf:type owl:Class ;
+                rdfs:subClassOf ns2:BFO_0000040 ;
+                rdfs:label "object"@en ;
+                skos:definition "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000040
-<http://purl.obolibrary.org/obo/BFO_0000040> rdf:type owl:Class ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             rdfs:label "material entity"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
+ns2:BFO_0000040 rdf:type owl:Class ;
+                ns2:IAO_0000115 "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                ns2:IAO_0000116 "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                rdfs:label "material entity"@en ;
+                skos:definition "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000145
-<http://purl.obolibrary.org/obo/BFO_0000145> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> ;
-                                             rdfs:label "relational quality"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a relational quality =Def b is a quality & there exists c and d such that c and d are not identical & b specifically depends on c & b specifically depends on d"@en .
+ns2:BFO_0000145 rdf:type owl:Class ;
+                rdfs:subClassOf ns2:BFO_0000019 ;
+                rdfs:label "relational quality"@en ;
+                skos:definition "b is a relational quality =Def b is a quality & there exists c and d such that c and d are not identical & b specifically depends on c & b specifically depends on d"@en .
 
 
 ###  http://purl.obolibrary.org/obo/OBI_0001931
-<http://purl.obolibrary.org/obo/OBI_0001931> rdf:type owl:Class ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A value specification that consists of two parts: a numeral and a unit label"@en ;
-                                             rdfs:label "scalar value specification" .
+ns2:OBI_0001931 rdf:type owl:Class ;
+                rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                  owl:onProperty ns2:IAO_0000039 ;
+                                  owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty ns2:OBI_0001937 ;
+                                  owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                ] ;
+                ns2:IAO_0000115 "A value specification that consists of two parts: a numeral and a unit label"@en ;
+                rdfs:label "scalar value specification" .
 
 
 ###  http://purl.obolibrary.org/obo/UO_0000163
-<http://purl.obolibrary.org/obo/UO_0000163> rdf:type owl:Class ;
-                                            rdfs:subClassOf <http://purl.obolibrary.org/obo/UO_1000163> .
+ns2:UO_0000163 rdf:type owl:Class ;
+               owl:equivalentClass [ rdf:type owl:Class ;
+                                     owl:oneOf ( ns2:UO_0000163
+                                               )
+                                   ] ;
+               rdfs:subClassOf ns2:UO_1000163 .
 
 
 ###  http://purl.obolibrary.org/obo/UO_1000163
-<http://purl.obolibrary.org/obo/UO_1000163> rdf:type owl:Class ;
-                                            rdfs:label "mass percentage based unit" .
+ns2:UO_1000163 rdf:type owl:Class ;
+               rdfs:label "mass percentage based unit" .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020026
-<https://w3id.org/pmd/co/PMD_0020026> rdf:type owl:Class ;
-                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020140> ;
-                                      rdfs:comment "A Portion Of Matter that consists of only Iron atoms."@en ;
-                                      rdfs:label "portion of iron"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "A 'portion of iron' is a 'Poriton Of Pure Substance' that 'consists of' only chebi:iron atom."@en .
+:PMD_0020026 rdf:type owl:Class ;
+             rdfs:subClassOf :PMD_0020140 ;
+             rdfs:comment "A Portion Of Matter that consists of only Iron atoms."@en ;
+             rdfs:label "portion of iron"@en ;
+             skos:definition "A 'portion of iron' is a 'Poriton Of Pure Substance' that 'consists of' only chebi:iron atom."@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020102
-<https://w3id.org/pmd/co/PMD_0020102> rdf:type owl:Class ;
-                                      rdfs:label "mass fraction"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "a relational quality expressing a mass of a part in relation to the the mass of the whole"@en .
+:PMD_0020102 rdf:type owl:Class ;
+             rdfs:label "mass fraction"@en ;
+             skos:definition "a relational quality expressing a mass of a part in relation to the the mass of the whole"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020140
-<https://w3id.org/pmd/co/PMD_0020140> rdf:type owl:Class ;
-                                      rdfs:label "portion of pure chemical element"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "A portion of pure chemical element is a pure substance composed of multiple atoms, which are all of the same kind."@en .
+:PMD_0020140 rdf:type owl:Class ;
+             rdfs:subClassOf ns2:BFO_0000040 ;
+             rdfs:label "portion of pure chemical element"@en ;
+             skos:definition "A portion of pure chemical element is a pure substance composed of multiple atoms, which are all of the same kind."@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0025997
-<https://w3id.org/pmd/co/PMD_0025997> rdf:type owl:Class ;
-                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001931> ;
-                                      rdfs:label "concentration value specification"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "a value specification that contains information about quantitative share of a part relative to a specified whole."@en .
+:PMD_0025997 rdf:type owl:Class ;
+             rdfs:subClassOf ns2:OBI_0001931 ;
+             rdfs:label "concentration value specification"@en ;
+             skos:definition "a value specification that contains information about quantitative share of a part relative to a specified whole."@en .
 
 
 #################################################################
@@ -157,52 +208,22 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/UO_0000163
-<http://purl.obolibrary.org/obo/UO_0000163> rdf:type owl:NamedIndividual .
+ns2:UO_0000163 rdf:type owl:NamedIndividual .
 
 
 #################################################################
 #    Annotations
 #################################################################
 
-<http://purl.obolibrary.org/obo/UO_0000163> rdfs:label "mass percentage" ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000115> "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." .
+ns2:UO_0000163 rdfs:label "mass percentage" ;
+               ns2:IAO_0000115 "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." .
 
 [ rdf:type owl:Axiom ;
-   owl:annotatedSource <http://purl.obolibrary.org/obo/UO_0000163> ;
-   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedSource ns2:UO_0000163 ;
+   owl:annotatedProperty ns2:IAO_0000115 ;
    owl:annotatedTarget "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." ;
-   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Wikipedia:Wikipedia"
+   ns1:hasDbXref "Wikipedia:Wikipedia"
  ] .
-
-
-#################################################################
-#    Axioms restored from PMDco 3.1.2
-#################################################################
-# The extraction dropped these although each mentions only terms declared above; no term is added.
-#   S stated by PMDco 3.1.2.   E follows from one PMDco 3.1.2 axiom (a conjunct, or an inverse property's domain/range).
-#   T follows from PMDco 3.1.2 subclass axioms through classes outside the pattern.   O stated by the real OBO file only.
-
-# S: stated by PMDco 3.1.2
-<http://purl.obolibrary.org/obo/OBI_0001931> rdfs:subClassOf [ rdf:type owl:Restriction ;
-                                                               owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001937> ;
-                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
-                                                             ] ;
-# O: the real OBI (2026-07-27, as imported by PMDco 3.1.2) states it, PMDco's copy omits it, PMDco's SHACL shape requires it
-                                             rdfs:subClassOf [ rdf:type owl:Restriction ;
-                                                               owl:onProperty <http://purl.obolibrary.org/obo/IAO_0000039> ;
-                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
-                                                             ] .
-
-# S: stated by PMDco 3.1.2
-<http://purl.obolibrary.org/obo/RO_0000086> rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> .
-
-# S: stated by PMDco 3.1.2
-<http://purl.obolibrary.org/obo/UO_0000163> owl:equivalentClass [ owl:oneOf ( <http://purl.obolibrary.org/obo/UO_0000163> ) ;
-                                                                  rdf:type owl:Class
-                                                                ] .
-
-# T: entailed by PMDco 3.1.2 through classes outside the pattern: portion of pure chemical element < pure substance < chemical substance < chemical entity < portion of matter < material entity
-<https://w3id.org/pmd/co/PMD_0020140> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

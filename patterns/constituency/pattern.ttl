@@ -4,11 +4,20 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix constituency: <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> rdf:type owl:Ontology ;
                                                                  owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                 rdfs:comment "The constituency pattern. It is extracted from DOLCE-UltraLite by partial clone of elements." ;
+                                                                 dcterms:description "The constituency pattern. It is extracted from DOLCE-UltraLite by partial clone of elements."^^xsd:string ;
+                                                                 dcterms:title "Constituency Pattern"^^xsd:string ;
+                                                                 rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x2; label added x3; term declared x3;
+- header: dcterms:title \"Constituency Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                              "The constituency pattern. It is extracted from DOLCE-UltraLite by partial clone of elements."^^xsd:string ;
                                                                  rdfs:label "constituency" ;
                                                                  owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
                                                                                  "Created by Valentina Presutti"^^xsd:string .
@@ -16,6 +25,16 @@
 #################################################################
 #    Annotation properties
 #################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
 rdfs:comment rdf:type owl:AnnotationProperty .
@@ -33,37 +52,42 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#hasConstituent
-:hasConstituent rdf:type owl:ObjectProperty ;
-                owl:inverseOf :isConstituentOf ;
-                rdfs:domain owl:Thing ;
-                rdfs:range owl:Thing ;
-                rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
+constituency:hasConstituent rdf:type owl:ObjectProperty ;
+                            owl:inverseOf constituency:isConstituentOf ;
+                            rdfs:domain owl:Thing ;
+                            rdfs:range owl:Thing ;
+                            rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
 Intuitively, a constituent is a part belonging to a lower layer. Since layering is actually a partition of the world described by the ontology, constituents are not properly classified as parts, although this kinship can be intuitive for common sense.
 A desirable advantage of this distinction is that we are able to talk e.g. of physical constituents of non-physical objects (e.g. systems), while this is not possible in terms of parts.
 Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
 In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it.""" ;
-                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
-                rdfs:label "ha costituente"@it ,
-                           "has constituent"@en .
+                            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
+                            rdfs:label "has constituent"@en ;
+                            skos:prefLabel "ha costituente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#isConstituentOf
-:isConstituentOf rdf:type owl:ObjectProperty ;
-                 rdfs:domain owl:Thing ;
-                 rdfs:range owl:Thing ;
-                 rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
+constituency:isConstituentOf rdf:type owl:ObjectProperty ;
+                             rdfs:domain owl:Thing ;
+                             rdfs:range owl:Thing ;
+                             rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
 Intuitively, a constituent is a part belonging to a lower layer. Since layering is actually a partition of the world described by the ontology, constituents are not properly classified as parts, although this kinship can be intuitive for common sense.
 A desirable advantage of this distinction is that we are able to talk e.g. of physical constituents of non-physical objects (e.g. systems), while this is not possible in terms of parts.
 Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
 In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it.""" ;
-                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
-                 rdfs:label "is constituent of"@en ,
-                            "è costituente di"@it .
+                             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
+                             rdfs:label "is constituent of"@en ;
+                             skos:prefLabel "è costituente di"@it .
 
 
 #################################################################

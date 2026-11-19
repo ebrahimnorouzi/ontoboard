@@ -207,6 +207,25 @@ class PatternCurationTest {
     }
 
     @Test
+    void aFixAlreadyMadeIsDone() throws Exception {
+        File dir = pattern("p", ":M a owl:Class ; rdfs:label \"has Aircraft\" ."
+                + " :A a owl:Class ; rdfs:label \"a\"@en . :B a owl:Class ; rdfs:label \"b\"@en ."
+                + " :p a owl:ObjectProperty ; rdfs:label \"p\"@en ; rdfs:domain :A, :B .");
+        List<PatternCuration.Fix> fixes = Arrays.asList(
+                new PatternCuration.Fix("p", EX + "M", "rdfs:label", "has Aircraft", "mean of transportation", "why"),
+                new PatternCuration.Fix("p", EX + "p", "axiom", "ObjectPropertyDomain(<" + EX + "p> <" + EX + "A>)",
+                        "ObjectPropertyDomain(<" + EX + "p> ObjectUnionOf(<" + EX + "A> <" + EX + "B>))", "why"),
+                new PatternCuration.Fix("p", EX + "p", "axiom", "ObjectPropertyDomain(<" + EX + "p> <" + EX + "B>)",
+                        "", "why"));
+        PatternCuration curation = curation(none(), none(), fixes);
+        curation.curate(dir);
+
+        PatternCuration.Changes again = curation.curate(dir);
+
+        assertTrue(again.lines().isEmpty(), again.lines().toString());
+    }
+
+    @Test
     void aFixThatNoLongerMatchesIsRefused() throws Exception {
         File dir = pattern("p", ":M a owl:Class ; rdfs:label \"m\"@en .");
         List<PatternCuration.Fix> fixes = Arrays.asList(new PatternCuration.Fix("p", EX + "M", "rdfs:label",
@@ -256,6 +275,21 @@ class PatternCurationTest {
                 .startsWith("<?xml"), "pattern.owl is RDF/XML");
         assertEquals(logical(owl), logical(read(dir, "pattern.ttl")), "both files say the same");
         assertEquals(allAxioms(owl), allAxioms(read(dir, "pattern.ttl")), "annotations too");
+    }
+
+    @Test
+    void aBlankNodeIsNeverSaidToBeOnlyInTheTtl() throws Exception {
+        File dir = pattern("p", ":C a owl:Class ; rdfs:label \"c\"@en ."
+                + " _:orphan owl:minQualifiedCardinality \"0\"^^<http://www.w3.org/2001/XMLSchema#nonNegativeInteger> .");
+        PatternCuration curation = curation(none(), none(), noFixes());
+
+        PatternCuration.Changes first = curation.curate(dir);
+        PatternCuration.Changes again = curation.curate(dir);
+
+        for (String line : first.lines()) {
+            assertFalse(line.startsWith("file: only pattern.ttl said"), line);
+        }
+        assertTrue(again.lines().isEmpty(), again.lines().toString());
     }
 
     @Test
@@ -309,15 +343,251 @@ class PatternCurationTest {
                 changes.lines().toString());
     }
 
+    // --- two terms, one label (ROBOT's duplicate_label) -----------------------------------------
+
     @Test
-    void aDuplicateLabelIsNeverWritten() throws Exception {
-        File dir = pattern("p", "<http://a.example/hasPart> a owl:ObjectProperty ."
-                + " <http://b.example/hasPart> a owl:ObjectProperty .");
+    void aDeclarationOnlyTheTtlHadIsTheTtls() throws Exception {
+        File dir = new File(root, "p");
+        assertTrue(dir.mkdirs());
+        String head = prefixes() + "<http://example.org/p> a owl:Ontology .\n"
+                + ":A a owl:Class ; rdfs:label \"a\"@en ; rdfs:subClassOf :B .\n";
+        Files.write(new File(dir, "pattern.owl").toPath(), head.getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(dir, "pattern.ttl").toPath(), (head + ":B a owl:Class ; rdfs:label \"b\"@en .\n")
+                .getBytes(StandardCharsets.UTF_8));
+        metadata(dir, "p");
+
+        PatternCuration.Changes changes = curation(none(), none(), noFixes()).curate(dir);
+
+        assertTrue(changes.lines().contains("file: pattern.owl declares <" + EX + "B> as a class, as pattern.ttl did"),
+                changes.lines().toString());
+        for (String line : changes.lines()) {
+            assertFalse(line.startsWith("term declared: <" + EX + "B>"), line);
+        }
+    }
+
+    @Test
+    void twoTermsTheAuthorLabelledAlikeAreRefused() throws Exception {
+        File dir = pattern("p", ":A a owl:Class ; rdfs:label \"x\"@en . :B a owl:Class ; rdfs:label \"x\"@en .");
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> curation(none(), none(), noFixes()).curate(dir));
-        assertTrue(refused.getMessage().contains("http://a.example/hasPart")
-                && refused.getMessage().contains("http://b.example/hasPart"), refused.getMessage());
+        assertTrue(refused.getMessage().contains(EX + "A") && refused.getMessage().contains(EX + "B"),
+                refused.getMessage());
+    }
+
+    @Test
+    void anOboTermKeepsItsLabelAndTheOtherGetsItsSource() throws Exception {
+        File dir = pattern("p", ":A a owl:Class ; rdfs:label \"a\"@en ;"
+                + " <http://purl.obolibrary.org/obo/IAO_0000115> \"x\" ; <" + SKOS + "definition> \"y\" .");
+
+        PatternCuration.Changes changes = curation(none(), definitions(), noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("definition@en"), labelsOf(curated, "http://purl.obolibrary.org/obo/IAO_0000115"));
+        assertEquals(Arrays.asList("definition (SKOS)@en"), labelsOf(curated, SKOS + "definition"));
+        assertTrue(changes.lines().contains("label added: <" + SKOS + "definition> \"definition (SKOS)\"@en"
+                + " - from " + SKOS + ", with its source in brackets: another term of the pattern is"
+                + " called \"definition\""), changes.lines().toString());
+    }
+
+    @Test
+    void theAuthorsLabelStaysAndTheAddedOneGetsItsSource() throws Exception {
+        File dir = pattern("p", ":Description a owl:Class ; rdfs:label \"Description\"@en ."
+                + " :A a owl:Class ; rdfs:label \"a\"@en ; <" + DCTERMS + "description> \"about A\" .");
+        Map<String, PatternCuration.Given> known = new HashMap<String, PatternCuration.Given>();
+        known.put(DCTERMS + "description", new PatternCuration.Given("Description", "en", DCTERMS));
+
+        curation(none(), known, noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("Description@en"), labelsOf(curated, EX + "Description"));
+        assertEquals(Arrays.asList("Description (DC terms)@en"), labelsOf(curated, DCTERMS + "description"));
+    }
+
+    @Test
+    void aPropertyBesideItsClassSaysProperty() throws Exception {
+        File dir = pattern("p", ":Context a owl:Class . :context a owl:ObjectProperty .");
+
+        curation(none(), none(), noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("context@en"), labelsOf(curated, EX + "Context"));
+        assertEquals(Arrays.asList("context (property)@en"), labelsOf(curated, EX + "context"));
+    }
+
+    @Test
+    void aPatternsOwnTermKeepsItsLabel() throws Exception {
+        String schema = "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent";
+        File dir = pattern("p", ":hasComponent a owl:ObjectProperty . :Whole a owl:Class ; rdfs:label \"whole\"@en ;"
+                + " rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :hasComponent ; owl:someValuesFrom :Whole ] ."
+                + " <" + schema + "> rdfs:comment \"said, never declared\" .");
+
+        curation(none(), none(), noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("has component@en"), labelsOf(curated, EX + "hasComponent"));
+        assertEquals(Arrays.asList("has component (cpannotationschema)@en"), labelsOf(curated, schema));
+    }
+
+    @Test
+    void termsOfTwoSourcesGetTheirSources() throws Exception {
+        File dir = pattern("p", "<http://a.example/hasPart> a owl:ObjectProperty ."
+                + " <http://b.example/hasPart> a owl:ObjectProperty .");
+
+        curation(none(), none(), noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("has part (a.example)@en"), labelsOf(curated, "http://a.example/hasPart"));
+        assertEquals(Arrays.asList("has part (b.example)@en"), labelsOf(curated, "http://b.example/hasPart"));
+    }
+
+    @Test
+    void aLabelWithItsSourceIsTheSameInEveryPattern() throws Exception {
+        File clash = pattern("p1", ":A a owl:Class ; rdfs:label \"a\"@en ;"
+                + " <http://purl.obolibrary.org/obo/IAO_0000115> \"x\" ; <" + SKOS + "definition> \"y\" .");
+        File alone = pattern("p2", ":B a owl:Class ; rdfs:label \"b\"@en ; <" + SKOS + "definition> \"y\" .");
+        byte[] before = Files.readAllBytes(new File(clash, "pattern.owl").toPath());
+        PatternCuration curation = curation(none(), definitions(), noFixes());
+
+        Map<String, String> qualified = curation.qualifiedIn(Arrays.asList(clash, alone));
+
+        assertEquals(Collections.singletonMap(SKOS + "definition", "definition (SKOS)"), qualified);
+        assertArrayEquals(before, Files.readAllBytes(new File(clash, "pattern.owl").toPath()),
+                "finding them writes nothing");
+        curation.withQualified(qualified).curate(alone);
+        assertEquals(Arrays.asList("definition (SKOS)@en"), labelsOf(read(alone, "pattern.owl"), SKOS + "definition"));
+    }
+
+    @Test
+    void whatOdksReportFindsUnlabelledIsLabelled() throws Exception {
+        File dir = pattern("p", ":C a owl:Class ; rdfs:label \"c\"@en . :p a owl:ObjectProperty ; rdfs:label \"p\"@en ."
+                + " owl:Thing rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :p ; owl:someValuesFrom :C ] ."
+                + " :hasMember rdfs:comment \"only said, never declared\" .");
+        Map<String, PatternCuration.Given> known = new HashMap<String, PatternCuration.Given>();
+        known.put("http://www.w3.org/2002/07/owl#Thing",
+                new PatternCuration.Given("Thing", "", "http://www.w3.org/2002/07/owl"));
+
+        curation(none(), known, noFixes()).curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertEquals(Arrays.asList("Thing"), labelsOf(curated, "http://www.w3.org/2002/07/owl#Thing"));
+        assertEquals(Arrays.asList("has member@en"), labelsOf(curated, EX + "hasMember"));
+    }
+
+    @Test
+    void whatOnlyTheImportsSayIsNotThePatterns() throws Exception {
+        String imported = "http://example.org/imported";
+        File fetched = new File(root, "fetched");
+        assertTrue(fetched.mkdirs());
+        Files.write(new File(fetched, PatternAudit.fileNameFor(imported)).toPath(), ("<" + imported
+                + "> a <http://www.w3.org/2002/07/owl#Ontology> . <https://orcid.org/0000-0001>"
+                + " <http://schema.org/name> \"Someone\" . <" + EX + "hasMember>"
+                + " <http://www.w3.org/2000/01/rdf-schema#label> \"has member\"@en .\n").getBytes(StandardCharsets.UTF_8));
+        File dir = new File(root, "p");
+        assertTrue(dir.mkdirs());
+        String ttl = prefixes() + "<http://example.org/p> a owl:Ontology ; owl:imports <" + imported + "> ."
+                + " :C a owl:Class ; rdfs:label \"c\"@en . :hasMember rdfs:comment \"only commented here\" .\n";
+        Files.write(new File(dir, "pattern.owl").toPath(), ttl.getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(dir, "pattern.ttl").toPath(), ttl.getBytes(StandardCharsets.UTF_8));
+        metadata(dir, "p");
+
+        new PatternCuration(none(), none(), PatternCuration.Licences.none(), noFixes(), stubs(),
+                iri -> imported.equals(iri) ? new File(fetched, PatternAudit.fileNameFor(imported)) : null)
+                .curate(dir);
+
+        OWLOntology curated = read(dir, "pattern.owl");
+        assertTrue(labelsOf(curated, "https://orcid.org/0000-0001").isEmpty(),
+                "what only an import describes is the import's to label");
+        assertEquals(Arrays.asList("has member@en"), labelsOf(curated, EX + "hasMember"),
+                "what the pattern itself describes is labelled in the pattern, imports or not");
+    }
+
+    @Test
+    void anImportsTermsThePatternNeverUsesAreNotItsOwn() throws Exception {
+        String schema = "http://example.org/schema";
+        File fetched = new File(root, "fetched");
+        assertTrue(fetched.mkdirs());
+        Files.write(new File(fetched, PatternAudit.fileNameFor(schema)).toPath(), ("<" + schema
+                + "> a <http://www.w3.org/2002/07/owl#Ontology> . <" + schema + "#hasIntent> a"
+                + " <http://www.w3.org/2002/07/owl#AnnotationProperty> . <" + schema + "#extractedFrom> a"
+                + " <http://www.w3.org/2002/07/owl#AnnotationProperty> .\n").getBytes(StandardCharsets.UTF_8));
+        File dir = new File(root, "p");
+        assertTrue(dir.mkdirs());
+        String ttl = prefixes() + "<http://example.org/p> a owl:Ontology ; owl:imports <" + schema + "> ;"
+                + " <" + schema + "#hasIntent> \"what it is for\" . :C a owl:Class ; rdfs:label \"c\"@en .\n";
+        Files.write(new File(dir, "pattern.owl").toPath(), ttl.getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(dir, "pattern.ttl").toPath(), ttl.getBytes(StandardCharsets.UTF_8));
+        metadata(dir, "p");
+        PatternCuration curation = new PatternCuration(none(), none(), PatternCuration.Licences.none(),
+                noFixes(), stubs(), iri -> schema.equals(iri) ? new File(fetched, PatternAudit.fileNameFor(schema)) : null);
+
+        curation.curate(dir);
+        PatternCuration.Changes again = curation.curate(dir);
+
+        assertTrue(again.lines().isEmpty(), again.lines().toString());
+        assertFalse(new String(Files.readAllBytes(new File(dir, "pattern.owl").toPath()), StandardCharsets.UTF_8)
+                .contains("extractedFrom"), "a term only the import declares is not written into the pattern");
+    }
+
+    @Test
+    void anOntologyThatIsAlsoATermIsLabelledInItsHeader() throws Exception {
+        File dir = pattern("p", "<http://example.org/p> a owl:NamedIndividual . :C a owl:Class ; rdfs:label \"c\"@en .");
+        PatternCuration curation = curation(none(), none(), noFixes());
+
+        curation.curate(dir);
+        PatternCuration.Changes again = curation.curate(dir);
+
+        assertEquals(Arrays.asList("p pattern"), headerValues(read(dir, "pattern.owl"),
+                "http://www.w3.org/2000/01/rdf-schema#label"));
+        assertTrue(again.lines().isEmpty(), again.lines().toString());
+    }
+
+    @Test
+    void aStaleDefaultNamespaceIsNotCarriedOver() throws Exception {
+        File dir = new File(root, "p");
+        assertTrue(dir.mkdirs());
+        String owl = "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns=\"http://stale.example/old#\""
+                + " xml:base=\"http://stale.example/old\""
+                + " xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\""
+                + " xmlns:owl=\"http://www.w3.org/2002/07/owl#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n"
+                + "<owl:Ontology rdf:about=\"http://example.org/p\"/>\n"
+                + "<owl:Class rdf:about=\"" + EX + "A\"><rdfs:label xml:lang=\"en\">a</rdfs:label>"
+                + "<rdfs:subClassOf rdf:resource=\"" + EX + "B\"/></owl:Class>\n"
+                + "<owl:Class rdf:about=\"" + EX + "B\"><rdfs:label xml:lang=\"en\">b</rdfs:label></owl:Class>\n"
+                + "</rdf:RDF>\n";
+        Files.write(new File(dir, "pattern.owl").toPath(), owl.getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(dir, "pattern.ttl").toPath(), owl.getBytes(StandardCharsets.UTF_8));
+        metadata(dir, "p");
+
+        curation(none(), none(), noFixes()).curate(dir);
+
+        assertEquals(logical(read(dir, "pattern.owl")), logical(read(dir, "pattern.ttl")));
+        assertTrue(logical(read(dir, "pattern.ttl")).toString().contains("SubClassOf(<" + EX + "A> <" + EX + "B>)"),
+                logical(read(dir, "pattern.ttl")).toString());
+    }
+
+    // --- the library's labels -------------------------------------------------------------------
+
+    @Test
+    void theLibraryPrefersATaggedLabelInWords() throws Exception {
+        pattern("q1", ":X a owl:ObjectProperty ; rdfs:label \"hasPart\" .");
+        pattern("q2", ":X a owl:ObjectProperty ; rdfs:label \"has part\"@en .");
+
+        Map<String, PatternCuration.Given> library = PatternCuration.libraryLabels(root, none(), noFixes(), stubs());
+
+        assertEquals("has part", library.get(EX + "X").text);
+        assertEquals("en", library.get(EX + "X").lang);
+    }
+
+    @Test
+    void theLibraryGivesAFixedLabel() throws Exception {
+        pattern("q1", ":H a owl:Class ; rdfs:label \"Section\"@en .");
+        List<PatternCuration.Fix> fixes = Arrays.asList(new PatternCuration.Fix("q1", EX + "H", "rdfs:label",
+                "Section", "Homogeneous fragment", "a copied label"));
+
+        Map<String, PatternCuration.Given> library = PatternCuration.libraryLabels(root, none(), fixes, stubs());
+
+        assertEquals("Homogeneous fragment", library.get(EX + "H").text);
     }
 
     // --- helpers --------------------------------------------------------------------------------
@@ -338,6 +608,15 @@ class PatternCurationTest {
         rows.add(new String[] {LICENSED, CC_BY, LICENSED + "evidence"});
         rows.add(new String[] {"https://unlicensed.example/", "", "https://unlicensed.example/"});
         return new PatternCuration.Licences(rows);
+    }
+
+    /** IAO's and SKOS's definition, both called "definition" by their home ontologies. */
+    private static Map<String, PatternCuration.Given> definitions() {
+        Map<String, PatternCuration.Given> known = new HashMap<String, PatternCuration.Given>();
+        known.put("http://purl.obolibrary.org/obo/IAO_0000115",
+                new PatternCuration.Given("definition", "en", "http://purl.obolibrary.org/obo/iao.owl"));
+        known.put(SKOS + "definition", new PatternCuration.Given("definition", "en", SKOS));
+        return known;
     }
 
     private static Map<String, PatternCuration.Given> none() {

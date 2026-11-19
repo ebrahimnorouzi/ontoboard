@@ -1,21 +1,31 @@
 @prefix : <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> rdf:type owl:Ontology ;
                                                                owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                               <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi" ,
-                                                                                                         "Andrea Nuzzolese" ,
-                                                                                                         "Valentina Carriero" ,
-                                                                                                         "Valentina Presutti" ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "Which is the measurement unit of a time period?, Which is the value of a time period?" ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The measurement unit and the numerical value of a time period can be modeled." ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent time periods, as n-ary relation with a measurement unit and a numerical value." ;
-                                                               rdfs:comment "A pattern for time periods."@en ;
+                                                               dc:creator "Aldo Gangemi" ,
+                                                                          "Andrea Nuzzolese" ,
+                                                                          "Valentina Carriero" ,
+                                                                          "Valentina Presutti" ;
+                                                               dcterms:description "To represent time periods, as n-ary relation with a measurement unit and a numerical value."^^xsd:string ;
+                                                               dcterms:title "Timeperiod Pattern"^^xsd:string ;
+                                                               cpannotationschema:coversRequirements "Which is the measurement unit of a time period?, Which is the value of a time period?" ;
+                                                               cpannotationschema:hasConsequences "The measurement unit and the numerical value of a time period can be modeled." ;
+                                                               cpannotationschema:hasIntent "To represent time periods, as n-ary relation with a measurement unit and a numerical value."^^xsd:string ;
+                                                               rdfs:comment "A pattern for time periods."@en ,
+                                                                            """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x6; term declared x5;
+- header: dcterms:title \"Timeperiod Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
                                                                rdfs:label "time period" .
 
 #################################################################
@@ -23,7 +33,33 @@
 #################################################################
 
 ###  http://purl.org/dc/elements/1.1/creator
-<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+dc:creator rdf:type owl:AnnotationProperty ;
+           rdfs:label "Creator"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 #################################################################

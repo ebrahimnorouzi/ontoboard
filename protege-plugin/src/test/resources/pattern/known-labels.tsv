@@ -493,7 +493,57 @@ http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#specializes	specializes	en
 http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#unifies	unifies	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
 http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#usesConcept	uses concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
 http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight	DBpedia infobox matching weight		http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl
-http://www.w3.org/2002/07/owl#Thing	Thing		http://xmlns.com/foaf/0.1/
+http://www.w3.org/2002/07/owl#AllDifferent	AllDifferent		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#AllDisjointClasses	AllDisjointClasses		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#AnnotationProperty	AnnotationProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#AsymmetricProperty	AsymmetricProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Axiom	Axiom		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Class	Class		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#DatatypeProperty	DatatypeProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#FunctionalProperty	FunctionalProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#InverseFunctionalProperty	InverseFunctionalProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#IrreflexiveProperty	IrreflexiveProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#NamedIndividual	NamedIndividual		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Nothing	Nothing		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#ObjectProperty	ObjectProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Ontology	Ontology		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#ReflexiveProperty	ReflexiveProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Restriction	Restriction		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#SymmetricProperty	SymmetricProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#Thing	Thing		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#TransitiveProperty	TransitiveProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#allValuesFrom	allValuesFrom		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#annotatedProperty	annotatedProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#annotatedSource	annotatedSource		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#annotatedTarget	annotatedTarget		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#cardinality	cardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#complementOf	complementOf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#disjointWith	disjointWith		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#distinctMembers	distinctMembers		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#equivalentClass	equivalentClass		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#equivalentProperty	equivalentProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#hasKey	hasKey		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#hasSelf	hasSelf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#imports	imports		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#intersectionOf	intersectionOf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#inverseOf	inverseOf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#maxCardinality	maxCardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#maxQualifiedCardinality	maxQualifiedCardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#members	members		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#minCardinality	minCardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#minQualifiedCardinality	minQualifiedCardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#onClass	onClass		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#onDataRange	onDataRange		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#onProperty	onProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#oneOf	oneOf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#priorVersion	priorVersion		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#propertyChainAxiom	propertyChainAxiom		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#qualifiedCardinality	qualifiedCardinality		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#someValuesFrom	someValuesFrom		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#topObjectProperty	topObjectProperty		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#unionOf	unionOf		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#versionIRI	versionIRI		http://www.w3.org/2002/07/owl
+http://www.w3.org/2002/07/owl#versionInfo	versionInfo		http://www.w3.org/2002/07/owl
 http://www.w3.org/2004/02/skos/core#altLabel	alternative label	en	http://www.w3.org/2004/02/skos/core
 http://www.w3.org/2004/02/skos/core#definition	definition	en	http://www.w3.org/2004/02/skos/core
 http://www.w3.org/2004/02/skos/core#editorialNote	editorial note	en	http://www.w3.org/2004/02/skos/core

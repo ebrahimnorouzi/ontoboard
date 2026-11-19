@@ -1,46 +1,123 @@
 @prefix : <http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#> .
 @prefix ns1: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@base <http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl> .
 
-<http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl> a owl:Ontology ;
-    ns1:extractedFrom <http://dbpedia.org/>,
-        <http://en.wikipedia.org/> ;
-    ns1:hasAuthor "Aldo Gangemi",
-        "Andrea Giovanni Nuzzolese",
-        "Valentina Presutti" ;
-    ns1:hasIntent "To represent the encyclopedic knowledge expressed by an object typed as Airline" ;
-    rdfs:comment "Airline Encyclopedic Knowledge Pattern" ;
-    owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> .
+<http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl> rdf:type owl:Ontology ;
+                                                             owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                             dcterms:description "To represent the encyclopedic knowledge expressed by an object typed as Airline"^^xsd:string ;
+                                                             dcterms:title "Airline.owl Pattern"^^xsd:string ;
+                                                             ns1:extractedFrom <http://dbpedia.org/> ,
+                                                                               <http://en.wikipedia.org/> ;
+                                                             ns1:hasAuthor "Aldo Gangemi" ,
+                                                                           "Andrea Giovanni Nuzzolese" ,
+                                                                           "Valentina Presutti" ;
+                                                             ns1:hasIntent "To represent the encyclopedic knowledge expressed by an object typed as Airline"^^xsd:string ;
+                                                             rdfs:comment "Airline Encyclopedic Knowledge Pattern" ,
+                                                                          """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x3; label added x7; term declared x5;
+- label corrected: <http://dbpedia.org/ontology/MeanOfTransportation> \"has Aircraft\" is now \"mean of transportation\" - the label of hasAircraft, copied onto the class (duplicate_label); DBpedia labels the class \"mean of transportation\"@en
+- header: dcterms:title \"Airline.owl Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
-:hasAircraft a owl:AnnotationProperty,
-        owl:ObjectProperty ;
-    rdfs:label "has Aircraft"@en ;
-    rdfs:comment "Relation between Airline and Aircraft"@en,
-        "Relazione tra Airline e Aircraft"@it ;
-    rdfs:domain <http://dbpedia.org/ontology/Airline> ;
-    rdfs:range <http://dbpedia.org/ontology/Aircraft> ;
-    rdfs:subPropertyOf <http://dbpedia.org/ontology/MeanOfTransportation> .
+#################################################################
+#    Annotation properties
+#################################################################
 
-ns1:extractedFrom a owl:AnnotationProperty .
+###  http://dbpedia.org/ontology/MeanOfTransportation
+<http://dbpedia.org/ontology/MeanOfTransportation> rdf:type owl:AnnotationProperty .
 
-ns1:hasAuthor a owl:AnnotationProperty .
 
-ns1:hasIntent a owl:AnnotationProperty .
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
 
-<http://dbpedia.org/ontology/Aircraft> a owl:Class ;
-    rdfs:label "αεροσκάφος"@el,
-        "aircraft"@en,
-        "avion"@fr .
 
-<http://dbpedia.org/ontology/Airline> a owl:Class ;
-    rdfs:label "airline"@en,
-        "compagnie aérienne"@fr ;
-    skos:editorialNote "Axioms were lost when this pattern was harvested: the OWL API could not read part of the source and substituted placeholder classes in http://org.semanticweb.owlapi/error#, which asserted this class to be a subclass of Error1, Error2 and so on. The placeholders are removed here because they carry no information. What they stood for is still in the source: https://ontologydesignpatterns.org/wiki/Submissions:Airline.owl."@en .
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
-<http://dbpedia.org/ontology/MeanOfTransportation> a owl:AnnotationProperty ;
-    rdfs:label "has Aircraft"@en ;
-    rdfs:comment "Relation between Airline and Aircraft"@en,
-        "Relazione tra Airline e Aircraft"@it .
 
+###  http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#hasAircraft
+:hasAircraft rdf:type owl:AnnotationProperty ;
+             rdfs:range <http://dbpedia.org/ontology/Aircraft> .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+ns1:extractedFrom rdf:type owl:AnnotationProperty ;
+                  rdfs:label "extracted from"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+ns1:hasAuthor rdf:type owl:AnnotationProperty ;
+              rdfs:label "has author"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+ns1:hasIntent rdf:type owl:AnnotationProperty ;
+              rdfs:label "has intent"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#editorialNote
+skos:editorialNote rdf:type owl:AnnotationProperty ;
+                   rdfs:label "editorial note"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://dbpedia.org/ontology/MeanOfTransportation
+<http://dbpedia.org/ontology/MeanOfTransportation> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#hasAircraft
+:hasAircraft rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf <http://dbpedia.org/ontology/MeanOfTransportation> ;
+             rdfs:domain <http://dbpedia.org/ontology/Airline> .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://dbpedia.org/ontology/Aircraft
+<http://dbpedia.org/ontology/Aircraft> rdf:type owl:Class ;
+                                       rdfs:label "aircraft"@en ;
+                                       skos:prefLabel "avion"@fr ,
+                                                      "αεροσκάφος"@el .
+
+
+###  http://dbpedia.org/ontology/Airline
+<http://dbpedia.org/ontology/Airline> rdf:type owl:Class ;
+                                      rdfs:label "airline"@en ;
+                                      skos:editorialNote "Axioms were lost when this pattern was harvested: the OWL API could not read part of the source and substituted placeholder classes in http://org.semanticweb.owlapi/error#, which asserted this class to be a subclass of Error1, Error2 and so on. The placeholders are removed here because they carry no information. What they stood for is still in the source: https://ontologydesignpatterns.org/wiki/Submissions:Airline.owl."@en ;
+                                      skos:prefLabel "compagnie aérienne"@fr .
+
+
+#################################################################
+#    Annotations
+#################################################################
+
+<http://dbpedia.org/ontology/MeanOfTransportation> rdfs:comment "Relation between Airline and Aircraft"@en ;
+                                                   rdfs:label "mean of transportation"@en ;
+                                                   rdfs:comment "Relazione tra Airline e Aircraft"@it .
+
+
+:hasAircraft rdfs:comment "Relation between Airline and Aircraft"@en ,
+                          "Relazione tra Airline e Aircraft"@it ;
+             rdfs:label "has Aircraft"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

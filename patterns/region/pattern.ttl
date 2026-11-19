@@ -4,16 +4,26 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix region: <http://www.ontologydesignpatterns.org/cp/owl/region.owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/region.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/region.owl> rdf:type owl:Ontology ;
                                                            owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the value for the attribute of that entity?,Which entities have a certain value on that parameter/attribute/feature?" ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We can represent and reason on *any* kind of attributes, parameters, features, etc., which have a given set of values.
+                                                           dcterms:description "To represent and reason on values of attributes of things, by explicitly talking about the dimensions (\"regions\") of the attributes, which include those values."^^xsd:string ;
+                                                           dcterms:title "Region Pattern"^^xsd:string ;
+                                                           cpannotationschema:coversRequirements "What is the value for the attribute of that entity?,Which entities have a certain value on that parameter/attribute/feature?" ;
+                                                           cpannotationschema:extractedFrom "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                           cpannotationschema:hasConsequences """We can represent and reason on *any* kind of attributes, parameters, features, etc., which have a given set of values.
 With the new OWL2 support for custom and complex datatypes, this pattern should be confronted with possible enrichments, or may be restricted to OWL1. Anyway, since datatypes cannot overlap with classes even in OWL2, it remains useful for the cases where the domain must be kept homogeneous.""" ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent and reason on values of attributes of things, by explicitly talking about the dimensions (\"regions\") of the attributes, which include those values." ;
-                                                           rdfs:comment "The region content ontology design pattern. This CP represents regions that are portions of a dimensional space which can be used as a value for a quality of an Entity. The CP is extracted from DOLCE + DnS Ultra Lite ontology." ;
+                                                           cpannotationschema:hasIntent "To represent and reason on values of attributes of things, by explicitly talking about the dimensions (\"regions\") of the attributes, which include those values."^^xsd:string ;
+                                                           rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x4; label added x7; term declared x3;
+- header: dcterms:title \"Region Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                        "The region content ontology design pattern. This CP represents regions that are portions of a dimensional space which can be used as a value for a quality of an Entity. The CP is extracted from DOLCE + DnS Ultra Lite ontology." ;
                                                            owl:versionInfo """1.1
 - Annotated for ODP submission by Aldo Gangemi
 1.0
@@ -24,20 +34,34 @@ With the new OWL2 support for custom and complex datatypes, this pattern should 
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -56,29 +80,34 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/region.owl#hasRegion
-:hasRegion rdf:type owl:ObjectProperty ;
-           owl:inverseOf :isRegionFor ;
-           rdfs:domain owl:Thing ;
-           rdfs:range :Region ;
-           rdfs:comment "A relation between entities and regions, e.g. 'the number of wheels of that truck is 12'." ;
-           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
-           rdfs:label "ha regione"@it ,
-                      "has region"@en .
+region:hasRegion rdf:type owl:ObjectProperty ;
+                 owl:inverseOf region:isRegionFor ;
+                 rdfs:domain owl:Thing ;
+                 rdfs:range region:Region ;
+                 rdfs:comment "A relation between entities and regions, e.g. 'the number of wheels of that truck is 12'." ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
+                 rdfs:label "has region"@en ;
+                 skos:prefLabel "ha regione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/region.owl#isRegionFor
-:isRegionFor rdf:type owl:ObjectProperty ;
-             rdfs:domain :Region ;
-             rdfs:range owl:Thing ;
-             rdfs:comment "A relation between entities and regions, e.g. 'the color of my car is red'." ;
-             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
-             rdfs:label "is region for"@en ,
-                        "è un ragione di"@it .
+region:isRegionFor rdf:type owl:ObjectProperty ;
+                   rdfs:domain region:Region ;
+                   rdfs:range owl:Thing ;
+                   rdfs:comment "A relation between entities and regions, e.g. 'the color of my car is red'." ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
+                   rdfs:label "is region for"@en ;
+                   skos:prefLabel "è un ragione di"@it .
 
 
 #################################################################
@@ -86,12 +115,12 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/region.owl#hasRegionDataValue
-:hasRegionDataValue rdf:type owl:DatatypeProperty ;
-                    rdfs:domain :Region ;
-                    rdfs:comment "A datatype property that encodes values for a Region, e.g. a float for the Region Height." ;
-                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
-                    rdfs:label "has region data value"@en ,
-                               "regione ha valore {it}" .
+region:hasRegionDataValue rdf:type owl:DatatypeProperty ;
+                          rdfs:domain region:Region ;
+                          rdfs:comment "A datatype property that encodes values for a Region, e.g. a float for the Region Height." ;
+                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
+                          rdfs:label "has region data value"@en ;
+                          skos:prefLabel "regione ha valore"@it .
 
 
 #################################################################
@@ -99,16 +128,16 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region
-:Region rdf:type owl:Class ;
-        rdfs:subClassOf [ rdf:type owl:Restriction ;
-                          owl:onProperty :isRegionFor ;
-                          owl:allValuesFrom owl:Thing
-                        ] ;
-        rdfs:comment """Any region in a dimensional space (a dimensional space is a maximal Region), which can be used as a value for a quality of an Entity . For example, TimeInterval, SpaceRegion, PhysicalAttribute, Amount, SocialAttribute are all subclasses of Region. 
+region:Region rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty region:isRegionFor ;
+                                owl:allValuesFrom owl:Thing
+                              ] ;
+              rdfs:comment """Any region in a dimensional space (a dimensional space is a maximal Region), which can be used as a value for a quality of an Entity . For example, TimeInterval, SpaceRegion, PhysicalAttribute, Amount, SocialAttribute are all subclasses of Region. 
 Regions are not data values in the ordinary knowledge representation sense; in order to get patterns for modelling data, see the properties: representsDataValue and hasDataValue"""^^xsd:string ;
-        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
-        rdfs:label "Region"@en ,
-                   "Regione"@it .
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/region.owl> ;
+              rdfs:label "Region"@en ;
+              skos:prefLabel "Regione"@it .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

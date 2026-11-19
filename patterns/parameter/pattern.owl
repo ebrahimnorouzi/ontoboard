@@ -1,34 +1,31 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY parameter "http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#" >
-    <!ENTITY cpannotationschema "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:parameter="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:parameter="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl">
-        <rdfs:label rdf:datatype="&rdf;PlainLiteral">Parameter</rdfs:label>
-        <owl:versionInfo rdf:datatype="&xsd;string">1.0
-- Created by Valentina Presutti</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
-        <rdfs:comment rdf:datatype="&rdf;PlainLiteral">The parameter content ontology design pattern. This CP is extracted from the DOLCE Ultra Lite ontology. It represents parameters which are constraints or selections on observable values.</rdfs:comment>
-        <cpannotationschema:hasIntent rdf:datatype="&rdf;PlainLiteral">To represent parameters to be used for a certain concept.</cpannotationschema:hasIntent>
-        <cpannotationschema:hasAuthor rdf:datatype="&rdf;PlainLiteral">Valentina Presutti</cpannotationschema:hasAuthor>
-        <cpannotationschema:extractedFrom rdf:datatype="&rdf;PlainLiteral">http://www.ontologydesignpatterns.org/ont/dul/DUL.owl</cpannotationschema:extractedFrom>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent parameters to be used for a certain concept.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Parameter Pattern</dcterms:title>
+        <cpannotationschema:extractedFrom>http://www.ontologydesignpatterns.org/ont/dul/DUL.owl</cpannotationschema:extractedFrom>
+        <cpannotationschema:hasAuthor>Valentina Presutti</cpannotationschema:hasAuthor>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent parameters to be used for a certain concept.</cpannotationschema:hasIntent>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x5; label added x6; term declared x3;
+- header: dcterms:title &quot;Parameter Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:comment>The parameter content ontology design pattern. This CP is extracted from the DOLCE Ultra Lite ontology. It represents parameters which are constraints or selections on observable values.</rdfs:comment>
+        <rdfs:label>Parameter</rdfs:label>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.0
+- Created by Valentina Presutti</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -41,13 +38,78 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;hasAuthor"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;extractedFrom"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;hasIntent"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom">
+        <rdfs:label xml:lang="en">extracted from</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor">
+        <rdfs:label xml:lang="en">has author</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
+    
+
+
+    <!-- http://www.w3.org/2004/02/skos/core#prefLabel -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#prefLabel">
+        <rdfs:label xml:lang="en">preferred label</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -64,27 +126,27 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameter -->
 
-    <owl:ObjectProperty rdf:about="&parameter;hasParameter">
-        <rdfs:label xml:lang="en">has parameter</rdfs:label>
-        <rdfs:label xml:lang="it">ha parametro</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameter">
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#isParameterFor"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter"/>
         <rdfs:comment>A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"/>
-        <rdfs:domain rdf:resource="&parameter;Concept"/>
-        <rdfs:range rdf:resource="&parameter;Parameter"/>
+        <rdfs:label xml:lang="en">has parameter</rdfs:label>
+        <skos:prefLabel xml:lang="it">ha parametro</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#isParameterFor -->
 
-    <owl:ObjectProperty rdf:about="&parameter;isParameterFor">
-        <rdfs:label xml:lang="en">is parameter for</rdfs:label>
-        <rdfs:label xml:lang="it">è un parametro per</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#isParameterFor">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept"/>
         <rdfs:comment>A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"/>
-        <rdfs:range rdf:resource="&parameter;Concept"/>
-        <rdfs:domain rdf:resource="&parameter;Parameter"/>
-        <owl:inverseOf rdf:resource="&parameter;hasParameter"/>
+        <rdfs:label xml:lang="en">is parameter for</rdfs:label>
+        <skos:prefLabel xml:lang="it">è un parametro per</skos:prefLabel>
     </owl:ObjectProperty>
     
 
@@ -102,14 +164,14 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameterDataValue -->
 
-    <owl:DatatypeProperty rdf:about="&parameter;hasParameterDataValue">
-        <rdfs:label xml:lang="en">has parameter data value</rdfs:label>
-        <rdfs:label xml:lang="it">ha valore</rdfs:label>
+    <owl:DatatypeProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameterDataValue">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter"/>
         <rdfs:comment>Parametrizes values from a datatype. For example, a Parameter AgeForDriving hasParameterDataValue 18 on datatype xsd:int, in the Italian traffic code. In this example, AgeForDriving isDefinedIn the Norm ItalianTrafficCodeAgeDriving.
-More complex parametrization requires workarounds. E.g. AgeRangeForDrugUsage could parametrize data value: 14 to 50 on the datatype: xsd:int. Since complex datatypes are not allowed in OWL1.0, a solution to this can only work by creating two &#39;sub-parameters&#39;: MinimumAgeRangeForDrugUsage (that hasParameterDataValue 14) and MaximumAgeRangeForDrugUsage (that hasParameterDataValue 50), which are components of the main Parameter AgeRangeForDrugUsage.
-Ordering on subparameters can be created by using or specializing the object property &#39;precedes&#39;.</rdfs:comment>
+More complex parametrization requires workarounds. E.g. AgeRangeForDrugUsage could parametrize data value: 14 to 50 on the datatype: xsd:int. Since complex datatypes are not allowed in OWL1.0, a solution to this can only work by creating two &apos;sub-parameters&apos;: MinimumAgeRangeForDrugUsage (that hasParameterDataValue 14) and MaximumAgeRangeForDrugUsage (that hasParameterDataValue 50), which are components of the main Parameter AgeRangeForDrugUsage.
+Ordering on subparameters can be created by using or specializing the object property &apos;precedes&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"/>
-        <rdfs:domain rdf:resource="&parameter;Parameter"/>
+        <rdfs:label xml:lang="en">has parameter data value</rdfs:label>
+        <skos:prefLabel xml:lang="it">ha valore</skos:prefLabel>
     </owl:DatatypeProperty>
     
 
@@ -127,31 +189,31 @@ Ordering on subparameters can be created by using or specializing the object pro
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept -->
 
-    <owl:Class rdf:about="&parameter;Concept">
-        <rdfs:label xml:lang="en">Concept</rdfs:label>
-        <rdfs:label xml:lang="it">Concetto</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A concept is a SocialObject, and isDefinedIn a Description . 
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept">
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A concept is a SocialObject, and isDefinedIn a Description . 
 Once defined, a Concept can be used in other descriptions. 
 The classifies relation relates concepts to entities at some time</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"/>
+        <rdfs:label xml:lang="en">Concept</rdfs:label>
+        <skos:prefLabel xml:lang="it">Concetto</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter -->
 
-    <owl:Class rdf:about="&parameter;Parameter">
-        <rdfs:label xml:lang="en">Parameter</rdfs:label>
-        <rdfs:label xml:lang="it">Parametro</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&parameter;Concept"/>
-        <rdfs:comment rdf:datatype="&xsd;string">A Concept that classifies something having a certain value, e.g. &#39;High&#39; can be said of people taller than 185 cm.
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A Concept that classifies something having a certain value, e.g. &apos;High&apos; can be said of people taller than 185 cm.
 However, in order to formally represent this constraint, we need to add an anonymous type to a parameter instance, using a property that convey the semantics of the parameter, e.g.:
 High rdf:type Person and (some hasHeight (Height and (oneOf isTallerThan 185) and (oneOf hasUnitOfMeasure centimeter)))</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/parameter.owl"/>
+        <rdfs:label xml:lang="en">Parameter</rdfs:label>
+        <skos:prefLabel xml:lang="it">Parametro</skos:prefLabel>
     </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

@@ -1,31 +1,40 @@
 <?xml version="1.0"?>
 <rdf:RDF xmlns="https://w3id.org/smartenvironment/patterns/time.owl#"
      xml:base="https://w3id.org/smartenvironment/patterns/time.owl"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:terms="http://purl.org/dc/terms/"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
-     xmlns:voaf="http://purl.org/vocommons/voaf#"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
      xmlns:time="http://www.w3.org/2006/time"
      xmlns:vann="http://purl.org/vocab/vann/"
-     xmlns:se-time="https://w3id.org/smartenvironment/patterns/time.owl#">
+     xmlns:voaf="http://purl.org/vocommons/voaf#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:se-time="https://w3id.org/smartenvironment/patterns/time.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/time.owl">
         <owl:imports rdf:resource="http://www.w3.org/2006/time#2016"/>
-        <vann:preferredNamespacePrefix rdf:resource="https://w3id.org/smartenvironment/patterns/time.owl"/>
+        <terms:created rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2017-10-22</terms:created>
+        <terms:description xml:lang="en">This ontology pattern extends the OWL-Time ontology (https://www.w3.org/2006/time) and describes time in the form of time stamps, time intervals with specific starting and ending points, as well as temporal distance that indicates a relative time distance to a given time point, in the form of an interval. By relative time distance, we mean a distance regardless of the exact timepoints.</terms:description>
         <terms:title xml:lang="en">Smart Environment Time Ontology Pattern</terms:title>
+        <vann:preferredNamespacePrefix rdf:resource="https://w3id.org/smartenvironment/patterns/time.owl"/>
+        <vann:preferredNamespacePrefix xml:lang="en">se-time</vann:preferredNamespacePrefix>
+        <cpannotationschema:coversRequirements xml:lang="en">What is the temporal distance between two specific time steps?</cpannotationschema:coversRequirements>
+        <cpannotationschema:coversRequirements xml:lang="en">What is the time interval between two specific timestamps in the form of dates?</cpannotationschema:coversRequirements>
         <cpannotationschema:hasConsequences xml:lang="en">We can quantitavely represent temporal distances through  an observation process for different purposes . These purposes include 
 definition of an event in terms of its preconditions whose occurance timestamp is within a specific temporal distance with that of the event.</cpannotationschema:hasConsequences>
-        <terms:description xml:lang="en">This ontology pattern extends the OWL-Time ontology (https://www.w3.org/2006/time) and describes time in the form of time stamps, time intervals with specific starting and ending points, as well as temporal distance that indicates a relative time distance to a given time point, in the form of an interval. By relative time distance, we mean a distance regardless of the exact timepoints.</terms:description>
-        <terms:created rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2017-10-22</terms:created>
         <cpannotationschema:hasIntent xml:lang="en">The ontology pattern Time represents temporal entities in the form of Instant, Interval and Temporal Distance (for example the relative temporal relations between an event and its preconditions.) in the context of smart environments.</cpannotationschema:hasIntent>
-        <vann:preferredNamespacePrefix xml:lang="en">se-time</vann:preferredNamespacePrefix>
-        <cpannotationschema:coversRequirements xml:lang="en">What is the time interval between two specific timestamps in the form of dates?</cpannotationschema:coversRequirements>
-        <cpannotationschema:coversRequirements xml:lang="en">What is the temporal distance between two specific time steps?</cpannotationschema:coversRequirements>
         <cpannotationschema:isSpecializationOf rdf:resource="https://www.w3.org/2006/time"/>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x17; term declared x4;
+- file: pattern.owl declares &lt;http://purl.org/dc/terms/description&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://purl.org/dc/terms/title&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://purl.org/vocab/vann/preferredNamespacePrefix&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent&gt; as an annotation property, as pattern.ttl did
+- file: pattern.owl declares &lt;http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf&gt; as an annotation property, as pattern.ttl did
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
     </owl:Ontology>
     
 
@@ -41,6 +50,70 @@ definition of an event in terms of its preconditions whose occurance timestamp i
     
 
 
+    <!-- http://purl.org/dc/terms/created -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/created">
+        <rdfs:label xml:lang="en">Date Created</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/vocab/vann/preferredNamespacePrefix -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/vocab/vann/preferredNamespacePrefix">
+        <rdfs:label xml:lang="en">preferred namespace prefix</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences">
+        <rdfs:label xml:lang="en">has consequences</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf">
+        <rdfs:label xml:lang="en">is specialization of</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
     <!-- http://www.w3.org/2002/07/owl#qualifiedCardinality -->
 
     <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#qualifiedCardinality"/>
@@ -49,7 +122,9 @@ definition of an event in terms of its preconditions whose occurance timestamp i
 
     <!-- http://www.w3.org/2004/02/skos/core#definition -->
 
-    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#definition"/>
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#definition">
+        <rdfs:label xml:lang="en">definition (SKOS)</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -66,7 +141,44 @@ definition of an event in terms of its preconditions whose occurance timestamp i
 
     <!-- http://www.w3.org/2006/time#before -->
 
-    <owl:ObjectProperty rdf:about="http://www.w3.org/2006/time#before"/>
+    <owl:ObjectProperty rdf:about="http://www.w3.org/2006/time#before">
+        <rdfs:label xml:lang="en">before</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.w3.org/2006/time#hasBeginning -->
+
+    <owl:ObjectProperty rdf:about="http://www.w3.org/2006/time#hasBeginning">
+        <rdfs:label xml:lang="en">has beginning</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.w3.org/2006/time#hasDuration -->
+
+    <owl:ObjectProperty rdf:about="http://www.w3.org/2006/time#hasDuration">
+        <rdfs:label xml:lang="en">has duration</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/2006/time#inXSDDateTimeStamp -->
+
+    <owl:DatatypeProperty rdf:about="http://www.w3.org/2006/time#inXSDDateTimeStamp">
+        <rdfs:label xml:lang="en">in XSD Date-Time-Stamp</rdfs:label>
+    </owl:DatatypeProperty>
     
 
 
@@ -83,25 +195,33 @@ definition of an event in terms of its preconditions whose occurance timestamp i
 
     <!-- http://www.w3.org/2006/time#Duration -->
 
-    <owl:Class rdf:about="http://www.w3.org/2006/time#Duration"/>
+    <owl:Class rdf:about="http://www.w3.org/2006/time#Duration">
+        <rdfs:label xml:lang="en">Time duration</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.w3.org/2006/time#Instant -->
 
-    <owl:Class rdf:about="http://www.w3.org/2006/time#Instant"/>
+    <owl:Class rdf:about="http://www.w3.org/2006/time#Instant">
+        <rdfs:label xml:lang="en">Time instant</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.w3.org/2006/time#Interval -->
 
-    <owl:Class rdf:about="http://www.w3.org/2006/time#Interval"/>
+    <owl:Class rdf:about="http://www.w3.org/2006/time#Interval">
+        <rdfs:label xml:lang="en">Time interval</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.w3.org/2006/time#TemporalEntity -->
 
-    <owl:Class rdf:about="http://www.w3.org/2006/time#TemporalEntity"/>
+    <owl:Class rdf:about="http://www.w3.org/2006/time#TemporalEntity">
+        <rdfs:label xml:lang="en">Temporal entity</rdfs:label>
+    </owl:Class>
     
 
 
@@ -209,5 +329,5 @@ definition of an event in terms of its preconditions whose occurance timestamp i
 
 
 
-<!-- Generated by the OWL API (version 4.2.6.20160910-2108) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

@@ -1,20 +1,69 @@
 <?xml version="1.0"?>
 <rdf:RDF xmlns="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#"
      xml:base="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl">
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
-        <cpannotationschema:isSpecializationOf rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern is a spacializayion of the GeoSPARQL ontology (http://www.opengis.net/ont/geosparql) in order to be used in the definition of spatial entities (e.g. places or physical objects) in a smart environment.</cpannotationschema:isSpecializationOf>
+        <terms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Ontology design pattern for modeling smarthome geometry relationships and concepts.</terms:description>
+        <terms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Smarthome Geometry Pattern</terms:title>
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">What are the spatial entities (objects with geometry) in a smart home environment?</cpannotationschema:coversRequirements>
+        <cpannotationschema:isSpecializationOf rdf:datatype="http://www.w3.org/2001/XMLSchema#string">This pattern is a spacializayion of the GeoSPARQL ontology (http://www.opengis.net/ont/geosparql) in order to be used in the definition of spatial entities (e.g. places or physical objects) in a smart environment.</cpannotationschema:isSpecializationOf>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x26; term declared x4;
+- header: dcterms:title &quot;Smarthome Geometry Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
     </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf">
+        <rdfs:label xml:lang="en">is specialization of</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -33,6 +82,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#eastOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">east of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -41,13 +91,16 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">has directional relation</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation -->
 
-    <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+    <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation">
+        <rdfs:label xml:lang="en">has spatial relation</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -55,6 +108,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#northEastOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">north east of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -63,6 +117,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#northOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">north of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -71,6 +126,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#northWestOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">north west of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -79,6 +135,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#southEastOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">south east of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -87,6 +144,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#southOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">south of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -95,6 +153,7 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#southWestOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">south west of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -103,13 +162,16 @@
 
     <owl:ObjectProperty rdf:about="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#westOf">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasDirectionalRelation"/>
+        <rdfs:label xml:lang="en">west of</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.opengis.net/ont/geosparql#hasGeometry -->
 
-    <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#hasGeometry"/>
+    <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#hasGeometry">
+        <rdfs:label xml:lang="en">has geometry</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -117,6 +179,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfContains">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf contains</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -125,6 +188,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfCrosses">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf crosses</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -133,6 +197,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfDisjoint">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf disjoint</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -141,6 +206,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfEquals">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf equals</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -149,6 +215,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfIntersects">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf intersects</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -157,6 +224,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfOverlaps">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf overlaps</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -165,6 +233,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfTouches">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf touches</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -173,6 +242,7 @@
 
     <owl:ObjectProperty rdf:about="http://www.opengis.net/ont/geosparql#sfWithin">
         <rdfs:subPropertyOf rdf:resource="http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#hasSpatialRelation"/>
+        <rdfs:label xml:lang="en">sf within</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -210,22 +280,27 @@
                 <owl:someValuesFrom rdf:resource="http://www.opengis.net/ont/geosparql#Geometry"/>
             </owl:Restriction>
         </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">smart home geo feature</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.opengis.net/ont/geosparql#Feature -->
 
-    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Feature"/>
+    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Feature">
+        <rdfs:label xml:lang="en">feature</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.opengis.net/ont/geosparql#Geometry -->
 
-    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Geometry"/>
+    <owl:Class rdf:about="http://www.opengis.net/ont/geosparql#Geometry">
+        <rdfs:label xml:lang="en">geometry</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 4.1.3.20151118-2017) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

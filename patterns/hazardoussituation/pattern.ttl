@@ -4,22 +4,44 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation> .
 
 <http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation> rdf:type owl:Ontology ;
                                                                         owl:imports <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ,
-                                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> .
+                                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                        dcterms:description "Ontology design pattern for modeling hazardoussituation relationships and concepts."^^xsd:string ;
+                                                                        dcterms:title "Hazardoussituation Pattern"^^xsd:string ;
+                                                                        rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x20; term declared x4;
+- header: dcterms:title \"Hazardoussituation Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model hazardous situations and their associated hazardous events with events' participating objects and the hazards the objects are exposed to with the exposure value." .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             cpannotationschema:hasIntent "To model hazardous situations and their associated hazardous events with events' participating objects and the hazards the objects are exposed to with the exposure value." ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.w3.org/2002/07/owl#versionInfo
-owl:versionInfo owl:versionInfo "v0.1" .
+owl:versionInfo rdfs:label "versionInfo"^^xsd:string ;
+                owl:versionInfo "v0.1" .
 
 
 #################################################################
@@ -27,34 +49,41 @@ owl:versionInfo owl:versionInfo "v0.1" .
 #################################################################
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#casuallyFollows
-:casuallyFollows rdf:type owl:ObjectProperty .
+:casuallyFollows rdf:type owl:ObjectProperty ;
+                 rdfs:label "casually follows"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#exposedTo
 :exposedTo rdf:type owl:ObjectProperty ;
            rdfs:domain :Object ;
-           rdfs:range :Hazard .
+           rdfs:range :Hazard ;
+           rdfs:label "exposed to"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasDuration
-:hasDuration rdf:type owl:ObjectProperty .
+:hasDuration rdf:type owl:ObjectProperty ;
+             rdfs:label "has duration"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasParticipant
 :hasParticipant rdf:type owl:ObjectProperty ;
-                owl:inverseOf :participantIn .
+                owl:inverseOf :participantIn ;
+                rdfs:label "has participant"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasQuality
-:hasQuality rdf:type owl:ObjectProperty .
+:hasQuality rdf:type owl:ObjectProperty ;
+            rdfs:label "has quality"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#involves
-:involves rdf:type owl:ObjectProperty .
+:involves rdf:type owl:ObjectProperty ;
+          rdfs:label "involves"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#participantIn
-:participantIn rdf:type owl:ObjectProperty .
+:participantIn rdf:type owl:ObjectProperty ;
+               rdfs:label "participant in"@en .
 
 
 #################################################################
@@ -62,7 +91,8 @@ owl:versionInfo owl:versionInfo "v0.1" .
 #################################################################
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Cause
-:Cause rdf:type owl:Class .
+:Cause rdf:type owl:Class ;
+       rdfs:label "cause"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Consequence
@@ -70,7 +100,8 @@ owl:versionInfo owl:versionInfo "v0.1" .
              rdfs:subClassOf [ rdf:type owl:Restriction ;
                                owl:onProperty :casuallyFollows ;
                                owl:someValuesFrom :HazardousEvent
-                             ] .
+                             ] ;
+             rdfs:label "consequence"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Event
@@ -78,15 +109,18 @@ owl:versionInfo owl:versionInfo "v0.1" .
        rdfs:subClassOf [ rdf:type owl:Restriction ;
                          owl:onProperty :hasDuration ;
                          owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval>
-                       ] .
+                       ] ;
+       rdfs:label "event"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Exposure
-:Exposure rdf:type owl:Class .
+:Exposure rdf:type owl:Class ;
+          rdfs:label "exposure"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Hazard
-:Hazard rdf:type owl:Class .
+:Hazard rdf:type owl:Class ;
+        rdfs:label "hazard"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#HazardousEvent
@@ -110,7 +144,8 @@ owl:versionInfo owl:versionInfo "v0.1" .
                                 [ rdf:type owl:Restriction ;
                                   owl:onProperty :hasQuality ;
                                   owl:someValuesFrom :Exposure
-                                ] .
+                                ] ;
+                rdfs:label "hazardous event"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#HazardousSituation
@@ -118,11 +153,18 @@ owl:versionInfo owl:versionInfo "v0.1" .
                     rdfs:subClassOf [ rdf:type owl:Restriction ;
                                       owl:onProperty :participantIn ;
                                       owl:someValuesFrom :HazardousEvent
-                                    ] .
+                                    ] ;
+                    rdfs:label "hazardous situation"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Object
-:Object rdf:type owl:Class .
+:Object rdf:type owl:Class ;
+        rdfs:label "object"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval
+<http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> rdf:type owl:Class ;
+                                                                             rdfs:label "Time interval"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

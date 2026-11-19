@@ -242,6 +242,20 @@ final class PatternAudit {
                 labels.get(subject).add(new Label(value.getLiteral(), value.getLang()));
             }
         }
+        // An ontology IRI that names a term too: the OWL API keeps its rdfs:label in the header.
+        if (ontology.getOntologyID().getOntologyIRI().isPresent()) {
+            String self = ontology.getOntologyID().getOntologyIRI().get().toString();
+            for (OWLAnnotation annotation : ontology.getAnnotations()) {
+                if (annotation.getProperty().getIRI().equals(OWLRDFVocabulary.RDFS_LABEL.getIRI())
+                        && annotation.getValue() instanceof OWLLiteral) {
+                    OWLLiteral value = (OWLLiteral) annotation.getValue();
+                    if (!labels.containsKey(self)) {
+                        labels.put(self, new ArrayList<Label>());
+                    }
+                    labels.get(self).add(new Label(value.getLiteral(), value.getLang()));
+                }
+            }
+        }
         Set<String> declared = new HashSet<String>();
         for (OWLDeclarationAxiom declaration : ontology.getAxioms(AxiomType.DECLARATION)) {
             declared.add(declaration.getEntity().getIRI().toString());

@@ -1,9 +1,13 @@
 @prefix : <https://w3id.org/MON/affordance.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix j.0: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <https://w3id.org/MON/affordance.owl> .
 
 <https://w3id.org/MON/affordance.owl> rdf:type owl:Ontology ;
@@ -11,8 +15,8 @@
                                                    <https://w3id.org/MON/action.owl> ,
                                                    <https://w3id.org/MON/generic.owl> ,
                                                    <https://w3id.org/MON/time.owl> ;
-                                       <http://purl.org/dc/elements/1.1/description> <https://raw.githubusercontent.com/luigi-asprino/MON/main/src/Affordance.png> ,
-                                                                                     """The Affordance ontology is one of the modules of the MARIO Ontology Network (<a href=\"https://w3id.org/MON\">MON</a>) which aims at extending the classical notion of affordance (Gibson 1977). 
+                                       dc:description <https://raw.githubusercontent.com/luigi-asprino/MON/main/src/Affordance.png> ,
+                                                      """The Affordance ontology is one of the modules of the MARIO Ontology Network (<a href=\"https://w3id.org/MON\">MON</a>) which aims at extending the classical notion of affordance (Gibson 1977). 
 This theory suggests that the physical objects (e.g., a door) offer the opportunity of performing an action (e.g., open). 
 The Affordance ontology is designed by relying on the assumption that, not only physical objects, but also complex situations (e.g. the user want to listen to some music) afford actions (e.g. play music). A complex situation can be seen as the fulfilment at a certain time of certain conditions. These conditions may involve temporal aspects (e.g. lunchtime may afford the task remember the user to take the pills), the perception of certain physical objects, the receiving of a command (e.g. I want to listen to some music), or even the existence of certain state-of-affairs (e.g. the situation the user is sitting on a chair for a long while may afford the task entertain the user).
 
@@ -71,29 +75,35 @@ Otherwise, if the battery is in critical level, then X go recharging itself.
   aff:holds :BatteryInCritalLevel ; 
   aff:hasTask :Recharge  .
 </pre>"""@en ;
-                                       <http://purl.org/dc/elements/1.1/title> "Affordance Ontology"@en ;
-                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the tasks afforded in a certain situation?"@en ,
-                                                                                                                                 "Which is the strength of an Affordance?"@en ;
-                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent the model for supporting the action selection mechanism."@en .
+                                       dc:title "Affordance Ontology"@en ;
+                                       j.0:coversRequirements "What are the tasks afforded in a certain situation?"@en ,
+                                                              "Which is the strength of an Affordance?"@en ;
+                                       j.0:hasIntent "To represent the model for supporting the action selection mechanism."@en ;
+                                       rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x13; term declared x5;
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://purl.org/dc/elements/1.1/description
-<http://purl.org/dc/elements/1.1/description> rdf:type owl:AnnotationProperty .
+dc:description rdf:type owl:AnnotationProperty ;
+               rdfs:label "Description (Dublin Core)"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/title
-<http://purl.org/dc/elements/1.1/title> rdf:type owl:AnnotationProperty .
+dc:title rdf:type owl:AnnotationProperty ;
+         rdfs:label "Title"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+j.0:coversRequirements rdf:type owl:AnnotationProperty ;
+                       rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+j.0:hasIntent rdf:type owl:AnnotationProperty ;
+              rdfs:label "has intent"@en .
 
 
 #################################################################
@@ -101,11 +111,13 @@ Otherwise, if the battery is in critical level, then X go recharging itself.
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith> rdf:type owl:ObjectProperty ;
+                                                                       rdfs:label "associatedWith"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies> rdf:type owl:ObjectProperty ;
+                                                                  rdfs:label "satisfies"@en .
 
 
 ###  https://w3id.org/MON/affordance.owl#hasGoal
@@ -150,7 +162,8 @@ Otherwise, if the battery is in critical level, then X go recharging itself.
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue> rdf:type owl:DatatypeProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue> rdf:type owl:DatatypeProperty ;
+                                                                     rdfs:label "has data value"@en .
 
 
 ###  https://w3id.org/MON/affordance.owl#affordanceStrength
@@ -167,8 +180,34 @@ Otherwise, if the battery is in critical level, then X go recharging itself.
 #    Classes
 #################################################################
 
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> rdf:type owl:Class ;
+                                                                    rdfs:label "Description"@en .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Goal
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Goal> rdf:type owl:Class ;
+                                                             rdfs:label "Goal"@en .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation> rdf:type owl:Class ;
+                                                                 rdfs:label "Relation"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> rdf:type owl:Class .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> rdf:type owl:Class ;
+                                                                  rdfs:label "Situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task> rdf:type owl:Class ;
+                                                             rdfs:label "Task"@en .
+
+
+###  https://w3id.org/MON/action.owl#Task
+<https://w3id.org/MON/action.owl#Task> rdf:type owl:Class ;
+                                       rdfs:label "Task (action)"@en .
 
 
 ###  https://w3id.org/MON/affordance.owl#Affordance

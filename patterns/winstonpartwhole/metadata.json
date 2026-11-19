@@ -11,5 +11,28 @@
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:WinstonPartWhole",
   "class_count": 0,
   "property_count": 8,
-  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none",
+  "curated": [
+    "header: dcterms:title \"Winstonpartwhole Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-component>) - asymmetry on a property that is transitive (its chain po-component o po-component) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-feature>) - asymmetry on a property that is transitive (its chain po-feature o po-feature) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-member>) - asymmetry on a property that is transitive (its chain po-member o po-member) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-place>) - asymmetry on a property that is transitive (its chain po-place o po-place) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-portion>) - asymmetry on a property that is transitive (its chain po-portion o po-portion) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-stuff>) - asymmetry on a property that is transitive (its chain po-stuff o po-stuff) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "label added: <http://daselab.org/WinstonPartWhole#part-of> \"part of\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-component> \"po component\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-feature> \"po feature\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-member> \"po member\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-place> \"po place\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-portion> \"po portion\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#po-stuff> \"po stuff\"@en - from its name",
+    "label added: <http://daselab.org/WinstonPartWhole#spatially-located-in> \"spatially located in\"@en - from its name",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "file: pattern.owl written as RDF/XML - it held Turtle"
+  ]
 }

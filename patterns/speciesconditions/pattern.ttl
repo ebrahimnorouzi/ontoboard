@@ -4,20 +4,69 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix situation: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl> rdf:type owl:Ontology ;
                                                                             owl:imports <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ,
                                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what are the typical living conditions of a certain aquatic species? what are the aquatic species that live in a certain  habitat/bathymetric range for that water area?" ;
-                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This pattern allows to represent the contextualized features of an aquatic species. For simpler representation of those features (non-contextualized to a water area), use specieshabitat.owl and speciesbathymetry.owl." ;
-                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "speciesbathymetry.owl" ,
-                                                                                                                                                              "specieshabitat.owl" ;
-                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """give me the species found below 200 metres for water area '24'
+                                                                            dcterms:description "This pattern aims at representing the habitat and bathymetric features that are typical for an aquatic species, in the context of a given water area."^^xsd:string ;
+                                                                            dcterms:title "Speciesconditions Pattern"^^xsd:string ;
+                                                                            cpannotationschema:coversRequirements "what are the typical living conditions of a certain aquatic species? what are the aquatic species that live in a certain  habitat/bathymetric range for that water area?" ;
+                                                                            cpannotationschema:hasConsequences "This pattern allows to represent the contextualized features of an aquatic species. For simpler representation of those features (non-contextualized to a water area), use specieshabitat.owl and speciesbathymetry.owl." ;
+                                                                            cpannotationschema:relatedCPs "speciesbathymetry.owl" ,
+                                                                                                          "specieshabitat.owl" ;
+                                                                            cpannotationschema:scenarios """give me the species found below 200 metres for water area '24'
 give me the species having a 'demersal' habitat in water area '24'""" ;
-                                                                            rdfs:comment "A pattern, based on situation.owl, which allow to express the typical 'conditions' (habitat, bathymetric range) of a species for a certain water area." ;
-                                                                            owl:versionInfo "1.0"^^xsd:string ,
+                                                                            rdfs:comment "A pattern, based on situation.owl, which allow to express the typical 'conditions' (habitat, bathymetric range) of a species for a certain water area." ,
+                                                                                         """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:altLabel x1; label added x10; term declared x10;
+- header: dcterms:title \"Speciesconditions Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
+                                                                            owl:versionInfo "1.0" ,
                                                                                             "Created by Aldo Gangemi" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#altLabel
+skos:altLabel rdf:type owl:AnnotationProperty ;
+              rdfs:label "alternative label"@en .
+
 
 #################################################################
 #    Object Properties
@@ -25,7 +74,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#forSpecies
 :forSpecies rdf:type owl:ObjectProperty ;
-            rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+            rdfs:subPropertyOf situation:isSettingFor ;
             owl:inverseOf :hasConditions ;
             rdfs:domain :SpeciesConditions ;
             rdfs:range :AquaticSpecies ;
@@ -34,7 +83,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#hasBathymetricRange
 :hasBathymetricRange rdf:type owl:ObjectProperty ;
-                     rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+                     rdfs:subPropertyOf situation:isSettingFor ;
                      owl:inverseOf :isBathymetricRangeFor ;
                      rdfs:domain :SpeciesConditions ;
                      rdfs:range :BathymetricRange ;
@@ -43,7 +92,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#hasConditions
 :hasConditions rdf:type owl:ObjectProperty ;
-               rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+               rdfs:subPropertyOf situation:hasSetting ;
                rdfs:domain :AquaticSpecies ;
                rdfs:range :SpeciesConditions ;
                rdfs:label "has conditions"@en .
@@ -51,7 +100,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#hasHabitat
 :hasHabitat rdf:type owl:ObjectProperty ;
-            rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+            rdfs:subPropertyOf situation:isSettingFor ;
             owl:inverseOf :isHabitatFor ;
             rdfs:domain :SpeciesConditions ;
             rdfs:range :Habitat ;
@@ -60,7 +109,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#inWaterArea
 :inWaterArea rdf:type owl:ObjectProperty ;
-             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+             rdfs:subPropertyOf situation:isSettingFor ;
              owl:inverseOf :isWaterAreaFor ;
              rdfs:domain :SpeciesConditions ;
              rdfs:range :WaterArea ;
@@ -69,7 +118,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#isBathymetricRangeFor
 :isBathymetricRangeFor rdf:type owl:ObjectProperty ;
-                       rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+                       rdfs:subPropertyOf situation:hasSetting ;
                        rdfs:domain :BathymetricRange ;
                        rdfs:range :SpeciesConditions ;
                        rdfs:label "is bathymetric range for"@en .
@@ -77,7 +126,7 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#isHabitatFor
 :isHabitatFor rdf:type owl:ObjectProperty ;
-              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+              rdfs:subPropertyOf situation:hasSetting ;
               rdfs:domain :Habitat ;
               rdfs:range :SpeciesConditions ;
               rdfs:label "is habitat for"@en .
@@ -85,11 +134,21 @@ give me the species having a 'demersal' habitat in water area '24'""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#isWaterAreaFor
 :isWaterAreaFor rdf:type owl:ObjectProperty ;
-                rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+                rdfs:subPropertyOf situation:hasSetting ;
                 rdfs:domain :WaterArea ;
                 rdfs:range :SpeciesConditions ;
-                rdfs:label "is water area for"@en ,
-                           "is water area of"^^xsd:string .
+                rdfs:label "is water area for"@en ;
+                skos:altLabel "is water area of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting
+situation:hasSetting rdf:type owl:ObjectProperty ;
+                     rdfs:label "hasSetting"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
+situation:isSettingFor rdf:type owl:ObjectProperty ;
+                       rdfs:label "isSettingFor"^^xsd:string .
 
 
 #################################################################
@@ -128,7 +187,7 @@ It can be mapped to fi:Bathymetry.""" ;
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#SpeciesConditions
 :SpeciesConditions rdf:type owl:Class ;
-                   rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
+                   rdfs:subClassOf situation:Situation ,
                                    [ rdf:type owl:Restriction ;
                                      owl:onProperty :forSpecies ;
                                      owl:cardinality "1"^^xsd:nonNegativeInteger
@@ -153,6 +212,11 @@ It can be mapped to fi:Bathymetry.""" ;
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl#WaterArea
 :WaterArea rdf:type owl:Class ;
            rdfs:label "Water area"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+situation:Situation rdf:type owl:Class ;
+                    rdfs:label "Situation"^^xsd:string .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

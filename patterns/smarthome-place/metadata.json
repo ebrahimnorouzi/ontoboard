@@ -10,5 +10,31 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Place",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Place",
   "class_count": 6,
-  "property_count": 4
+  "property_count": 4,
+  "curated": [
+    "header: dcterms:title \"Smarthome Place Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature> as a class",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> as an annotation property",
+    "label added: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature> \"smart home geo feature\"@en - from its name",
+    "label added: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome> \"smart home\"@en - from its name",
+    "label added: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection> \"smart home section\"@en - from its name",
+    "label added: <http://purl.oclc.org/NET/ssnx/ssn#Deployment> \"deployment\"@en - from its name",
+    "label added: <http://purl.oclc.org/NET/ssnx/ssn#Platform> \"platform\"@en - from its name",
+    "label added: <http://purl.oclc.org/NET/ssnx/ssn#inDeployment> \"in deployment\"@en - from its name",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> \"Physical object\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace> \"Physical place\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> \"has part\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf> \"is location of\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> \"is part of\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> \"is specialization of\"@en - from its name"
+  ]
 }

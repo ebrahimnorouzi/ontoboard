@@ -4,23 +4,82 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix collectionentity: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/bag.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/bag.owl> rdf:type owl:Ontology ;
                                                         owl:imports <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ,
                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the items contained in this bag? "^^xsd:string ,
-                                                                                                                                                  "What bag is this item an element of?"^^xsd:string ,
-                                                                                                                                                  "What is the size of this bag?"^^xsd:string ,
-                                                                                                                                                  "What resource does this item refer to?"^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "PaoloCiccarese"^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl"^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model bags of items (elements). The Bag is characterized by a collection that can have multiple copies of each object. "^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
-                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "http://www.ontologydesignpatterns.org/cp/owl/list.owl"^^xsd:string ,
-                                                                                                                                          "http://www.ontologydesignpatterns.org/cp/owl/set.owl"^^xsd:string ;
+                                                        dcterms:description "To model bags of items (elements). The Bag is characterized by a collection that can have multiple copies of each object."^^xsd:string ;
+                                                        dcterms:title "Bag Pattern"^^xsd:string ;
+                                                        cpannotationschema:coversRequirements "What are the items contained in this bag? "^^xsd:string ,
+                                                                                              "What bag is this item an element of?"^^xsd:string ,
+                                                                                              "What is the size of this bag?"^^xsd:string ,
+                                                                                              "What resource does this item refer to?"^^xsd:string ;
+                                                        cpannotationschema:extractedFrom "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
+                                                        cpannotationschema:hasAuthor "PaoloCiccarese"^^xsd:string ;
+                                                        cpannotationschema:hasComponent "http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl"^^xsd:string ;
+                                                        cpannotationschema:hasIntent "To model bags of items (elements). The Bag is characterized by a collection that can have multiple copies of each object. "^^xsd:string ;
+                                                        cpannotationschema:reengineeredFrom "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
+                                                        cpannotationschema:relatedCPs "http://www.ontologydesignpatterns.org/cp/owl/list.owl"^^xsd:string ,
+                                                                                      "http://www.ontologydesignpatterns.org/cp/owl/set.owl"^^xsd:string ;
+                                                        rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x12; term declared x12;
+- header: dcterms:title \"Bag Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
                                                         owl:versionInfo "Created with TopBraid Composer"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+cpannotationschema:hasAuthor rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has author"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+cpannotationschema:hasComponent rdf:type owl:AnnotationProperty ;
+                                rdfs:label "has component"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom
+cpannotationschema:reengineeredFrom rdf:type owl:AnnotationProperty ;
+                                    rdfs:label "reengineered from"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
+
 
 #################################################################
 #    Object Properties
@@ -28,7 +87,7 @@
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/bag.owl#hasItem
 :hasItem rdf:type owl:ObjectProperty ;
-         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember> ;
+         rdfs:subPropertyOf collectionentity:hasMember ;
          owl:inverseOf :itemOf ;
          rdfs:domain :Bag ;
          rdfs:range :Item ;
@@ -48,11 +107,21 @@
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/bag.owl#itemOf
 :itemOf rdf:type owl:ObjectProperty ;
-        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf> ;
+        rdfs:subPropertyOf collectionentity:isMemberOf ;
         rdfs:domain :Item ;
         rdfs:range :Bag ;
         rdfs:comment "item of - The link from an item to the Bag where it is contained"^^xsd:string ;
         rdfs:label "item of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember
+collectionentity:hasMember rdf:type owl:ObjectProperty ;
+                           rdfs:label "has member"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf
+collectionentity:isMemberOf rdf:type owl:ObjectProperty ;
+                            rdfs:label "is member of"@en .
 
 
 #################################################################
@@ -61,7 +130,7 @@
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/bag.owl#size
 :size rdf:type owl:DatatypeProperty ;
-      rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> ;
+      rdfs:domain collectionentity:Collection ;
       rdfs:range xsd:integer ;
       rdfs:comment "size - The number of items belonging to a collection"^^xsd:string ;
       rdfs:label "size"^^xsd:string .
@@ -73,7 +142,7 @@
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/bag.owl#Bag
 :Bag rdf:type owl:Class ;
-     rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> ;
+     rdfs:subClassOf collectionentity:Collection ;
      rdfs:comment "Bag - Collection that can have a number of copies of each object"^^xsd:string ;
      rdfs:label "(collections) Bag"^^xsd:string .
 
@@ -85,11 +154,14 @@
                         owl:onProperty :itemContent ;
                         owl:cardinality "1"^^xsd:nonNegativeInteger
                       ] ;
-      owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> ;
+      owl:disjointWith collectionentity:Collection ;
       rdfs:comment "Item - Element belonging to a Bag"^^xsd:string ;
       rdfs:label "item"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection
+collectionentity:Collection rdf:type owl:Class ;
+                            rdfs:label "Collection"@en .
+
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

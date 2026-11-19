@@ -1,31 +1,61 @@
-@prefix : <https://ontoboard.org/patterns/nfdi-agent-value-node.owl#> .
+@prefix : <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ns1: <http://purl.obolibrary.org/obo/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <https://ontoboard.org/patterns/nfdi-agent-value-node.owl> .
 
-<https://ontoboard.org/patterns/nfdi-agent-value-node.owl> rdf:type owl:Ontology .
+<https://ontoboard.org/patterns/nfdi-agent-value-node.owl> rdf:type owl:Ontology ;
+                                                            dcterms:description "An entity individual typed nfdi:NFDI_0000102 (agent) carries identity and label, while each descriptive value is a separate value-node individual reached by obo:IAO_0000235 (denoted by) rather than a direct literal. Agent subsumes people, organizations and consortia."^^xsd:string ;
+                                                            dcterms:license <https://opensource.org/licenses/MIT> ;
+                                                            dcterms:title "agent"^^xsd:string ;
+                                                            rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x7; term declared x3;
+- header: dcterms:title \"agent\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- header: dcterms:license <https://opensource.org/licenses/MIT> - https://github.com/ISE-FIZKarlsruhe/matwerk
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000112
-<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000112 rdf:type owl:AnnotationProperty ;
+                rdfs:label "example of usage"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000115
-<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000115 rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000116
-<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000116 rdf:type owl:AnnotationProperty ;
+                rdfs:label "editor note"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/license
+dcterms:license rdf:type owl:AnnotationProperty ;
+                rdfs:label "License"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
 
 ###  http://www.w3.org/2004/02/skos/core#definition
-<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+skos:definition rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition (SKOS)"@en .
 
 
 #################################################################
@@ -33,11 +63,11 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000235
-<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
-                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000001> ;
-                                             rdfs:range <http://purl.obolibrary.org/obo/IAO_0000030> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
-                                             rdfs:label "denoted by"@en .
+ns1:IAO_0000235 rdf:type owl:ObjectProperty ;
+                rdfs:domain ns1:BFO_0000001 ;
+                rdfs:range ns1:IAO_0000030 ;
+                ns1:IAO_0000115 "inverse of the relation 'denotes'"@en ;
+                rdfs:label "denoted by"@en .
 
 
 #################################################################
@@ -45,74 +75,74 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000001
-<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Julius Caesar"@en ,
-                                                                                          "Verdi’s Requiem"@en ,
-                                                                                          "the Second World War"@en ,
-                                                                                          "your body mass index"@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: In all areas of empirical inquiry we encounter general terms of two sorts. First are general terms which refer to universals or types:animaltuberculosissurgical procedurediseaseSecond, are general terms used to refer to groups of entities which instantiate a given universal but do not correspond to the extension of any subuniversal of that universal because there is nothing intrinsic to the entities in question by virtue of which they – and only they – are counted as belonging to the given group. Examples are: animal purchased by the Emperortuberculosis diagnosed on a Wednesdaysurgical procedure performed on a patient from Stockholmperson identified as candidate for clinical trial #2056-555person who is signatory of Form 656-PPVpainting by Leonardo da VinciSuch terms, which represent what are called ‘specializations’ in [81"@en ;
-                                             rdfs:label "entity"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+ns1:BFO_0000001 rdf:type owl:Class ;
+                ns1:IAO_0000112 "Julius Caesar"@en ,
+                                "Verdi’s Requiem"@en ,
+                                "the Second World War"@en ,
+                                "your body mass index"@en ;
+                ns1:IAO_0000116 "BFO 2 Reference: In all areas of empirical inquiry we encounter general terms of two sorts. First are general terms which refer to universals or types:animaltuberculosissurgical procedurediseaseSecond, are general terms used to refer to groups of entities which instantiate a given universal but do not correspond to the extension of any subuniversal of that universal because there is nothing intrinsic to the entities in question by virtue of which they – and only they – are counted as belonging to the given group. Examples are: animal purchased by the Emperortuberculosis diagnosed on a Wednesdaysurgical procedure performed on a patient from Stockholmperson identified as candidate for clinical trial #2056-555person who is signatory of Form 656-PPVpainting by Leonardo da VinciSuch terms, which represent what are called ‘specializations’ in [81"@en ;
+                rdfs:label "entity"@en ;
+                skos:definition "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000002
-<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240"@en ;
-                                             rdfs:label "continuant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+ns1:BFO_0000002 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000001 ;
+                ns1:IAO_0000115 "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
+                ns1:IAO_0000116 "BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240"@en ;
+                rdfs:label "continuant"@en ;
+                skos:definition "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000004
-<http://purl.obolibrary.org/obo/BFO_0000004> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
-                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000031> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a chair"@en ,
-                                                                                          "a heart"@en ,
-                                                                                          "a leg"@en ,
-                                                                                          "a molecule"@en ,
-                                                                                          "a spatial region"@en ,
-                                                                                          "an atom"@en ,
-                                                                                          "an orchestra."@en ,
-                                                                                          "an organism"@en ,
-                                                                                          "the bottom right portion of a human torso"@en ,
-                                                                                          "the interior of your mouth"@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is an independent continuant = Def. b is a continuant which is such that there is no c and no t such that b s-depends_on c at t. (axiom label in BFO2 Reference: [017-002])"@en ;
-                                             rdfs:label "independent continuant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+ns1:BFO_0000004 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000002 ;
+                owl:disjointWith ns1:BFO_0000031 ;
+                ns1:IAO_0000112 "a chair"@en ,
+                                "a heart"@en ,
+                                "a leg"@en ,
+                                "a molecule"@en ,
+                                "a spatial region"@en ,
+                                "an atom"@en ,
+                                "an orchestra."@en ,
+                                "an organism"@en ,
+                                "the bottom right portion of a human torso"@en ,
+                                "the interior of your mouth"@en ;
+                ns1:IAO_0000115 "b is an independent continuant = Def. b is a continuant which is such that there is no c and no t such that b s-depends_on c at t. (axiom label in BFO2 Reference: [017-002])"@en ;
+                rdfs:label "independent continuant"@en ;
+                skos:definition "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000031
-<http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
-                                                                                          "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
-                                                                                          "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
-                                             rdfs:label "generically dependent continuant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+ns1:BFO_0000031 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000002 ;
+                ns1:IAO_0000112 "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
+                                "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
+                                "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
+                ns1:IAO_0000115 "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
+                rdfs:label "generically dependent continuant"@en ;
+                skos:definition "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000030
-<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ,
-                                                                                          "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
-                                                                                          """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
+ns1:IAO_0000030 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000031 ;
+                ns1:IAO_0000112 "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
+                                "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
+                ns1:IAO_0000115 "A generically dependent continuant that is about some thing."@en ;
+                ns1:IAO_0000116 "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
+                                """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
 
 Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
-                                             rdfs:label "information content entity"@en .
+                rdfs:label "information content entity"@en .
 
 
 ###  http://purl.obolibrary.org/obo/OBI_0000245
-<http://purl.obolibrary.org/obo/OBI_0000245> rdf:type owl:Class ;
-                                             rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> """BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
+ns1:OBI_0000245 rdf:type owl:Class ;
+                rdfs:subClassOf :NFDI_0000102 ;
+                ns1:IAO_0000112 "PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods."@en ;
+                ns1:IAO_0000115 "An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members."@en ;
+                ns1:IAO_0000116 """BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
 
 1) there are organization_member_roles (president, treasurer, branch
 editor), with individual persons as bearers
@@ -139,28 +169,28 @@ This leads to my proposal: We define organization through the statements 1 -
 current place in the is_a hierarchy (material entity) or move it up to
 'continuant'. We leave further clarifications to BFO, and close this issue
 for now."""@en ;
-                                             rdfs:label "organization"@en .
+                rdfs:label "organization"@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004
-<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004> rdf:type owl:Class ;
-                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
-                                                      rdfs:label "person"@en ;
-                                                      <http://www.w3.org/2004/02/skos/core#definition> "An object that represents a single human individual."@en .
+:NFDI_0000004 rdf:type owl:Class ;
+              rdfs:subClassOf :NFDI_0000102 ;
+              rdfs:label "person"@en ;
+              skos:definition "An object that represents a single human individual."@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000006
-<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000006> rdf:type owl:Class ;
-                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0000245> ;
-                                                      rdfs:label "consortium"@en ;
-                                                      <http://www.w3.org/2004/02/skos/core#definition> "An organisation that consists of multiple independent groups and individuals, who join together to collaborate on a specific goal."@en .
+:NFDI_0000006 rdf:type owl:Class ;
+              rdfs:subClassOf ns1:OBI_0000245 ;
+              rdfs:label "consortium"@en ;
+              skos:definition "An organisation that consists of multiple independent groups and individuals, who join together to collaborate on a specific goal."@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102
-<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> rdf:type owl:Class ;
-                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
-                                                      rdfs:label "agent"@en ;
-                                                      <http://www.w3.org/2004/02/skos/core#definition> "An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent."@en .
+:NFDI_0000102 rdf:type owl:Class ;
+              rdfs:subClassOf ns1:BFO_0000004 ;
+              rdfs:label "agent"@en ;
+              skos:definition "An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent."@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

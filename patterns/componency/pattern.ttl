@@ -4,16 +4,27 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix partof: <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix componency: <http://www.ontologydesignpatterns.org/cp/owl/componency.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> rdf:type owl:Ontology ;
                                                                owl:imports <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is this entity component of? What are the components of this entity?" ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This Content OP allows designers to represent part-whole relations. It allows to distinguish between parts and proper parts. Relation of proper part is not transitive, and implies a simple  part of relation, which is transitive. Temporal indexing is not expressible. To solve this issue see the  time indexed part of Content OP. " ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent (non-transitively) that entities either are proper parts of other entities, or have proper parts." ;
-                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "PartOf" ;
-                                                               rdfs:comment """The componency pattern, without temporal indexing. 
+                                                               dcterms:description "To represent (non-transitively) that entities either are proper parts of other entities, or have proper parts."^^xsd:string ;
+                                                               dcterms:title "Componency Pattern"^^xsd:string ;
+                                                               cpannotationschema:coversRequirements "What is this entity component of? What are the components of this entity?" ;
+                                                               cpannotationschema:extractedFrom "http://ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                               cpannotationschema:hasConsequences "This Content OP allows designers to represent part-whole relations. It allows to distinguish between parts and proper parts. Relation of proper part is not transitive, and implies a simple  part of relation, which is transitive. Temporal indexing is not expressible. To solve this issue see the  time indexed part of Content OP. " ;
+                                                               cpannotationschema:hasIntent "To represent (non-transitively) that entities either are proper parts of other entities, or have proper parts."^^xsd:string ;
+                                                               cpannotationschema:isSpecializationOf "PartOf" ;
+                                                               rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x9; term declared x2;
+- header: dcterms:title \"Componency Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                            """The componency pattern, without temporal indexing. 
 This pattern re-uses the part of pattern and is extracted from DOLCE-UltraLite by partial clone.""" ;
                                                                owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
                                                                                "Created by Adlo Gangemi"^^xsd:string .
@@ -22,24 +33,39 @@ This pattern re-uses the part of pattern and is extracted from DOLCE-UltraLite b
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+cpannotationschema:isSpecializationOf rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "is specialization of"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -63,34 +89,36 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/componency.owl#hasComponent
-:hasComponent rdf:type owl:ObjectProperty ;
-              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart> ;
-              owl:inverseOf :isComponentOf ;
-              rdfs:domain owl:Thing ;
-              rdfs:range owl:Thing ;
-              rdfs:comment """The hasPart relation without transitivity, holding between an entity (the system) and another (the component), and assuming a design that structures the system. For an explicit pattern encoding design, see the 'designobject' pattern.
+componency:hasComponent rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf partof:hasPart ;
+                        owl:inverseOf componency:isComponentOf ;
+                        rdfs:domain owl:Thing ;
+                        rdfs:range owl:Thing ;
+                        rdfs:comment """The hasPart relation without transitivity, holding between an entity (the system) and another (the component), and assuming a design that structures the system. For an explicit pattern encoding design, see the 'designobject' pattern.
 The componency pattern uses the transitive reduction logical pattern to preserve transitive on the superproperty from the partof pattern. In practice, the partof pattern acts here as the transitive reduction of the componency pattern.""" ;
-              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
-              rdfs:label "has component"@en .
+                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
+                        rdfs:label "has component"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/componency.owl#isComponentOf
-:isComponentOf rdf:type owl:ObjectProperty ;
-               rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf> ;
-               rdfs:domain owl:Thing ;
-               rdfs:range owl:Thing ;
-               rdfs:comment """The hasPart relation without transitivity, holding between an entity (the system) and another (the component), and assuming a design that structures the system. For an explicit pattern encoding design, see the 'designobject' pattern.
+componency:isComponentOf rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf partof:isPartOf ;
+                         rdfs:domain owl:Thing ;
+                         rdfs:range owl:Thing ;
+                         rdfs:comment """The hasPart relation without transitivity, holding between an entity (the system) and another (the component), and assuming a design that structures the system. For an explicit pattern encoding design, see the 'designobject' pattern.
 The componency pattern uses the transitive reduction logical pattern to preserve transitive on the superproperty from the partof pattern. In practice, the partof pattern acts here as the transitive reduction of the componency pattern.""" ;
-               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
-               rdfs:label "is component of"@en .
+                         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
+                         rdfs:label "is component of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart
-<http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart> rdf:type owl:ObjectProperty .
+partof:hasPart rdf:type owl:ObjectProperty ;
+               rdfs:label "has part"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf
-<http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf> rdf:type owl:ObjectProperty .
+partof:isPartOf rdf:type owl:ObjectProperty ;
+                rdfs:label "is part of"@en .
 
 
 #################################################################
@@ -98,18 +126,18 @@ The componency pattern uses the transitive reduction logical pattern to preserve
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/componency.owl#Object
-:Object rdf:type owl:Class ;
-        rdfs:subClassOf [ rdf:type owl:Restriction ;
-                          owl:onProperty :hasComponent ;
-                          owl:allValuesFrom :Object
-                        ] ,
-                        [ rdf:type owl:Restriction ;
-                          owl:onProperty :isComponentOf ;
-                          owl:allValuesFrom :Object
-                        ] ;
-        rdfs:comment "Any physical, social, or mental object, or a substance" ;
-        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
-        rdfs:label "Object"@en .
+componency:Object rdf:type owl:Class ;
+                  rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                    owl:onProperty componency:hasComponent ;
+                                    owl:allValuesFrom componency:Object
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty componency:isComponentOf ;
+                                    owl:allValuesFrom componency:Object
+                                  ] ;
+                  rdfs:comment "Any physical, social, or mental object, or a substance" ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/componency.owl> ;
+                  rdfs:label "Object"@en .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

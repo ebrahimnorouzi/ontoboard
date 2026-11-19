@@ -4,70 +4,100 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://daselab.org/WinstonPartWhole> .
 
-<http://daselab.org/WinstonPartWhole> rdf:type owl:Ontology .
+<http://daselab.org/WinstonPartWhole> rdf:type owl:Ontology ;
+                                       dcterms:description "Diagram (this article has no graphical representation)"^^xsd:string ;
+                                       dcterms:title "Winstonpartwhole Pattern"^^xsd:string ;
+                                       rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x10; term declared x2;
+- header: dcterms:title \"Winstonpartwhole Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-component>) - asymmetry on a property that is transitive (its chain po-component o po-component) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-feature>) - asymmetry on a property that is transitive (its chain po-feature o po-feature) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-member>) - asymmetry on a property that is transitive (its chain po-member o po-member) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-place>) - asymmetry on a property that is transitive (its chain po-place o po-place) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-portion>) - asymmetry on a property that is transitive (its chain po-portion o po-portion) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- axiom removed: AsymmetricObjectProperty(<http://daselab.org/WinstonPartWhole#po-stuff>) - asymmetry on a property that is transitive (its chain po-stuff o po-stuff) is outside OWL 2 DL, so no reasoner could answer; the chains carry the pattern's inferences and stay
+- file: pattern.owl written as RDF/XML - it held Turtle
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://daselab.org/WinstonPartWhole#part-of
-:part-of rdf:type owl:ObjectProperty .
+:part-of rdf:type owl:ObjectProperty ;
+         rdfs:label "part of"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-component
 :po-component rdf:type owl:ObjectProperty ;
               rdfs:subPropertyOf :part-of ;
-              rdf:type owl:AsymmetricProperty ;
               owl:propertyChainAxiom ( :po-component
                                        :po-component
-                                     ) .
+                                     ) ;
+              rdfs:label "po component"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-feature
 :po-feature rdf:type owl:ObjectProperty ;
             rdfs:subPropertyOf :part-of ;
-            rdf:type owl:AsymmetricProperty ;
             owl:propertyChainAxiom ( :po-feature
                                      :po-feature
-                                   ) .
+                                   ) ;
+            rdfs:label "po feature"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-member
 :po-member rdf:type owl:ObjectProperty ;
            rdfs:subPropertyOf :part-of ;
-           rdf:type owl:AsymmetricProperty ;
            owl:propertyChainAxiom ( :po-member
                                     :po-member
-                                  ) .
+                                  ) ;
+           rdfs:label "po member"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-place
 :po-place rdf:type owl:ObjectProperty ;
           rdfs:subPropertyOf :part-of ;
-          rdf:type owl:AsymmetricProperty ;
           owl:propertyChainAxiom ( :po-place
                                    :po-place
-                                 ) .
+                                 ) ;
+          rdfs:label "po place"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-portion
 :po-portion rdf:type owl:ObjectProperty ;
             rdfs:subPropertyOf :part-of ;
-            rdf:type owl:AsymmetricProperty ;
             owl:propertyChainAxiom ( :po-portion
                                      :po-portion
-                                   ) .
+                                   ) ;
+            rdfs:label "po portion"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#po-stuff
 :po-stuff rdf:type owl:ObjectProperty ;
           rdfs:subPropertyOf :part-of ;
-          rdf:type owl:AsymmetricProperty ;
           owl:propertyChainAxiom ( :po-stuff
                                    :po-stuff
-                                 ) .
+                                 ) ;
+          rdfs:label "po stuff"@en .
 
 
 ###  http://daselab.org/WinstonPartWhole#spatially-located-in
@@ -112,7 +142,8 @@
                                              ) ,
                                              ( :spatially-located-in
                                                :spatially-located-in
-                                             ) .
+                                             ) ;
+                      rdfs:label "spatially located in"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

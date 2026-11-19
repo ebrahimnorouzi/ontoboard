@@ -78,22 +78,13 @@ class PatternSoundnessTest {
      */
     private static final Map<String, String> ALLOWED = allowed();
 
+    /**
+     * Empty since 1.155.0. The three that were here - roledependentnames and winstonpartwhole
+     * outside OWL 2 DL, spatial-graph-adapter-sga with two unsatisfiable classes - were curated by
+     * the smallest change, listed in patterns/curation-fixes.tsv and in each pattern's own record.
+     */
     private static Map<String, String> allowed() {
-        Map<String, String> known = new LinkedHashMap<String, String>();
-        known.put("roledependentnames",
-                "outside OWL 2 DL: assumesAgentRole takes part in a cyclic property hierarchy, "
-                + "which breaks the regularity restriction OWL 2 DL needs for decidability. "
-                + "HermiT refuses it rather than answering about it.");
-        known.put("winstonpartwhole",
-                "outside OWL 2 DL: the non-simple property po-feature appears in an asymmetric "
-                + "object property axiom, which the simplicity restriction forbids.");
-        known.put("spatial-graph-adapter-sga",
-                "Attribute and ContextualizedRelation are unsatisfiable as published: hasType and "
-                + "hasAttribute each declare BOTH as rdfs:domain, which OWL reads as their "
-                + "intersection, and the pattern then declares the two disjoint in an "
-                + "owl:AllDisjointClasses axiom. Its example was withdrawn because every example "
-                + "of it is inconsistent.");
-        return known;
+        return new LinkedHashMap<String, String>();
     }
 
     /**
@@ -200,22 +191,20 @@ class PatternSoundnessTest {
         }
     }
 
-    /** The two patterns outside OWL 2 DL are named as that, not as inconsistent. */
+    /**
+     * A pattern outside OWL 2 DL is named as that, not as inconsistent; one with an unsatisfiable
+     * class says so. On verdicts of their own: since 1.155.0 the library has no such pattern.
+     */
     @Test
-    void beingOutsideOwl2DlIsNotTheSameAsBeingInconsistent() throws Exception {
-        Map<String, String> said = new LinkedHashMap<String, String>();
-        for (PatternSoundness.Verdict verdict : VERDICTS) {
-            said.put(verdict.getId(), verdict.describe());
-        }
+    void beingOutsideOwl2DlIsNotTheSameAsBeingInconsistent() {
+        String outside = new PatternSoundness.Verdict("cyclic", 0, 10, false,
+                new java.util.TreeSet<String>(Arrays.asList("NOT_OWL_2_DL")), "-", "-", "", "").describe();
+        String unsatisfiable = new PatternSoundness.Verdict("disjoint", 0, 10, true,
+                new java.util.TreeSet<String>(Arrays.asList("Attribute")), "-", "-", "", "").describe();
 
-        for (String outside : Arrays.asList("roledependentnames", "winstonpartwhole")) {
-            assertTrue(said.get(outside).contains("outside OWL 2 DL"),
-                    outside + ": " + said.get(outside));
-            assertFalse(said.get(outside).contains("inconsistent"),
-                    "a question no DL reasoner can answer is not a contradiction: "
-                            + said.get(outside));
-        }
-        assertTrue(said.get("spatial-graph-adapter-sga").contains("unsatisfiable"),
-                said.get("spatial-graph-adapter-sga"));
+        assertTrue(outside.contains("outside OWL 2 DL"), outside);
+        assertFalse(outside.contains("inconsistent"),
+                "a question no DL reasoner can answer is not a contradiction: " + outside);
+        assertTrue(unsatisfiable.contains("unsatisfiable"), unsatisfiable);
     }
 }

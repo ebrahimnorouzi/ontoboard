@@ -10,5 +10,25 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Policy",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Policy",
   "class_count": 10,
-  "property_count": 13
+  "property_count": 13,
+  "curated": [
+    "header: dcterms:title \"Policy Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://xmlns.com/foaf/0.1/Agent> as a class",
+    "term declared: <http://xmlns.com/foaf/0.1/Group> as a class",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> \"has consequences\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> \"scenarios\"@en - from its name",
+    "label added: <http://xmlns.com/foaf/0.1/Agent> \"Agent\" - from http://xmlns.com/foaf/0.1/",
+    "label added: <http://xmlns.com/foaf/0.1/Group> \"Group\" - from http://xmlns.com/foaf/0.1/"
+  ]
 }

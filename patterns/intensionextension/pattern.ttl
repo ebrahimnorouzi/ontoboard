@@ -4,19 +4,25 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
+@prefix intensionextension: <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> rdf:type owl:Ontology ;
                                                                        owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the meaning of an information object?,What information objects express this meaning?,What is this about?,How can I call this?" ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://ontologydesignpatterns.org/ont/dul/DUL.owl" ,
-                                                                                                                                                            "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi and Valentina Presutti" ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We are able to distinguish between the intension of the meaning of an information object (its social object, e.g. a concept), and its extension (the entities or ets of entities it can be about).
+                                                                       dcterms:description "To represent the meaning of an information object: the concepts it expresses, the things it is about."^^xsd:string ;
+                                                                       dcterms:title "Intensionextension Pattern"^^xsd:string ;
+                                                                       cpannotationschema:coversRequirements "What is the meaning of an information object?,What information objects express this meaning?,What is this about?,How can I call this?" ;
+                                                                       cpannotationschema:extractedFrom "http://ontologydesignpatterns.org/ont/dul/DUL.owl" ,
+                                                                                                        "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                                       cpannotationschema:hasAuthor "Aldo Gangemi and Valentina Presutti" ;
+                                                                       cpannotationschema:hasConsequences """We are able to distinguish between the intension of the meaning of an information object (its social object, e.g. a concept), and its extension (the entities or ets of entities it can be about).
 In practice, this pattern allows to encode a minimal version of the semiotic triangle, and it's useful in all cases where the domain and task need to represent in a same ontology e.g. eords, concepts, and things.
 SKOS has an overlap with this pattern.""" ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent the meaning of an information object: the concepts it expresses, the things it is about." ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> """SELECT ?m
+                                                                       cpannotationschema:hasIntent "To represent the meaning of an information object: the concepts it expresses, the things it is about."^^xsd:string ;
+                                                                       cpannotationschema:hasUnitTest """SELECT ?m
 WHERE {
 ?e :expresses ?m}
 
@@ -25,9 +31,13 @@ WHERE {
 ?e :isAbout ?t}
 
 """ ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "InformationRealization,LMM,Tagging,Topic" ;
-                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "'Leonardo da Vinci' is the name of the main Rome airport,'Legal Person' means an incorporated entity with legal status." ;
-                                                                       rdfs:comment "The intension and extension pattern. It allows to represent the intensional expression and extensional reference of information objects. This pattern is extracted from DOLCE-UltraLite by partial clone of elements." ;
+                                                                       cpannotationschema:relatedCPs "InformationRealization,LMM,Tagging,Topic" ;
+                                                                       cpannotationschema:scenarios "'Leonardo da Vinci' is the name of the main Rome airport,'Legal Person' means an incorporated entity with legal status." ;
+                                                                       rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x6; label added x11; term declared x3;
+- header: dcterms:title \"Intensionextension Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                                    "The intension and extension pattern. It allows to represent the intensional expression and extensional reference of information objects. This pattern is extracted from DOLCE-UltraLite by partial clone of elements." ;
                                                                        rdfs:label "intension extension" ;
                                                                        owl:versionInfo """1.1
 - Added annotation for ODP publication
@@ -40,36 +50,54 @@ WHERE {
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasAuthor rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has author"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasUnitTest rdf:type owl:AnnotationProperty ;
+                               rdfs:label "has unit test"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -88,16 +116,21 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#expresses
-:expresses rdf:type owl:ObjectProperty ;
-           owl:inverseOf :isExpressedBy ;
-           rdfs:domain :InformationObject ;
-           rdfs:range :SocialObject ;
-           rdfs:comment """The relation between an InformationObject and a 'meaning'.
+intensionextension:expresses rdf:type owl:ObjectProperty ;
+                             owl:inverseOf intensionextension:isExpressedBy ;
+                             rdfs:domain intensionextension:InformationObject ;
+                             rdfs:range intensionextension:SocialObject ;
+                             rdfs:comment """The relation between an InformationObject and a 'meaning'.
 What is a meaning is dependent on the background approach/theory that one assumes. For example, lexicographers that write dictionaries, glossaries, etc. assume that the meaning of term is a paraphrase (or 'gloss', or 'definition'). Another approach is provided by concept schemes like thesauri and lexicons, which assume that the meaning of a term is a 'concept', possibly encoded as a 'lemma', 'synset', or 'descriptor'. Still another approach is that of psychologists and cognitive scientists, which often assume that the meaning of an information object is a concept encoded in the mind or cognitive system of an agent. A radically different approach is taken by social scientists and semioticians, who usually assume that meaning of an information object is spread across the members of a community that use that object. The logical approach to meaning is completely different, since it assumes that the meaning of e.g. a term is equivalent to the set of individuals that the term can be applied to; for example, the meaning of 'Ali' is e.g. an individual person called Ali, the meaning of 'Airplane' is e.g. the set of airplanes, etc. Finally, an approach taken by structuralist linguistics and frame semantics is that a meaning is the relational context in which an information object can be applied; for example, a meaning of 'Airplane' is situated e.g. in the context ('frame') of passenger airline flights.
 
 These different approaches are not necessarily conflicting, and they mostly talk about different aspects of so-called 'semantics'. They can be summarized, and modelled withih DOLCE-Ultralite, as follows:
@@ -116,27 +149,27 @@ For example:
 - the term Beehive expresses the Description BeingABeehive, a relation that defines concepts such as Bee, Honey, Habitation, etc.
 - the text of Italian Constitution expresses the 'content' of the Constitution
 - your email expresses an aggressive attitude"""^^xsd:string ;
-           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-           rdfs:label "esprime"@it ,
-                      "expresses"@en .
+                             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                             rdfs:label "expresses"@en ;
+                             skos:prefLabel "esprime"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isAbout
-:isAbout rdf:type owl:ObjectProperty ;
-         owl:inverseOf :isReferenceOf ;
-         rdfs:domain :InformationObject ;
-         rdfs:range owl:Thing ;
-         rdfs:comment "A relation between information objects and any Entity (including information objects). It can be used to talk about e.g. entities are references of proper nouns: the proper noun 'Leonardo da Vinci' isAbout the Person Leonardo da Vinci; as well as to talk about sets of entities that can be described by a common noun: the common noun 'person' isAbout the set of all persons in a domain of discourse, which can be represented bu reusing the pattern CollectionEntity." ;
-         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-         rdfs:label "is about"@en ,
-                    "si riferisce a"@it .
+intensionextension:isAbout rdf:type owl:ObjectProperty ;
+                           owl:inverseOf intensionextension:isReferenceOf ;
+                           rdfs:domain intensionextension:InformationObject ;
+                           rdfs:range owl:Thing ;
+                           rdfs:comment "A relation between information objects and any Entity (including information objects). It can be used to talk about e.g. entities are references of proper nouns: the proper noun 'Leonardo da Vinci' isAbout the Person Leonardo da Vinci; as well as to talk about sets of entities that can be described by a common noun: the common noun 'person' isAbout the set of all persons in a domain of discourse, which can be represented bu reusing the pattern CollectionEntity." ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                           rdfs:label "is about"@en ;
+                           skos:prefLabel "si riferisce a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isExpressedBy
-:isExpressedBy rdf:type owl:ObjectProperty ;
-               rdfs:domain :SocialObject ;
-               rdfs:range :InformationObject ;
-               rdfs:comment """The relation between an InformationObject and a 'meaning'.
+intensionextension:isExpressedBy rdf:type owl:ObjectProperty ;
+                                 rdfs:domain intensionextension:SocialObject ;
+                                 rdfs:range intensionextension:InformationObject ;
+                                 rdfs:comment """The relation between an InformationObject and a 'meaning'.
 What is a meaning is dependent on the background approach/theory that one assumes. For example, lexicographers that write dictionaries, glossaries, etc. assume that the meaning of term is a paraphrase (or 'gloss', or 'definition'). Another approach is provided by concept schemes like thesauri and lexicons, which assume that the meaning of a term is a 'concept', possibly encoded as a 'lemma', 'synset', or 'descriptor'. Still another approach is that of psychologists and cognitive scientists, which often assume that the meaning of an information object is a concept encoded in the mind or cognitive system of an agent. A radically different approach is taken by social scientists and semioticians, who usually assume that meaning of an information object is spread across the members of a community that use that object. The logical approach to meaning is completely different, since it assumes that the meaning of e.g. a term is equivalent to the set of individuals that the term can be applied to; for example, the meaning of 'Ali' is e.g. an individual person called Ali, the meaning of 'Airplane' is e.g. the set of airplanes, etc. Finally, an approach taken by structuralist linguistics and frame semantics is that a meaning is the relational context in which an information object can be applied; for example, a meaning of 'Airplane' is situated e.g. in the context ('frame') of passenger airline flights.
 
 These different approaches are not necessarily conflicting, and they mostly talk about different aspects of so-called 'semantics'. They can be summarized, and modelled withih DOLCE-Ultralite, as follows:
@@ -155,18 +188,18 @@ For example:
 - the term Beehive expresses the Description BeingABeehive, a relation that defines concepts such as Bee, Honey, Habitation, etc.
 - the text of Italian Constitution expresses the 'content' of the Constitution
 - your email expresses an aggressive attitude""" ;
-               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-               rdfs:label "is expressed by"@en ,
-                          "è espresso da"@it .
+                                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                                 rdfs:label "is expressed by"@en ;
+                                 skos:prefLabel "è espresso da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isReferenceOf
-:isReferenceOf rdf:type owl:ObjectProperty ;
-               rdfs:range :InformationObject ;
-               rdfs:comment "A relation between information objects and any Entity (including information objects). It can be used to talk about e.g. entities are references of proper nouns: the proper noun 'Leonardo da Vinci' isAbout the Person Leonardo da Vinci; as well as to talk about sets of entities that can be described by a common noun: the common noun 'person' isAbout the set of all persons in a domain of discourse, which can be represented in DOLCE-Ultralite as an individual of the class: Collection ." ;
-               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-               rdfs:label "is reference of"@en ,
-                          "è il riferimento di"@it .
+intensionextension:isReferenceOf rdf:type owl:ObjectProperty ;
+                                 rdfs:range intensionextension:InformationObject ;
+                                 rdfs:comment "A relation between information objects and any Entity (including information objects). It can be used to talk about e.g. entities are references of proper nouns: the proper noun 'Leonardo da Vinci' isAbout the Person Leonardo da Vinci; as well as to talk about sets of entities that can be described by a common noun: the common noun 'person' isAbout the set of all persons in a domain of discourse, which can be represented in DOLCE-Ultralite as an individual of the class: Collection ." ;
+                                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                                 rdfs:label "is reference of"@en ;
+                                 skos:prefLabel "è il riferimento di"@it .
 
 
 #################################################################
@@ -174,37 +207,37 @@ For example:
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#InformationObject
-:InformationObject rdf:type owl:Class ;
-                   rdfs:subClassOf :SocialObject ,
-                                   [ rdf:type owl:Restriction ;
-                                     owl:onProperty :expresses ;
-                                     owl:allValuesFrom :SocialObject
-                                   ] ,
-                                   [ rdf:type owl:Restriction ;
-                                     owl:onProperty :isAbout ;
-                                     owl:allValuesFrom owl:Thing
-                                   ] ,
-                                   [ rdf:type owl:Restriction ;
-                                     owl:onProperty :expresses ;
-                                     owl:minCardinality "1"^^xsd:nonNegativeInteger
-                                   ] ;
-                   rdfs:comment "A piece of information, such as a musical composition, a text, a word, a picture, independently from how it is concretely realized."^^xsd:string ;
-                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-                   rdfs:label "Information object"@en ,
-                              "Oggetto informativo"@it .
+intensionextension:InformationObject rdf:type owl:Class ;
+                                     rdfs:subClassOf intensionextension:SocialObject ,
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty intensionextension:expresses ;
+                                                       owl:allValuesFrom intensionextension:SocialObject
+                                                     ] ,
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty intensionextension:isAbout ;
+                                                       owl:allValuesFrom owl:Thing
+                                                     ] ,
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty intensionextension:expresses ;
+                                                       owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                     ] ;
+                                     rdfs:comment "A piece of information, such as a musical composition, a text, a word, a picture, independently from how it is concretely realized."^^xsd:string ;
+                                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                                     rdfs:label "Information object"@en ;
+                                     skos:prefLabel "Oggetto informativo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#SocialObject
-:SocialObject rdf:type owl:Class ;
-              rdfs:subClassOf [ rdf:type owl:Restriction ;
-                                owl:onProperty :isExpressedBy ;
-                                owl:allValuesFrom :InformationObject
-                              ] ;
-              rdfs:comment """Any Object that exists within some communication Event, in which at least one PhysicalObject participates in. 
+intensionextension:SocialObject rdf:type owl:Class ;
+                                rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                  owl:onProperty intensionextension:isExpressedBy ;
+                                                  owl:allValuesFrom intensionextension:InformationObject
+                                                ] ;
+                                rdfs:comment """Any Object that exists within some communication Event, in which at least one PhysicalObject participates in. 
 In other words, all objects that have been created in the process of social communication: for the sake of communication (InformationObject), for incorporating new individuals (SocialAgent, Place), for contextualizing existing entities (Situation), for collecting existing entities (Collection), or for describing existing entities (Description, Concept)."""^^xsd:string ;
-              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
-              rdfs:label "Oggetto sociale"@it ,
-                         "Social object"@en .
+                                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ;
+                                rdfs:label "Social object"@en ;
+                                skos:prefLabel "Oggetto sociale"@it .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

@@ -12,6 +12,7 @@
      xmlns:mobj="https://purl.org/andreapoltronieri/musicalobject/"
      xmlns:opla="http://ontologydesignpatterns.org/opla/"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
      xmlns:terms="http://purl.org/dc/terms/"
      xmlns:owl2xml="http://www.w3.org/2006/12/owl2-xml#"
      xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
@@ -61,6 +62,8 @@ WHERE {{?note np:belongsToVoice ?voice.
         <cpannotationschema:reengineeredFrom rdf:resource="https://purl.org/andreapoltronieri/HaMSEontology"/>
         <cpannotationschema:relatedCPs rdf:resource="https://purl.org/andreapoltronieri/musicalobject"/>
         <cpannotationschema:relatedCPs rdf:resource="https://purl.org/andreapoltronieri/scorepart"/>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x60; term declared x2;
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
         <rdfs:comment xml:lang="en">The Note Pattern models a music note both in relation to a music score and in relation to the musical object produced by playing such note.</rdfs:comment>
         <rdfs:label xml:lang="en">Note Pattern</rdfs:label>
         <owl:versionInfo xml:lang="en">Version 1.0</owl:versionInfo>
@@ -81,43 +84,57 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <!-- http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate -->
 
-    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate"/>
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate">
+        <rdfs:label xml:lang="en">reuses pattern as template</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/creator -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator">
+        <rdfs:label xml:lang="en">Creator</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/description -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/description"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/description">
+        <rdfs:label xml:lang="en">Description (Dublin Core)</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/issued -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/issued"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/issued">
+        <rdfs:label xml:lang="en">issued</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/language -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/language"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/language">
+        <rdfs:label xml:lang="en">Language</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/title -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/title"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/terms/license -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/license"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/license">
+        <rdfs:label xml:lang="en">License</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -125,6 +142,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
         <rdfs:comment>This annotation property is used for exemplifying possible requirements the content pattern provides a solution for. Requirements are expressed as natural language competency questions.</rdfs:comment>
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -133,6 +151,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom">
         <rdfs:comment>This annotation property should be assigned with a URI, which points to the possible reference ontology which the annotated pattern was extracted from (i.e. the reference ontology that the ontology elements have been deeply or partially cloned by). The range is not explicit in the definition of the annotation property because it would turn the ontology to OWL Full. E.g. The participation pattern is extracted from the Dolce Ultra Lite ontology, hence the value for this annotation property is http://www.ontologydesignpatterns.org/ont/dul/DUL.owl</rdfs:comment>
+        <rdfs:label xml:lang="en">extracted from</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -141,6 +160,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent">
         <rdfs:comment>This annotation property is useful for content ontology design patterns. Its value is a URI, which refers to another content ontology design pattern which is a component of the annotated one.</rdfs:comment>
+        <rdfs:label xml:lang="en">has component</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -149,6 +169,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences">
         <rdfs:comment>This annotation property is used for briefly describing the benefits and/or possible trade-offs when using the CP.</rdfs:comment>
+        <rdfs:label xml:lang="en">has consequences</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -157,6 +178,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
         <rdfs:comment>This annotation property is used in order to describe the intent of the content pattern.</rdfs:comment>
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -165,6 +187,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest">
         <rdfs:comment>This property can be used to annotate a unit test (e.g. in the form of a SPARQL query) to be launched to evaluate an ontology against a requirement-based task.</rdfs:comment>
+        <rdfs:label xml:lang="en">has unit test</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -173,6 +196,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf">
         <rdfs:comment>This annotation property is used for referring a cloned ontology entity to its cloning source.</rdfs:comment>
+        <rdfs:label xml:lang="en">is clone of</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -181,6 +205,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf">
         <rdfs:comment>This annotation property is useful for content ontology design patterns and its elements. Its value is a URI, which refers either to a content ontology design pattern that is specialized by the annotated one, or to an ontology element that is specialized by the annotated one.</rdfs:comment>
+        <rdfs:label xml:lang="en">is specialization of</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -189,6 +214,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom">
         <rdfs:comment>This annotation property should be assigned with a URI, which points to the concept schema, page, or anything else from which the annotated pattern was reengineered. If the source does not have any URI e.g., a printed book, this property value should provide information as precise as possible in order to identify the source. This property is alternative to the extractedFrom property because it is used when the pattern come from a concept schema which is not an owl ontology. For example content ontology design patterns, which are reengineered from data model patterns, rdf schemas, etc. should be annotatd with this property. E.g. The basicpersonalfoaf pattern is extracted from the rdf FOAF specification, hence the value for this annotation property is http://xmlns.com/foaf/spec/20071002.rdf</rdfs:comment>
+        <rdfs:label xml:lang="en">reengineered from</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -197,6 +223,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs">
         <rdfs:comment>This annotation property can be used to indicate other CPs (if any) that specialize, generalize, inlcude, or are components of the CP. Furthermore, this field may indicate other CPs that are typically used in conjunction with the described one. Important similarities and differences with other patterns can be also described here.</rdfs:comment>
+        <rdfs:label xml:lang="en">related c ps</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -205,6 +232,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios">
         <rdfs:comment>This annotation property is used for describing examples of instantiation of the Content OP. For example, for the part-of Content OP (which represents part-whole relations) a possible scenario is the sentence: &quot;the brain is part of the human body&quot;. Scenarios are expressed as natural language sentences.</rdfs:comment>
+        <rdfs:label xml:lang="en">scenarios</rdfs:label>
     </owl:AnnotationProperty>
     
 
@@ -573,7 +601,9 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <!-- https://purl.org/andreapoltronieri/musicalobject/Frequency -->
 
-    <owl:Class rdf:about="https://purl.org/andreapoltronieri/musicalobject/Frequency"/>
+    <owl:Class rdf:about="https://purl.org/andreapoltronieri/musicalobject/Frequency">
+        <rdfs:label xml:lang="en">Frequency</rdfs:label>
+    </owl:Class>
     
 
 
@@ -586,6 +616,7 @@ WHERE {{?note np:belongsToVoice ?voice.
                 <owl:allValuesFrom rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
             </owl:Restriction>
         </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">Musical Object</rdfs:label>
     </owl:Class>
     
 
@@ -600,13 +631,16 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Restriction>
         </rdfs:subClassOf>
         <owl:disjointWith rdf:resource="https://purl.org/andreapoltronieri/notepattern/NoteDuration"/>
+        <rdfs:label xml:lang="en">Musical Object Duration</rdfs:label>
     </owl:Class>
     
 
 
     <!-- https://purl.org/andreapoltronieri/musicalobject/SoundIntensity -->
 
-    <owl:Class rdf:about="https://purl.org/andreapoltronieri/musicalobject/SoundIntensity"/>
+    <owl:Class rdf:about="https://purl.org/andreapoltronieri/musicalobject/SoundIntensity">
+        <rdfs:label xml:lang="en">Sound Intensity</rdfs:label>
+    </owl:Class>
     
 
 
@@ -649,6 +683,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">adoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -668,6 +703,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">adoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -687,6 +723,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">aflat</rdfs:label>
     </owl:Class>
     
 
@@ -706,6 +743,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">anatural</rdfs:label>
     </owl:Class>
     
 
@@ -725,6 +763,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">asharp</rdfs:label>
     </owl:Class>
     
 
@@ -758,6 +797,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">bdoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -777,6 +817,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">bdoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -796,6 +837,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">bflat</rdfs:label>
     </owl:Class>
     
 
@@ -815,6 +857,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">bnatural</rdfs:label>
     </owl:Class>
     
 
@@ -834,6 +877,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">bsharp</rdfs:label>
     </owl:Class>
     
 
@@ -866,6 +910,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">cdoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -885,6 +930,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">cdoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -904,6 +950,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">cflat</rdfs:label>
     </owl:Class>
     
 
@@ -923,6 +970,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">cnatural</rdfs:label>
     </owl:Class>
     
 
@@ -942,6 +990,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">csharp</rdfs:label>
     </owl:Class>
     
 
@@ -973,6 +1022,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">ddoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -992,6 +1042,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">ddoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -1011,6 +1062,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">dflat</rdfs:label>
     </owl:Class>
     
 
@@ -1030,6 +1082,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">dnatural</rdfs:label>
     </owl:Class>
     
 
@@ -1067,6 +1120,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">dsharp</rdfs:label>
     </owl:Class>
     
 
@@ -1097,6 +1151,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">edoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -1116,6 +1171,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">edoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -1135,6 +1191,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">eflat</rdfs:label>
     </owl:Class>
     
 
@@ -1154,6 +1211,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">enatural</rdfs:label>
     </owl:Class>
     
 
@@ -1173,6 +1231,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">esharp</rdfs:label>
     </owl:Class>
     
 
@@ -1202,6 +1261,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">fdoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -1221,6 +1281,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">fdoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -1240,6 +1301,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">fflat</rdfs:label>
     </owl:Class>
     
 
@@ -1268,6 +1330,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">fnatural</rdfs:label>
     </owl:Class>
     
 
@@ -1287,6 +1350,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">fsharp</rdfs:label>
     </owl:Class>
     
 
@@ -1315,6 +1379,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">gantural</rdfs:label>
     </owl:Class>
     
 
@@ -1334,6 +1399,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">gdoubleflat</rdfs:label>
     </owl:Class>
     
 
@@ -1353,6 +1419,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">gdoublesharp</rdfs:label>
     </owl:Class>
     
 
@@ -1372,6 +1439,7 @@ WHERE {{?note np:belongsToVoice ?voice.
             </owl:Class>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="https://purl.org/andreapoltronieri/notepattern/SymbolicNote"/>
+        <rdfs:label xml:lang="en">gflat</rdfs:label>
     </owl:Class>
     
 
@@ -1580,9 +1648,27 @@ WHERE {{?note np:belongsToVoice ?voice.
     
 
 
+    <!-- https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment -->
+
+    <owl:Class rdf:about="https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment">
+        <rdfs:label xml:lang="en">Homogeneous fragment</rdfs:label>
+    </owl:Class>
+    
+
+
     <!-- https://purl.org/andreapoltronieri/scorepart/Section -->
 
-    <owl:Class rdf:about="https://purl.org/andreapoltronieri/scorepart/Section"/>
+    <owl:Class rdf:about="https://purl.org/andreapoltronieri/scorepart/Section">
+        <rdfs:label xml:lang="en">Section</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://purl.org/andreapoltronieri/scorepart/Voice -->
+
+    <owl:Class rdf:about="https://purl.org/andreapoltronieri/scorepart/Voice">
+        <rdfs:label xml:lang="en">Voice</rdfs:label>
+    </owl:Class>
     
 
 
@@ -1596,6 +1682,7 @@ WHERE {{?note np:belongsToVoice ?voice.
 
     <rdf:Description rdf:about="https://purl.org/andreapoltronieri/scorepart/hasMetric">
         <rdfs:seeAlso rdf:resource="http://purl.org/ontology/mto/TimeSignature"/>
+        <rdfs:label xml:lang="en">has metric</rdfs:label>
     </rdf:Description>
 </rdf:RDF>
 

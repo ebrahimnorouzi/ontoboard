@@ -1,31 +1,66 @@
-@prefix : <https://ontoboard.org/patterns/pmdco-duality-object-material.owl#> .
+@prefix : <https://w3id.org/pmd/co/> .
+@prefix ns1: <http://purl.obolibrary.org/obo/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <https://ontoboard.org/patterns/pmdco-duality-object-material.owl> .
 
-<https://ontoboard.org/patterns/pmdco-duality-object-material.owl> rdf:type owl:Ontology .
+<https://ontoboard.org/patterns/pmdco-duality-object-material.owl> rdf:type owl:Ontology ;
+                                                                    dcterms:description "Represents how an object and a portion of matter are the same material entity seen two ways: as material (steel) it bears chemical composition; as object (ingot) it bears mass. Distinguishes extensive qualities, which scale with the size of the object, from intensive qualities, which are independent of portion size."^^xsd:string ;
+                                                                    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+                                                                    dcterms:title "Duality of object and material"^^xsd:string ;
+                                                                    rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x4; label added x8; term declared x4;
+- header: dcterms:title \"Duality of object and material\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- header: dcterms:license <https://creativecommons.org/licenses/by/4.0/> - https://github.com/materialdigital/core-ontology
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000112
-<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000112 rdf:type owl:AnnotationProperty ;
+                rdfs:label "example of usage"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000115
-<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000115 rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000116
-<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000116 rdf:type owl:AnnotationProperty ;
+                rdfs:label "editor note"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/license
+dcterms:license rdf:type owl:AnnotationProperty ;
+                rdfs:label "License"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
 
 ###  http://www.w3.org/2004/02/skos/core#definition
-<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+skos:definition rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition (SKOS)"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
 
 
 #################################################################
@@ -33,28 +68,28 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000051
-<http://purl.obolibrary.org/obo/BFO_0000051> rdf:type owl:ObjectProperty ;
-                                             rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000051> ;
-                                             rdf:type owl:TransitiveProperty ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000112> "my body has part my brain (continuant parthood, two material entities)"@en ,
-                                                                                          "my stomach has part my stomach cavity (continuant parthood, material entity has part immaterial entity)"@en ,
-                                                                                          "this year has part this day (occurrent parthood)"@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "a core relation that holds between a whole and its part"@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Everything has itself as a part. Any part of any part of a thing is itself part of that thing. Two distinct things cannot have each other as a part."@en ,
-                                                                                          "Occurrents are not subject to change and so parthood between occurrents holds for all the times that the part exists. Many continuants are subject to change, so parthood between continuants will only hold at certain times, but this is difficult to specify in OWL. See http://purl.obolibrary.org/obo/ro/docs/temporal-semantics/"@en ,
-                                                                                          """Parthood requires the part and the whole to have compatible classes: only an occurrent have an occurrent as part; only a process can have a process as part; only a continuant can have a continuant as part; only an independent continuant can have an independent continuant as part; only a specifically dependent continuant can have a specifically dependent continuant as part; only a generically dependent continuant can have a generically dependent continuant as part. (This list is not exhaustive.)
+ns1:BFO_0000051 rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf ns1:BFO_0000051 ;
+                rdf:type owl:TransitiveProperty ;
+                ns1:IAO_0000112 "my body has part my brain (continuant parthood, two material entities)"@en ,
+                                "my stomach has part my stomach cavity (continuant parthood, material entity has part immaterial entity)"@en ,
+                                "this year has part this day (occurrent parthood)"@en ;
+                ns1:IAO_0000115 "a core relation that holds between a whole and its part"@en ;
+                ns1:IAO_0000116 "Everything has itself as a part. Any part of any part of a thing is itself part of that thing. Two distinct things cannot have each other as a part."@en ,
+                                "Occurrents are not subject to change and so parthood between occurrents holds for all the times that the part exists. Many continuants are subject to change, so parthood between continuants will only hold at certain times, but this is difficult to specify in OWL. See http://purl.obolibrary.org/obo/ro/docs/temporal-semantics/"@en ,
+                                """Parthood requires the part and the whole to have compatible classes: only an occurrent have an occurrent as part; only a process can have a process as part; only a continuant can have a continuant as part; only an independent continuant can have an independent continuant as part; only a specifically dependent continuant can have a specifically dependent continuant as part; only a generically dependent continuant can have a generically dependent continuant as part. (This list is not exhaustive.)
 
 A continuant cannot have an occurrent as part: use 'participates in'. An occurrent cannot have a continuant as part: use 'has participant'. An immaterial entity cannot have a material entity as part: use 'location of'. An independent continuant cannot have a specifically dependent continuant as part: use 'bearer of'. A specifically dependent continuant cannot have an independent continuant as part: use 'inheres in'."""@en ;
-                                             rdfs:label "has part"@en .
+                rdfs:label "has part"@en .
 
 
 ###  http://purl.obolibrary.org/obo/RO_0000086
-<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
-                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
-                                            rdfs:label "has quality"@en .
+ns1:RO_0000086 rdf:type owl:ObjectProperty ;
+               rdfs:range ns1:BFO_0000019 ;
+               ns1:IAO_0000112 "this apple has quality this red color"@en ;
+               ns1:IAO_0000115 "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+               ns1:IAO_0000116 "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+               rdfs:label "has quality"@en .
 
 
 #################################################################
@@ -62,106 +97,92 @@ A continuant cannot have an occurrent as part: use 'participates in'. An occurre
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000019
-<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
-                                             rdfs:label "quality"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+ns1:BFO_0000019 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000020 ;
+                rdfs:label "quality"@en ;
+                skos:definition "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000020
-<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
-                                             rdfs:label "specifically dependent continuant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+ns1:BFO_0000020 rdf:type owl:Class ;
+                rdfs:label "specifically dependent continuant"@en ;
+                skos:definition "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000030
-<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
-                                             rdfs:label "object"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+ns1:BFO_0000030 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000040 ;
+                rdfs:label "object"@en ;
+                skos:definition "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000040
-<http://purl.obolibrary.org/obo/BFO_0000040> rdf:type owl:Class ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             rdfs:label "material entity"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
+ns1:BFO_0000040 rdf:type owl:Class ;
+                ns1:IAO_0000115 "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                ns1:IAO_0000116 "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                rdfs:label "material entity"@en ;
+                skos:definition "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0000551
-<https://w3id.org/pmd/co/PMD_0000551> rdf:type owl:Class ;
-                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0025001> ;
-                                      rdfs:comment """See the editor note of composition to understand the difference between composition and chemical composition.
+:PMD_0000551 rdf:type owl:Class ;
+             rdfs:subClassOf :PMD_0025001 ;
+             rdfs:comment """See the editor note of composition to understand the difference between composition and chemical composition.
 
 See the pattern example of composition to underatand the difference between composition and proportion."""@en ;
-                                      rdfs:label "chemical composition"@en ,
-                                                 "chemische Zusammensetzung"@de ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Die chemische Zusammensetzung ist eine intensive Eigenschaft eines Materieteils, die die Arten und Anteile reiner chemischer Elemente in dem Materieteil beschreibt, und ist Gegenstand einiger Datenelemente zur chemischen Zusammensetzung."@de ,
-                                                                                       "The chemical composition is an intensive quality of a portion of matter which describes the types and proportions of pure chemical elements in the portion of matter, and it is a subject of some chemical composition data item."@en .
+             rdfs:label "chemical composition"@en ;
+             skos:definition "Die chemische Zusammensetzung ist eine intensive Eigenschaft eines Materieteils, die die Arten und Anteile reiner chemischer Elemente in dem Materieteil beschreibt, und ist Gegenstand einiger Datenelemente zur chemischen Zusammensetzung."@de ,
+                             "The chemical composition is an intensive quality of a portion of matter which describes the types and proportions of pure chemical elements in the portion of matter, and it is a subject of some chemical composition data item."@en ;
+             skos:prefLabel "chemische Zusammensetzung"@de .
 
 
 ###  https://w3id.org/pmd/co/PMD_0000639
-<https://w3id.org/pmd/co/PMD_0000639> rdf:type owl:Class ;
-                                      rdfs:label "ferrous metal"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "metal that has iron as primary constituent"@en .
+:PMD_0000639 rdf:type owl:Class ;
+             rdfs:subClassOf ns1:BFO_0000040 ;
+             rdfs:label "ferrous metal"@en ;
+             skos:definition "metal that has iron as primary constituent"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020096
-<https://w3id.org/pmd/co/PMD_0020096> rdf:type owl:Class ;
-                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0000639> ;
-                                      rdfs:label "steel"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "ferrous metal that consists of iron and carbon and possibly other alloying elements (and possibly impurities)"@en .
+:PMD_0020096 rdf:type owl:Class ;
+             rdfs:subClassOf :PMD_0000639 ;
+             rdfs:label "steel"@en ;
+             skos:definition "ferrous metal that consists of iron and carbon and possibly other alloying elements (and possibly impurities)"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020133
-<https://w3id.org/pmd/co/PMD_0020133> rdf:type owl:Class ;
-                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0023000> ;
-                                      rdfs:label "Masse"@de ,
-                                                 "mass"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Mass is fundamental extensive quality."@en .
+:PMD_0020133 rdf:type owl:Class ;
+             rdfs:subClassOf :PMD_0023000 ;
+             rdfs:label "mass"@en ;
+             skos:definition "Mass is fundamental extensive quality."@en ;
+             skos:prefLabel "Masse"@de .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020170
-<https://w3id.org/pmd/co/PMD_0020170> rdf:type owl:Class ;
-                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000030> ;
-                                      rdfs:comment "The ingot may be hot rolled after casting..."@en ;
-                                      rdfs:label "Bramme"@de ,
-                                                 "ingot"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "An ingot is an object that has a thick section and may bear a semi finished product role and that is the specified output of a casting process. At the same time it is a material."@en .
+:PMD_0020170 rdf:type owl:Class ;
+             rdfs:subClassOf ns1:BFO_0000030 ;
+             rdfs:comment "The ingot may be hot rolled after casting..."@en ;
+             rdfs:label "ingot"@en ;
+             skos:definition "An ingot is an object that has a thick section and may bear a semi finished product role and that is the specified output of a casting process. At the same time it is a material."@en ;
+             skos:prefLabel "Bramme"@de .
 
 
 ###  https://w3id.org/pmd/co/PMD_0023000
-<https://w3id.org/pmd/co/PMD_0023000> rdf:type owl:Class ;
-                                      <http://purl.obolibrary.org/obo/IAO_0000116> "TODO: system requires further precision"@en ;
-                                      rdfs:label "fundamental quality of system"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "a quality that is quality of every system made of demarcated materail entites"@en .
+:PMD_0023000 rdf:type owl:Class ;
+             rdfs:subClassOf ns1:BFO_0000019 ;
+             ns1:IAO_0000116 "TODO: system requires further precision"@en ;
+             rdfs:label "fundamental quality of system"@en ;
+             skos:definition "a quality that is quality of every system made of demarcated materail entites"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0025001
-<https://w3id.org/pmd/co/PMD_0025001> rdf:type owl:Class ;
-                                      <http://purl.obolibrary.org/obo/IAO_0000116> "There's a dfference between composition and chemical compositon for the following reason: chemical compositon is relevant when the mass/volume/mole proportions of chemical elements(!) are identified, whlist composition includes proportions of molecules, other pure chemical substances, or even proptions of objects (in an object aggregate)."@en ;
-                                      rdfs:label "Zusammensetzung"@de ,
-                                                 "composition"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Composition is an intensive quality which defines types and proportions of compounds present in a material entity and is subject of some composition data item."@en ,
-                                                                                       "Zusammensetzung ist eine intensive Qualität, die Arten und Anteile von Verbindungen definiert, die in einer materiellen Einheit vorhanden sind, und Gegenstand einiger Zusammensetzungsdatenelemente ist."@de .
-
-
-#################################################################
-#    Axioms restored from PMDco 3.1.2
-#################################################################
-# The extraction dropped these although each mentions only terms declared above; no term is added.
-#   S stated by PMDco 3.1.2.   E follows from one PMDco 3.1.2 axiom (a conjunct, or an inverse property's domain/range).
-#   T follows from PMDco 3.1.2 subclass axioms through classes outside the pattern.   O stated by the real OBO file only.
-
-# T: entailed by PMDco 3.1.2 through classes outside the pattern: ferrous metal < metal < material < portion of matter < material entity
-<https://w3id.org/pmd/co/PMD_0000639> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> .
-
-# S: stated by PMDco 3.1.2
-<https://w3id.org/pmd/co/PMD_0023000> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> .
-
-# S: stated by PMDco 3.1.2
-<https://w3id.org/pmd/co/PMD_0025001> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> .
+:PMD_0025001 rdf:type owl:Class ;
+             rdfs:subClassOf ns1:BFO_0000019 ;
+             ns1:IAO_0000116 "There's a dfference between composition and chemical compositon for the following reason: chemical compositon is relevant when the mass/volume/mole proportions of chemical elements(!) are identified, whlist composition includes proportions of molecules, other pure chemical substances, or even proptions of objects (in an object aggregate)."@en ;
+             rdfs:label "composition"@en ;
+             skos:definition "Composition is an intensive quality which defines types and proportions of compounds present in a material entity and is subject of some composition data item."@en ,
+                             "Zusammensetzung ist eine intensive Qualität, die Arten und Anteile von Verbindungen definiert, die in einer materiellen Einheit vorhanden sind, und Gegenstand einiger Zusammensetzungsdatenelemente ist."@de ;
+             skos:prefLabel "Zusammensetzung"@de .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -10,5 +10,27 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_FeatureOfInterest",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_FeatureOfInterest",
   "class_count": 3,
-  "property_count": 3
+  "property_count": 3,
+  "curated": [
+    "header: dcterms:title \"Smarthome Featureofinterest Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> as a class",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> as an annotation property",
+    "label added: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_FeatureOfInterest.owl#SmartHomeFeatureOfInterest> \"smart home feature of interest\"@en - from its name",
+    "label added: <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty> \"smart home property\"@en - from its name",
+    "label added: <http://purl.oclc.org/NET/ssnx/ssn#forProperty> \"for property\"@en - from its name",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject> \"Information object\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> \"Physical object\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAbout> \"is about\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDescribedBy> \"is described by\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> \"is specialization of\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> \"scenarios\"@en - from its name"
+  ]
 }

@@ -11,6 +11,8 @@
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:opla="http://ontologydesignpatterns.org/opla/"
      xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
      xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl">
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
@@ -23,9 +25,11 @@
         <dc:creator>Andrea Nuzzolese</dc:creator>
         <dc:creator>Valentina Carriero</dc:creator>
         <dc:creator>Valentina Presutti</dc:creator>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent recurrent situation series as situations and collections of consecutive situations, with a regular time period between situations and unifying factors.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Recurrentsituationseries Pattern</dcterms:title>
         <cpannotationschema:coversRequirements>What are the situations of a recurrent situation series?, Which is the time period elapsing between two situations of a recurrent situation series?, When is the next situation of a recurrent situation series scheduled?,  What are the unifying criteria shared by all the situations in a recurrent situation series?, Which are the unifying situations shared by a (subset of) the situations member of a recurrent situation series?, When is a unifying situation valid?, Which is the (immediate) next situation in a recurrent situation series?, Which is the (immediate) previous situation in a recurrent situation series?</cpannotationschema:coversRequirements>
         <cpannotationschema:hasConsequences>A series of recurrent situations, its unifying factors and the recurrent time period can be modeled.</cpannotationschema:hasConsequences>
-        <cpannotationschema:hasIntent>To represent recurrent situation series as situations and collections of consecutive situations, with a regular time period between situations and unifying factors.</cpannotationschema:hasIntent>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent recurrent situation series as situations and collections of consecutive situations, with a regular time period between situations and unifying factors.</cpannotationschema:hasIntent>
         <cpannotationschema:relatedCPs>Classification</cpannotationschema:relatedCPs>
         <cpannotationschema:relatedCPs>Collection</cpannotationschema:relatedCPs>
         <cpannotationschema:relatedCPs>Description</cpannotationschema:relatedCPs>
@@ -34,6 +38,10 @@
         <cpannotationschema:relatedCPs>Situation</cpannotationschema:relatedCPs>
         <cpannotationschema:scenarios>Umbria Jazz is a collection of situations, which all take place in July and in the Italian region of Umbria, and has the musical genre jazz as a topic. Its situations recur at regular time periods, i.e. annually.</cpannotationschema:scenarios>
         <rdfs:comment xml:lang="en">A pattern for recurrent situation series. This pattern is a new version of the recurrent event series ODP (http://www.ontologydesignpatterns.org/cp/owl/recurrenteventseries.owl), based on new analysis which led to terminological and modelling changes.</rdfs:comment>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x22; term declared x7;
+- header: dcterms:title &quot;Recurrentsituationseries Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
         <rdfs:label>recurrent situation series</rdfs:label>
     </owl:Ontology>
     
@@ -52,19 +60,81 @@
 
     <!-- http://ontologydesignpatterns.org/opla/isNativeTo -->
 
-    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/isNativeTo"/>
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/isNativeTo">
+        <rdfs:label xml:lang="en">is native to</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate -->
 
-    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate"/>
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate">
+        <rdfs:label xml:lang="en">reuses pattern as template</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
     <!-- http://purl.org/dc/elements/1.1/creator -->
 
-    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator"/>
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator">
+        <rdfs:label xml:lang="en">Creator</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences">
+        <rdfs:label xml:lang="en">has consequences</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs">
+        <rdfs:label xml:lang="en">related c ps</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios">
+        <rdfs:label xml:lang="en">scenarios</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -379,43 +449,57 @@
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies">
+        <rdfs:label xml:lang="en">classifies</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows">
+        <rdfs:label xml:lang="en">follows</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember">
+        <rdfs:label xml:lang="en">has member</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy">
+        <rdfs:label xml:lang="en">is classified by</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf">
+        <rdfs:label xml:lang="en">is member of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes">
+        <rdfs:label xml:lang="en">precedes</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies -->
 
-    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies">
+        <rdfs:label xml:lang="en">satisfies</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -576,31 +660,41 @@
 
     <!-- http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality -->
 
-    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality">
+        <rdfs:label xml:lang="en">eventuality</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection -->
 
-    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection">
+        <rdfs:label xml:lang="en">Collection</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept -->
 
-    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept">
+        <rdfs:label xml:lang="en">Concept</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description -->
 
-    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description">
+        <rdfs:label xml:lang="en">Description</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval -->
 
-    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval">
+        <rdfs:label xml:lang="en">Time interval</rdfs:label>
+    </owl:Class>
     
 
 

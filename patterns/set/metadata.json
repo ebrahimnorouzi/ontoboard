@@ -10,5 +10,28 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Set",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Set",
   "class_count": 1,
-  "property_count": 1
+  "property_count": 1,
+  "curated": [
+    "header: dcterms:title \"Set Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> as a class",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> \"Collection\"@en - from the library's pattern collection",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember> \"has member\"@en - from the library's pattern collection (ODK's report asks for one: the pattern says something about it)",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> \"extracted from\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> \"has author\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> \"reengineered from\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> \"related c ps\"@en - from its name"
+  ]
 }

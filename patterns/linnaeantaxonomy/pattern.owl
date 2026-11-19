@@ -1,32 +1,29 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY linnaeantaxonomy "http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#" >
-    <!ENTITY cpannotationschema "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
-     xmlns:linnaeantaxonomy="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:linnaeantaxonomy="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">Created by Aldo Gangemi and Valentina Presutti</owl:versionInfo>
-        <rdfs:comment rdf:datatype="&rdf;PlainLiteral">The linnaean taxonomy content ontology design pattern represents the layered classification invented by Linneus in the XVIII century. It is created by reengineering Wikipedia articles about taxa, taxonomic ranks, and linnaean taxonomy.</rdfs:comment>
-        <cpannotationschema:reengineeredFrom rdf:datatype="&rdf;PlainLiteral">http://en.wikipedia.org/wiki/Linnaean_taxonomy</cpannotationschema:reengineeredFrom>
-        <cpannotationschema:reengineeredFrom rdf:datatype="&rdf;PlainLiteral">http://en.wikipedia.org/wiki/Taxon</cpannotationschema:reengineeredFrom>
-        <cpannotationschema:reengineeredFrom rdf:datatype="&rdf;PlainLiteral">http://en.wikipedia.org/wiki/Taxonomic_rank</cpannotationschema:reengineeredFrom>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The linnaean taxonomy content ontology design pattern represents the layered classification invented by Linneus in the XVIII century. It is created by reengineering Wikipedia articles about taxa, taxonomic ranks, and linnaean taxonomy.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Linnaeantaxonomy Pattern</dcterms:title>
+        <cpannotationschema:reengineeredFrom>http://en.wikipedia.org/wiki/Linnaean_taxonomy</cpannotationschema:reengineeredFrom>
+        <cpannotationschema:reengineeredFrom>http://en.wikipedia.org/wiki/Taxon</cpannotationschema:reengineeredFrom>
+        <cpannotationschema:reengineeredFrom>http://en.wikipedia.org/wiki/Taxonomic_rank</cpannotationschema:reengineeredFrom>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x3; term declared x2;
+- header: dcterms:title &quot;Linnaeantaxonomy Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The linnaean taxonomy content ontology design pattern represents the layered classification invented by Linneus in the XVIII century. It is created by reengineering Wikipedia articles about taxa, taxonomic ranks, and linnaean taxonomy.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Aldo Gangemi and Valentina Presutti</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -39,11 +36,54 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;reengineeredFrom"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom">
+        <rdfs:label xml:lang="en">reengineered from</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
     
 
 
@@ -60,54 +100,54 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank -->
 
-    <owl:ObjectProperty rdf:about="&linnaeantaxonomy;hasDirectHigherRank">
-        <rdfs:label xml:lang="en">has direct higher rank</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:comment>This property relates two taxa, where the first is more specific then the second and there is no other taxon that is both more general than the first and more specific than the second.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
-        <rdfs:range rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <rdfs:domain rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <owl:inverseOf rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-        <rdfs:subPropertyOf rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+        <rdfs:label xml:lang="en">has direct higher rank</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank -->
 
-    <owl:ObjectProperty rdf:about="&linnaeantaxonomy;hasDirectLowerRank">
-        <rdfs:label xml:lang="en">has direct lower rank</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:comment>This property relates two taxa, where the first is less specific then the second and there is no other taxon that is both more specific than the first and more general than the second.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
-        <rdfs:range rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <rdfs:domain rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <rdfs:subPropertyOf rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+        <rdfs:label xml:lang="en">has direct lower rank</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank -->
 
-    <owl:ObjectProperty rdf:about="&linnaeantaxonomy;hasHigherRank">
-        <rdf:type rdf:resource="&owl;TransitiveProperty"/>
-        <rdfs:label xml:lang="en">has higher rank</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank">
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:comment>This property relates two taxa, where the first is more specific than the second.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
-        <rdfs:domain rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <rdfs:range rdf:resource="&linnaeantaxonomy;Taxon"/>
+        <rdfs:label xml:lang="en">has higher rank</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank -->
 
-    <owl:ObjectProperty rdf:about="&linnaeantaxonomy;hasLowerRank">
-        <rdf:type rdf:resource="&owl;TransitiveProperty"/>
-        <rdfs:label xml:lang="en">has lower rank</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:comment>This property relates two taxa, where the first is less specific than the second.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
-        <rdfs:range rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <rdfs:domain rdf:resource="&linnaeantaxonomy;Taxon"/>
-        <owl:inverseOf rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+        <rdfs:label xml:lang="en">has lower rank</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -125,23 +165,28 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Class">
-        <rdfs:label xml:lang="en">Class</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Phylum"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:unionOf rdf:parseType="Collection">
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Kingdom"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Phylum"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
                         </owl:unionOf>
                     </owl:Class>
                 </owl:allValuesFrom>
@@ -149,21 +194,15 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Order"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:complementOf>
                             <owl:Class>
                                 <owl:unionOf rdf:parseType="Collection">
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Class"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Kingdom"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Phylum"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
                                 </owl:unionOf>
                             </owl:Class>
                         </owl:complementOf>
@@ -171,34 +210,46 @@
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Family"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Genus"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Kingdom"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Order"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Phylum"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Class is the third highest traditional taxon. E.g., in the case of humans the class is &#39;Mammalia&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Class is the third highest traditional taxon. E.g., in the case of humans the class is &apos;Mammalia&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Class</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Family">
-        <rdfs:label xml:lang="en">Family</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:complementOf>
                             <owl:Class>
                                 <owl:unionOf rdf:parseType="Collection">
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Family"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Genus"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Species"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
                                 </owl:unionOf>
                             </owl:Class>
                         </owl:complementOf>
@@ -208,61 +259,55 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:unionOf rdf:parseType="Collection">
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Genus"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Species"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
                         </owl:unionOf>
                     </owl:Class>
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Order"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Genus"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Genus"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Kingdom"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Order"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Phylum"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Family is the fifth highest traditional taxon. E.g., in the case of humans the family is &#39;Hominidae&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Family is the fifth highest traditional taxon. E.g., in the case of humans the family is &apos;Hominidae&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Family</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Genus">
-        <rdfs:label xml:lang="en">Genus</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Species"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:complementOf>
                             <owl:Class>
                                 <owl:unionOf rdf:parseType="Collection">
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Genus"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Species"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
                                 </owl:unionOf>
                             </owl:Class>
                         </owl:complementOf>
@@ -272,76 +317,76 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Family"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Species"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Kingdom"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Order"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Phylum"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Genus is the sixth highest traditional taxon. E.g., in the case of humans the genus is &#39;Homo&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Genus is the sixth highest traditional taxon. E.g., in the case of humans the genus is &apos;Homo&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Genus</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Kingdom">
-        <rdfs:label xml:lang="en">Kingdom</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Phylum"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
-                        <owl:complementOf rdf:resource="&linnaeantaxonomy;Kingdom"/>
+                        <owl:complementOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
                     </owl:Class>
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Order"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Phylum"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Kingdom is the highest traditional taxon. E.g., in the case of humans the kingdom is &#39;Animalia&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Kingdom is the highest traditional taxon. E.g., in the case of humans the kingdom is &apos;Animalia&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Kingdom</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Order">
-        <rdfs:label xml:lang="en">Order</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Class"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:unionOf rdf:parseType="Collection">
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Family"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Genus"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Species"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
                         </owl:unionOf>
                     </owl:Class>
                 </owl:allValuesFrom>
@@ -349,47 +394,59 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:unionOf rdf:parseType="Collection">
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Class"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Kingdom"/>
-                            <rdf:Description rdf:about="&linnaeantaxonomy;Phylum"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+                            <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
                         </owl:unionOf>
                     </owl:Class>
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Family"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Phylum"/>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Order is the fourth highest traditional taxon. E.g., in the case of humans the phylum is &#39;Primates&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Order is the fourth highest traditional taxon. E.g., in the case of humans the phylum is &apos;Primates&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Order</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Phylum">
-        <rdfs:label xml:lang="en">Phylum</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasLowerRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
                         <owl:complementOf>
                             <owl:Class>
                                 <owl:unionOf rdf:parseType="Collection">
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Kingdom"/>
-                                    <rdf:Description rdf:about="&linnaeantaxonomy;Phylum"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom"/>
+                                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum"/>
                                 </owl:unionOf>
                             </owl:Class>
                         </owl:complementOf>
@@ -397,68 +454,51 @@
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Kingdom"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Kingdom"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectLowerRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Class"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <owl:disjointWith rdf:resource="&linnaeantaxonomy;Species"/>
-        <rdfs:comment>Phylum is the second highest traditional taxon. E.g., in the case of humans the phylum is &#39;Chordata&#39;.</rdfs:comment>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
+        <rdfs:comment>Phylum is the second highest traditional taxon. E.g., in the case of humans the phylum is &apos;Chordata&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Phylum</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Species">
-        <rdfs:label xml:lang="en">Species</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&linnaeantaxonomy;Taxon"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasHigherRank"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank"/>
                 <owl:allValuesFrom>
                     <owl:Class>
-                        <owl:complementOf rdf:resource="&linnaeantaxonomy;Species"/>
+                        <owl:complementOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species"/>
                     </owl:Class>
                 </owl:allValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="&linnaeantaxonomy;hasDirectHigherRank"/>
-                <owl:allValuesFrom rdf:resource="&linnaeantaxonomy;Genus"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:comment>Species is the lowest traditional taxon. E.g., in the case of humans the species is &#39;Homo sapiens&#39;.</rdfs:comment>
+        <rdfs:comment>Species is the lowest traditional taxon. E.g., in the case of humans the species is &apos;Homo sapiens&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Species</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon -->
 
-    <owl:Class rdf:about="&linnaeantaxonomy;Taxon">
-        <rdfs:label xml:lang="en">Taxon</rdfs:label>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon">
         <rdfs:comment>A taxon is a concept denoting a type of organism or of a group of organisms.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl"/>
+        <rdfs:label xml:lang="en">Taxon</rdfs:label>
     </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

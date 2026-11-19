@@ -4,43 +4,71 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl2xml: <http://www.w3.org/2006/12/owl2-xml#> .
+@prefix observation: <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
+@prefix verticaldistribution: <http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl> rdf:type owl:Ontology ;
                                                                                owl:imports <http://www.ontologydesignpatterns.org/cp/owl/observation.owl> ,
                                                                                            <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
                                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What resource has what vertical distribution?" ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """This pattern only allows to query what vertical distribution is typical of an aquatic resource. Whereas such values can be subject to observation, another pattern based on the generic 'observation' pattern should be used.
+                                                                               dcterms:description "The intent of the pattern is to be able to represent vertical distribution for aquatic resources."^^xsd:string ;
+                                                                               dcterms:title "Verticaldistribution Pattern"^^xsd:string ;
+                                                                               cpannotationschema:coversRequirements "What resource has what vertical distribution?" ;
+                                                                               cpannotationschema:hasConsequences """This pattern only allows to query what vertical distribution is typical of an aquatic resource. Whereas such values can be subject to observation, another pattern based on the generic 'observation' pattern should be used.
 The vertical distribution is intended to have a fixed set of values (to be defined as nominals) but this is not explicit in the pattern.""" ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The intent of the pattern is to be able to represent vertical distribution for aquatic resources." ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> "SELECT ?x WHERE {?x a :AquaticResourceObservation.  ?x :hasVerticalDistribution :Pelagic}" ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "Give me the resource observations where the vertical distribution is 'Pelagic'" ;
-                                                                               owl:versionInfo "1.0"^^xsd:string ,
+                                                                               cpannotationschema:hasIntent "The intent of the pattern is to be able to represent vertical distribution for aquatic resources."^^xsd:string ;
+                                                                               cpannotationschema:hasUnitTest "SELECT ?x WHERE {?x a :AquaticResourceObservation.  ?x :hasVerticalDistribution :Pelagic}" ;
+                                                                               cpannotationschema:scenarios "Give me the resource observations where the vertical distribution is 'Pelagic'" ;
+                                                                               rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x13; term declared x2;
+- header: dcterms:title \"Verticaldistribution Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- file: only pattern.ttl said Declaration(Datatype(xsd:gYear)) - not kept: pattern.owl is what an import copies
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
+                                                                               owl:versionInfo "1.0" ,
                                                                                                "Created by Eva Blomqvist" .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasUnitTest rdf:type owl:AnnotationProperty ;
+                               rdfs:label "has unit test"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 #################################################################
@@ -56,53 +84,57 @@ xsd:gYear rdf:type rdfs:Datatype .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#hasResource
-:hasResource rdf:type owl:ObjectProperty ;
-             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> ;
-             owl:inverseOf :isResourceOf ;
-             rdfs:domain :AquaticResourceObservation ;
-             rdfs:range :AquaticResource ;
-             rdfs:label "has resource"@en .
+verticaldistribution:hasResource rdf:type owl:ObjectProperty ;
+                                 rdfs:subPropertyOf observation:isObservationOf ;
+                                 owl:inverseOf verticaldistribution:isResourceOf ;
+                                 rdfs:domain verticaldistribution:AquaticResourceObservation ;
+                                 rdfs:range verticaldistribution:AquaticResource ;
+                                 rdfs:label "has resource"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#hasVerticalDistribution
-:hasVerticalDistribution rdf:type owl:ObjectProperty ;
-                         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
-                         owl:inverseOf :isVerticalDistributionOf ;
-                         rdfs:domain :AquaticResourceObservation ;
-                         rdfs:range :VerticalDistribution ;
-                         rdfs:label "has vertical distribution"@en .
+verticaldistribution:hasVerticalDistribution rdf:type owl:ObjectProperty ;
+                                             rdfs:subPropertyOf observation:hasParameter ;
+                                             owl:inverseOf verticaldistribution:isVerticalDistributionOf ;
+                                             rdfs:domain verticaldistribution:AquaticResourceObservation ;
+                                             rdfs:range verticaldistribution:VerticalDistribution ;
+                                             rdfs:label "has vertical distribution"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#isResourceOf
-:isResourceOf rdf:type owl:ObjectProperty ;
-              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation> ;
-              rdfs:domain :AquaticResource ;
-              rdfs:range :AquaticResourceObservation ;
-              rdfs:label "is resource of"@en .
+verticaldistribution:isResourceOf rdf:type owl:ObjectProperty ;
+                                  rdfs:subPropertyOf observation:hasObservation ;
+                                  rdfs:domain verticaldistribution:AquaticResource ;
+                                  rdfs:range verticaldistribution:AquaticResourceObservation ;
+                                  rdfs:label "is resource of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#isVerticalDistributionOf
-:isVerticalDistributionOf rdf:type owl:ObjectProperty ;
-                          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
-                          rdfs:domain :VerticalDistribution ;
-                          rdfs:range :AquaticResourceObservation ;
-                          rdfs:label "is vertical distribution of"@en .
+verticaldistribution:isVerticalDistributionOf rdf:type owl:ObjectProperty ;
+                                              rdfs:subPropertyOf observation:isParameterOf ;
+                                              rdfs:domain verticaldistribution:VerticalDistribution ;
+                                              rdfs:range verticaldistribution:AquaticResourceObservation ;
+                                              rdfs:label "is vertical distribution of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation> rdf:type owl:ObjectProperty .
+observation:hasObservation rdf:type owl:ObjectProperty ;
+                           rdfs:label "has observation"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> rdf:type owl:ObjectProperty .
+observation:hasParameter rdf:type owl:ObjectProperty ;
+                         rdfs:label "has parameter"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> rdf:type owl:ObjectProperty .
+observation:isObservationOf rdf:type owl:ObjectProperty ;
+                            rdfs:label "is observation of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> rdf:type owl:ObjectProperty .
+observation:isParameterOf rdf:type owl:ObjectProperty ;
+                          rdfs:label "is parameter of"@en .
 
 
 #################################################################
@@ -110,10 +142,10 @@ xsd:gYear rdf:type rdfs:Datatype .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#hasReferenceYear
-:hasReferenceYear rdf:type owl:DatatypeProperty ;
-                  rdfs:domain :AquaticResourceObservation ;
-                  rdfs:range xsd:gYear ;
-                  rdfs:label "has reference year"@en .
+verticaldistribution:hasReferenceYear rdf:type owl:DatatypeProperty ;
+                                      rdfs:domain verticaldistribution:AquaticResourceObservation ;
+                                      rdfs:range xsd:gYear ;
+                                      rdfs:label "has reference year"@en .
 
 
 #################################################################
@@ -121,42 +153,44 @@ xsd:gYear rdf:type rdfs:Datatype .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#AquaticResource
-:AquaticResource rdf:type owl:Class ;
-                 rdfs:subClassOf owl:Thing ;
-                 owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> ,
-                                  <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
-                 rdfs:comment """A fishery resource (a collection of actual aquatic organisms) that can include aquatic organisms from different AquaticSpecies, and is localized in some WaterArea.
+verticaldistribution:AquaticResource rdf:type owl:Class ;
+                                     rdfs:subClassOf owl:Thing ;
+                                     owl:disjointWith observation:Observation ,
+                                                      observation:Parameter ;
+                                     rdfs:comment """A fishery resource (a collection of actual aquatic organisms) that can include aquatic organisms from different AquaticSpecies, and is localized in some WaterArea.
 It can be mapped to fi:AqResRef""" ;
-                 rdfs:label "Aquatic resource"@en .
+                                     rdfs:label "Aquatic resource"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#AquaticResourceObservation
-:AquaticResourceObservation rdf:type owl:Class ;
-                            rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> ,
-                                            [ rdf:type owl:Restriction ;
-                                              owl:onProperty :hasResource ;
-                                              owl:someValuesFrom :AquaticResource
-                                            ] ,
-                                            [ rdf:type owl:Restriction ;
-                                              owl:onProperty :hasVerticalDistribution ;
-                                              owl:someValuesFrom :VerticalDistribution
-                                            ] ;
-                            rdfs:comment "An observation of a resource characterised by different parameters." ;
-                            rdfs:label "Aquatic resource observation"@en .
+verticaldistribution:AquaticResourceObservation rdf:type owl:Class ;
+                                                rdfs:subClassOf observation:Observation ,
+                                                                [ rdf:type owl:Restriction ;
+                                                                  owl:onProperty verticaldistribution:hasResource ;
+                                                                  owl:someValuesFrom verticaldistribution:AquaticResource
+                                                                ] ,
+                                                                [ rdf:type owl:Restriction ;
+                                                                  owl:onProperty verticaldistribution:hasVerticalDistribution ;
+                                                                  owl:someValuesFrom verticaldistribution:VerticalDistribution
+                                                                ] ;
+                                                rdfs:comment "An observation of a resource characterised by different parameters." ;
+                                                rdfs:label "Aquatic resource observation"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl#VerticalDistribution
-:VerticalDistribution rdf:type owl:Class ;
-                      rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
-                      rdfs:label "Vertical distribution"@en .
+verticaldistribution:VerticalDistribution rdf:type owl:Class ;
+                                          rdfs:subClassOf observation:Parameter ;
+                                          rdfs:label "Vertical distribution"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> rdf:type owl:Class .
+observation:Observation rdf:type owl:Class ;
+                        rdfs:label "Observation"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter
-<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> rdf:type owl:Class .
+observation:Parameter rdf:type owl:Class ;
+                      rdfs:label "Parameter"@en .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

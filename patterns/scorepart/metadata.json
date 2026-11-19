@@ -10,5 +10,28 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Scorepart",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Scorepart",
   "class_count": 5,
-  "property_count": 13
+  "property_count": 13,
+  "curated": [
+    "label corrected: <https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment> \"Section\" is now \"Homogeneous fragment\" - the label of Section, copied (duplicate_label - so in the source ontology too); the term's name and its comment say fragment",
+    "label corrected: <https://purl.org/andreapoltronieri/scorepart/hasFragment> \"has section\" is now \"has fragment\" - the label of hasSection, copied (duplicate_label - so in the source ontology too); the term's name and its comment say fragment",
+    "label corrected: <https://purl.org/andreapoltronieri/scorepart/isFragmentOf> \"is section of\" is now \"is fragment of\" - the label of isSectionOf, copied (duplicate_label - so in the source ontology too); the term's name and its comment say fragment",
+    "label added: <http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate> \"reuses pattern as template\"@en - from its name",
+    "label added: <http://purl.org/dc/elements/1.1/creator> \"Creator\"@en - from http://purl.org/dc/elements/1.1/",
+    "label added: <http://purl.org/dc/elements/1.1/description> \"Description (Dublin Core)\"@en - from http://purl.org/dc/elements/1.1/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/elements/1.1/language> \"Language\"@en - from http://purl.org/dc/elements/1.1/",
+    "label added: <http://purl.org/dc/elements/1.1/title> \"Title\"@en - from http://purl.org/dc/elements/1.1/",
+    "label added: <http://purl.org/dc/terms/issued> \"Date Issued\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://purl.org/dc/terms/license> \"License\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> \"extracted from\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> \"has component\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> \"has consequences\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> \"has unit test\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf> \"is clone of\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> \"is specialization of\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> \"reengineered from\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> \"related c ps\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> \"scenarios\"@en - from its name"
+  ]
 }

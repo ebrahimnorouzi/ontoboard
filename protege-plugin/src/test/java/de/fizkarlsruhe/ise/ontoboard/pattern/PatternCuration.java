@@ -263,6 +263,12 @@ final class PatternCuration {
     private final List<Fix> fixes;
     private final File stubs;
     private final Function<String, File> importCopy;
+    /** Labels with their source in brackets that every pattern uses for a term, by IRI. */
+    private final Map<String, String> qualified;
+    /** Finding, not curating: nothing is written. */
+    private final boolean dryRun;
+    /** The labels this run put their source in brackets, by IRI. */
+    private final Map<String, String> qualifiedHere = new TreeMap<String, String>();
 
     /**
      * @param library the label another library pattern gives a term, by IRI
@@ -271,12 +277,51 @@ final class PatternCuration {
      */
     PatternCuration(Map<String, Given> library, Map<String, Given> known, Licences licences,
             List<Fix> fixes, File stubs, Function<String, File> importCopy) {
+        this(library, known, licences, fixes, stubs, importCopy, Collections.<String, String>emptyMap(),
+                false);
+    }
+
+    private PatternCuration(Map<String, Given> library, Map<String, Given> known, Licences licences,
+            List<Fix> fixes, File stubs, Function<String, File> importCopy, Map<String, String> qualified,
+            boolean dryRun) {
         this.library = library;
         this.known = known;
         this.licences = licences;
         this.fixes = fixes;
         this.stubs = stubs;
         this.importCopy = importCopy;
+        this.qualified = qualified;
+        this.dryRun = dryRun;
+    }
+
+    /**
+     * The terms that get their source in brackets in some pattern - where another term of it
+     * would carry the same label - and that no library pattern's author labels: such a term is
+     * labelled the same way in every pattern, so two patterns imported together give it one label.
+     * Found by curating each pattern without writing anything.
+     */
+    Map<String, String> qualifiedIn(List<File> patternDirs) {
+        PatternCuration finding = new PatternCuration(library, known, licences, fixes, stubs, importCopy,
+                Collections.<String, String>emptyMap(), true);
+        Map<String, String> found = new TreeMap<String, String>();
+        for (File directory : patternDirs) {
+            try {
+                finding.curate(directory);
+            } catch (Exception refused) {               // NOPMD - the curating run reports it
+                continue;
+            }
+        }
+        for (Map.Entry<String, String> term : finding.qualifiedHere.entrySet()) {
+            if (!library.containsKey(term.getKey())) {
+                found.put(term.getKey(), term.getValue());
+            }
+        }
+        return found;
+    }
+
+    /** This curation, labelling each of {@code qualifiedLabels}' terms as it says. */
+    PatternCuration withQualified(Map<String, String> qualifiedLabels) {
+        return new PatternCuration(library, known, licences, fixes, stubs, importCopy, qualifiedLabels, false);
     }
 
     /** Curates the pattern in {@code patternDir}; see the class comment. */
@@ -299,8 +344,10 @@ final class PatternCuration {
         for (Fix fix : fixesFor(id, "axiom")) {
             applyAxiom(ontology, fix, changes);
         }
-        declare(ontology, changes);
-        label(ontology, changes);
+        declare(ontology, declaredIn(ttlFile), changes);
+        String name = new ObjectMapper().readTree(new File(patternDir, "metadata.json")).path("name")
+                .asText(id).trim();
+        label(ontology, name, changes);
         refuseErrors(id, ontology);
         refuseDuplicateLabels(id, ontology);
         ttlAlone(ttlFile, asItWas, ontology, changes);
@@ -308,7 +355,7 @@ final class PatternCuration {
             changes.add("file: pattern.owl written as RDF/XML - it held "
                     + (format == null ? "something else" : format.getKey()));
         }
-        if (changes.isEmpty()) {
+        if (changes.isEmpty() || dryRun) {
             return changes;
         }
         List<String> all = record(patternDir, changes);
@@ -341,6 +388,14 @@ final class PatternCuration {
             }
         }
         if (matching.isEmpty()) {
+            for (OWLAnnotationAssertionAxiom assertion
+                    : ontology.getAnnotationAssertionAxioms(IRI.create(fix.iri))) {
+                if (assertion.getProperty().getIRI().equals(RDFS_LABEL)
+                        && assertion.getValue() instanceof OWLLiteral
+                        && ((OWLLiteral) assertion.getValue()).getLiteral().equals(fix.neu)) {
+                    return;                             // made by an earlier curation
+                }
+            }
             throw new IllegalStateException("curation-fixes.tsv: <" + fix.iri + "> has no rdfs:label \""
                     + fix.old + "\" in pattern " + fix.pattern);
         }
@@ -379,6 +434,18 @@ final class PatternCuration {
         for (Map.Entry<String, List<Written>> subject : bySubject.entrySet()) {
             String iri = subject.getKey();
             List<Written> labels = subject.getValue();
+            // ROBOT reads an empty label as none: it goes, and the term gets one below.
+            for (java.util.Iterator<Written> each = labels.iterator(); each.hasNext();) {
+                Written label = each.next();
+                if (label.text.isEmpty()) {
+                    remove(ontology, label);
+                    changes.add("label removed (empty): <" + iri + "> " + label.asWritten());
+                    each.remove();
+                }
+            }
+            if (labels.isEmpty()) {
+                continue;
+            }
             sort(labels);
             Written keeper = labels.get(keeperOf(iri, iri.equals(self), labels, known));
             Map<String, String> prefByLang = new HashMap<String, String>();
@@ -582,10 +649,16 @@ final class PatternCuration {
 
     private static void applyAxiom(OWLOntology ontology, Fix fix, Changes changes) throws Exception {
         OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        OWLAxiom added = fix.neu.isEmpty() ? null : axiom(fix.neu);
+        boolean addedAlready = added != null
+                && !ontology.getAxiomsIgnoreAnnotations(added, Imports.EXCLUDED).isEmpty();
         if (!fix.old.isEmpty()) {
             OWLAxiom gone = axiom(fix.old);
             Set<OWLAxiom> present = ontology.getAxiomsIgnoreAnnotations(gone, Imports.EXCLUDED);
             if (present.isEmpty()) {
+                if (added == null || addedAlready) {
+                    return;                             // made by an earlier curation
+                }
                 throw new IllegalStateException("curation-fixes.tsv: pattern " + fix.pattern
                         + " has no axiom " + fix.old);
             }
@@ -594,8 +667,8 @@ final class PatternCuration {
             }
             changes.add("axiom removed: " + fix.old + " - " + fix.why);
         }
-        if (!fix.neu.isEmpty()) {
-            manager.addAxiom(ontology, axiom(fix.neu));
+        if (added != null && !addedAlready) {
+            manager.addAxiom(ontology, added);
             changes.add("axiom added: " + fix.neu + " - " + fix.why);
         }
     }
@@ -621,16 +694,41 @@ final class PatternCuration {
 
     // --- 6. declarations -----------------------------------------------------------------------
 
-    private static void declare(OWLOntology ontology, Changes changes) {
+    /**
+     * Declares every term the pattern names and does not declare. A declaration pattern.ttl had
+     * and pattern.owl lacked is the pattern's own, said as that; any other is of a term the
+     * pattern borrows ("term declared"), which tools/sync-pattern-owl.py leaves out of its size.
+     */
+    private static void declare(OWLOntology ontology, Set<OWLEntity> ttlDeclares, Changes changes) {
         OWLOntologyManager manager = ontology.getOWLOntologyManager();
         OWLDataFactory factory = manager.getOWLDataFactory();
-        for (OWLEntity entity : new TreeSet<OWLEntity>(ontology.getSignature())) {
+        for (OWLEntity entity : new TreeSet<OWLEntity>(ownSignature(ontology))) {
             if (isBuiltIn(entity) || ontology.isDeclared(entity)) {
                 continue;
             }
             manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(entity));
-            changes.add("term declared: <" + entity.getIRI() + "> as " + kindOf(entity));
+            changes.add(ttlDeclares.contains(entity)
+                    ? "file: pattern.owl declares <" + entity.getIRI() + "> as " + kindOf(entity)
+                            + ", as pattern.ttl did"
+                    : "term declared: <" + entity.getIRI() + "> as " + kindOf(entity));
         }
+    }
+
+    /** The terms pattern.ttl declares; none when it has none or cannot be read. */
+    private Set<OWLEntity> declaredIn(File ttlFile) {
+        Set<OWLEntity> declared = new HashSet<OWLEntity>();
+        if (!ttlFile.isFile()) {
+            return declared;
+        }
+        try {
+            OWLOntology ttl = load(manager(), Files.readAllBytes(ttlFile.toPath()), ttlFile);
+            for (OWLAxiom axiom : ttl.getAxioms(AxiomType.DECLARATION)) {
+                declared.add(((org.semanticweb.owlapi.model.OWLDeclarationAxiom) axiom).getEntity());
+            }
+        } catch (Exception unreadable) {                // NOPMD - ttlAlone says so
+            return declared;
+        }
+        return declared;
     }
 
     private static String kindOf(OWLEntity entity) {
@@ -665,46 +763,247 @@ final class PatternCuration {
 
     // --- 7. labels for the unlabelled ----------------------------------------------------------
 
-    private void label(OWLOntology ontology, Changes changes) {
+    private void label(OWLOntology ontology, String patternName, Changes changes) throws Exception {
         OWLOntologyManager manager = ontology.getOWLOntologyManager();
         OWLDataFactory factory = manager.getOWLDataFactory();
+        // The labels the pattern has, by label - the header's too: an ontology IRI that names a
+        // term keeps its rdfs:label there.
+        Map<String, Set<String>> byLabel = new TreeMap<String, Set<String>>();
         Set<String> labelled = new HashSet<String>();
         for (OWLAnnotationAssertionAxiom assertion : ontology.getAxioms(AxiomType.ANNOTATION_ASSERTION)) {
             if (assertion.getProperty().getIRI().equals(RDFS_LABEL) && assertion.getSubject() instanceof IRI) {
                 labelled.add(assertion.getSubject().toString());
+                if (assertion.getValue() instanceof OWLLiteral) {
+                    OWLLiteral value = (OWLLiteral) assertion.getValue();
+                    with(byLabel, quoted(value.getLiteral(), value.getLang()), assertion.getSubject().toString());
+                }
             }
         }
-        Set<String> done = new HashSet<String>();
-        for (OWLEntity entity : new TreeSet<OWLEntity>(ontology.getSignature())) {
-            String iri = entity.getIRI().toString();
-            if (isBuiltIn(entity) || labelled.contains(iri) || !done.add(iri)) {
-                continue;
+        String self = ontologyIri(ontology);
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (self != null && annotation.getProperty().getIRI().equals(RDFS_LABEL)
+                    && annotation.getValue() instanceof OWLLiteral) {
+                OWLLiteral value = (OWLLiteral) annotation.getValue();
+                labelled.add(self);
+                with(byLabel, quoted(value.getLiteral(), value.getLang()), self);
             }
+        }
+        // Which terms get one: every term of the pattern without a label, and what ODK's report
+        // asks a label for besides - ROBOT's missing_label counts every IRI the pattern says
+        // something about, an OWL term ("owl:Thing") or one only commented, never declared.
+        Map<String, OWLEntity> entities = new TreeMap<String, OWLEntity>();
+        for (OWLEntity entity : new TreeSet<OWLEntity>(ownSignature(ontology))) {
+            String iri = entity.getIRI().toString();
+            if (!isBuiltIn(entity) && !labelled.contains(iri) && !entities.containsKey(iri)) {
+                entities.put(iri, entity);
+            }
+        }
+        Set<String> toLabel = new TreeSet<String>(entities.keySet());
+        Set<String> asked = new TreeSet<String>();
+        for (String iri : reportAsksALabelFor(ontology)) {
+            if (!labelled.contains(iri) && toLabel.add(iri)) {
+                asked.add(iri);
+            }
+        }
+        // The labels they get: another pattern's, the home ontology's, or the name in words.
+        Map<String, Given> planned = new TreeMap<String, Given>();
+        Map<String, String> from = new HashMap<String, String>();
+        for (String iri : toLabel) {
             Given given = library.get(iri);
-            String from;
-            if (given != null) {
-                from = "from the library's " + given.from;
+            if (iri.equals(self)) {
+                given = new Given(patternName, "en", "the library's name for the pattern");
+                from.put(iri, "the library's name for the pattern: the ontology's IRI names a term too");
+            } else if (given != null) {
+                from.put(iri, "from the library's " + given.from);
             } else if (known.containsKey(iri)) {
                 given = known.get(iri);
-                from = "from " + given.from;
+                from.put(iri, "from " + given.from);
             } else {
-                given = new Given(NamesAsLabels.labelFrom(entity.getIRI()), "en", "its name");
-                from = "from its name";
+                given = new Given(NamesAsLabels.labelFrom(IRI.create(iri)), "en", "its name");
+                from.put(iri, "from its name");
+            }
+            if (asked.contains(iri)) {
+                from.put(iri, from.get(iri) + " (ODK's report asks for one: the pattern says something about it)");
             }
             if (given.text.trim().isEmpty()) {
                 throw new IllegalStateException("<" + iri + "> has no label and no name to make one from");
             }
-            manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
-                    entity.getIRI(), literal(factory, given.text, given.lang)));
-            changes.add("label added: <" + iri + "> " + quoted(given.text, given.lang) + " - " + from);
+            if (qualified.containsKey(iri)) {
+                from.put(iri, from.get(iri) + ", with its source in brackets: in the library it shares \""
+                        + given.text + "\" with another term");
+                given = new Given(qualified.get(iri), given.lang, given.from);
+            }
+            planned.put(iri, given);
+            with(byLabel, quoted(given.text, given.lang), iri);
         }
+        // Two terms, one label: the author's label stays, then an OBO term's, then the label the
+        // library gives a term; the others get their source in brackets.
+        for (Set<String> sharing : byLabel.values()) {
+            Set<String> mine = new TreeSet<String>(sharing);
+            mine.retainAll(planned.keySet());
+            if (sharing.size() < 2 || mine.isEmpty()) {
+                continue;
+            }
+            String keep = mine.size() == sharing.size() ? keeperOf(mine, entities, selfNamespace(ontology)) : null;
+            for (String iri : mine) {
+                if (iri.equals(keep)) {
+                    continue;
+                }
+                Given given = planned.get(iri);
+                String text = given.text + " (" + qualifierOf(iri, sharing, entities) + ")";
+                from.put(iri, from.get(iri) + ", with its source in brackets: another term of the pattern is"
+                        + " called \"" + given.text + "\"");
+                planned.put(iri, new Given(text, given.lang, given.from));
+                qualifiedHere.put(iri, text);
+            }
+        }
+        for (Map.Entry<String, Given> term : planned.entrySet()) {
+            Given given = term.getValue();
+            if (term.getKey().equals(self)) {
+                manager.applyChange(new AddOntologyAnnotation(ontology, factory.getOWLAnnotation(
+                        factory.getRDFSLabel(), literal(factory, given.text, given.lang))));
+            } else {
+                manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
+                        IRI.create(term.getKey()), literal(factory, given.text, given.lang)));
+            }
+            changes.add("label added: <" + term.getKey() + "> " + quoted(given.text, given.lang) + " - "
+                    + from.get(term.getKey()));
+        }
+    }
+
+    /**
+     * The IRIs ODK's report asks a label for (ROBOT's missing_label, with ODK's default profile),
+     * the ontology's own aside - asked of the pattern alone: OntoBoard's report reads the imports
+     * too, and what only an import describes (smarthome's GeoSPARQL: its people, its datatypes) is
+     * that import's to label, while a term an import labels and the pattern only describes
+     * (set's hasMember) still needs one in the pattern.
+     */
+    private static Set<String> reportAsksALabelFor(OWLOntology ontology) throws Exception {
+        OWLOntologyManager apart = OWLManager.createOWLOntologyManager();
+        OWLOntology alone = apart.createOntology(ontology.getAxioms(),
+                ontology.getOntologyID().getOntologyIRI().isPresent()
+                        ? ontology.getOntologyID().getOntologyIRI().get()
+                        : IRI.create("urn:ontoboard:pattern-alone"));
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            apart.applyChange(new AddOntologyAnnotation(alone, annotation));
+        }
+        Map<String, String> options = org.obolibrary.robot.ReportOperation.getDefaultOptions();
+        options.put(de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.OPTION_PROFILE,
+                new File(PatternAudit.ODK_PROFILE).getAbsolutePath());
+        Set<String> asked = new TreeSet<String>();
+        for (de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding finding
+                : de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.run(alone, options)) {
+            if ("missing_label".equals(finding.getRule()) && finding.getSubject() != null
+                    && finding.getSubject().matches("^[a-z]+:.*")
+                    && !finding.getSubject().equals(ontologyIri(ontology))) {
+                asked.add(finding.getSubject());
+            }
+        }
+        return asked;
+    }
+
+    private static void with(Map<String, Set<String>> byLabel, String label, String iri) {
+        if (!byLabel.containsKey(label)) {
+            byLabel.put(label, new TreeSet<String>());
+        }
+        byLabel.get(label).add(iri);
+    }
+
+    /**
+     * Of terms that would all get one label from curation, the one that keeps it: an OBO term (a
+     * project that imports its ontology then sees one label), else the one term the library's
+     * authors label, else the one term of the pattern's own namespace, else - of one source - its
+     * one class; null when none stands out.
+     */
+    private String keeperOf(Set<String> terms, Map<String, OWLEntity> entities, String own) {
+        List<String> obo = new ArrayList<String>();
+        List<String> authored = new ArrayList<String>();
+        List<String> ours = new ArrayList<String>();
+        List<String> classes = new ArrayList<String>();
+        Set<String> sources = new HashSet<String>();
+        for (String iri : terms) {
+            if (iri.matches("^http://purl\\.obolibrary\\.org/obo/[A-Za-z]+_\\d+$")) {
+                obo.add(iri);
+            }
+            if (library.containsKey(iri)) {
+                authored.add(iri);
+            }
+            if (own != null && iri.startsWith(own)) {
+                ours.add(iri);
+            }
+            if (entities.get(iri) != null && entities.get(iri).isOWLClass()) {
+                classes.add(iri);
+            }
+            sources.add(sourceOf(iri));
+        }
+        if (!obo.isEmpty()) {
+            return obo.size() == 1 ? obo.get(0) : null;
+        }
+        if (!authored.isEmpty()) {
+            return authored.size() == 1 ? authored.get(0) : null;
+        }
+        if (ours.size() == 1) {
+            return ours.get(0);
+        }
+        return sources.size() == 1 && classes.size() == 1 ? classes.get(0) : null;
+    }
+
+    /** What goes in brackets: the term's source - or its kind, when another of the same source shares the label. */
+    private static String qualifierOf(String iri, Set<String> sharing, Map<String, OWLEntity> entities) {
+        String source = sourceOf(iri);
+        for (String other : sharing) {
+            if (!other.equals(iri) && sourceOf(other).equals(source)) {
+                OWLEntity entity = entities.get(iri);
+                return entity == null ? "term" : entity.isOWLClass() ? "class" : entity.isOWLNamedIndividual()
+                        ? "individual" : entity.isOWLDatatype() ? "datatype" : "property";
+            }
+        }
+        return source;
+    }
+
+    /** Short names of the vocabularies the library uses most. */
+    private static final String[][] SOURCES = {
+        {"http://www.w3.org/2004/02/skos/core#", "SKOS"},
+        {"http://purl.org/dc/elements/1.1/", "Dublin Core"},
+        {"http://purl.org/dc/terms/", "DC terms"},
+        {"http://schema.org/", "schema.org"},
+        {"https://schema.org/", "schema.org"},
+        {"http://www.w3.org/2006/time#", "OWL-Time"},
+        {"http://xmlns.com/foaf/0.1/", "FOAF"},
+        {"http://www.w3.org/ns/prov#", "PROV"},
+        {"http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#", "DUL"},
+    };
+
+    /**
+     * A term's source, as a reader knows it: an OBO term's ID space (IAO), a well-known
+     * vocabulary's name (SKOS, DC terms), else its namespace's last part (classification,
+     * trajectory), else its host (prez.dev).
+     */
+    static String sourceOf(String iri) {
+        Matcher obo = Pattern.compile("^http://purl\\.obolibrary\\.org/obo/([A-Za-z]+)_\\d+$").matcher(iri);
+        if (obo.matches()) {
+            return obo.group(1);
+        }
+        for (String[] source : SOURCES) {
+            if (iri.startsWith(source[0])) {
+                return source[1];
+            }
+        }
+        String namespace = iri.substring(0, Math.max(0, Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'))))
+                .replaceAll("[#/]+$", "");
+        String last = namespace.substring(namespace.lastIndexOf('/') + 1).replaceAll("\\.(owl|ttl|rdf|xml)$", "");
+        if (last.isEmpty() || last.matches("[0-9.]+")) {
+            String host = namespace.replaceAll("^[a-z]+://", "");
+            return host.contains("/") ? host.substring(0, host.indexOf('/')) : host;
+        }
+        return last;
     }
 
     // --- 8. refusals ---------------------------------------------------------------------------
 
     private static void refuseErrors(String id, OWLOntology ontology) {
         Set<String> unread = new TreeSet<String>();
-        for (OWLEntity entity : ontology.getSignature()) {
+        for (OWLEntity entity : ownSignature(ontology)) {
             if (entity.getIRI().toString().startsWith(ERROR)) {
                 unread.add(entity.getIRI().toString());
             }
@@ -726,6 +1025,18 @@ final class PatternCuration {
                     byLabel.put(key, new TreeSet<String>());
                 }
                 byLabel.get(key).add(assertion.getSubject().toString());
+            }
+        }
+        String self = ontologyIri(ontology);
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (self != null && annotation.getProperty().getIRI().equals(RDFS_LABEL)
+                    && annotation.getValue() instanceof OWLLiteral) {
+                OWLLiteral value = (OWLLiteral) annotation.getValue();
+                String key = quoted(value.getLiteral(), value.getLang());
+                if (!byLabel.containsKey(key)) {
+                    byLabel.put(key, new TreeSet<String>());
+                }
+                byLabel.get(key).add(self);
             }
         }
         StringBuilder twice = new StringBuilder();
@@ -760,6 +1071,10 @@ final class PatternCuration {
         Set<OWLAxiom> now = withoutAnnotations(curated.getAxioms());
         Set<String> dropped = new TreeSet<String>();
         for (OWLAxiom axiom : ttl) {
+            // A blank node is a new one on every reading, so an axiom about one never matches.
+            if (!axiom.getAnonymousIndividuals().isEmpty()) {
+                continue;
+            }
             if (!owlAsItWas.contains(axiom) && !now.contains(axiom)) {
                 dropped.add(axiom.toString());
             }
@@ -847,9 +1162,16 @@ final class PatternCuration {
             File owlFile, File ttlFile) throws Exception {
         RDFXMLDocumentFormat rdfxml = new RDFXMLDocumentFormat();
         TurtleDocumentFormat turtle = new TurtleDocumentFormat();
+        // The source's prefixes one by one, never its default: re-binding a copied ":" leaves the
+        // OWL API 4.5.9 Turtle writer abbreviating the old default namespace's terms as ":name".
         if (format instanceof PrefixDocumentFormat) {
-            rdfxml.copyPrefixesFrom((PrefixDocumentFormat) format);
-            turtle.copyPrefixesFrom((PrefixDocumentFormat) format);
+            for (Map.Entry<String, String> prefix
+                    : ((PrefixDocumentFormat) format).getPrefixName2PrefixMap().entrySet()) {
+                if (!":".equals(prefix.getKey()) && !prefix.getKey().isEmpty()) {
+                    rdfxml.setPrefix(prefix.getKey(), prefix.getValue());
+                    turtle.setPrefix(prefix.getKey(), prefix.getValue());
+                }
+            }
         }
         for (String[] prefix : new String[][] {{"skos:", SKOS}, {"dcterms:", DCTERMS}}) {
             if (!rdfxml.getPrefixName2PrefixMap().containsValue(prefix[1])) {
@@ -857,8 +1179,67 @@ final class PatternCuration {
                 turtle.setPrefix(prefix[0], prefix[1]);
             }
         }
+        // Never the source's default prefix: a stale xmlns default (digitalvideo's names an
+        // "untitled-ontology-17") makes the OWL API's Turtle writer abbreviate the pattern's own
+        // terms into that namespace, so pattern.ttl named other terms than pattern.owl.
+        String own = ownNamespace(ontology);
+        if (own != null) {
+            rdfxml.setDefaultPrefix(own);
+            turtle.setDefaultPrefix(own);
+        }
         writeLike(owlFile, render(manager, ontology, rdfxml));
         writeLike(ttlFile, render(manager, ontology, turtle));
+    }
+
+    /**
+     * The pattern's own namespace: of its terms' namespaces, one that extends the ontology's IRI,
+     * else the one most of them share - a well-known vocabulary or OBO never; the ontology's IRI
+     * with "#" when it has no term of its own.
+     */
+    private static String ownNamespace(OWLOntology ontology) {
+        Map<String, Integer> counts = new TreeMap<String, Integer>();
+        for (OWLEntity entity : ownSignature(ontology)) {
+            String iri = entity.getIRI().toString();
+            if (isBuiltIn(entity) || iri.startsWith("http://purl.obolibrary.org/obo/") || isVocabulary(iri)) {
+                continue;
+            }
+            int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+            if (cut > 0) {
+                counts.merge(iri.substring(0, cut + 1), 1, Integer::sum);
+            }
+        }
+        String self = ontologyIri(ontology);
+        String best = null;
+        for (boolean extendsSelf : new boolean[] {true, false}) {
+            for (Map.Entry<String, Integer> namespace : counts.entrySet()) {
+                if (extendsSelf && (self == null || !namespace.getKey().startsWith(self))) {
+                    continue;
+                }
+                if (best == null || namespace.getValue() > counts.get(best)) {
+                    best = namespace.getKey();
+                }
+            }
+            if (best != null) {
+                return best;
+            }
+        }
+        return self == null ? null : self + "#";
+    }
+
+    /** The namespace of the pattern's own terms when it extends the ontology's IRI, else null. */
+    private static String selfNamespace(OWLOntology ontology) {
+        String self = ontologyIri(ontology);
+        String own = ownNamespace(ontology);
+        return self != null && own != null && own.startsWith(self) ? own : null;
+    }
+
+    private static boolean isVocabulary(String iri) {
+        for (String[] source : SOURCES) {
+            if (iri.startsWith(source[0])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String render(OWLOntologyManager manager, OWLOntology ontology,
@@ -919,6 +1300,23 @@ final class PatternCuration {
                 IRI.create(file.getAbsoluteFile().toURI()), null, null));
     }
 
+    /**
+     * The terms the pattern's own file names: its axioms' and its header's. Not the OWL API's
+     * getSignature(), which - once an import is loaded - can count every annotation property the
+     * import declares (actingfor read with the ODP annotation schema had its extractedFrom, which
+     * actingfor never uses), so a second curation declared and labelled terms the first had not.
+     */
+    private static Set<OWLEntity> ownSignature(OWLOntology ontology) {
+        Set<OWLEntity> named = new TreeSet<OWLEntity>();
+        for (OWLAxiom axiom : ontology.getAxioms()) {
+            named.addAll(axiom.getSignature());
+        }
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            named.addAll(annotation.getSignature());
+        }
+        return named;
+    }
+
     private static Set<OWLAxiom> withoutAnnotations(Set<OWLAxiom> axioms) {
         Set<OWLAxiom> bare = new HashSet<OWLAxiom>();
         for (OWLAxiom axiom : axioms) {
@@ -959,8 +1357,8 @@ final class PatternCuration {
      * The label the library's patterns give each term, as curation keeps it: per pattern the
      * rdfs:label that stays; of several patterns, the label most of them give, then the first.
      */
-    static Map<String, Given> libraryLabels(File patternsDir, Map<String, Given> known, File stubs)
-            throws Exception {
+    static Map<String, Given> libraryLabels(File patternsDir, Map<String, Given> known, List<Fix> fixes,
+            File stubs) throws Exception {
         Map<String, Map<String, Set<String>>> votes = new TreeMap<String, Map<String, Set<String>>>();
         PatternCuration reader = new PatternCuration(Collections.<String, Given>emptyMap(), known,
                 Licences.none(), Collections.<Fix>emptyList(), stubs, iri -> null);
@@ -987,7 +1385,14 @@ final class PatternCuration {
                 if (!keeper.english()) {
                     continue;
                 }
-                String key = keeper.lang + "\t" + keeper.text;
+                String text = keeper.text;
+                for (Fix fix : fixes) {
+                    if (fix.pattern.equals(directory.getName()) && "rdfs:label".equals(fix.property)
+                            && fix.iri.equals(subject.getKey()) && fix.old.equals(keeper.literal.getLiteral())) {
+                        text = fix.neu;
+                    }
+                }
+                String key = keeper.lang + "\t" + text;
                 if (!votes.containsKey(subject.getKey())) {
                     votes.put(subject.getKey(), new TreeMap<String, Set<String>>());
                 }
@@ -1000,17 +1405,40 @@ final class PatternCuration {
         }
         Map<String, Given> labels = new HashMap<String, Given>();
         for (Map.Entry<String, Map<String, Set<String>>> term : votes.entrySet()) {
-            String best = null;
-            for (Map.Entry<String, Set<String>> label : term.getValue().entrySet()) {
-                if (best == null || label.getValue().size() > term.getValue().get(best).size()) {
-                    best = label.getKey();
+            final Map<String, Set<String>> given = term.getValue();
+            List<String> candidates = new ArrayList<String>(given.keySet());
+            // Most patterns first; then tagged @en; then in words rather than a name ("has part",
+            // not "hasPart"); then alphabetically.
+            Collections.sort(candidates, new Comparator<String>() {
+                @Override
+                public int compare(String a, String b) {
+                    int byCount = given.get(b).size() - given.get(a).size();
+                    if (byCount != 0) {
+                        return byCount;
+                    }
+                    int byTag = tagRank(a.split("\t", 2)[0]) - tagRank(b.split("\t", 2)[0]);
+                    if (byTag != 0) {
+                        return byTag;
+                    }
+                    int byWords = (inWords(a.split("\t", 2)[1]) ? 0 : 1) - (inWords(b.split("\t", 2)[1]) ? 0 : 1);
+                    return byWords != 0 ? byWords : a.compareTo(b);
                 }
-            }
+            });
+            String best = candidates.get(0);
             String[] langAndText = best.split("\t", 2);
             labels.put(term.getKey(), new Given(langAndText[1], langAndText[0],
                     "pattern " + term.getValue().get(best).iterator().next()));
         }
         return labels;
+    }
+
+    private static int tagRank(String lang) {
+        return "en".equalsIgnoreCase(lang) ? 0 : lang.isEmpty() ? 2 : 1;
+    }
+
+    /** "has part", "Agent" - not "hasPart". */
+    private static boolean inWords(String text) {
+        return text.contains(" ") || text.length() < 2 || !text.substring(1).matches(".*[A-Z].*");
     }
 
     /** The whole library, or the patterns named: see the class comment. */
@@ -1024,7 +1452,7 @@ final class PatternCuration {
         List<Fix> fixes = Fix.read(new File(patterns, "curation-fixes.tsv"));
         Licences licences = Licences.read(new File(patterns, "licences.tsv"));
         Map<String, Given> known = knownLabels(new File("src/test/resources/pattern/known-labels.tsv"));
-        Map<String, Given> library = libraryLabels(patterns, known, stubs);
+        Map<String, Given> library = libraryLabels(patterns, known, fixes, stubs);
         final Map<String, File> libraryCopies = new HashMap<String, File>();
         for (File directory : patterns.listFiles()) {
             File metadata = new File(directory, "metadata.json");
@@ -1044,19 +1472,25 @@ final class PatternCuration {
             File copy = new File(fetched, PatternAudit.fileNameFor(iri));
             return copy.isFile() ? copy : libraryCopies.get(iri);
         });
+        List<File> everyPattern = new ArrayList<File>();
+        for (File directory : patterns.listFiles()) {
+            if (new File(directory, "pattern.owl").isFile()) {
+                everyPattern.add(directory);
+            }
+        }
+        Collections.sort(everyPattern);
         List<File> directories = new ArrayList<File>();
         if (args.length > 3) {
             for (int i = 3; i < args.length; i++) {
                 directories.add(new File(patterns, args[i]));
             }
         } else {
-            for (File directory : patterns.listFiles()) {
-                if (new File(directory, "pattern.owl").isFile()) {
-                    directories.add(directory);
-                }
-            }
-            Collections.sort(directories);
+            directories.addAll(everyPattern);
         }
+        Map<String, String> qualifiedLabels = curation.qualifiedIn(everyPattern);
+        System.out.println(qualifiedLabels.size() + " terms get their source in brackets in every pattern: "
+                + qualifiedLabels);
+        curation = curation.withQualified(qualifiedLabels);
         Map<String, String> refused = new TreeMap<String, String>();
         int changed = 0;
         for (File directory : directories) {
