@@ -717,8 +717,10 @@ public final class ReleaseRun {
         commands.add(tagMessageFile == null
                 ? Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
                         ontologyId + " " + version)
-                : Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-F",
-                        tagMessageFile));
+                // Verbatim: git's own cleanup takes every line starting "#" for a comment,
+                // and the record's headings are such lines (1.155.0).
+                : Arrays.asList("git", "tag", "-a", GitTags.tagFor(version),
+                        "--cleanup=verbatim", "-F", tagMessageFile));
 
         GitRepo.Status status = GitRepo.parseStatus(gitStatus);
         List<String> leftOut = new ArrayList<String>();

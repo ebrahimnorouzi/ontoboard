@@ -263,7 +263,8 @@ class OdkReleaseTest {
                         "eggboil-base.owl"),
                 Arrays.asList("git", "add", "--", "releases/1.0.0"),
                 Arrays.asList("git", "commit", "-m", "release(1.0.0)"),
-                Arrays.asList("git", "tag", "-a", "v1.0.0", "-F", "releases/1.0.0/RELEASE.md")),
+                Arrays.asList("git", "tag", "-a", "v1.0.0", "--cleanup=verbatim", "-F",
+                        "releases/1.0.0/RELEASE.md")),
                 gitRan);
         assertTrue(outcome.isCommitted());
         assertEquals("v1.0.0", outcome.getTag());
@@ -493,7 +494,7 @@ class OdkReleaseTest {
                 + ":", "git add -u -- .",
                 "git add -f -- eggboil.obo eggboil.owl eggboil-base.owl",
                 "git add -- releases/1.0.0", "git commit -m \"release(1.0.0)\"",
-                "git tag -a v1.0.0 -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
+                "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 outcome.getLater());
         assertFalse(outcome.getSummary().contains("git add"), outcome.getSummary());
         assertFalse(outcome.getSummary().contains("\n"), outcome.getSummary());
@@ -548,7 +549,7 @@ class OdkReleaseTest {
         assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile(), "the release itself "
                 + "is there");
         assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
-                "git commit -m \"release(1.0.0)\"", "git tag -a v1.0.0 -F releases/1.0.0/RELEASE.md",
+                "git commit -m \"release(1.0.0)\"", "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md",
                 "git push --follow-tags"), outcome.getLater());
     }
 
@@ -883,7 +884,7 @@ class OdkReleaseTest {
         assertTrue(outcome.getFailure().contains("no tag message"), "git's own reason: "
                 + outcome.getFailure());
         assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
-                "git tag -a v1.0.0 -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
+                "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 outcome.getLater());
         assertTrue(outcome.getFailure().contains("end of the log"), outcome.getFailure());
     }

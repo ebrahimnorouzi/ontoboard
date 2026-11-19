@@ -120,8 +120,8 @@ class ReleaseByItselfTest {
                 "the tests ran as part of it: " + log);
         assertTrue(outcome.isCommitted());
         assertEquals("v1.0.0", outcome.getTag());
-        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-F",
-                "releases/1.0.0/RELEASE.md")), gitRan.toString());
+        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0",
+                "--cleanup=verbatim", "-F", "releases/1.0.0/RELEASE.md")), gitRan.toString());
     }
 
     /**
