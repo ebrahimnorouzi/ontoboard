@@ -536,7 +536,7 @@ public class SchemaGraph extends mxGraph {
      * them. As wide as its longest row, up to {@link #WIDEST}; a longer row is cut short with an
      * ellipsis.
      */
-    double[] fittedSize(String label, String style, java.util.List<String> rows) {
+    public double[] fittedSize(String label, String style, java.util.List<String> rows) {
         double[] fits = fittedSize(label, style);
         if (rows == null || rows.isEmpty()) {
             return fits;

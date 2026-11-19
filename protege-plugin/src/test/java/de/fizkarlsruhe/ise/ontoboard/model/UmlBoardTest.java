@@ -81,6 +81,99 @@ class UmlBoardTest {
         }
     }
 
+    private static final String I = "http://example.org/imported#";
+
+    /**
+     * The same ontology with two properties of its own nothing uses - nickname, knows - importing
+     * one whose two properties nothing uses either.
+     */
+    private static OWLOntology withAnImport() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        manager.loadOntologyFromOntologyDocument(new StringDocumentSource(
+                "Prefix(:=<" + I + ">)\nOntology(<http://example.org/imported>\n"
+                + "Declaration(DataProperty(:borrowed)) Declaration(ObjectProperty(:lent))\n)"));
+        return manager.loadOntologyFromOntologyDocument(new StringDocumentSource(
+                "Prefix(:=<" + U + ">)\nPrefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)\n"
+                + "Ontology(<http://example.org/u>\nImport(<http://example.org/imported>)\n"
+                + "Declaration(Class(:Person)) Declaration(Class(:Pizza))\n"
+                + "Declaration(DataProperty(:name)) Declaration(DataProperty(:nickname))\n"
+                + "Declaration(ObjectProperty(:likes)) Declaration(ObjectProperty(:knows))\n"
+                + "DataPropertyDomain(:name :Person) DataPropertyRange(:name xsd:string)\n"
+                + "ObjectPropertyDomain(:likes :Person) ObjectPropertyRange(:likes :Pizza)\n"
+                + ")"));
+    }
+
+    /** Every term, as a board that shows every term has them: the imports' too. */
+    private static java.util.Set<String> everyTerm(OWLOntology ontology) {
+        return OntologyProjection.termIdentifiers(ontology,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+    }
+
+    private static java.util.Set<String> ids(Projection projection) {
+        java.util.Set<String> ids = new HashSet<String>();
+        for (CanvasNode node : projection.getNodes()) {
+            ids.add(node.getId());
+        }
+        return ids;
+    }
+
+    @Test
+    void aBoardOfEveryTermDrawsNoPropertyBox() throws Exception {
+        OWLOntology ontology = withAnImport();
+
+        Projection projection = UmlBoard.draw(ontology, everyTerm(ontology), false, false);
+
+        for (CanvasNode node : projection.getNodes()) {
+            assertFalse(node.getKind() == NodeKind.OBJECT_PROPERTY || node.getKind() == NodeKind.DATA_PROPERTY,
+                    "a property box: " + node);
+        }
+        assertEquals(Collections.singletonList("name : string"), rowsOf(projection, U + "Person"));
+        boolean arrow = false;
+        for (CanvasEdge edge : projection.getEdges()) {
+            arrow |= edge.getSourceId().equals(U + "Person") && edge.getTargetId().equals(U + "Pizza");
+        }
+        assertTrue(arrow, "likes is an arrow from Person to Pizza: " + projection.getEdges());
+    }
+
+    @Test
+    void theOpenOntologysUnusedPropertiesAreDrawnWhenAskedFor() throws Exception {
+        OWLOntology ontology = withAnImport();
+        java.util.Set<String> every = everyTerm(ontology);
+
+        assertEquals(new HashSet<String>(Arrays.asList(U + "nickname", U + "knows")),
+                UmlBoard.unused(UmlBoard.draw(ontology, every, false, false), ontology, every));
+        java.util.Set<String> shown = ids(UmlBoard.draw(ontology, every, false, true));
+        assertTrue(shown.contains(U + "nickname") && shown.contains(U + "knows"), shown.toString());
+        assertFalse(shown.contains(I + "borrowed") || shown.contains(I + "lent"),
+                "an import's unused property is never drawn: " + shown);
+        assertFalse(shown.contains(U + "name") || shown.contains(U + "likes"),
+                "a property drawn as a row or an arrow is not a box as well: " + shown);
+    }
+
+    @Test
+    void theLayerSwitchesTakeTheRowsAndTheArrows() throws Exception {
+        OWLOntology ontology = withAnImport();
+        Projection projection = UmlBoard.draw(ontology, everyTerm(ontology), false, false);
+        assertFalse(rowsOf(projection, U + "Person").isEmpty(), "Person has its rows to take");
+        assertTrue(likesArrowIn(projection), "and likes its arrow: " + projection.getEdges());
+
+        assertTrue(rowsOf(UmlBoard.withoutRows(projection), U + "Person").isEmpty());
+        assertFalse(likesArrowIn(UmlBoard.withoutObjectProperties(projection, ontology)),
+                "likes's arrow is left");
+        assertTrue(likesArrowIn(UmlBoard.withoutRows(projection)), "the rows' switch leaves the arrows");
+        assertFalse(rowsOf(UmlBoard.withoutObjectProperties(projection, ontology), U + "Person").isEmpty(),
+                "and the arrows' switch the rows");
+    }
+
+    private static boolean likesArrowIn(Projection projection) {
+        for (CanvasEdge edge : projection.getEdges()) {
+            if (edge.getSourceId().equals(U + "Person") && edge.getTargetId().equals(U + "Pizza")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Test
     void anObjectPropertyStaysItsArrow() throws Exception {
         Projection projection = drawn(ontology());

@@ -157,6 +157,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     static final String SHOW_RULES = "ontoboard.canvas.show.rules";
     static final String FOCUS_PREFERENCE = "ontoboard.canvas.focus";
 
+    /**
+     * How properties are drawn (1.155.0): {@link #PROPERTIES_AS_ROWS}, UML-like - a data property
+     * a row in its classes' boxes, an object property its arrows - the default; or
+     * {@link #PROPERTIES_AS_BOXES}, every property a box of its own, as before.
+     */
+    static final String PROPERTIES_PREFERENCE = "ontoboard.canvas.properties";
+    static final String PROPERTIES_AS_ROWS = "rows";
+    static final String PROPERTIES_AS_BOXES = "boxes";
+
+    /** Whether a UML-like board draws, as boxes, the open ontology's own properties it shows nowhere else. */
+    static final String SHOW_UNUSED_PROPERTIES = "ontoboard.canvas.show.unusedProperties";
+
     /** Whether selecting a term brings it and its neighbours forward and fades the rest. */
     private boolean focusOnSelection = true;
 
@@ -3634,7 +3646,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             java.util.Set<String> framed = new java.util.HashSet<String>(allOfThem);
             framed.addAll(staying);
             beside = CanvasLayouts.besideTheirClass(
-                    OntologyProjection.project(ontology, drawn, showExpressions), graph, framed);
+                    drawBoard(ontology, drawn, showExpressions, Drawing.fromPreferences()), graph,
+                    framed);
             for (java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item> items
                     : beside.values()) {
                 for (de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item item : items) {
@@ -4591,6 +4604,40 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                                 + "not drawn.");
             });
             menu.add(expressions);
+            // How properties are drawn (1.155.0): UML-like unless asked for as boxes.
+            final java.util.prefs.Preferences boardPreferences =
+                    java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+            final Drawing drawing = Drawing.fromPreferences();
+            final javax.swing.JCheckBoxMenuItem unused =
+                    new javax.swing.JCheckBoxMenuItem("Show unused properties", drawing.showUnused);
+            unused.setToolTipText("Draw, as boxes, this ontology's own properties that no row and "
+                    + "no arrow on the board shows.");
+            unused.setEnabled(!drawing.asBoxes);
+            unused.addActionListener(b -> {
+                boardPreferences.putBoolean(SHOW_UNUSED_PROPERTIES, unused.isSelected());
+                refresh();
+                setStatus(unused.isSelected()
+                        ? "This ontology's properties that no row and no arrow shows are drawn "
+                                + "as boxes."
+                        : "Only the properties a row or an arrow shows are on the board.");
+            });
+            final javax.swing.JCheckBoxMenuItem boxes =
+                    new javax.swing.JCheckBoxMenuItem("Properties as boxes", drawing.asBoxes);
+            boxes.setToolTipText("Draw every property as a box of its own, as before 1.155.0. "
+                    + "Off, the board is drawn UML-like: a data property is a row in its class's "
+                    + "box, an object property is its arrows.");
+            boxes.addActionListener(b -> {
+                boardPreferences.put(PROPERTIES_PREFERENCE,
+                        boxes.isSelected() ? PROPERTIES_AS_BOXES : PROPERTIES_AS_ROWS);
+                refresh();
+                setStatus(boxes.isSelected()
+                        ? "Every property is drawn as a box of its own. Arrange puts them in "
+                                + "their frames."
+                        : "The board is drawn UML-like: a data property is a row in its class's "
+                                + "box, an object property is its arrows.");
+            });
+            menu.add(boxes);
+            menu.add(unused);
             javax.swing.JMenu layers = new javax.swing.JMenu("Show on the board");
             layers.add(layerSwitch("Object properties", SHOW_OBJECT_PROPERTIES));
             layers.add(layerSwitch("Data properties", SHOW_DATA_PROPERTIES));
@@ -5406,9 +5453,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             saveLayoutTo(layoutFile);
         }
 
-        Projection projection = OntologyProjection.project(
-                getOWLModelManager().getActiveOntology(),
-                drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions);
+        Drawing drawing = Drawing.fromPreferences();
+        Projection projection = drawBoard(getOWLModelManager().getActiveOntology(),
+                drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions, drawing);
+        if (!drawing.asBoxes) {
+            dropEmptyPropertyFrames(layout.frames, projection);
+        }
         projection = withInferences(projection);
         if (!java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
                 .getBoolean(SHOW_RULES, true)) {
@@ -5624,12 +5674,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (ontology == null || classes.isEmpty()) {
             return;
         }
-        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : OntologyProjection.project(
-                ontology, new java.util.HashSet<String>(classes), false).getNodes()) {
+        Projection classesDrawn = OntologyProjection.project(ontology,
+                new java.util.HashSet<String>(classes), false);
+        // With the rows a UML-like board draws in them: a pattern's frame is planned round boxes
+        // as tall as they will be.
+        Drawing drawing = Drawing.fromPreferences();
+        if (!drawing.asBoxes && drawing.dataLayer) {
+            classesDrawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withRows(classesDrawn,
+                    ontology);
+        }
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : classesDrawn.getNodes()) {
             String drawn = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(node.getCurie(),
                     node.getLabel(), node.getId());
             sizes.put(node.getId(), graph.fittedSize(drawn,
-                    de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS));
+                    de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS, node.getRows()));
             names.put(node.getId(), drawn);
         }
     }
@@ -5766,6 +5824,81 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return !Boolean.TRUE.equals(layout.arrangedByHand)
                 && Boolean.TRUE.equals(layout.showsEverything)
                 && membership.size() <= MOST_ARRANGED_BY_ITSELF;
+    }
+
+    /**
+     * How a board draws its properties (1.155.0): UML-like - a data property a row in its
+     * classes' boxes, an object property its arrows - or every property a box of its own, as
+     * before; on a UML-like board, whether the open ontology's own properties nothing on it shows
+     * are drawn as boxes too; and the two property layer switches.
+     */
+    static final class Drawing {
+        final boolean asBoxes;
+        final boolean showUnused;
+        final boolean dataLayer;
+        final boolean objectLayer;
+
+        Drawing(boolean asBoxes, boolean showUnused, boolean dataLayer, boolean objectLayer) {
+            this.asBoxes = asBoxes;
+            this.showUnused = showUnused;
+            this.dataLayer = dataLayer;
+            this.objectLayer = objectLayer;
+        }
+
+        /** As the user's preferences say. */
+        static Drawing fromPreferences() {
+            java.util.prefs.Preferences preferences =
+                    java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+            return new Drawing(
+                    PROPERTIES_AS_BOXES.equals(preferences.get(PROPERTIES_PREFERENCE, PROPERTIES_AS_ROWS)),
+                    preferences.getBoolean(SHOW_UNUSED_PROPERTIES, false),
+                    preferences.getBoolean(SHOW_DATA_PROPERTIES, true),
+                    preferences.getBoolean(SHOW_OBJECT_PROPERTIES, true));
+        }
+    }
+
+    /**
+     * The board's projection of these members, drawn as {@code drawing} says. As boxes it is
+     * 1.154.0's board - the layer switches have taken their properties' boxes out of the members
+     * already. UML-like, they take the rows and the object properties' arrows as well.
+     */
+    static Projection drawBoard(OWLOntology ontology, java.util.Set<String> members,
+            boolean showExpressions, Drawing drawing) {
+        if (drawing.asBoxes) {
+            return OntologyProjection.project(ontology, members, showExpressions);
+        }
+        Projection drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.draw(ontology, members,
+                showExpressions, drawing.showUnused);
+        if (!drawing.dataLayer) {
+            drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withoutRows(drawn);
+        }
+        if (!drawing.objectLayer) {
+            drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withoutObjectProperties(drawn,
+                    ontology);
+        }
+        return drawn;
+    }
+
+    /**
+     * Takes the property sections' frames a UML-like board has nothing for (1.155.0): "Object
+     * properties" when no object property is a box on it, "Data properties" when no data property
+     * is. A board arranged by 1.154.0 kept its property boxes in them, and drawn UML-like they
+     * would stand empty. Returns whether one went.
+     */
+    static boolean dropEmptyPropertyFrames(java.util.List<CanvasLayout.FrameLayout> frames,
+            Projection drawn) {
+        boolean objectBoxes = false;
+        boolean dataBoxes = false;
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : drawn.getNodes()) {
+            objectBoxes |= node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.OBJECT_PROPERTY;
+            dataBoxes |= node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.DATA_PROPERTY;
+        }
+        final String objects = CanvasLayouts.SECTION_PREFIX + "object-properties";
+        final String data = CanvasLayouts.SECTION_PREFIX + "data-properties";
+        final boolean keepObjects = objectBoxes;
+        final boolean keepData = dataBoxes;
+        return frames.removeIf(frame -> frame != null && frame.id != null
+                && (frame.id.equals(objects) && !keepObjects || frame.id.equals(data) && !keepData));
     }
 
     /** The members the layer switches and folded classes let through. */

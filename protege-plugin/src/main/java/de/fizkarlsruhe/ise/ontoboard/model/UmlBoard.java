@@ -26,7 +26,9 @@ import org.semanticweb.owlapi.model.OWLDataSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLHasKeyAxiom;
 import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLNamedIndividual;
 import org.semanticweb.owlapi.model.OWLObjectIntersectionOf;
+import org.semanticweb.owlapi.model.OWLObjectPropertyExpression;
 import org.semanticweb.owlapi.model.OWLObjectUnionOf;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
@@ -37,7 +39,8 @@ import org.semanticweb.owlapi.model.parameters.Imports;
  * are rows in its box, {@code name : datatype [n..m]}, a value it is given {@code name = value},
  * and its keys a row of their own; the datatype boxes and the lines to them that said the same
  * thing go. An object property stays what the board already draws for it: its restrictions'
- * arrows, and an arrow from its domain to its range.
+ * arrows, and an arrow from its domain to its range. No property is a box of its own, unless the
+ * open ontology's own properties nothing on the board shows are asked for.
  *
  * <p>Which data properties a class holds: the open ontology's own whose domain is the class - a
  * named class or a union of named classes - and every one an axiom about the class restricts,
@@ -84,6 +87,154 @@ public final class UmlBoard {
         }
     }
 
+    /** What one class's box holds: a row for each of its data properties, and its keys. */
+    private static final class Rows {
+        final Map<OWLDataProperty, Row> properties = new HashMap<OWLDataProperty, Row>();
+        final List<String> keys = new ArrayList<String>();
+        /** The properties the keys name. */
+        final Set<String> keyed = new HashSet<String>();
+    }
+
+    /**
+     * The board drawn UML-like from its members: no property is a box of its own - a data
+     * property is a row in its classes' boxes, an object property its arrows. With
+     * {@code showUnused}, the open ontology's own properties among the members that no row and no
+     * arrow shows are drawn as boxes as well, so every one of them can still be found on the board.
+     */
+    public static Projection draw(OWLOntology ontology, Set<String> members, boolean showExpressions,
+            boolean showUnused) {
+        if (ontology == null) {
+            return OntologyProjection.project(ontology, members, showExpressions);
+        }
+        Set<String> drawnMembers = new HashSet<String>(members);
+        drawnMembers.removeAll(propertiesAmong(ontology, members));
+        Projection drawn = withRows(OntologyProjection.project(ontology, drawnMembers, showExpressions),
+                ontology);
+        if (!showUnused) {
+            return drawn;
+        }
+        Set<String> unused = unused(drawn, ontology, members);
+        if (unused.isEmpty()) {
+            return drawn;
+        }
+        drawnMembers.addAll(unused);
+        return withRows(OntologyProjection.project(ontology, drawnMembers, showExpressions), ontology);
+    }
+
+    /**
+     * The open ontology's own properties among the members that the board as drawn does not
+     * show: no row on a class's box, no arrow - a restriction's, a domain to a range, an
+     * assertion's - and no value of an individual on the board.
+     */
+    public static Set<String> unused(Projection drawn, OWLOntology ontology, Set<String> members) {
+        Set<String> unused = new HashSet<String>(propertiesAmong(ontology, members));
+        unused.retainAll(OntologyProjection.termIdentifiers(ontology, Imports.EXCLUDED));
+        if (unused.isEmpty()) {
+            return unused;
+        }
+        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+        Set<String> shown = new HashSet<String>();
+        for (CanvasEdge edge : drawn.getEdges()) {
+            String property = propertyOf(edge.getId());
+            if (property != null) {
+                shown.add(property);
+            }
+        }
+        for (CanvasNode node : drawn.getNodes()) {
+            if (node.getKind() == NodeKind.CLASS) {
+                Rows rows = rowsOf(ontology, factory.getOWLClass(IRI.create(node.getId())));
+                for (OWLDataProperty property : rows.properties.keySet()) {
+                    shown.add(property.getIRI().toString());
+                }
+                shown.addAll(rows.keyed);
+            } else if (node.getKind() == NodeKind.INDIVIDUAL) {
+                // A value is a box of its own off the individual, its line named by the property;
+                // the line's id does not say which.
+                OWLNamedIndividual individual = factory.getOWLNamedIndividual(IRI.create(node.getId()));
+                for (OWLOntology part : ontology.getImportsClosure()) {
+                    for (org.semanticweb.owlapi.model.OWLDataPropertyAssertionAxiom axiom
+                            : part.getDataPropertyAssertionAxioms(individual)) {
+                        if (!axiom.getProperty().isAnonymous()) {
+                            shown.add(axiom.getProperty().asOWLDataProperty().getIRI().toString());
+                        }
+                    }
+                    for (org.semanticweb.owlapi.model.OWLNegativeDataPropertyAssertionAxiom axiom
+                            : part.getNegativeDataPropertyAssertionAxioms(individual)) {
+                        if (!axiom.getProperty().isAnonymous()) {
+                            shown.add(axiom.getProperty().asOWLDataProperty().getIRI().toString());
+                        }
+                    }
+                }
+            }
+        }
+        unused.removeAll(shown);
+        return unused;
+    }
+
+    /** The board without its rows: the Data properties layer switched off. */
+    public static Projection withoutRows(Projection drawn) {
+        List<CanvasNode> nodes = new ArrayList<CanvasNode>();
+        for (CanvasNode node : drawn.getNodes()) {
+            nodes.add(node.getRows().isEmpty() ? node
+                    : node.withRows(Collections.<String>emptyList()));
+        }
+        return new Projection(nodes, drawn.getEdges());
+    }
+
+    /** The board without the arrows that stand for object properties: that layer switched off. */
+    public static Projection withoutObjectProperties(Projection drawn, OWLOntology ontology) {
+        if (ontology == null) {
+            return drawn;
+        }
+        List<CanvasEdge> edges = new ArrayList<CanvasEdge>();
+        for (CanvasEdge edge : drawn.getEdges()) {
+            String property = propertyOf(edge.getId());
+            if (property == null || !ontology.containsObjectPropertyInSignature(IRI.create(property),
+                    Imports.INCLUDED)) {
+                edges.add(edge);
+            }
+        }
+        return new Projection(drawn.getNodes(), edges);
+    }
+
+    /**
+     * The property a line stands for: {@link PropertyEdgeId#propertyIn}, and an assertion's line
+     * between two individuals, {@code opa|subject|property|object} or its negation.
+     */
+    static String propertyOf(String edgeId) {
+        String property = PropertyEdgeId.propertyIn(edgeId);
+        if (property != null || edgeId == null) {
+            return property;
+        }
+        String[] parts = edgeId.split("\\|", -1);
+        if ((parts[0].equals("opa") || parts[0].equals("nopa")) && parts.length == 4
+                && !parts[2].isEmpty()) {
+            return parts[2];
+        }
+        return null;
+    }
+
+    /**
+     * The members that are properties - object or data - and nothing else: a term punned as a
+     * class or an individual as well keeps its box.
+     */
+    private static Set<String> propertiesAmong(OWLOntology ontology, Set<String> members) {
+        Set<String> properties = new HashSet<String>();
+        if (ontology == null) {
+            return properties;
+        }
+        for (String member : members) {
+            IRI iri = IRI.create(member);
+            if ((ontology.containsObjectPropertyInSignature(iri, Imports.INCLUDED)
+                    || ontology.containsDataPropertyInSignature(iri, Imports.INCLUDED))
+                    && !ontology.containsClassInSignature(iri, Imports.INCLUDED)
+                    && !ontology.containsIndividualInSignature(iri, Imports.INCLUDED)) {
+                properties.add(member);
+            }
+        }
+        return properties;
+    }
+
     /** The projection with every class box's rows, and without the datatype boxes the rows replace. */
     public static Projection withRows(Projection drawn, OWLOntology ontology) {
         if (drawn == null || ontology == null) {
@@ -96,52 +247,14 @@ public final class UmlBoard {
                 nodes.add(node);
                 continue;
             }
-            OWLClass owlClass = factory.getOWLClass(IRI.create(node.getId()));
-            Map<OWLDataProperty, Row> rows = new HashMap<OWLDataProperty, Row>();
-            ownDomains(ontology, owlClass, rows);
-            List<String> keys = new ArrayList<String>();
-            for (OWLOntology part : ontology.getImportsClosure()) {
-                for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(owlClass)) {
-                    restrictions(axiom.getSuperClass(), rows);
-                }
-                for (OWLEquivalentClassesAxiom axiom : part.getEquivalentClassesAxioms(owlClass)) {
-                    for (OWLClassExpression operand : axiom.getClassExpressionsMinus(owlClass)) {
-                        restrictions(operand, rows);
-                    }
-                }
-                for (OWLHasKeyAxiom axiom : part.getHasKeyAxioms(owlClass)) {
-                    List<String> names = new ArrayList<String>();
-                    for (OWLDataPropertyExpression property : axiom.getDataPropertyExpressions()) {
-                        if (!property.isAnonymous()) {
-                            names.add(labelOf(ontology, property.asOWLDataProperty()));
-                        }
-                    }
-                    for (org.semanticweb.owlapi.model.OWLObjectPropertyExpression property
-                            : axiom.getObjectPropertyExpressions()) {
-                        if (!property.isAnonymous()) {
-                            names.add(DisplayLabels.forEntity(ontology, property.asOWLObjectProperty()));
-                        }
-                    }
-                    Collections.sort(names);
-                    if (!names.isEmpty()) {
-                        keys.add("key: " + String.join(", ", names));
-                    }
-                }
-            }
-            for (Map.Entry<OWLDataProperty, Row> row : rows.entrySet()) {
-                if (row.getValue().type == null) {
-                    row.getValue().type = rangeOf(ontology, row.getKey());
-                }
-                if (isFunctional(ontology, row.getKey())) {
-                    row.getValue().atMost(1);
-                }
-            }
+            Rows rows = rowsOf(ontology, factory.getOWLClass(IRI.create(node.getId())));
             Map<String, String> sorted = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-            for (Map.Entry<OWLDataProperty, Row> row : rows.entrySet()) {
+            for (Map.Entry<OWLDataProperty, Row> row : rows.properties.entrySet()) {
                 String name = labelOf(ontology, row.getKey());
                 sorted.put(name + "\u0000" + row.getKey().getIRI(), row.getValue().text(name));
             }
             List<String> lines = new ArrayList<String>(sorted.values());
+            List<String> keys = new ArrayList<String>(rows.keys);
             Collections.sort(keys);
             lines.addAll(keys);
             nodes.add(lines.isEmpty() ? node : node.withRows(lines));
@@ -175,6 +288,50 @@ public final class UmlBoard {
             }
         }
         return new Projection(kept, edges);
+    }
+
+    /** One class's rows: its data properties, what is said of each, and its keys. */
+    private static Rows rowsOf(OWLOntology ontology, OWLClass owlClass) {
+        Rows rows = new Rows();
+        ownDomains(ontology, owlClass, rows.properties);
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(owlClass)) {
+                restrictions(axiom.getSuperClass(), rows.properties);
+            }
+            for (OWLEquivalentClassesAxiom axiom : part.getEquivalentClassesAxioms(owlClass)) {
+                for (OWLClassExpression operand : axiom.getClassExpressionsMinus(owlClass)) {
+                    restrictions(operand, rows.properties);
+                }
+            }
+            for (OWLHasKeyAxiom axiom : part.getHasKeyAxioms(owlClass)) {
+                List<String> names = new ArrayList<String>();
+                for (OWLDataPropertyExpression property : axiom.getDataPropertyExpressions()) {
+                    if (!property.isAnonymous()) {
+                        names.add(labelOf(ontology, property.asOWLDataProperty()));
+                        rows.keyed.add(property.asOWLDataProperty().getIRI().toString());
+                    }
+                }
+                for (OWLObjectPropertyExpression property : axiom.getObjectPropertyExpressions()) {
+                    if (!property.isAnonymous()) {
+                        names.add(DisplayLabels.forEntity(ontology, property.asOWLObjectProperty()));
+                        rows.keyed.add(property.asOWLObjectProperty().getIRI().toString());
+                    }
+                }
+                Collections.sort(names);
+                if (!names.isEmpty()) {
+                    rows.keys.add("key: " + String.join(", ", names));
+                }
+            }
+        }
+        for (Map.Entry<OWLDataProperty, Row> row : rows.properties.entrySet()) {
+            if (row.getValue().type == null) {
+                row.getValue().type = rangeOf(ontology, row.getKey());
+            }
+            if (isFunctional(ontology, row.getKey())) {
+                row.getValue().atMost(1);
+            }
+        }
+        return rows;
     }
 
     /** The open ontology's own data properties whose domain is the class, or a union holding it. */
