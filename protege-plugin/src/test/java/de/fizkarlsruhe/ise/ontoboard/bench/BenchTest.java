@@ -289,4 +289,40 @@ class BenchTest {
                     command + " must not need a display");
         }
     }
+
+    /**
+     * What each reasoner a release may use says about one ontology, and how long it takes - the
+     * measurement that sets the release check's time limit (1.155.0, Task 1).
+     *
+     * <p>The ontology is the egg project's contradiction in one file: only a reasoner that reads
+     * inverse properties sees it.
+     */
+    @Test
+    void reasonersPrintsOneRowPerReasoner(@TempDir File dir) throws Exception {
+        File egg = folderWith(dir, "egg.ofn", "Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                + "Ontology(<http://purl.obolibrary.org/obo/egg.owl>\n"
+                + "SubClassOf(obo:BFO_0000019 obo:BFO_0000020)\n"
+                + "DisjointClasses(obo:BFO_0000020 obo:BFO_0000031)\n"
+                + "SubClassOf(obo:IAO_0000003 obo:BFO_0000031)\n"
+                + "InverseObjectProperties(obo:IAO_0000039 obo:IAO_0000040)\n"
+                + "ObjectPropertyRange(obo:IAO_0000039 obo:IAO_0000003)\n"
+                + "SubClassOf(obo:EGG_0000001 obo:BFO_0000019)\n"
+                + "SubClassOf(obo:EGG_0000001 ObjectSomeValuesFrom(obo:IAO_0000040 "
+                + "obo:EGG_0000000))\n"
+                + "ClassAssertion(obo:EGG_0000001 obo:EGG_0000002)\n)\n");
+
+        Run run = bench("reasoners", egg.getAbsolutePath());
+
+        assertEquals(0, run.status, run.problems);
+        List<String> rows = new ArrayList<String>();
+        for (String line : run.out.trim().split("\\r?\\n")) {
+            if (!line.startsWith("#")) {
+                rows.add(line);
+            }
+        }
+        assertEquals("reasoner\taxioms\tverdict\tmillis", rows.get(0));
+        assertEquals(5, rows.size(), run.out);
+        assertTrue(rows.get(1).startsWith("ELK\t8\tclean\t"), rows.get(1));
+        assertTrue(rows.get(2).startsWith("HermiT\t8\tinconsistent\t"), rows.get(2));
+    }
 }

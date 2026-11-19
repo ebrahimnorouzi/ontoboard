@@ -291,8 +291,11 @@ public final class ReleaseVerdict {
         asked.cancel(true);
     }
 
-    /** The edit file with its imports, as the project's catalog resolves them; strict. */
-    static OWLOntology load(File editFile) throws OWLOntologyCreationException {
+    /**
+     * The edit file with its imports, as the project's catalog resolves them; strict - an import
+     * that cannot be loaded throws, naming it.
+     */
+    public static OWLOntology load(File editFile) throws OWLOntologyCreationException {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         File catalog = new File(editFile.getAbsoluteFile().getParentFile(), "catalog-v001.xml");
         if (catalog.isFile()) {

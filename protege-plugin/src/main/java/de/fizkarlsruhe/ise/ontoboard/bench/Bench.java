@@ -113,6 +113,9 @@ public final class Bench {
             problems.println("bench: no such file or folder: " + input.getAbsolutePath());
             return 2;
         }
+        if ("reasoners".equals(command)) {
+            return reasoners(input, out, problems);
+        }
         File temporary = null;
         try {
             File folder;
@@ -170,6 +173,41 @@ public final class Bench {
      * both and quoting the total as "ROBOT templates" would be wrong. Non-empty cells rather
      * than cells, because a spreadsheet's extent is whatever somebody once clicked.
      */
+    /**
+     * What each reasoner a release may use says about an ontology with its imports, and how long
+     * it took - the measurement behind the release check's time limit (1.155.0).
+     *
+     * <p>The file is read as a release reads it: with the imports the catalog beside it names.
+     * Each reasoner gets half an hour; a row that says {@code timed_out} is a measurement too.
+     */
+    private static int reasoners(File ontology, PrintStream out, PrintStream problems) {
+        if (ontology.isDirectory()) {
+            problems.println("bench: reasoners needs an ontology file - a project's edit file, "
+                    + "with its catalog-v001.xml beside it - not a folder.");
+            return 2;
+        }
+        int axioms;
+        try {
+            axioms = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.load(ontology)
+                    .getLogicalAxiomCount(org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        } catch (org.semanticweb.owlapi.model.OWLOntologyCreationException unreadable) {
+            problems.println("bench: " + ontology.getName() + " could not be read with its "
+                    + "imports: " + unreadable.getMessage());
+            return 1;
+        }
+        out.println("# ontoboard " + VERSION + " bench reasoners " + ontology.getName());
+        out.println("reasoner\taxioms\tverdict\tmillis");
+        for (String name : de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names()) {
+            de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict =
+                    de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.check(ontology, name,
+                            30L * 60 * 1000, () -> false);
+            out.println(name + "\t" + axioms + "\t"
+                    + verdict.kind().name().toLowerCase(java.util.Locale.ROOT) + "\t"
+                    + verdict.millis());
+        }
+        return 0;
+    }
+
     private static int corpus(File input, File folder, PrintStream out) {
         SheetBook book = SheetBook.open(folder);
         int templateTabs = 0;
@@ -425,6 +463,7 @@ public final class Bench {
         out.println("  bench conflicts <book.xlsx|folder>    where two sheets contradict");
         out.println("  bench repair    <book.xlsx|folder>   before, after, and a second pass");
         out.println("  bench roundtrip <book.xlsx>          every cell, through ROBOT's reader");
+        out.println("  bench reasoners <edit file.owl>      each release reasoner's verdict and time");
         out.println("  bench version");
         out.println();
         out.println("Tab-separated to standard output. The input is never written to.");
