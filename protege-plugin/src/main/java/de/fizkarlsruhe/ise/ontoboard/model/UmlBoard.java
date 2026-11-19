@@ -129,6 +129,9 @@ public final class UmlBoard {
     public static Set<String> unused(Projection drawn, OWLOntology ontology, Set<String> members) {
         Set<String> unused = new HashSet<String>(propertiesAmong(ontology, members));
         unused.retainAll(OntologyProjection.termIdentifiers(ontology, Imports.EXCLUDED));
+        // OWL's top and bottom properties are in the signature of a file that names one, and are
+        // no property of the ontology's.
+        unused.removeIf(iri -> iri.startsWith("http://www.w3.org/2002/07/owl#"));
         if (unused.isEmpty()) {
             return unused;
         }

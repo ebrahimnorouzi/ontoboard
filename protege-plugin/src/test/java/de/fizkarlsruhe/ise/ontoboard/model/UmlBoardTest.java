@@ -150,6 +150,28 @@ class UmlBoardTest {
                 "a property drawn as a row or an arrow is not a box as well: " + shown);
     }
 
+    /**
+     * OWL's own top and bottom properties are no property of the ontology's, though a file that
+     * names one has it in its signature - MWO's topDataProperty came back as a box with Show unused
+     * properties.
+     */
+    @Test
+    void owlsTopAndBottomPropertiesAreNeverUnused() throws Exception {
+        OWLOntology ontology = OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(
+                new StringDocumentSource("Prefix(:=<" + U + ">)\nPrefix(owl:=<http://www.w3.org/2002/07/owl#>)\n"
+                        + "Ontology(<http://example.org/u>\n"
+                        + "Declaration(DataProperty(:nickname)) Declaration(ObjectProperty(:knows))\n"
+                        + "SubDataPropertyOf(:nickname owl:topDataProperty)\n"
+                        + "SubObjectPropertyOf(:knows owl:topObjectProperty)\n"
+                        + "SubObjectPropertyOf(owl:bottomObjectProperty :knows)\n)"));
+        java.util.Set<String> every = everyTerm(ontology);
+        assertTrue(every.contains("http://www.w3.org/2002/07/owl#topDataProperty"),
+                "the file names OWL's top data property: " + every);
+
+        assertEquals(new HashSet<String>(Arrays.asList(U + "nickname", U + "knows")),
+                UmlBoard.unused(UmlBoard.draw(ontology, every, false, false), ontology, every));
+    }
+
     @Test
     void theLayerSwitchesTakeTheRowsAndTheArrows() throws Exception {
         OWLOntology ontology = withAnImport();
