@@ -165,6 +165,10 @@ public final class BoardSettingsPanel extends JPanel {
         group.add(mine);
         group.add(theProject);
         mine.setSelected(true);
+        // Room beyond the measured text, as the form's names have it: in Protégé "All my
+        // ontologies" ran into the next button's circle (probe host, 2026-11-20).
+        mine.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
+        theProject.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
         mine.setToolTipText("Every board you open, kept in Protégé's preferences.");
         theProject.setToolTipText(projectPossible
                 ? "<html>This ontology's board, kept in its sidecar file beside it -<br>"
@@ -195,7 +199,7 @@ public final class BoardSettingsPanel extends JPanel {
         for (String[] box : BoardLook.BOXES) {
             String kind = box[0];
             at.gridx = 0;
-            form.add(new JLabel(BOX_NAMES.get(kind)), at);
+            form.add(name(BOX_NAMES.get(kind)), at);
             at.gridx = 1;
             // A frame is drawn unfilled, and a sticky note in the colour each note was given.
             form.add(SchemaStyles.FRAME.equals(kind) || SchemaStyles.STICKY_NOTE.equals(kind)
@@ -222,7 +226,7 @@ public final class BoardSettingsPanel extends JPanel {
             String kind = line[0];
             String name = lineNames.containsKey(kind) ? lineNames.get(kind) : kind;
             at.gridx = 0;
-            form.add(new JLabel(name), at);
+            form.add(name(name), at);
             at.gridx = 1;
             form.add(colourButton(kind + ".colour", name), at);
             at.gridx = 2;
@@ -242,7 +246,7 @@ public final class BoardSettingsPanel extends JPanel {
 
         heading(form, at, "Imported terms", "", "", "");
         at.gridx = 0;
-        form.add(new JLabel("How solid, in %"), at);
+        form.add(name("How solid, in %"), at);
         at.gridx = 1;
         JSpinner fade = new JSpinner(new SpinnerNumberModel(55, 20, 100, 5));
         fade.setToolTipText("An imported term is drawn faded: context, not your work.");
@@ -282,6 +286,17 @@ public final class BoardSettingsPanel extends JPanel {
         return form;
     }
 
+    /**
+     * A name in the form's first column, with room beyond what Swing measures: in Protégé a name
+     * held to its measured width lost its last letter - "Class expressio", "Sticky not" - the
+     * text painted a few pixels wider than measured (probe host, 2026-11-20).
+     */
+    private static JLabel name(String text) {
+        JLabel label = new JLabel(text);
+        label.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 14));
+        return label;
+    }
+
     private static void heading(JPanel form, GridBagConstraints at, String title, String a, String b,
             String c) {
         at.gridx = 0;
@@ -300,7 +315,7 @@ public final class BoardSettingsPanel extends JPanel {
     private static void setting(JPanel form, GridBagConstraints at, String name, JComboBox<String> box,
             String tip) {
         at.gridx = 0;
-        JLabel label = new JLabel(name);
+        JLabel label = name(name);
         label.setToolTipText(tip);
         form.add(label, at);
         at.gridx = 1;

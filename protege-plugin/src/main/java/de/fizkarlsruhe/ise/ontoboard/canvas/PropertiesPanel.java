@@ -156,6 +156,23 @@ public final class PropertiesPanel extends JPanel {
         return text.append("</html>").toString();
     }
 
+    /**
+     * An entry on hover, whole: its name, each characteristic, its domain and range, and its IRI -
+     * in Protégé's column a long line runs past the panel's edge.
+     */
+    static String hoverOf(PropertyOutline.Entry entry) {
+        StringBuilder text = new StringBuilder("<html><b>").append(escape(entry.getLabel()))
+                .append("</b>");
+        for (String characteristic : entry.getCharacteristics()) {
+            text.append("<br>").append(escape(characteristic));
+        }
+        if (!entry.getDomainToRange().isEmpty()) {
+            text.append("<br>").append(escape(entry.getDomainToRange()));
+        }
+        return text.append("<br><font size=\"-2\">").append(escape(entry.getIri()))
+                .append(entry.isOwn() ? "" : " - imported").append("</font></html>").toString();
+    }
+
     private static String escape(String text) {
         return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
@@ -174,9 +191,7 @@ public final class PropertiesPanel extends JPanel {
                     leaf, row, focused);
             setIcon(null);
             setToolTipText(user instanceof PropertyOutline.Entry
-                    ? ((PropertyOutline.Entry) user).getIri()
-                            + (((PropertyOutline.Entry) user).isOwn() ? "" : " - imported")
-                    : null);
+                    ? hoverOf((PropertyOutline.Entry) user) : null);
             return this;
         }
     }

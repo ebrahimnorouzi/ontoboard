@@ -71,6 +71,24 @@ class PropertiesPanelTest {
         assertTrue(text.contains("functional") && text.contains("Person → integer"), text);
     }
 
+    /**
+     * The hover says the whole entry: in Protégé's column a line like "inverse of measurement
+     * datum of · ? → measurement datum" ran past the panel's edge (probe host, 2026-11-20).
+     */
+    @Test
+    void theHoverSaysTheWholeEntry() throws Exception {
+        PropertiesPanel panel = new PropertiesPanel(iri -> { }, () -> { });
+        panel.show(outline());
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) panel.tree().getModel().getRoot();
+        PropertyOutline.Entry hasTopping = (PropertyOutline.Entry)
+                ((DefaultMutableTreeNode) root.getChildAt(0).getChildAt(0).getChildAt(0)).getUserObject();
+
+        String hover = PropertiesPanel.hoverOf(hasTopping);
+
+        assertTrue(hover.contains("hasTopping") && hover.contains("Pizza → Topping")
+                && hover.contains(U + "hasTopping"), hover);
+    }
+
     @Test
     void aClickSelectsThePropertyAndTheBoardKeepsTheKeyboard() throws Exception {
         List<String> selected = new ArrayList<String>();

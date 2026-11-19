@@ -265,6 +265,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** The toolbar's button that opens and closes {@link #propertiesPanel}. */
     private javax.swing.JToggleButton propertiesButton;
 
+    /** Whether the overview was showing when the properties opened, to show it again after. */
+    private boolean overviewBeforeProperties = true;
+
     /** The outline inside it, kept so the open/closed state can be restored. */
     private mxGraphOutline minimapOutline;
 
@@ -1786,8 +1789,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         zoom.width, zoom.height);
                 minimapPanel.setBounds(right - map.width, bottom - zoom.height - 8 - map.height,
                         map.width, map.height);
-                // The properties down the right edge, above the overview and the zoom.
-                int panelBottom = bottom - zoom.height - 8 - map.height - 8;
+                // The properties down the right edge, above the zoom: the overview steps aside
+                // while they are open (1.155.0) - beside it they were 200px tall at 1024x768.
+                int panelBottom = bottom - zoom.height - 8
+                        - (minimapPanel.isVisible() ? map.height + 8 : 0);
                 propertiesPanel.setBounds(right - propertiesPanel.getPreferredSize().width, margin,
                         propertiesPanel.getPreferredSize().width,
                         Math.max(120, panelBottom - margin));
@@ -1813,6 +1818,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (open) {
             propertiesPanel.show(de.fizkarlsruhe.ise.ontoboard.model.PropertyOutline.of(
                     getOWLModelManager().getActiveOntology()));
+            if (!propertiesPanel.isVisible()) {
+                overviewBeforeProperties = minimapPanel.isVisible();
+                minimapPanel.setVisible(false);
+            }
+        } else if (propertiesPanel.isVisible()) {
+            minimapPanel.setVisible(overviewBeforeProperties);
         }
         propertiesPanel.setVisible(open);
         if (propertiesButton != null) {
