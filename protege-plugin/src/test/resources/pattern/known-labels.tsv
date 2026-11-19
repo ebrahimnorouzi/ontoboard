@@ -1,0 +1,547 @@
+# The English label each term the pattern library names has in its home ontology, read once
+# (2026-11-19) from the ontologies the patterns import and the vocabularies they use; built by
+# build_known_labels.py. PatternCuration labels a term from here when no library pattern does.
+iri	label	lang	source
+http://purl.obolibrary.org/obo/BFO_0000001	entity	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000002	continuant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000003	occurrent	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000004	independent continuant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000006	spatial region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000008	temporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000011	spatiotemporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000015	process	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000016	disposition	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000017	realizable entity	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000019	quality	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000020	specifically dependent continuant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000023	role	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000027	object aggregate	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000029	site	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000030	object	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000031	generically dependent continuant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000034	function	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000035	process boundary	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000038	one-dimensional temporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000040	material entity	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000050	part of	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/BFO_0000051	has part	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/BFO_0000054	has realization	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000055	realizes	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000062	preceded by	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000063	precedes	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000066	occurs in	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000108	exists at	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000117	has occurrent part	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000118	has proper occurrent part	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000121	has temporal part	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000132	occurrent part of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000136	proper temporal part of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000138	proper occurrent part of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000139	temporal part of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000141	immaterial entity	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000145	relational quality	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000148	zero-dimensional temporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000153	temporally projects onto	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000181	has proper temporal part	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000182	history	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000183	environs	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000184	history of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000185	has history	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000194	specifically depended on by	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000195	specifically depends on	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000196	bearer of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000197	inheres in	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000199	occupies temporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000200	occupies spatiotemporal region	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000202	temporal interval	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000203	temporal instant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000221	first instant of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000222	has first instant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000223	last instant of	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/BFO_0000224	has last instant	en	https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl
+http://purl.obolibrary.org/obo/COB_0000035	completely executed planned process	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/COB_0000082	planned process	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000003	measurement unit label	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000004	has measurement value	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000005	objective specification	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000009	datum label	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000010	software	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000025	programming language	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000027	data entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000028	symbol	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000030	information content entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000032	scalar measurement datum	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000033	directive information entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000039	has measurement unit label	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000098	data format specification	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000104	plan specification	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000109	measurement datum	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000112	example of usage	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000115	definition	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000116	editor note	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000118	alternative label	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000129	version number	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000136	is about	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000219	denotes	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000221	is quality measurement of	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000235	denoted by	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000300	textual entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000303	institutional identification	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000305	document title	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000310	document	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000311	publication	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000416	time measurement datum	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000417	is quality measured as	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000419	quality is specified as	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000429	email address	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000444	publishing process	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000578	centrally registered identifier	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000590	written name	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000605	abbreviation textual entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000629	keyword textual entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000642	requirements textual entity	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0000708	ORCID identifier	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0001000	data collection	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0020000	identifier	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0020015	personal name	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0020016	given name	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/IAO_0020017	family name	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/OBI_0000070	assay	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/OBI_0000293	has specified input	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/OBI_0000295	is specified input of	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/OBI_0000299	has specified output	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/OBI_0000312	is specified output of	en	http://purl.obolibrary.org/obo/iao.owl
+http://purl.obolibrary.org/obo/RO_0000052	characteristic of	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000053	has characteristic	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000056	participates in	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000057	has participant	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000058	is concretized as	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000059	concretizes	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000080	quality of	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000081	role of	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000086	has quality	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0000087	has role	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0001025	located in	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002082	simultaneous with	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002224	starts with	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002230	ends with	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002233	has input	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002234	has output	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002350	member of	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002351	has member	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0002353	output of	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.obolibrary.org/obo/RO_0009006	assay measures characteristic	en	http://purl.obolibrary.org/obo/ro.owl
+http://purl.org/dc/elements/1.1/contributor	Contributor	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/creator	Creator	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/date	Date	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/description	Description	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/language	Language	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/publisher	Publisher	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/elements/1.1/title	Title	en	http://purl.org/dc/elements/1.1/
+http://purl.org/dc/terms/created	Date Created	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/creator	Creator	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/description	Description	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/issued	Date Issued	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/license	License	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/modified	Date Modified	en	http://purl.org/dc/terms/
+http://purl.org/dc/terms/title	Title	en	http://purl.org/dc/terms/
+http://w3id.org/daselab/onto/trajectory	Semantic Trajectory Pattern		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#Attribute	Attribute		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#EndingFix	EndingFix		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#Fix	Fix		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#MovingObject	MovingObject		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#Place	Place		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#Segment	Segment		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#StartingFix	StartingFix		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#TimeEntity	TimeEntity		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#Trajectory	Trajectory		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#atPlace	atPlace		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#atTime	atTime		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#endsAt	endsAt		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#hasAttribute	hasAttribute		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#hasFix	hasFix		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#hasSegment	hasSegment		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#hasTrajectory	hasTrajectory		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#nextFix	nextFix		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#startsFrom	startsFrom		http://w3id.org/daselab/onto/trajectory
+http://w3id.org/daselab/onto/trajectory#traversedBy	traversedBy		http://w3id.org/daselab/onto/trajectory
+http://www.geneontology.org/formats/oboInOwl#hasDbXref	database_cross_reference		http://www.geneontology.org/formats/oboInOwl
+http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent	Agent	en	http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl
+http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent	Social agent	en	http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl
+http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsFor	acts for	en	http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl
+http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsThrough	acts through	en	http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl
+http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl	agent role		http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent	Agent	en	http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#Bag	(collections) Bag		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#Item	item		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#hasItem	has item		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#itemContent	item content		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#itemOf	item of		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/bag.owl#size	size		http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#GoalSituation	Goal situation	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#conceptualizes	conceptualizes	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#executesTask	executes task	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#isConceptualizedBy	is conceptualized by	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#isExecutedIn	is executed in	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#isParametrizedBy	is parametrized by	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#isSatisfiedBy	is satisfied by	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#parametrizes	parametrizes	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl#satisfies	satisfies	en	http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action	Action	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution	Plan execution	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#actionHasParticipant	action has participant	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAction	includes action	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAgent	includes agent	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesObject	includes object	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesRegion	includes region	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isActionIncludedIn	is action included in	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isAgentIncludedIn	is agent included in	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isObjectIncludedIn	is an object included in	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction	is participant in action	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isRegionIncludedIn	is region included in	en	http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/classification.owl	classification		http://www.ontologydesignpatterns.org/cp/owl/classification.owl
+http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept	Concept	en	http://www.ontologydesignpatterns.org/cp/owl/classification.owl
+http://www.ontologydesignpatterns.org/cp/owl/classification.owl#classifies	classifies	en	http://www.ontologydesignpatterns.org/cp/owl/classification.owl
+http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy	is classified by	en	http://www.ontologydesignpatterns.org/cp/owl/classification.owl
+http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl	collection entity		http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection	Collection	en	http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember	has member	en	http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf	is member of	en	http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+http://www.ontologydesignpatterns.org/cp/owl/communities.owl#Community	Community {@en}		http://www.ontologydesignpatterns.org/cp/owl/communities.owl
+http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs	Counting as	en	http://www.ontologydesignpatterns.org/cp/owl/countingas.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl	description		http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept	Concept	en	http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description	Description	en	http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl#isConceptUsedIn	is concept used in	en	http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl#isDefinedIn	is defined in	en	http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/description.owl#usesConcept	uses concept	en	http://www.ontologydesignpatterns.org/cp/owl/description.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource	Aquatic resource	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies	Aquatic species	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea	Water area	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#canOccurIn	has water area	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#hasSpecies	has species	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#isAreaOfOccurrenceOf	is water area of	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#isSpeciesPresentIn	is species present in	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#GearType	Gear type	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#VesselType	Vessel type	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#usedByVesselType	used by vessel type	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#usesGearType	uses gear type	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl#isSuitableForGearType	is suitable for gear type	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl#isUsedInWaterArea	is used in water area	en	http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl
+http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesfactsheets.owl#areaOfSpecies	isFishingAreaOf		http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesfactsheets.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl	intension extension		http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#InformationObject	Information object	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#SocialObject	Social object	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#expresses	expresses	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isAbout	is about	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isExpressedBy	is expressed by	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isReferenceOf	is reference of	en	http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl
+http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object	Object	en	http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Role	Role	en	http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#hasRole	has role	en	http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#isRoleOf	is role of	en	http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation	Observation	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter	Parameter	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation	has observation	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter	has parameter	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf	is observation of	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf	is parameter of	en	http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl	Parameter		http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept	Concept	en	http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter	Parameter	en	http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameter	has parameter	en	http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameterDataValue	has parameter data value	en	http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#isParameterFor	is parameter for	en	http://www.ontologydesignpatterns.org/cp/owl/parameter.owl
+http://www.ontologydesignpatterns.org/cp/owl/participation.owl	participation		http://www.ontologydesignpatterns.org/cp/owl/participation.owl
+http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event	Event	en	http://www.ontologydesignpatterns.org/cp/owl/participation.owl
+http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object	Object	en	http://www.ontologydesignpatterns.org/cp/owl/participation.owl
+http://www.ontologydesignpatterns.org/cp/owl/participation.owl#hasParticipant	has participant	en	http://www.ontologydesignpatterns.org/cp/owl/participation.owl
+http://www.ontologydesignpatterns.org/cp/owl/participation.owl#isParticipantIn	is participant in	en	http://www.ontologydesignpatterns.org/cp/owl/participation.owl
+http://www.ontologydesignpatterns.org/cp/owl/partof.owl	part of		http://www.ontologydesignpatterns.org/cp/owl/partof.owl
+http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart	has part	en	http://www.ontologydesignpatterns.org/cp/owl/partof.owl
+http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf	is part of	en	http://www.ontologydesignpatterns.org/cp/owl/partof.owl
+http://www.ontologydesignpatterns.org/cp/owl/place.owl#Place	Place	en	http://www.ontologydesignpatterns.org/cp/owl/place.owl
+http://www.ontologydesignpatterns.org/cp/owl/place.owl#hasLocation	has location	en	http://www.ontologydesignpatterns.org/cp/owl/place.owl
+http://www.ontologydesignpatterns.org/cp/owl/place.owl#isLocationOf	is location of	en	http://www.ontologydesignpatterns.org/cp/owl/place.owl
+http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region	Region	en	http://www.ontologydesignpatterns.org/cp/owl/region.owl
+http://www.ontologydesignpatterns.org/cp/owl/region.owl#hasRegion	has region	en	http://www.ontologydesignpatterns.org/cp/owl/region.owl
+http://www.ontologydesignpatterns.org/cp/owl/region.owl#hasRegionDataValue	has region data value	en	http://www.ontologydesignpatterns.org/cp/owl/region.owl
+http://www.ontologydesignpatterns.org/cp/owl/region.owl#isRegionFor	is region for	en	http://www.ontologydesignpatterns.org/cp/owl/region.owl
+http://www.ontologydesignpatterns.org/cp/owl/sequence.owl	ordering		http://www.ontologydesignpatterns.org/cp/owl/sequence.owl
+http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyFollows	directly follows	en	http://www.ontologydesignpatterns.org/cp/owl/sequence.owl
+http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes	directly precedes	en	http://www.ontologydesignpatterns.org/cp/owl/sequence.owl
+http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows	follows	en	http://www.ontologydesignpatterns.org/cp/owl/sequence.owl
+http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes	precedes	en	http://www.ontologydesignpatterns.org/cp/owl/sequence.owl
+http://www.ontologydesignpatterns.org/cp/owl/situation.owl	situation		http://www.ontologydesignpatterns.org/cp/owl/situation.owl
+http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation	Situation	en	http://www.ontologydesignpatterns.org/cp/owl/situation.owl
+http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting	has setting	en	http://www.ontologydesignpatterns.org/cp/owl/situation.owl
+http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor	is setting for	en	http://www.ontologydesignpatterns.org/cp/owl/situation.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#Action	Action	en	http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#executesTask	executes task	en	http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#isExecutedIn	is executed in	en	http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl	role task		http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Role	Role	en	http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task	Task	en	http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#hasTask	has target	en	http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#isTaskOf	is a target for	en	http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#TimeIndexedClassification	Time indexed classification	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#TimeIndexedParticipation	Time indexed participation	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#includesEvent	includes event	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#includesObject	includes object	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#isEventIncludedIn	is event included in	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#isObjectIncludedIn	is object included in	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation	Time indexed situation	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime	at time	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity	for entity	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#hasTimeIndexedSetting	has time indexed setting	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#isTimeIndexFor	is time index for	en	http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval	Time interval	en	http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalDate	has interval date	en	http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalEndDate	interval has end date	en	http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl
+http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalStartDate	interval has start date	en	http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl
+http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Abstract	Abstract	en	http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity	Entity	en	http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event	Event	en	http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object	Object	en	http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality	Quality	en	http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl	DOLCE+DnS Ultralite		http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Abstract	Abstract	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Action	Action	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent	Agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Amount	Amount	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#BiologicalObject	Biological object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#ChemicalObject	Chemical object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Classification	Classification	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection	Collection	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collective	Collective	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#CollectiveAgent	Collective agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Community	Community	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept	Concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Configuration	Configuration	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Contract	Contract	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description	Description	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Design	Design	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#DesignedArtifact	Designed artifact	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Diagnosis	Diagnosis	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity	Entity	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event	Event	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#EventType	Event type	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#FormalEntity	Formal entity	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#FunctionalSubstance	Functional substance	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Goal	Goal	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Group	Group	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject	Information object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationRealization	Information realization	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#LocalConcept	Local concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Method	Method	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Narrative	Narrative	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson	Natural person	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Norm	Norm	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Object	Object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Organism	Organism	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Organization	Organization	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Parameter	Parameter	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Parthood	parthood	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Pattern	Pattern	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Person	Person	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Personification	Personification	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalAgent	Physical agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalArtifact	Physical artifact	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalAttribute	Physical attribute	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalBody	Physical body	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject	Physical object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace	Physical place	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Place	Place	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Plan	Plan	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PlanExecution	Plan execution	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Process	Process	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Project	Project	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality	Quality	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region	Region	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation	Relation	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Right	Right	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Role	Role	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Set	Set	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation	Situation	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialAgent	Social agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialObject	Social object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialObjectAttribute	Social attribute	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialPerson	Social person	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialRelation	Social relation	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SpaceRegion	Space region	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Substance	Substance	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task	Task	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Theory	Theory	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval	Time interval	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Transition	Transition	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TypeCollection	Type collection	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#UnitOfMeasure	Unit of measure	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Workflow	Workflow	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#WorkflowExecution	Workflow execution	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#actsFor	acts for	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#actsThrough	acts through	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith	associatedWith		http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#characterizes	characterizes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies	classifies	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#conceptualizes	conceptualizes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#concretelyExpresses	concretely expresses	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#coparticipatesWith	co-participates with	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#covers	covers	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#defines	defines	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#definesRole	defines role	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#definesTask	defines task	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#describes	describes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#directlyFollows	directly follows	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#directlyPrecedes	directly precedes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#executesTask	executes task	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expands	expands	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expresses	expresses	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expressesConcept	expresses concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#farFrom	far from	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows	follows	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasCommonBoundary	has common boundary	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasComponent	has component	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent	has constituent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstraint	has constraint	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue	has data value	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasEventDate	has event date	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasIntervalDate	has interval date	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation	has location	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember	has member	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParameter	has parameter	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParameterDataValue	has parameter data value	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart	has part	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParticipant	has participant	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPostcondition	has postcondition	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPrecondition	has precondition	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasProperPart	has proper part	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasQuality	has quality	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRegion	has region	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRegionDataValue	has region data value	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRole	has role	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasSetting	has setting	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasTask	has task	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasTimeInterval	has time interval	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesAction	includes action	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesAgent	includes agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesEvent	includes event	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesObject	includes object	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesTime	includes time	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#introduces	introduces	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#involvesAgent	involves agent	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAbout	is about	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isActionIncludedIn	is action included in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAgentIncludedIn	is agent included in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAgentInvolvedIn	is agent involved in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isCharacterizedBy	is characterized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy	is classified by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isComponentOf	is component of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptExpressedBy	is concept expressed by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptUsedIn	is concept used in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptualizedBy	is conceptualized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConcretelyExpressedBy	is concretely expressed by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf	is constituent of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstraintFor	is constraint for	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isCoveredBy	is covered by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDefinedIn	is defined in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDescribedBy	is described by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isEventIncludedIn	is event included in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExecutedIn	is executed in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpandedIn	is expanded in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy	is expressed by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isIntroducedBy	is introduced by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf	is location of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf	is member of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn	is object included in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObservableAt	is observable at	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParameterFor	is parameter for	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParametrizedBy	is parametrized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf	is part of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn	is participant in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPostconditionOf	is postcondition of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPreconditionOf	is precondition of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPropertPartOf	is propert part of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isQualityOf	is quality of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRealizedBy	is realized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isReferenceOf	is reference of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isReferenceOfInformationRealizedBy	is reference of information realized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRegionFor	is region for	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRelatedToConcept	is related to concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRelatedToDescription	is related to description	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRoleDefinedIn	is role defined in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRoleOf	is role of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSatisfiedBy	is satisfied by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor	is setting for	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSpecializedBy	is specialized by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSubordinatedTo	is subordinated to	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSuperordinatedTo	is superordinated to	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTaskDefinedIn	is task defined in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTaskOf	is task of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeIncludedIn	is time included in	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeIntervalOf	is time interval of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeOfObservationOf	is time of observation of	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isUnifiedBy	is unified by	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#nearTo	near to	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#overlaps	overlaps	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#parametrizes	parametrizes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes	precedes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#realizes	realizes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#realizesInformationAbout	realizes information about	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#sameSettingAs	is in the same setting as	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies	satisfies	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#specializes	specializes	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#unifies	unifies	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#usesConcept	uses concept	en	http://www.ontologydesignpatterns.org/ont/dul/DUL.owl
+http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight	DBpedia infobox matching weight		http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl
+http://www.w3.org/2002/07/owl#Thing	Thing		http://xmlns.com/foaf/0.1/
+http://www.w3.org/2004/02/skos/core#altLabel	alternative label	en	http://www.w3.org/2004/02/skos/core
+http://www.w3.org/2004/02/skos/core#definition	definition	en	http://www.w3.org/2004/02/skos/core
+http://www.w3.org/2004/02/skos/core#editorialNote	editorial note	en	http://www.w3.org/2004/02/skos/core
+http://www.w3.org/2004/02/skos/core#prefLabel	preferred label	en	http://www.w3.org/2004/02/skos/core
+http://www.w3.org/2004/02/skos/core#relatedMatch	has related match	en	http://www.w3.org/2004/02/skos/core
+http://www.w3.org/2006/time	OWL-Time	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#Duration	Time duration	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#DurationDescription	Duration description	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#Instant	Time instant	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#Interval	Time interval	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#TemporalEntity	Temporal entity	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#before	before	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#hasBeginning	has beginning	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#hasDuration	has duration	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#hasDurationDescription	has duration description	en	http://www.w3.org/2006/time
+http://www.w3.org/2006/time#inXSDDateTimeStamp	in XSD Date-Time-Stamp	en	http://www.w3.org/2006/time
+http://www.w3.org/ns/prov#Activity	Activity		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#Agent	Agent		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#Entity	Entity		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#used	used		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#wasAssociatedWith	wasAssociatedWith		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#wasGeneratedBy	wasGeneratedBy		http://www.w3.org/ns/prov-o-20130430
+http://www.w3.org/ns/prov#wasInformedBy	wasInformedBy		http://www.w3.org/ns/prov-o-20130430
+http://xmlns.com/foaf/0.1/Agent	Agent		http://xmlns.com/foaf/0.1/
+http://xmlns.com/foaf/0.1/Group	Group		http://xmlns.com/foaf/0.1/
+http://xmlns.com/foaf/0.1/primaryTopic	primary topic		http://xmlns.com/foaf/0.1/
+https://purl.org/andreapoltronieri/musicalobject	Musical Object Pattern	en	https://purl.org/andreapoltronieri/musicalobject
+https://purl.org/andreapoltronieri/musicalobject/Frequency	Frequency	en	https://purl.org/andreapoltronieri/musicalobject
+https://purl.org/andreapoltronieri/musicalobject/MusicalObject	Musical Object	en	https://purl.org/andreapoltronieri/musicalobject
+https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration	Musical Object Duration	en	https://purl.org/andreapoltronieri/musicalobject
+https://purl.org/andreapoltronieri/musicalobject/SoundIntensity	Sound Intensity	en	https://purl.org/andreapoltronieri/musicalobject
+https://purl.org/andreapoltronieri/scorepart/	Score Part Pattern	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment	Section	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/Instrument	Instrument	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/Part	Part	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/Section	Section	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/Voice	Voice	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasClef	has clef	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasFragment	has section	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasMetric	has metric	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasMidiProgram	has midi program	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasSection	has section	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasStaff	has staff	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasTempo	has tempo	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/hasVoice	has voice	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/isFragmentOf	is section of	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/isPlayedBy	is played by	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/isSectionOf	is section of	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/isVoiceOf	is voice of	en	https://purl.org/andreapoltronieri/scorepart
+https://purl.org/andreapoltronieri/scorepart/playsPart	plays part	en	https://purl.org/andreapoltronieri/scorepart
+https://w3id.org/MON/action.owl#Task	Task	en	https://w3id.org/MON/action.owl

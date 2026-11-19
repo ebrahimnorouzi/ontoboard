@@ -26,6 +26,7 @@ import org.obolibrary.robot.ReportOperation;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
@@ -103,11 +104,12 @@ final class PatternAudit {
         private final Map<String, List<Label>> labels;
         private final List<QualityFinding> errors;
         private final boolean owlTtlDiffer;
+        private final List<String> headerComments;
 
         Row(String id, int axioms, Set<String> imports, Set<String> stubbed, String reasoner,
                 Set<String> unsatisfiable, Set<String> unlabelled, Set<String> unlabelledDeclared,
                 Map<String, List<Label>> labels, List<QualityFinding> errors,
-                boolean owlTtlDiffer) {
+                boolean owlTtlDiffer, List<String> headerComments) {
             this.id = id;
             this.axioms = axioms;
             this.imports = imports;
@@ -119,6 +121,7 @@ final class PatternAudit {
             this.labels = labels;
             this.errors = errors;
             this.owlTtlDiffer = owlTtlDiffer;
+            this.headerComments = headerComments;
         }
 
         String id() {
@@ -176,6 +179,11 @@ final class PatternAudit {
         /** Whether pattern.ttl's logical axioms differ from pattern.owl's. */
         boolean owlTtlDiffer() {
             return owlTtlDiffer;
+        }
+
+        /** The rdfs:comment annotations of the pattern's ontology itself, in the file's order. */
+        List<String> headerComments() {
+            return headerComments;
         }
 
         @Override
@@ -263,10 +271,18 @@ final class PatternAudit {
             }
         }
 
+        List<String> headerComments = new ArrayList<String>();
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (annotation.getProperty().isComment() && annotation.getValue() instanceof OWLLiteral) {
+                headerComments.add(((OWLLiteral) annotation.getValue()).getLiteral());
+            }
+        }
+
         return new Row(id, ontology.getAxiomCount(), imports, stubbed, reasoner, unsatisfiable,
                 unlabelled, unlabelledDeclared, labels, errors,
                 !logical(ontology).equals(logical(manager(new TreeSet<String>())
-                        .loadOntologyFromOntologyDocument(new File(patternDir, "pattern.ttl")))));
+                        .loadOntologyFromOntologyDocument(new File(patternDir, "pattern.ttl")))),
+                headerComments);
     }
 
     /** HermiT on the pattern as loaded; fills {@code unsatisfiable}. */
@@ -363,12 +379,15 @@ final class PatternAudit {
         ExecutorService pool = Executors.newSingleThreadExecutor();
         try (PrintWriter rows = new PrintWriter(out, "UTF-8");
                 PrintWriter errors = new PrintWriter(out.getPath() + ".errors.tsv", "UTF-8");
-                PrintWriter labels = new PrintWriter(out.getPath() + ".labels.tsv", "UTF-8")) {
+                PrintWriter labels = new PrintWriter(out.getPath() + ".labels.tsv", "UTF-8");
+                PrintWriter unlabelled = new PrintWriter(out.getPath() + ".unlabelled.tsv",
+                        "UTF-8")) {
             rows.println("id\taxioms\timports\tstubbed\treasoner\tunsatisfiable"
                     + "\tunlabelled_declared\tunlabelled_used\terrors\terror_rules"
                     + "\towl_ttl_differ\tunsatisfiable_list");
             errors.println("id\trule\tsubject\tproperty\tvalue");
             labels.println("id\tentity\tlabels");
+            unlabelled.println("id\tentity\tdeclared");
             for (final File directory : directories) {
                 if (!new File(directory, "pattern.owl").isFile()) {
                     continue;
@@ -416,6 +435,10 @@ final class PatternAudit {
                         }
                         labels.println(row.id() + "\t" + entity.getKey() + "\t" + all);
                     }
+                }
+                for (String entity : row.unlabelled()) {
+                    unlabelled.println(row.id() + "\t" + entity + "\t"
+                            + row.unlabelledDeclared().contains(entity));
                 }
                 rows.flush();
                 System.out.println(row);
