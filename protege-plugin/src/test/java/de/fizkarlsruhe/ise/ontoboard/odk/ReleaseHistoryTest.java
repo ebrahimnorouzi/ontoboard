@@ -426,6 +426,38 @@ class ReleaseHistoryTest {
         assertEquals("First release", history.get(2).describeChange());
     }
 
+    /**
+     * A release fetched from GitHub earlier - ODK v1.6.1 keeps release files out of git and puts
+     * them on the GitHub release - is read from where it was kept, without the network; a version
+     * git or releases/ has already is not taken from there.
+     */
+    @Test
+    void aReleaseFetchedFromGitHubIsRead(@TempDir File top) throws Exception {
+        File root = new File(top, "project");
+        File dotGit = new File(root, ".git");
+        assertTrue(dotGit.mkdirs());
+        Files.write(new File(dotGit, "config").toPath(), ("[remote \"origin\"]\n"
+                + "\turl = https://github.com/o/demo.git\n").getBytes(
+                        java.nio.charset.StandardCharsets.UTF_8));
+        File cache = new File(top, "cache");
+        File fetched = new File(cache, "o/demo/v1.0.0/demo.owl");
+        assertTrue(fetched.getParentFile().mkdirs());
+        Files.write(fetched.toPath(), demo("Egg"));
+        File other = new File(cache, "o/demo/v1.1.0/demo.owl");
+        assertTrue(other.getParentFile().mkdirs());
+        Files.write(other.toPath(), demo("Egg", "Lid"));
+        kept(root, "1.1.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo", NO_GIT,
+                cache);
+
+        assertEquals("[1.1.0, 1.0.0]", versionsOf(releases));
+        assertEquals("[FOLDER, GITHUB]", sourcesOf(releases));
+        assertEquals(fetched.getAbsoluteFile(), releases.get(1).file().getAbsoluteFile());
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(releases, null, null, null);
+        assertEquals("+1 class", history.get(0).describeChange(), "Pan, the folder's");
+    }
+
     /** History reads a release that is only a tag, beside one that is only a folder. */
     @Test
     void theHistoryReadsTaggedReleases(@TempDir File root) throws Exception {

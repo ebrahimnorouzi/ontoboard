@@ -117,7 +117,12 @@ public final class ReleaseHistory {
         /** A folder {@code releases/<version>/}: the copy OntoBoard keeps. */
         FOLDER,
         /** A tag and a folder for one version: one release. */
-        BOTH
+        BOTH,
+        /**
+         * The ontology file of a GitHub release, fetched when the person asked and kept outside
+         * the project (GitHubReleases): ODK v1.6.1 keeps release files out of git.
+         */
+        GITHUB
     }
 
     /**
@@ -133,6 +138,8 @@ public final class ReleaseHistory {
         private final String blob;
         /** What the tag holds the ontology as: {@code <id>.owl}, {@code <id>.ttl}, ... */
         private final String path;
+        /** The ontology file fetched from the GitHub release, or null. */
+        private File fetched;
 
         Entry(OntologyVersion version, String id, File projectRoot, File folder, String tag,
                 String blob) {
@@ -156,6 +163,9 @@ public final class ReleaseHistory {
         }
 
         public Source source() {
+            if (fetched != null && tag == null && folder == null) {
+                return Source.GITHUB;
+            }
             return tag == null ? Source.FOLDER : folder == null ? Source.TAG : Source.BOTH;
         }
 
@@ -185,7 +195,10 @@ public final class ReleaseHistory {
          */
         public File file() {
             File file = folder == null ? null : new File(folder, id + ".owl");
-            return file != null && file.isFile() ? file : null;
+            if (file != null && file.isFile()) {
+                return file;
+            }
+            return fetched != null && fetched.isFile() ? fetched : null;
         }
 
         /**
@@ -289,6 +302,15 @@ public final class ReleaseHistory {
     /** {@link #releasesOf(File, String)}, with the tags listed by {@code git}. */
     public static List<Entry> releasesOf(File projectRoot, String id,
             ProcessRunner.Runner git) {
+        return releasesOf(projectRoot, id, git, GitHubReleases.cacheFolder());
+    }
+
+    /**
+     * {@link #releasesOf(File, String, ProcessRunner.Runner)}, and the GitHub releases fetched
+     * earlier into {@code cache} for a version neither git nor releases/ has (1.155.0).
+     */
+    public static List<Entry> releasesOf(File projectRoot, String id,
+            ProcessRunner.Runner git, File cache) {
         List<Entry> releases = new ArrayList<Entry>();
         if (projectRoot == null || id == null) {
             return releases;
@@ -322,13 +344,24 @@ public final class ReleaseHistory {
                 versions.put(version.getText(), version);
             }
         }
+        Map<String, File> fetched = new HashMap<String, File>();
+        for (GitHubReleases.Cached cached : GitHubReleases.cachedAssets(cache,
+                GitHubReleases.repositoryOf(projectRoot), id)) {
+            OntologyVersion version = OntologyVersion.parseOrNull(cached.version());
+            if (version != null && !versions.containsKey(version.getText())) {
+                fetched.put(version.getText(), cached.file());
+                versions.put(version.getText(), version);
+            }
+        }
         List<OntologyVersion> newestFirst = new ArrayList<OntologyVersion>(versions.values());
         Collections.sort(newestFirst, NEWEST_FIRST);
         for (OntologyVersion version : newestFirst) {
             String text = version.getText();
             ReleaseTags.Held tagged = held.get(text);
-            releases.add(new Entry(version, id, projectRoot, folders.get(text), tags.get(text),
-                    tagged == null ? null : tagged.blob, tagged == null ? null : tagged.path));
+            Entry entry = new Entry(version, id, projectRoot, folders.get(text), tags.get(text),
+                    tagged == null ? null : tagged.blob, tagged == null ? null : tagged.path);
+            entry.fetched = fetched.get(text);
+            releases.add(entry);
         }
         return releases;
     }
