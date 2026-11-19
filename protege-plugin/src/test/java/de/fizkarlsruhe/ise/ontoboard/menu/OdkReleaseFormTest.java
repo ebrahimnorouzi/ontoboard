@@ -481,6 +481,27 @@ class OdkReleaseFormTest {
                 .get(0).contains("{version}"));
     }
 
+    /**
+     * A dated version says when it was released: after today it is refused; below the newest
+     * the way out is a semantic version, not "a later" date (1.155.0).
+     */
+    @Test
+    void aDatedVersionIsTodayAtTheLatest() throws IOException {
+        tags = Arrays.asList("v2026-11-10");
+        OdkReleaseForm.Start start = start();
+
+        List<String> after = OdkReleaseForm.problems(start, chosen(start, OdkReleaseForm.VERSION,
+                "2026-11-13"));
+        assertEquals(Collections.singletonList("A dated version says when it was released; "
+                + "2026-11-13 is after today, 2026-11-12."), after);
+        String below = OdkReleaseForm.problems(start, chosen(start, OdkReleaseForm.VERSION,
+                "2026-11-01")).get(0);
+        assertTrue(below.contains("a semantic version"), below);
+        assertFalse(below.contains("or a later one"), below);
+        assertEquals(Collections.<String>emptyList(), OdkReleaseForm.problems(start,
+                chosen(start, OdkReleaseForm.VERSION, "2026-11-12")));
+    }
+
     /** A leading v, as in the tag, is not part of the version. */
     @Test
     void aLeadingVIsNotPartOfTheVersion() {

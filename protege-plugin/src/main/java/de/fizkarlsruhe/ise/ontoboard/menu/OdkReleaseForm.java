@@ -509,11 +509,18 @@ final class OdkReleaseForm {
             OntologyVersion newest = newest(start, releasing.getScheme());
             if (there != null) {
                 problems.add(there);
+            } else if (releasing.getScheme() == OntologyVersion.Scheme.DATE
+                    && OntologyVersion.parseOrNull(start.today) != null
+                    && releasing.compareTo(OntologyVersion.parseOrNull(start.today)) > 0) {
+                // A dated version says when it was released (1.155.0).
+                problems.add("A dated version says when it was released; " + typed
+                        + " is after today, " + start.today + ".");
             } else if (newest != null && releasing.compareTo(newest) < 0) {
                 problems.add(newest.getText() + " has been released, and " + typed + " would be "
                         + "published below it. "
                         + (releasing.getScheme() == OntologyVersion.Scheme.DATE
-                                ? "Release with today's date, or a later one."
+                                ? "Release with today's date - or, when today has its release "
+                                        + "already, under a semantic version."
                                 : "Type a version above it: " + newest.nextPatch().getText()
                                         + " if nothing moved, " + newest.nextMinor().getText()
                                         + " if terms were added."));
