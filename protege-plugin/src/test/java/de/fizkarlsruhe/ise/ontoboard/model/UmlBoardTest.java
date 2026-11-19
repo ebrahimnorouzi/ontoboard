@@ -1,0 +1,95 @@
+package de.fizkarlsruhe.ise.ontoboard.model;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.StringDocumentSource;
+import org.semanticweb.owlapi.model.OWLOntology;
+
+/**
+ * A board drawn UML-like (1.155.0, decided 2026-11-19): a class's data properties are rows in its
+ * box, "name : datatype [n..m]", its keys a row too, and the datatype boxes and lines that said the
+ * same thing go.
+ */
+class UmlBoardTest {
+
+    private static final String U = "http://example.org/u#";
+
+    private static OWLOntology ontology() throws Exception {
+        return OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(new StringDocumentSource(
+                "Prefix(:=<" + U + ">)\nPrefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)\n"
+                + "Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)\n"
+                + "Ontology(<http://example.org/u>\n"
+                + "Declaration(Class(:Person)) Declaration(Class(:Pizza)) Declaration(Class(:Margherita))\n"
+                + "Declaration(DataProperty(:name)) Declaration(DataProperty(:age))\n"
+                + "Declaration(DataProperty(:id)) Declaration(DataProperty(:topping))\n"
+                + "Declaration(DataProperty(:kind)) Declaration(ObjectProperty(:likes))\n"
+                + "AnnotationAssertion(rdfs:label :name \"name\"@en)\n"
+                + "DataPropertyDomain(:name :Person) DataPropertyRange(:name xsd:string)\n"
+                + "DataPropertyDomain(:age :Person) DataPropertyRange(:age xsd:integer)\n"
+                + "FunctionalDataProperty(:age)\n"
+                + "SubClassOf(:Person DataExactCardinality(1 :name xsd:string))\n"
+                + "SubClassOf(:Pizza DataSomeValuesFrom(:topping xsd:string))\n"
+                + "SubClassOf(:Margherita :Pizza)\n"
+                + "SubClassOf(:Margherita DataHasValue(:kind \"classic\"))\n"
+                + "HasKey(:Person () (:id))\n"
+                + "ObjectPropertyDomain(:likes :Person) ObjectPropertyRange(:likes :Pizza)\n"
+                + ")"));
+    }
+
+    private static Projection drawn(OWLOntology ontology) {
+        return UmlBoard.withRows(OntologyProjection.project(ontology,
+                new HashSet<String>(Arrays.asList(U + "Person", U + "Pizza", U + "Margherita")), false),
+                ontology);
+    }
+
+    private static List<String> rowsOf(Projection projection, String id) {
+        for (CanvasNode node : projection.getNodes()) {
+            if (node.getId().equals(id)) {
+                return node.getRows();
+            }
+        }
+        throw new AssertionError("no node " + id + " in " + projection.getNodes());
+    }
+
+    @Test
+    void aClassHoldsItsDataPropertiesAsRows() throws Exception {
+        Projection projection = drawn(ontology());
+
+        assertEquals(Arrays.asList("age : integer [0..1]", "name : string [1]", "key: id"),
+                rowsOf(projection, U + "Person"));
+        assertEquals(Collections.singletonList("topping : string [1..*]"), rowsOf(projection, U + "Pizza"));
+        assertEquals(Collections.singletonList("kind = \"classic\""), rowsOf(projection, U + "Margherita"));
+    }
+
+    @Test
+    void theDatatypeBoxesTheRowsReplaceGo() throws Exception {
+        Projection projection = drawn(ontology());
+
+        for (CanvasNode node : projection.getNodes()) {
+            assertFalse(node.getKind() == NodeKind.DATATYPE, "a datatype box is left: " + node);
+        }
+        for (CanvasEdge edge : projection.getEdges()) {
+            assertFalse(edge.getKind() == CanvasEdge.Kind.DATA_PROPERTY, "a line to a datatype is left: " + edge);
+        }
+    }
+
+    @Test
+    void anObjectPropertyStaysItsArrow() throws Exception {
+        Projection projection = drawn(ontology());
+
+        boolean arrow = false;
+        for (CanvasEdge edge : projection.getEdges()) {
+            arrow |= edge.getSourceId().equals(U + "Person") && edge.getTargetId().equals(U + "Pizza")
+                    && edge.getLabel().startsWith("likes");
+        }
+        assertTrue(arrow, "likes is an arrow from Person to Pizza: " + projection.getEdges());
+    }
+}

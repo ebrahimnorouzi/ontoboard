@@ -34,6 +34,13 @@ public final class CanvasNode {
      */
     private TermSummary summary;
 
+    /**
+     * What a class's box holds below its name when the board is drawn UML-like (1.155.0): its data
+     * properties, {@code name : datatype [n..m]}, and its keys. Attached afterwards, like the
+     * summary, by {@link #withRows}; never null.
+     */
+    private List<String> rows = Collections.emptyList();
+
     public CanvasNode(String id, NodeKind kind, String label) {
         this(id, kind, label, null, false);
     }
@@ -80,14 +87,29 @@ public final class CanvasNode {
 
     /** The same node, knowing what the ontology says about it. */
     public CanvasNode withSummary(TermSummary about) {
-        CanvasNode copy = new CanvasNode(id, kind, label, notes, unsatisfiable, imported, curie);
+        CanvasNode copy = carrying(new CanvasNode(id, kind, label, notes, unsatisfiable, imported,
+                curie));
         copy.summary = about;
         return copy;
     }
 
     /** The same node, carrying a prefixed identifier to show beside its label. */
     public CanvasNode withCurie(String prefixed) {
-        return new CanvasNode(id, kind, label, notes, unsatisfiable, imported, prefixed);
+        return carrying(new CanvasNode(id, kind, label, notes, unsatisfiable, imported, prefixed));
+    }
+
+    /** The rows its box holds below its name - see {@link #rows}. Never null. */
+    public List<String> getRows() {
+        return rows;
+    }
+
+    /** The same node, its box holding these rows below its name. */
+    public CanvasNode withRows(List<String> lines) {
+        CanvasNode copy = carrying(new CanvasNode(id, kind, label, notes, unsatisfiable, imported,
+                curie));
+        copy.rows = lines == null || lines.isEmpty() ? Collections.<String>emptyList()
+                : Collections.unmodifiableList(new ArrayList<String>(lines));
+        return copy;
     }
 
     /** Blank notes dropped, so {@link #hasNote} cannot be true with nothing to show. */
@@ -133,6 +155,7 @@ public final class CanvasNode {
     /** Copies across the fields that are attached after construction. */
     private CanvasNode carrying(CanvasNode copy) {
         copy.summary = summary;
+        copy.rows = rows;
         return copy;
     }
 
