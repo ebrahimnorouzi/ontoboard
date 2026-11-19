@@ -151,6 +151,28 @@ class UmlBoardTest {
     }
 
     /**
+     * An import's property the open ontology only names - a sub-property axiom of its own about
+     * it - is still the import's: Show unused properties draws the ontology's own, as the
+     * properties panel marks them.
+     */
+    @Test
+    void anImportsPropertyTheOntologyOnlyNamesIsNotItsOwn() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        manager.loadOntologyFromOntologyDocument(new StringDocumentSource(
+                "Prefix(:=<" + I + ">)\nOntology(<http://example.org/imported>\n"
+                + "Declaration(DataProperty(:borrowed)) Declaration(ObjectProperty(:lent))\n)"));
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(new StringDocumentSource(
+                "Prefix(:=<" + U + ">)\nPrefix(i:=<" + I + ">)\n"
+                + "Ontology(<http://example.org/u>\nImport(<http://example.org/imported>)\n"
+                + "Declaration(DataProperty(:nickname)) Declaration(ObjectProperty(:knows))\n"
+                + "SubDataPropertyOf(:nickname i:borrowed) SubObjectPropertyOf(:knows i:lent)\n)"));
+        java.util.Set<String> every = everyTerm(ontology);
+
+        assertEquals(new HashSet<String>(Arrays.asList(U + "nickname", U + "knows")),
+                UmlBoard.unused(UmlBoard.draw(ontology, every, false, false), ontology, every));
+    }
+
+    /**
      * OWL's own top and bottom properties are no property of the ontology's, though a file that
      * names one has it in its signature - MWO's topDataProperty came back as a box with Show unused
      * properties.

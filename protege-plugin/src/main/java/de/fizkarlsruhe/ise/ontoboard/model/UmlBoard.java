@@ -127,15 +127,23 @@ public final class UmlBoard {
      * assertion's - and no value of an individual on the board.
      */
     public static Set<String> unused(Projection drawn, OWLOntology ontology, Set<String> members) {
-        Set<String> unused = new HashSet<String>(propertiesAmong(ontology, members));
-        unused.retainAll(OntologyProjection.termIdentifiers(ontology, Imports.EXCLUDED));
-        // OWL's top and bottom properties are in the signature of a file that names one, and are
-        // no property of the ontology's.
-        unused.removeIf(iri -> iri.startsWith("http://www.w3.org/2002/07/owl#"));
+        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+        Set<String> unused = new HashSet<String>();
+        for (String iri : propertiesAmong(ontology, members)) {
+            // OWL's top and bottom properties are in the signature of a file that names one, and
+            // are no property of the ontology's; an import's property it names is the import's.
+            IRI named = IRI.create(iri);
+            org.semanticweb.owlapi.model.OWLEntity property =
+                    ontology.containsObjectPropertyInSignature(named, Imports.INCLUDED)
+                            ? factory.getOWLObjectProperty(named) : factory.getOWLDataProperty(named);
+            if (!iri.startsWith("http://www.w3.org/2002/07/owl#")
+                    && PropertyOutline.isOwn(ontology, property)) {
+                unused.add(iri);
+            }
+        }
         if (unused.isEmpty()) {
             return unused;
         }
-        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
         Set<String> shown = new HashSet<String>();
         for (CanvasEdge edge : drawn.getEdges()) {
             String property = propertyOf(edge.getId());

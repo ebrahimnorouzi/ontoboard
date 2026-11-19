@@ -256,6 +256,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** The overview, floating above the zoom controls. */
     private JPanel minimapPanel;
 
+    /**
+     * The ontology's properties in their hierarchy (1.155.0), floating at the board's right edge
+     * while the toolbar's Properties button is down: on a board drawn UML-like no property is a
+     * box of its own.
+     */
+    private de.fizkarlsruhe.ise.ontoboard.canvas.PropertiesPanel propertiesPanel;
+
+    /** The toolbar's button that opens and closes {@link #propertiesPanel}. */
+    private javax.swing.JToggleButton propertiesButton;
+
     /** The outline inside it, kept so the open/closed state can be restored. */
     private mxGraphOutline minimapOutline;
 
@@ -404,6 +414,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Card deck so an empty board shows guidance instead of a blank grid.
         zoomCluster = buildZoomCluster();
         minimapPanel = buildMinimap();
+        propertiesPanel = new de.fizkarlsruhe.ise.ontoboard.canvas.PropertiesPanel(
+                this::pushSelectionToProtege, () -> setPropertiesOpen(false));
+        propertiesPanel.setVisible(false);
 
         cards = new CardLayout();
         centre = new JPanel(cards);
@@ -1774,6 +1787,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         zoom.width, zoom.height);
                 minimapPanel.setBounds(right - map.width, bottom - zoom.height - 8 - map.height,
                         map.width, map.height);
+                // The properties down the right edge, above the overview and the zoom.
+                int panelBottom = bottom - zoom.height - 8 - map.height - 8;
+                propertiesPanel.setBounds(right - propertiesPanel.getPreferredSize().width, margin,
+                        propertiesPanel.getPreferredSize().width,
+                        Math.max(120, panelBottom - margin));
             }
 
             @Override
@@ -1784,7 +1802,29 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         layers.add(graphComponent, javax.swing.JLayeredPane.DEFAULT_LAYER);
         layers.add(minimapPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
         layers.add(zoomCluster, javax.swing.JLayeredPane.PALETTE_LAYER);
+        layers.add(propertiesPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
         return layers;
+    }
+
+    /**
+     * Opens or closes the properties panel, filled from the ontology as it is now, and hands the
+     * keyboard back to the board.
+     */
+    private void setPropertiesOpen(boolean open) {
+        if (open) {
+            propertiesPanel.show(de.fizkarlsruhe.ise.ontoboard.model.PropertyOutline.of(
+                    getOWLModelManager().getActiveOntology()));
+        }
+        propertiesPanel.setVisible(open);
+        if (propertiesButton != null) {
+            propertiesButton.setSelected(open);
+        }
+        java.awt.Container layers = propertiesPanel.getParent();
+        if (layers != null) {
+            layers.doLayout();
+            layers.repaint();
+        }
+        graphComponent.requestFocusInWindow();
     }
 
     /**
@@ -4534,6 +4574,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         framesButton.setToolTipText("Jump to a frame - a pattern, the properties, or one you drew");
         framesButton.addActionListener(a -> showFramesMenu(framesButton));
         bar.add(framesButton);
+        // On a board drawn UML-like no property is a box of its own (1.155.0): their hierarchy,
+        // characteristics and domains and ranges are here, on demand.
+        propertiesButton = new javax.swing.JToggleButton("Properties");
+        propertiesButton.setToolTipText("<html><b>Properties</b><br>This ontology's properties "
+                + "and its imports', in their hierarchy,<br>with their characteristics and domain "
+                + "and range.<br>A click selects one in Protégé and shows its arrows."
+                + "</html>");
+        propertiesButton.addActionListener(a -> setPropertiesOpen(propertiesButton.isSelected()));
+        bar.add(propertiesButton);
         bar.add(inferencesButton);
         bar.add(javax.swing.Box.createHorizontalGlue());
         // HELP IN SIGHT. The legend lived only in the menu behind the three dots, whose tooltip
@@ -5478,6 +5527,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // recomputing it at export time could disagree with what is on screen.
         lastProjection = projection;
         graph.render(projection, layout);
+        // An edit that adds, renames or moves a property shows in the open properties panel too.
+        if (propertiesPanel != null && propertiesPanel.isVisible()) {
+            propertiesPanel.show(de.fizkarlsruhe.ise.ontoboard.model.PropertyOutline.of(
+                    getOWLModelManager().getActiveOntology()));
+        }
         // A pin on a cell the rebuild dropped would be a card floating where that term used to
         // be, saying something true about something no longer on the board.
         ((CollaborativeGraphComponent) graphComponent).getPins()
