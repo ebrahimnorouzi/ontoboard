@@ -59,6 +59,17 @@ public class OntoBoardStartup extends OWLEditorKitHook {
                     neverLetThisStopProtege);
         }
 
+        // The imports Protégé reads and leaves out because their files call themselves by another
+        // name - nfdicore's eight modules - are put in as ROBOT and ODK's make read them (1.155.0).
+        try {
+            if (getEditorKit() instanceof org.protege.editor.owl.OWLEditorKit) {
+                ImportLinksOnOpen.watch((org.protege.editor.owl.OWLEditorKit) getEditorKit());
+            }
+        } catch (Throwable neverLetThisStopProtege) {
+            LOGGER.error("OntoBoard: imports left out by Protégé are not watched for",
+                    neverLetThisStopProtege);
+        }
+
         // Only when asked. The self-test runs six ROBOT operations, which takes a second or two and
         // starts a reasoner - not something to do to somebody who just wanted to open an ontology.
         // tools/smoke.ps1 -SelfTest sets this, which is what turns "a maintainer can run the
