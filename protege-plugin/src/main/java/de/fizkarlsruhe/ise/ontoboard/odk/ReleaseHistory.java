@@ -131,15 +131,23 @@ public final class ReleaseHistory {
         private final File folder;
         private final String tag;
         private final String blob;
+        /** What the tag holds the ontology as: {@code <id>.owl}, {@code <id>.ttl}, ... */
+        private final String path;
 
         Entry(OntologyVersion version, String id, File projectRoot, File folder, String tag,
                 String blob) {
+            this(version, id, projectRoot, folder, tag, blob, id + ".owl");
+        }
+
+        Entry(OntologyVersion version, String id, File projectRoot, File folder, String tag,
+                String blob, String path) {
             this.version = version;
             this.id = id;
             this.projectRoot = projectRoot;
             this.folder = folder;
             this.tag = tag;
             this.blob = blob;
+            this.path = path == null ? id + ".owl" : path;
         }
 
         /** The version - {@code 1.2.0}, {@code 2026-10-31} - without a tag's {@code v}. */
@@ -190,11 +198,11 @@ public final class ReleaseHistory {
                 return Files.readAllBytes(file.toPath());
             }
             if (tag != null) {
-                byte[] held = GitTags.fileAt(projectRoot, tag, id + ".owl");
+                byte[] held = GitTags.fileAt(projectRoot, tag, path);
                 if (held != null) {
                     return held;
                 }
-                throw new IOException("Could not read " + id + ".owl from the git tag " + tag
+                throw new IOException("Could not read " + path + " from the git tag " + tag
                         + ".");
             }
             throw new IOException("There is no " + id + ".owl in " + folder.getAbsolutePath()
@@ -234,7 +242,8 @@ public final class ReleaseHistory {
             byte[] held = bytes();
             File copies = new File(System.getProperty("java.io.tmpdir"), COPIES);
             Files.createDirectories(copies.toPath());
-            File copy = new File(copies, id + "-" + version() + "-copy-of-tag-" + tag + ".owl");
+            File copy = new File(copies, id + "-" + version() + "-copy-of-tag-" + tag
+                    + path.substring(path.lastIndexOf('.')));
             if (copy.exists() && !copy.setWritable(true)) {
                 throw new IOException("Could not replace the earlier copy "
                         + copy.getAbsolutePath() + ".");
@@ -302,14 +311,14 @@ public final class ReleaseHistory {
             }
         }
         Map<String, String> tags = new HashMap<String, String>();
-        Map<String, String> blobs = new HashMap<String, String>();
-        for (Map.Entry<String, String> held
+        Map<String, ReleaseTags.Held> held = new HashMap<String, ReleaseTags.Held>();
+        for (Map.Entry<String, ReleaseTags.Held> one
                 : ReleaseTags.holding(projectRoot, id, git).entrySet()) {
-            OntologyVersion version = OntologyVersion.of(GitTags.versionOf(held.getKey()));
+            OntologyVersion version = OntologyVersion.of(GitTags.versionOf(one.getKey()));
             if (!tags.containsKey(version.getText())
-                    || held.getKey().equals(GitTags.tagFor(version.getText()))) {
-                tags.put(version.getText(), held.getKey());
-                blobs.put(version.getText(), held.getValue());
+                    || one.getKey().equals(GitTags.tagFor(version.getText()))) {
+                tags.put(version.getText(), one.getKey());
+                held.put(version.getText(), one.getValue());
                 versions.put(version.getText(), version);
             }
         }
@@ -317,8 +326,9 @@ public final class ReleaseHistory {
         Collections.sort(newestFirst, NEWEST_FIRST);
         for (OntologyVersion version : newestFirst) {
             String text = version.getText();
+            ReleaseTags.Held tagged = held.get(text);
             releases.add(new Entry(version, id, projectRoot, folders.get(text), tags.get(text),
-                    blobs.get(text)));
+                    tagged == null ? null : tagged.blob, tagged == null ? null : tagged.path));
         }
         return releases;
     }
@@ -345,6 +355,22 @@ public final class ReleaseHistory {
         private final List<String> propertiesRemoved;
         private final List<String> individualsAdded;
         private final List<String> individualsRemoved;
+        /** Why it could not be read, or null when it was. */
+        private String whyUnreadable;
+
+        /** A release that could not be read: shown, with why, and compared with nothing. */
+        static Version unreadable(String name, File file, Entry release, String why) {
+            List<String> none = Collections.<String>emptyList();
+            Version version = new Version(name, file, release, "", new Counts(0, 0, 0, 0, 0, 0),
+                    null, none, none, none, none);
+            version.whyUnreadable = why;
+            return version;
+        }
+
+        /** Whether it could be read; when not, {@link #describeChange} says why. */
+        public boolean isReadable() {
+            return whyUnreadable == null;
+        }
 
         Version(String name, File file, Entry release, String versionInfo, Counts counts,
                 ReleaseDiff sincePrevious, List<String> propertiesAdded,
@@ -419,6 +445,9 @@ public final class ReleaseHistory {
          * +3 properties". "First release" for the first, "No change" when nothing did.
          */
         public String describeChange() {
+            if (whyUnreadable != null) {
+                return "Could not be read: " + whyUnreadable;
+            }
             if (sincePrevious == null) {
                 return "First release";
             }
@@ -497,8 +526,17 @@ public final class ReleaseHistory {
             if (progress != null) {
                 progress.reading(entry.version(), at + 1, total);
             }
-            OWLOntology release = entry.load();
-            versions.add(versionOf(entry.version(), entry.file(), entry, release, previous));
+            // One that cannot be read is shown as such, and the next is compared with the last
+            // one that could (1.155.0: History stopped at the first it could not read).
+            OWLOntology release;
+            try {
+                release = entry.load();
+                versions.add(versionOf(entry.version(), entry.file(), entry, release, previous));
+            } catch (OWLOntologyCreationException | RuntimeException unreadable) {
+                versions.add(Version.unreadable(entry.version(), entry.file(), entry,
+                        firstLineOf(unreadable)));
+                continue;
+            }
             previous = release;
         }
         if (workingCopy != null) {
@@ -510,6 +548,18 @@ public final class ReleaseHistory {
         }
         Collections.reverse(versions);
         return versions;
+    }
+
+    /** What went wrong, in its first line - a parser's message runs on for a page. */
+    private static String firstLineOf(Exception unreadable) {
+        String said = unreadable.getMessage();
+        if (said == null || said.trim().isEmpty()) {
+            said = unreadable.getClass().getSimpleName();
+        }
+        said = said.trim();
+        int end = said.indexOf('\n');
+        said = end < 0 ? said : said.substring(0, end).trim();
+        return said.length() > 240 ? said.substring(0, 240) + "..." : said;
     }
 
     /**

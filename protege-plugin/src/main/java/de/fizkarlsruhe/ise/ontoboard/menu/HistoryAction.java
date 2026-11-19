@@ -222,8 +222,20 @@ public class HistoryAction extends ProtegeOWLAction {
             against.setSelectedItem(THE_ONE_BEFORE);
             return;
         }
+        if (!version.isReadable()) {
+            // Shown as such, not as a release of nothing (1.155.0).
+            details.setText(html("<p><b>" + escape(version.getName()) + "</b> &middot; "
+                    + escape(version.describeChange()) + "</p><p>The releases before and after "
+                    + "it are compared with each other.</p>"));
+            changes.show(new ArrayList<String[]>());
+            return;
+        }
         int row = versions.indexOf(version);
         ReleaseHistory.Version before = row + 1 < versions.size() ? versions.get(row + 1) : null;
+        while (before != null && !before.isReadable()) {
+            int at = versions.indexOf(before);
+            before = at + 1 < versions.size() ? versions.get(at + 1) : null;
+        }
         showChange(before, version, version.getSincePrevious(), version.getPropertiesAdded(),
                 version.getPropertiesRemoved(), version.getIndividualsAdded(),
                 version.getIndividualsRemoved());

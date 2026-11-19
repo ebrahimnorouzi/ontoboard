@@ -60,25 +60,44 @@ final class ReleaseTags {
     private ReleaseTags() {
     }
 
+    /**
+     * The syntaxes a release's ontology is looked for in, in this order: what the OWL API reads
+     * without more (1.155.0: nfdicore's tags v1.0.0 to v2.0.0 hold nfdicore.ttl).
+     */
+    static final List<String> SUFFIXES = java.util.Arrays.asList(".owl", ".ttl", ".obo", ".ofn",
+            ".owx");
+
+    /** What a tag holds: the file's blob id, and its path - {@code <id>.owl}, {@code <id>.ttl}. */
+    static final class Held {
+        final String blob;
+        final String path;
+
+        Held(String blob, String path) {
+            this.blob = blob;
+            this.path = path;
+        }
+    }
+
     /** An answer, and the state of the tag refs it was given in. */
     private static final class Kept {
         final String state;
-        final Map<String, String> held;
+        final Map<String, Held> held;
 
-        Kept(String state, Map<String, String> held) {
+        Kept(String state, Map<String, Held> held) {
             this.state = state;
             this.held = held;
         }
     }
 
     /**
-     * The release tags that hold {@code <id>.owl} at the project's root, each with its blob's id,
-     * in GitTags' order (newest first); empty where there is no repository, or no git.
+     * The release tags that hold the ontology at the project's root - {@code <id>.owl}, else in
+     * another syntax ({@link #SUFFIXES}) - each with the file it holds, in GitTags' order (newest
+     * first); empty where there is no repository, or no git.
      */
-    static Map<String, String> holding(File projectRoot, String id, ProcessRunner.Runner git) {
+    static Map<String, Held> holding(File projectRoot, String id, ProcessRunner.Runner git) {
         File dotGit = dotGitAbove(projectRoot);
         if (dotGit == null) {
-            return new LinkedHashMap<String, String>();
+            return new LinkedHashMap<String, Held>();
         }
         String key = projectRoot.getAbsolutePath() + '|' + id;
         long read = System.currentTimeMillis();
@@ -87,28 +106,42 @@ final class ReleaseTags {
         if (state != null) {
             Kept kept = KEPT.get(key);
             if (kept != null && kept.state.equals(state)) {
-                return new LinkedHashMap<String, String>(kept.held);
+                return new LinkedHashMap<String, Held>(kept.held);
             }
         }
-        Map<String, String> held = ask(projectRoot, id, git);
+        Map<String, Held> held = ask(projectRoot, id, git);
         if (state != null && held != null && newest[0] <= read - SETTLED_MILLIS) {
             KEPT.put(key, new Kept(state, Collections.unmodifiableMap(
-                    new LinkedHashMap<String, String>(held))));
+                    new LinkedHashMap<String, Held>(held))));
         } else {
             KEPT.remove(key);
         }
-        return held == null ? new LinkedHashMap<String, String>() : held;
+        return held == null ? new LinkedHashMap<String, Held>() : held;
     }
 
     /** What git says, or null when it could not be asked or did not answer. */
-    private static Map<String, String> ask(File projectRoot, String id,
+    private static Map<String, Held> ask(File projectRoot, String id,
             ProcessRunner.Runner git) {
         List<String> named = GitTags.releasesOrNull(projectRoot, git);
         if (named == null) {
             return null;
         }
-        return named.isEmpty() ? new LinkedHashMap<String, String>()
-                : GitTags.heldOrNull(projectRoot, named, id + ".owl");
+        Map<String, Held> held = new LinkedHashMap<String, Held>();
+        if (named.isEmpty()) {
+            return held;
+        }
+        List<String> paths = new java.util.ArrayList<String>();
+        for (String suffix : SUFFIXES) {
+            paths.add(id + suffix);
+        }
+        Map<String, String[]> found = GitTags.heldAnyOrNull(projectRoot, named, paths);
+        if (found == null) {
+            return null;
+        }
+        for (Map.Entry<String, String[]> one : found.entrySet()) {
+            held.put(one.getKey(), new Held(one.getValue()[0], one.getValue()[1]));
+        }
+        return held;
     }
 
     /** The {@code .git} - folder or file - in the project's folder or the nearest above it. */

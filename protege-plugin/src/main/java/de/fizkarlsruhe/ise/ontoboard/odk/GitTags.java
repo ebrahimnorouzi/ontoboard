@@ -159,22 +159,52 @@ public final class GitTags {
      * which an empty map does not tell apart from tags that hold no such file.
      */
     static Map<String, String> heldOrNull(File projectRoot, List<String> tags, String path) {
-        Map<String, String> held = new LinkedHashMap<String, String>();
+        Map<String, String[]> held = heldAnyOrNull(projectRoot, tags,
+                java.util.Collections.singletonList(path));
+        if (held == null) {
+            return null;
+        }
+        Map<String, String> blobs = new LinkedHashMap<String, String>();
+        for (Map.Entry<String, String[]> one : held.entrySet()) {
+            blobs.put(one.getKey(), one.getValue()[0]);
+        }
+        return blobs;
+    }
+
+    /**
+     * For each of these release tags, the first of the paths it holds - {blob id, path} - or
+     * null when git could not be asked or did not answer every question. One git process for
+     * every tag and every path (1.155.0: a release may hold its ontology as .ttl or .obo).
+     *
+     * @param paths from the project's root, with {@code /}, in the order they are preferred
+     */
+    static Map<String, String[]> heldAnyOrNull(File projectRoot, List<String> tags,
+            List<String> paths) {
+        Map<String, String[]> held = new LinkedHashMap<String, String[]>();
         List<String> asked = new ArrayList<String>();
         for (String tag : tags) {
             if (versionOf(tag) != null) {
                 asked.add(tag);
             }
         }
-        if (asked.isEmpty() || path.startsWith("-") || path.contains(":")
-                || path.contains("\n") || path.contains("\r")) {
+        List<String> named = new ArrayList<String>();
+        for (String path : paths) {
+            if (!path.startsWith("-") && !path.contains(":") && !path.contains("\n")
+                    && !path.contains("\r")) {
+                named.add(path);
+            }
+        }
+        if (asked.isEmpty() || named.isEmpty()) {
             return held;
         }
         StringBuilder questions = new StringBuilder();
         for (String tag : asked) {
-            // refs/tags/, so a branch of the same name is not what is read; "./" for a project in
-            // a folder of a larger repository, as in fileAt.
-            questions.append("refs/tags/").append(tag).append(":./").append(path).append('\n');
+            for (String path : named) {
+                // refs/tags/, so a branch of the same name is not what is read; "./" for a
+                // project in a folder of a larger repository, as in fileAt.
+                questions.append("refs/tags/").append(tag).append(":./").append(path)
+                        .append('\n');
+            }
         }
         File out = null;
         try {
@@ -197,13 +227,16 @@ public final class GitTags {
             }
             // One answer a line, in the order asked: "<id> blob <size>", or "<asked> missing".
             List<String> answers = Files.readAllLines(out.toPath(), StandardCharsets.UTF_8);
-            if (answers.size() < asked.size()) {
+            if (answers.size() < asked.size() * named.size()) {
                 return null;
             }
             for (int at = 0; at < asked.size(); at++) {
-                String[] words = answers.get(at).trim().split(" ");
-                if (words.length == 3 && "blob".equals(words[1])) {
-                    held.put(asked.get(at), words[0]);
+                for (int path = 0; path < named.size(); path++) {
+                    String[] words = answers.get(at * named.size() + path).trim().split(" ");
+                    if (words.length == 3 && "blob".equals(words[1])
+                            && !held.containsKey(asked.get(at))) {
+                        held.put(asked.get(at), new String[] {words[0], named.get(path)});
+                    }
                 }
             }
             return held;

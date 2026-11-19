@@ -365,6 +365,67 @@ class ReleaseHistoryTest {
                 releases.get(3).file().getAbsolutePath(), "read where it is");
     }
 
+    /** The demo ontology with these classes, as Turtle. */
+    static byte[] demoTurtle(String... classes) throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(
+                new java.io.ByteArrayInputStream(demo(classes)));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        manager.saveOntology(ontology, new org.semanticweb.owlapi.formats.TurtleDocumentFormat(),
+                out);
+        return out.toByteArray();
+    }
+
+    /**
+     * nfdicore's tags v1.0.0 to v2.0.0 hold nfdicore.ttl at the root, not nfdicore.owl, and
+     * History found 7 of its 13 releases (1.155.0). A tag is a release when its root holds the
+     * ontology in a syntax the OWL API reads: .owl, .ttl, .obo, .ofn, .owx - in that order.
+     */
+    @Test
+    void aTagHoldingTheOntologyInAnotherSyntaxIsARelease(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        byte[] turtle = demoTurtle("Egg");
+        Files.write(new File(root, "demo.ttl").toPath(), turtle);
+        git(root, "add", "-f", "demo.ttl");
+        git(root, "commit", "-q", "-m", "release(1.0.0) as Turtle");
+        git(root, "tag", "-a", "v1.0.0", "-m", "demo 1.0.0");
+        tagged(root, "2.0.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[2.0.0, 1.0.0]", versionsOf(releases));
+        assertArrayEquals(turtle, releases.get(1).bytes(), "the Turtle the tag holds");
+        assertEquals(set("Egg"), classesOf(releases.get(1).load()));
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(releases, null, null, null);
+        assertEquals("+1 class", history.get(0).describeChange());
+    }
+
+    /**
+     * One release that cannot be read is shown as such, with why; the others are read and
+     * compared with each other - before, History stopped at the first it could not read.
+     */
+    @Test
+    void aReleaseThatCannotBeReadStopsNothing(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        tagged(root, "1.0.0", demo("Egg"));
+        tagged(root, "1.1.0", "this is no ontology".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        tagged(root, "1.2.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(
+                ReleaseHistory.releasesOf(root, "demo"), null, null, null);
+
+        assertEquals("[1.2.0, 1.1.0, 1.0.0]", names(history));
+        assertTrue(history.get(0).isReadable());
+        assertEquals("+1 class", history.get(0).describeChange(),
+                "compared with 1.0.0, the release before it that could be read");
+        assertFalse(history.get(1).isReadable());
+        assertTrue(history.get(1).describeChange().startsWith("Could not be read"),
+                history.get(1).describeChange());
+        assertEquals("First release", history.get(2).describeChange());
+    }
+
     /** History reads a release that is only a tag, beside one that is only a folder. */
     @Test
     void theHistoryReadsTaggedReleases(@TempDir File root) throws Exception {
