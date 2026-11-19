@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -98,7 +99,8 @@ class ReleaseVersionAgainstReleasesTest {
         assertNull(ReleaseAction.clashWithReleases(project, "pizza", v(TODAY)));
 
         assertEquals("Replace the " + TODAY + " release? releases/" + TODAY + " holds a release "
-                + "made under that date, and somebody may already have taken it.",
+                + "made under that date, and somebody may already have taken it. To keep it, "
+                + "release under a semantic version instead.",
                 ReleaseAction.sameDayQuestion(project, "pizza", v(TODAY)));
         assertNull(ReleaseAction.sameDayQuestion(project, "pizza", v("2099-01-01")),
                 "a later date asks nothing");
@@ -130,5 +132,38 @@ class ReleaseVersionAgainstReleasesTest {
     void aDirectoryWithoutTheReleaseFileIsNotARelease(@TempDir File project) throws Exception {
         new File(project, "releases/1.0.0").mkdirs();
         assertNull(ReleaseAction.clashWithReleases(project, "pizza", v("0.1.1")));
+    }
+
+    /**
+     * A dated version says when it was released: a date after today is none (1.155.0 - the
+     * dated clash said "Release with today's date, or a later one").
+     */
+    @Test
+    void aDateAfterTodayIsRefused() {
+        java.util.Map<String, String> values = new java.util.LinkedHashMap<String, String>();
+        values.put("scheme", OntologyVersion.Scheme.DATE.getLabel());
+        values.put("date", "2026-11-06");
+
+        assertEquals(java.util.Collections.singletonList("A dated version says when it was "
+                + "released; 2026-11-06 is after today, " + TODAY + "."),
+                ReleaseAction.versionProblems(values, TODAY));
+        values.put("date", TODAY);
+        assertTrue(ReleaseAction.versionProblems(values, TODAY).isEmpty());
+    }
+
+    /**
+     * A second release on a day that has one replaces it; the way to keep both is a semantic
+     * version - not "a later" date, which would say a day that has not come.
+     */
+    @Test
+    void theSameDayClashOffersASemanticVersion(@TempDir File project) throws Exception {
+        aRelease(project, TODAY, "pizza");
+
+        String older = ReleaseAction.clashWithReleases(project, "pizza", v("2026-11-01"));
+
+        assertTrue(older.contains("a semantic version"), older);
+        assertFalse(older.contains("or a later one"), older);
+        assertTrue(ReleaseAction.sameDayQuestion(project, "pizza", v(TODAY))
+                .contains("a semantic version"));
     }
 }

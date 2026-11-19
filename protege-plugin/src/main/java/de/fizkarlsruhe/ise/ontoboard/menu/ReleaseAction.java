@@ -162,7 +162,7 @@ public class ReleaseAction extends OntoBoardAction {
                 return false;
             }
             values = chosen;
-            List<String> problems = versionProblems(chosen);
+            List<String> problems = versionProblems(chosen, today);
             if (problems.isEmpty()) {
                 String clash = clashWithReleases(projectRoot, ontologyId,
                         OntologyVersion.parseOrNull(chosen.get(OPTION_DATE).trim()));
@@ -537,6 +537,26 @@ public class ReleaseAction extends OntoBoardAction {
      * other is selected would publish, say, {@code .../mwo/releases/3.0.2/mwo.owl} - a shape that
      * belongs to neither history, under an IRI that cannot be taken back.
      */
+    /**
+     * As {@link #versionProblems(Map)}, and a dated version after {@code today} refused: a
+     * dated version says when it was released (1.155.0).
+     *
+     * @param today as the release's date is written, {@code 2026-11-19}
+     */
+    static List<String> versionProblems(Map<String, String> values, String today) {
+        List<String> problems = versionProblems(values);
+        String typed = values.get(OPTION_DATE) == null ? "" : values.get(OPTION_DATE).trim();
+        OntologyVersion parsed = OntologyVersion.parseOrNull(typed);
+        OntologyVersion now = today == null ? null : OntologyVersion.parseOrNull(today);
+        if (problems.isEmpty() && parsed != null && now != null
+                && parsed.getScheme() == OntologyVersion.Scheme.DATE
+                && now.getScheme() == OntologyVersion.Scheme.DATE && parsed.compareTo(now) > 0) {
+            problems.add("A dated version says when it was released; " + typed
+                    + " is after today, " + today + ".");
+        }
+        return problems;
+    }
+
     static List<String> versionProblems(Map<String, String> values) {
         List<String> problems = new java.util.ArrayList<String>();
         String typed = values.get(OPTION_DATE) == null ? "" : values.get(OPTION_DATE).trim();
@@ -638,7 +658,8 @@ public class ReleaseAction extends OntoBoardAction {
         if (order > 0 || (order == 0 && dated)) {
             return null;
         }
-        String instead = dated ? "Release with today's date, or a later one."
+        String instead = dated ? "Release with today's date - which replaces that day's "
+                + "release - or, to keep both, under a semantic version."
                 : "Type a version above it - " + newest.nextPatch().getText()
                         + " if nothing moved, " + newest.nextMinor().getText()
                         + " if terms were added.";
@@ -667,7 +688,8 @@ public class ReleaseAction extends OntoBoardAction {
             return null;
         }
         return "Replace the " + releasing.getText() + " release? releases/" + releasing.getText()
-                + " holds a release made under that date, and somebody may already have taken it.";
+                + " holds a release made under that date, and somebody may already have taken it."
+                + " To keep it, release under a semantic version instead.";
     }
 
     /** The form, with whatever was typed last time already in it. */
