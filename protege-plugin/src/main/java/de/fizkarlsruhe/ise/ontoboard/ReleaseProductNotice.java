@@ -73,7 +73,7 @@ public final class ReleaseProductNotice implements OWLModelManagerListener {
     }
 
     /** As History opens a release: Protégé's own way, in a window of its own. */
-    private static void openInANewWindow(File file) throws Exception {
+    public static void openInANewWindow(File file) throws Exception {
         org.protege.editor.core.ProtegeManager protege =
                 org.protege.editor.core.ProtegeManager.getInstance();
         org.protege.editor.core.editorkit.EditorKitFactoryPlugin owl = null;

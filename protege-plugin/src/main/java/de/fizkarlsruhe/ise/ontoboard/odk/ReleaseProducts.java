@@ -207,6 +207,28 @@ public final class ReleaseProducts {
                 + product.editFileShown() + ", and make it there.";
     }
 
+    /**
+     * Why a release file is not released as an ontology of its own, in a sentence that says where
+     * to release from; null when the file is no release file. The egg project's root egg.owl was
+     * released into its own project's releases/ (1.155.0).
+     */
+    public static String releaseRefusal(File file) {
+        Product product = of(file);
+        if (product == null) {
+            return null;
+        }
+        if (product.where() == Where.RELEASES) {
+            return "This is " + product.fileShown() + ", the " + product.version()
+                    + " release of the ODK project " + product.id() + ", kept as it was "
+                    + "published. A release is made from the edit file, "
+                    + product.editFileShown() + ": open it and release from there.";
+        }
+        return "This is " + product.fileShown() + ", a release file of the ODK project "
+                + product.id() + ", made from " + product.editFileShown() + " - the next release "
+                + "writes it again. A release is made from the edit file: open it and release "
+                + "from there.";
+    }
+
     private static String relative(File root, File file) {
         try {
             return root.getCanonicalFile().toPath()

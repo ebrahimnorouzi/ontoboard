@@ -89,6 +89,12 @@ public class ReleaseAction extends OntoBoardAction {
         return "Release";
     }
 
+    /** A release file is not released as an ontology of its own: one is made from the edit file. */
+    @Override
+    protected String worksBesideTheFile() {
+        return ReleaseFileRefusal.RELEASING;
+    }
+
     @Override
     protected boolean configure() {
         odkStart = null;

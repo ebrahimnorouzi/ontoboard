@@ -100,6 +100,12 @@ public class ImportTermsAction extends OntoBoardAction {
         return "Import terms";
     }
 
+    /** The import of terms writes their module, list and catalog entry beside the open file. */
+    @Override
+    protected String worksBesideTheFile() {
+        return "the import of these terms";
+    }
+
     /**
      * Fills the source and terms in before the dialog opens.
      *

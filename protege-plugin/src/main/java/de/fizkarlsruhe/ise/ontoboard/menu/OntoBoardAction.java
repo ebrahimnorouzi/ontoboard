@@ -49,6 +49,17 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      */
     protected abstract OperationResult run(OWLOntology ontology);
 
+    /**
+     * What this operation writes beside the open file - "the import of these terms" - or null when
+     * it writes nothing there (1.155.0). In a release file of an ODK project that work would be
+     * lost at the next release, or would change a published one: it is refused before anything is
+     * asked or written, with where to work instead and the edit file offered - see
+     * {@link ReleaseFileRefusal}.
+     */
+    protected String worksBesideTheFile() {
+        return null;
+    }
+
     /** Whether to refuse when nothing is open. Most operations need an ontology; a few do not. */
     protected boolean needsAnOntology() {
         return true;
@@ -105,6 +116,13 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Open an ontology first - " + operationName() + " works on the one you have "
                             + "open.",
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String work = worksBesideTheFile();
+        if (work != null && ReleaseFileRefusal.said(getOWLWorkspace(),
+                ReleaseFileRefusal.documentOf(getOWLModelManager(), ontology), work)) {
+            LOGGER.info("OntoBoard: {} was not started - the open file is a release file",
+                    operationName());
             return;
         }
         final OWLOntology target = ontology;

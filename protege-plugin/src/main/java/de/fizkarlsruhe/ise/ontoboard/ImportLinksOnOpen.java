@@ -104,7 +104,7 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener {
     }
 
     /** A long sentence as a dialog shows it, at a readable width. */
-    static javax.swing.JComponent wrapped(String text) {
+    public static javax.swing.JComponent wrapped(String text) {
         javax.swing.JTextArea message = new javax.swing.JTextArea(text);
         message.setEditable(false);
         message.setLineWrap(true);

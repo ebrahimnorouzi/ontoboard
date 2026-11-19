@@ -60,6 +60,9 @@ public class PatternLibraryAction extends ProtegeOWLAction {
 
     private static final long serialVersionUID = 1L;
 
+    /** What the pattern's import writes beside the open file: refused in a release file. */
+    static final String WORK = "the pattern's import";
+
     /** Where a pattern is copied so that ROBOT can be given a file IRI for it. */
     static final String MIRROR = "src/ontology/mirror";
 
@@ -676,6 +679,11 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         boolean narrowed = !selected.isEmpty() && selected.size() < all.size();
         List<IRI> wanted = narrowed ? selected : all;
 
+        // Not into a release file (1.155.0): the egg project's root egg.owl got two patterns'
+        // modules beside it, at the project's root.
+        if (ReleaseFileRefusal.said(dialog, editFile(), WORK)) {
+            return;
+        }
         File mirror = mirrorDirectory();
         if (mirror == null) {
             JOptionPane.showMessageDialog(dialog,

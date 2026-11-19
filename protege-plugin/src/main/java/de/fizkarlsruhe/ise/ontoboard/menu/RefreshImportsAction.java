@@ -83,6 +83,12 @@ public class RefreshImportsAction extends OntoBoardAction {
         return "Refresh imports";
     }
 
+    /** Refreshing writes the modules beside the open file again. */
+    @Override
+    protected String worksBesideTheFile() {
+        return "the refreshed imports";
+    }
+
     @Override
     protected boolean runsInBackground() {
         return true;
