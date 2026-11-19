@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkInstaller;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.io.File;
@@ -113,10 +114,108 @@ class OdkCreateTest {
         assertEquals(expected, pathsOf(root, made.written()));
         assertEquals(expected, new TreeSet<String>(Goldens.tree(root).keySet()));
         for (String path : seed.keySet()) {
+            if (path.equals("src/ontology/eggboil-edit.owl")) {
+                // ODK's own, given an edit file without its placeholder (1.155.0).
+                assertEquals(withoutRootNode(new String(seed.get(path), StandardCharsets.UTF_8)),
+                        text(root, path), path);
+                continue;
+            }
             assertArrayEquals(seed.get(path), Files.readAllBytes(new File(root, path).toPath()),
                     path);
         }
         assertEquals(OdkCreate.Route.BUNDLED, made.route());
+    }
+
+    /**
+     * ODK's seed as a new project has it (1.155.0): every file ODK's own, the edit file as ODK
+     * writes it when given it as the source - without the placeholder root node.
+     */
+    private static Map<String, byte[]> seedWithoutRootNode() {
+        Map<String, byte[]> seed = new java.util.TreeMap<String, byte[]>(
+                Goldens.seedTree("eggboil"));
+        String edit = "src/ontology/eggboil-edit.owl";
+        seed.put(edit, withoutRootNode(new String(seed.get(edit), StandardCharsets.UTF_8))
+                .getBytes(StandardCharsets.UTF_8));
+        return seed;
+    }
+
+    /** ODK's text without the lines that name <ID>_0000000. */
+    private static String withoutRootNode(String odks) {
+        StringBuilder kept = new StringBuilder();
+        for (String line : odks.split("(?<=\n)")) {
+            if (!line.contains("_0000000")) {
+                kept.append(line);
+            }
+        }
+        return kept.toString();
+    }
+
+    /**
+     * ODK's template gives a new project's edit file a placeholder class, <ID>_0000000 "root
+     * node". The user did not want it (2026-11-19): the project is ODK's seed given an edit
+     * file - ODK's own, without the placeholder - as odk.py seed --source makes one.
+     */
+    @Test
+    void aNewProjectHasNoRootNode(@TempDir File temp) throws IOException {
+        OdkCreate.create(egg(temp), null, nothingInstalled());
+
+        String edit = text(new File(temp, "eggboil"), "src/ontology/eggboil-edit.owl");
+        assertFalse(edit.contains("_0000000"), edit);
+        assertFalse(edit.contains("root node"), edit);
+        assertTrue(edit.contains("Ontology(<https://example.org/eggboil/eggboil.owl>"), edit);
+    }
+
+    /**
+     * Everything else in it is ODK's: in functional syntax the three lines of the placeholder
+     * go - its declaration, its comment, its label; in OBO its stanza.
+     */
+    @Test
+    void theRestOfTheEditFileIsOdks(@TempDir File temp) {
+        String config = OdkConfigWriter.forNewProject(egg(temp));
+        String odks = new String(OdkInstaller.renderSeed(config).files()
+                .get("src/ontology/eggboil-edit.owl"), StandardCharsets.UTF_8);
+
+        String ours = new String(OdkInstaller.editFileWithoutRootNode(config),
+                StandardCharsets.UTF_8);
+
+        assertEquals(withoutRootNode(odks), ours);
+        assertEquals(3, odks.split("\n").length - ours.split("\n").length);
+
+        String obo = config.replaceAll("(?m)^edit_format:.*\n", "") + "edit_format: obo\n";
+        String odksObo = new String(OdkInstaller.renderSeed(obo).files()
+                .get("src/ontology/eggboil-edit.obo"), StandardCharsets.UTF_8);
+        String oursObo = new String(OdkInstaller.editFileWithoutRootNode(obo),
+                StandardCharsets.UTF_8);
+        assertTrue(odksObo.contains("[Term]\nid: EGGBOIL:0000000\nname: root node\n"),
+                odksObo);
+        assertEquals(odksObo.replace("[Term]\nid: EGGBOIL:0000000\nname: root node\n\n", ""),
+                oursObo);
+    }
+
+    /** In ODK's container, odk.py seed is given the same edit file: -s, from the config's folder. */
+    @Test
+    void theContainerSeedsWithTheSameEditFile(@TempDir File temp) {
+        final List<String> seeded = new ArrayList<String>();
+        ProcessRunner.Runner docker = new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                String line = String.join(" ", command);
+                if (line.equals("docker info") || line.contains("image inspect --format {{.Id}}")) {
+                    return new ProcessRunner.Outcome(0, Collections.singletonList("ok"), false);
+                }
+                if (line.startsWith("docker run")) {
+                    seeded.add(line);
+                    return new ProcessRunner.Outcome(1, Collections.singletonList("no"), false);
+                }
+                throw new IOException("Cannot run program");
+            }
+        };
+
+        OdkCreate.create(egg(temp), null, docker, false, () -> false);
+
+        assertEquals(1, seeded.size(), String.valueOf(seeded));
+        assertTrue(seeded.get(0).contains(" -s /seedconfig/"), seeded.get(0));
     }
 
     /**
@@ -192,7 +291,7 @@ class OdkCreateTest {
         OdkCreate.create(egg(parent), null, nothingInstalled());
 
         Map<String, byte[]> made = Goldens.tree(new File(parent, "eggboil"));
-        for (Map.Entry<String, byte[]> file : Goldens.seedTree("eggboil").entrySet()) {
+        for (Map.Entry<String, byte[]> file : seedWithoutRootNode().entrySet()) {
             assertArrayEquals(file.getValue(), made.get(file.getKey()), file.getKey());
         }
     }
@@ -329,7 +428,7 @@ class OdkCreateTest {
             String[] columns = line.substring(0, line.indexOf('\t')).trim().split("\\s+");
             sizes.put(line.substring(line.indexOf('\t') + 1), columns[3]);
         }
-        for (Map.Entry<String, byte[]> file : Goldens.seedTree("eggboil").entrySet()) {
+        for (Map.Entry<String, byte[]> file : seedWithoutRootNode().entrySet()) {
             assertEquals(String.valueOf(file.getValue().length), sizes.get(file.getKey()),
                     file.getKey());
         }
@@ -737,7 +836,7 @@ class OdkCreateTest {
 
         File root = new File(temp, "eggboil");
         assertEquals(OdkCreate.Route.CONTAINER, made.route());
-        Map<String, byte[]> seed = Goldens.seedTree("eggboil");
+        Map<String, byte[]> seed = seedWithoutRootNode();
         Set<String> expected = new TreeSet<String>(seed.keySet());
         expected.addAll(EXTRAS);
         assertEquals(expected, pathsOf(root, made.written()));

@@ -163,6 +163,10 @@ public final class OdkCreate {
                 throw new UncheckedIOException(adoptedFileOrNull + " could not be read: "
                         + unreadable.getMessage(), unreadable);
             }
+        } else {
+            // ODK's edit file without its placeholder class, <ID>_0000000 "root node" - the
+            // seed given it as its source, in the container as by the templates (1.155.0).
+            source = OdkInstaller.editFileWithoutRootNode(configText);
         }
         File root = config.getProjectRoot().getAbsoluteFile();
         List<String> notes = new ArrayList<String>();

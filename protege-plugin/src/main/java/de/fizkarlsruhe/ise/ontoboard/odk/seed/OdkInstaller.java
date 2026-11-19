@@ -192,6 +192,35 @@ public final class OdkInstaller {
     }
 
     /**
+     * ODK's own edit file for this configuration, without the placeholder ODK's template gives a
+     * new project - {@code <ID>_0000000} "root node" (the user, 2026-11-19: "i don't want
+     * that"): in functional syntax its declaration, its comment and its label; in OBO its
+     * {@code [Term]} stanza. Everything else is ODK's, line for line; it goes to {@code odk.py
+     * seed} as the source, which writes the rest of the project as it always does.
+     */
+    public static byte[] editFileWithoutRootNode(String configText) {
+        PyObject project = OdkProjectModel.load(configText);
+        String id = Py.str(project.get("id"));
+        String format = Py.str(project.get("edit_format"));
+        byte[] edit = renderSeed(configText).files().get("src/ontology/" + id + "-edit."
+                + format);
+        String text = new String(edit, StandardCharsets.UTF_8);
+        if ("obo".equals(format)) {
+            text = text.replace("[Term]\nid: " + id.toUpperCase(java.util.Locale.ROOT)
+                    + ":0000000\nname: root node\n\n", "");
+        } else {
+            StringBuilder kept = new StringBuilder();
+            for (String line : text.split("(?<=\n)")) {
+                if (!line.contains("_0000000")) {
+                    kept.append(line);
+                }
+            }
+            text = kept.toString();
+        }
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
      * Seeds a project into a folder of its own.
      *
      * @param projectRoot a folder that does not exist yet, or holds nothing
