@@ -141,7 +141,65 @@ final class ReleaseTags {
         for (Map.Entry<String, String[]> one : found.entrySet()) {
             held.put(one.getKey(), new Held(one.getValue()[0], one.getValue()[1]));
         }
-        return held;
+        return underNamesOfTheirOwn(projectRoot, id, named, held);
+    }
+
+    /**
+     * The release tags that hold none of the usual names, each with the file at its root whose
+     * ontology IRI is the edit file's - nfdicore's v1.0.0 holds nfdico.ttl, declaring http://
+     * where the edit file says https:// (1.155.0). Of several, the shortest name: the release,
+     * not a variant of it ("nfdico_with_mappings.ttl"). In the tags' order.
+     */
+    private static Map<String, Held> underNamesOfTheirOwn(File projectRoot, String id,
+            List<String> named, Map<String, Held> held) {
+        String iri = null;
+        boolean read = false;
+        Map<String, Held> found = new LinkedHashMap<String, Held>();
+        for (String tag : named) {
+            if (held.containsKey(tag)) {
+                found.put(tag, held.get(tag));
+                continue;
+            }
+            if (GitTags.versionOf(tag) == null) {
+                continue;
+            }
+            if (!read) {
+                iri = OntologyIriScan.of(editFileOf(projectRoot, id));
+                read = true;
+            }
+            if (iri == null) {
+                continue;
+            }
+            List<String[]> candidates = new java.util.ArrayList<String[]>();
+            for (String[] file : GitTags.rootFiles(projectRoot, tag)) {
+                for (String suffix : SUFFIXES) {
+                    if (file[1].toLowerCase(java.util.Locale.ROOT).endsWith(suffix)) {
+                        candidates.add(file);
+                    }
+                }
+            }
+            candidates.sort((a, b) -> a[1].length() != b[1].length()
+                    ? Integer.compare(a[1].length(), b[1].length()) : a[1].compareTo(b[1]));
+            for (String[] candidate : candidates) {
+                if (OntologyIriScan.same(iri, OntologyIriScan.of(
+                        GitTags.fileAt(projectRoot, tag, candidate[1])))) {
+                    found.put(tag, new Held(candidate[0], candidate[1]));
+                    break;
+                }
+            }
+        }
+        return found;
+    }
+
+    /** The project's edit file, {@code src/ontology/<id>-edit.*}, or null. */
+    private static File editFileOf(File projectRoot, String id) {
+        for (String extension : new String[] {"owl", "obo", "ofn", "ttl", "omn", "owx"}) {
+            File edit = new File(projectRoot, "src/ontology/" + id + "-edit." + extension);
+            if (edit.isFile()) {
+                return edit;
+            }
+        }
+        return null;
     }
 
     /** The {@code .git} - folder or file - in the project's folder or the nearest above it. */

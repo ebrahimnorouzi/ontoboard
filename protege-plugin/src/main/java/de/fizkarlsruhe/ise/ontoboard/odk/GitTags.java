@@ -145,6 +145,56 @@ public final class GitTags {
         }
     }
 
+    /**
+     * The files at the project's root in a release tag - {blob id, name} each - or an empty list
+     * where git could not be asked (1.155.0: a release held under a name of its own is looked for
+     * among them).
+     */
+    static List<String[]> rootFiles(File projectRoot, String tag) {
+        List<String[]> files = new ArrayList<String[]>();
+        if (versionOf(tag) == null) {
+            return files;
+        }
+        File out = null;
+        try {
+            out = File.createTempFile("ontoboard-tree", ".txt");
+            // Run in the project's folder, the tree listed is that folder's in the tag: a project
+            // may be a folder of a larger repository.
+            Process git = new ProcessBuilder("git", "ls-tree", "refs/tags/" + tag)
+                    .directory(projectRoot)
+                    .redirectOutput(out)
+                    .redirectError(new File(out.getParentFile(), out.getName() + ".err"))
+                    .start();
+            git.getOutputStream().close();
+            if (!git.waitFor(60, TimeUnit.SECONDS)) {
+                git.destroyForcibly();
+                return files;
+            }
+            if (git.exitValue() != 0) {
+                return files;
+            }
+            // "<mode> blob <id>\t<name>", a line each.
+            for (String line : Files.readAllLines(out.toPath(), StandardCharsets.UTF_8)) {
+                int tab = line.indexOf('\t');
+                String[] fields = tab < 0 ? new String[0] : line.substring(0, tab).split(" ");
+                if (fields.length == 3 && "blob".equals(fields[1])) {
+                    files.add(new String[] {fields[2], line.substring(tab + 1)});
+                }
+            }
+            return files;
+        } catch (IOException noGit) {
+            return files;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return files;
+        } finally {
+            if (out != null) {
+                out.delete();
+                new File(out.getParentFile(), out.getName() + ".err").delete();
+            }
+        }
+    }
+
     public static byte[] fileAt(File projectRoot, String tag, String path) {
         if (versionOf(tag) == null || path.startsWith("-") || path.contains(":")) {
             return null;

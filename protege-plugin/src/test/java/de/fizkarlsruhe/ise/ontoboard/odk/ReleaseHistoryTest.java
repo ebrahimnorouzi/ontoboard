@@ -402,6 +402,41 @@ class ReleaseHistoryTest {
     }
 
     /**
+     * nfdicore's tag v1.0.0 holds its release as nfdico.ttl - a name of its own. A tag that holds
+     * none of the usual names is a release when its root holds an ontology file whose ontology IRI
+     * is the edit file's; a tag whose root holds another ontology is not (1.155.0).
+     */
+    @Test
+    void aReleaseUnderANameOfItsOwnIsFoundByItsOntologyIri(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        assertTrue(edit.getParentFile().mkdirs());
+        Files.write(edit.toPath(), demo("Egg"));
+        byte[] early = demoTurtle("Egg");
+        Files.write(new File(root, "demo-early.ttl").toPath(), early);
+        git(root, "add", "-f", "demo-early.ttl");
+        git(root, "commit", "-q", "-m", "release(1.0.0) under a name of its own");
+        git(root, "tag", "-a", "v1.0.0", "-m", "demo 1.0.0");
+        git(root, "rm", "-q", "demo-early.ttl");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        ByteArrayOutputStream other = new ByteArrayOutputStream();
+        manager.saveOntology(manager.createOntology(IRI.create("https://example.org/other.owl")),
+                new RDFXMLDocumentFormat(), other);
+        Files.write(new File(root, "other.owl").toPath(), other.toByteArray());
+        git(root, "add", "-f", "other.owl");
+        git(root, "commit", "-q", "-m", "another ontology, tagged");
+        git(root, "tag", "-a", "v1.5.0", "-m", "demo 1.5.0");
+        tagged(root, "2.0.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[2.0.0, 1.0.0]", versionsOf(releases), "1.5.0 holds another ontology");
+        assertArrayEquals(early, releases.get(1).bytes(), "what demo-early.ttl holds");
+        assertEquals(set("Egg"), classesOf(releases.get(1).load()));
+    }
+
+    /**
      * One release that cannot be read is shown as such, with why; the others are read and
      * compared with each other - before, History stopped at the first it could not read.
      */
