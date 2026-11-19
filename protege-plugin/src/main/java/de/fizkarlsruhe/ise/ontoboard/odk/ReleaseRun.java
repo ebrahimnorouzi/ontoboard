@@ -146,11 +146,32 @@ public final class ReleaseRun {
         }
 
         /**
-         * A shell inside the container reads the script: with Windows line endings it reports
-         * "not found" for every command, which names the wrong thing.
+         * Whether the script has Windows line endings, as Git for Windows checks nfdicore and
+         * MWO out. The shell in ODK's container, dash, takes each carriage return for part of
+         * the line's last word - the version, the target - so it is not given the file as it is
+         * ({@link #shellWords()}).
          */
         public boolean hasWindowsLineEndings() {
             return text.contains("\r\n");
+        }
+
+        /**
+         * The words a shell in ODK's container is given to run the script: {@code sh
+         * release.sh}; or, for a script with Windows line endings, a copy in the container read
+         * with the carriage returns taken off, run under the script's own name - {@code $0} is
+         * the same, and the file is not changed (1.155.0: before, such a release was refused).
+         *
+         * <p>No word has a double quote in it: Java on Windows does not escape one inside an
+         * argument it hands to a program, and docker would read the words apart.
+         */
+        public List<String> shellWords() {
+            String name = file.getName();
+            if (!hasWindowsLineEndings()) {
+                return Arrays.asList("sh", name);
+            }
+            String copy = "/tmp/" + name;
+            return Arrays.asList("sh", "-c", "sed 's/\\r$//' " + name + " > " + copy
+                    + " && exec sh -c '. " + copy + "' " + name);
         }
 
         /**

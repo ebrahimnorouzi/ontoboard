@@ -314,12 +314,6 @@ public class ReleaseAction extends OntoBoardAction {
                     container || choice == null ? null : choice.note(), script, whyNotScript,
                     cannot[0], cannot[1]);
         }
-        String inAShell = whyNotOnThisRoute(route.kind(), start.script());
-        if (route.refusal() == null && inAShell != null) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), wrapped(inAShell),
-                    "Cannot release", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return null;
-        }
         if (route.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
                     wrapped(route.refusal()), "Cannot release",
@@ -760,19 +754,6 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "ontologies keep them because they explain the modelling. Off "
                                 + "by default for that reason.")
                         .build());
-    }
-
-    /**
-     * What stops a project's own script on this route, before the form: Windows line endings
-     * where a shell runs it - in ODK's container, with ODK's tools - and nothing where OntoBoard
-     * runs it itself, which reads them (1.155.0).
-     */
-    static String whyNotOnThisRoute(ReleaseRoute.Kind route,
-            de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.Script script) {
-        if (script == null || route == null || route == ReleaseRoute.Kind.ITSELF) {
-            return null;
-        }
-        return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.whyNotAScriptToRun(script, true);
     }
 
     /** The reasoners a release can use - not Structural, which concludes nothing (1.155.0). */

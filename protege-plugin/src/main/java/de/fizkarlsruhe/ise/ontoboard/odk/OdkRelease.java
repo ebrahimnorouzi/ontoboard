@@ -342,9 +342,9 @@ public final class OdkRelease {
         }
 
         /**
-         * Whether a project's own script is run by a shell - in ODK's container, or with ODK's
-         * tools - which reads a carriage return as part of a word; OntoBoard's engine reads the
-         * script itself and does not (1.155.0).
+         * Whether a project's own script is run by a shell - in ODK's container - which reads a
+         * carriage return as part of a word, and so is given {@link ReleaseRun.Script#shellWords};
+         * OntoBoard's engine reads the script itself and does not (1.155.0).
          */
         default boolean runsScriptsInAShell() {
             return true;
@@ -729,11 +729,21 @@ public final class OdkRelease {
         try {
             script = ReleaseRun.scriptIn(facts.ontology());
             if (script != null) {
-                String why = whyNotThisScript(script, version, odk.runsScriptsInAShell());
+                String why = whyNotThisScript(script, version);
                 if (why != null) {
                     return log.failed(why);
                 }
-                command = Arrays.asList("sh", script.file().getName());
+                if (odk.runsScriptsInAShell()) {
+                    command = script.shellWords();
+                    if (script.hasWindowsLineEndings()) {
+                        log.note(script.file().getName() + " has Windows line endings, as Git "
+                                + "for Windows checks files out. The shell in ODK's container "
+                                + "would take each carriage return for part of a word, so it "
+                                + "runs a copy without them; the file is not changed.");
+                    }
+                } else {
+                    command = Arrays.asList("sh", script.file().getName());
+                }
                 passThrough = new File(facts.ontology(), "run.sh").isFile();
                 if (chosen != null) {
                     log.warn("The project's " + script.file().getName() + " reasons with the "
@@ -943,27 +953,12 @@ public final class OdkRelease {
 
     /**
      * Why the project's release script cannot be run from here whatever the version, or null
-     * when it can: its line endings, or no version to read in it.
+     * when it can: no version to read in it. Its line endings stop nothing (1.155.0): ODK's
+     * container is given a copy without the carriage returns, and OntoBoard's engine reads
+     * them as line ends.
      */
     public static String whyNotAScriptToRun(ReleaseRun.Script script) {
-        return whyNotAScriptToRun(script, true);
-    }
-
-    /**
-     * As {@link #whyNotAScriptToRun(ReleaseRun.Script)}; Windows line endings stop a script
-     * only where a shell runs it ({@code inAShell}) - OntoBoard's engine reads them as line ends
-     * (1.155.0: nfdicore's and MWO's are checked out so on Windows).
-     */
-    public static String whyNotAScriptToRun(ReleaseRun.Script script, boolean inAShell) {
         String name = script.file().getName();
-        if (inAShell && script.hasWindowsLineEndings()) {
-            return name + " has Windows line endings. The shell in ODK's container reads the "
-                    + "carriage return at the end of every line as part of its last word - "
-                    + "the version, the target - so the script would release nothing, or the "
-                    + "wrong thing. Save it with Unix line endings (LF) and release again; "
-                    + "git's core.autocrlf is the usual reason a checkout looks like this, and "
-                    + "a line '*.sh text eol=lf' in .gitattributes keeps it from coming back.";
-        }
         String scripted = script.version();
         if (scripted == null || scripted.trim().isEmpty() || scripted.contains("$")) {
             return "This project is released by its own " + name + ", and that script has no "
@@ -976,14 +971,8 @@ public final class OdkRelease {
 
     /** Why the project's release script is not run for this version, or null when it is. */
     static String whyNotThisScript(ReleaseRun.Script script, String version) {
-        return whyNotThisScript(script, version, true);
-    }
-
-    /** As {@link #whyNotThisScript(ReleaseRun.Script, String)}, for a shell or not (1.155.0). */
-    static String whyNotThisScript(ReleaseRun.Script script, String version,
-            boolean inAShell) {
         String name = script.file().getName();
-        String never = whyNotAScriptToRun(script, inAShell);
+        String never = whyNotAScriptToRun(script);
         if (never != null) {
             return never;
         }

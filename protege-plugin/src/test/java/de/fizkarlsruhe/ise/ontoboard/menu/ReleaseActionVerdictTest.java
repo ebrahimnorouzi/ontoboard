@@ -92,29 +92,4 @@ class ReleaseActionVerdictTest {
     void theReleaseOffersTheReleaseReasoners() {
         assertEquals(ReleaseReasoners.names(), ReleaseAction.releaseReasonerChoices());
     }
-
-    /**
-     * A script with Windows line endings: refused before the form where a shell runs it - in
-     * ODK's container, with ODK's tools - and not where OntoBoard runs it itself, which reads
-     * them (1.155.0; nfdicore's and MWO's are checked out so on Windows).
-     */
-    @Test
-    void windowsLineEndingsStopOnlyAShellsRoute(@org.junit.jupiter.api.io.TempDir java.io.File top)
-            throws Exception {
-        java.io.File ontology = new java.io.File(top, "src/ontology");
-        assertTrue(ontology.mkdirs());
-        java.nio.file.Files.write(new java.io.File(ontology, "release.sh").toPath(),
-                "VERSION=1.0.0\r\nsh run.sh make prepare_release\r\n".getBytes("UTF-8"));
-        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.Script script =
-                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.scriptIn(ontology);
-
-        String container = ReleaseAction.whyNotOnThisRoute(
-                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.CONTAINER, script);
-        assertNotNull(container);
-        assertTrue(container.contains("Windows line endings"), container);
-        assertNull(ReleaseAction.whyNotOnThisRoute(
-                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.ITSELF, script));
-        assertNull(ReleaseAction.whyNotOnThisRoute(
-                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.CONTAINER, null));
-    }
 }

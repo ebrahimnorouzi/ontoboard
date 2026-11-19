@@ -612,20 +612,25 @@ class OdkReleaseTest {
     }
 
     /**
-     * A shell in the container reads the script. With Windows line endings every line ends in
-     * a character that shell takes for part of the last word: the version, the target. It is
-     * refused with that reason, since the failure it would cause names the wrong thing.
+     * A shell in the container reads the script. A script with Windows line endings - how Git
+     * for Windows checks nfdicore and MWO out - is run with the carriage returns taken off and
+     * the file left as it is, and the log says so (1.155.0: before, the release was refused).
      */
     @Test
-    void aScriptWithWindowsLineEndingsIsNotRun() throws IOException {
-        write(new File(ontology, "release.sh"), "VERSION=1.0.0\r\n"
-                + "sh run.sh make VERSION=$VERSION prepare_release\r\n");
+    void aScriptWithWindowsLineEndingsRunsWithoutTheCarriageReturns() throws IOException {
+        File file = new File(ontology, "release.sh");
+        write(file, "VERSION=1.0.0\r\nsh run.sh make VERSION=$VERSION prepare_release\r\n");
 
         OdkRelease.Outcome outcome = release("1.0.0");
 
-        assertFalse(outcome.isOk());
-        assertTrue(outcome.getFailure().contains("Windows line endings"), outcome.getFailure());
-        assertEquals(Collections.<List<String>>emptyList(), odkRan);
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("sh", "-c", "sed 's/\\r$//' release.sh > /tmp/release.sh"
+                + " && exec sh -c '. /tmp/release.sh' release.sh"), odkRan.get(0));
+        assertEquals(Boolean.TRUE, withPassThrough.get(0));
+        assertTrue(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)
+                .contains("VERSION=1.0.0\r\n"), "the file keeps its line endings");
+        String transcript = String.join("\n", outcome.getTranscript());
+        assertTrue(transcript.contains("release.sh has Windows line endings"), transcript);
     }
 
     // ------------------------------------------------------------------ what else stops it

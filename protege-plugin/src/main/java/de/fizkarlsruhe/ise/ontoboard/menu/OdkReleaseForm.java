@@ -146,7 +146,7 @@ final class OdkReleaseForm {
         String refusal = null;
         try {
             script = ReleaseRun.scriptIn(facts.ontology());
-            refusal = script == null ? null : OdkRelease.whyNotAScriptToRun(script, false);
+            refusal = script == null ? null : OdkRelease.whyNotAScriptToRun(script);
         } catch (IllegalStateException unreadable) {
             refusal = unreadable.getMessage();
         }

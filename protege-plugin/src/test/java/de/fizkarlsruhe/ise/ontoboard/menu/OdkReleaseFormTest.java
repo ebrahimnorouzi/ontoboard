@@ -528,8 +528,8 @@ class OdkReleaseFormTest {
     void aScriptThatCannotBeRunIsSaidBeforeTheForm() throws IOException {
         assertNull(start().refusal());
 
-        // Windows line endings: OntoBoard's engine reads them (1.155.0); a shell's route refuses
-        // them before the form, once the route is known (ReleaseAction.whyNotOnThisRoute).
+        // Windows line endings stop no release (1.155.0): OntoBoard's engine reads them, and
+        // ODK's container is given a copy without them (ReleaseRun.Script.shellWords).
         write(new File(ontology, "release.sh"), SCRIPT.replace("\n", "\r\n"));
         assertNull(start().refusal(), start().refusal());
 

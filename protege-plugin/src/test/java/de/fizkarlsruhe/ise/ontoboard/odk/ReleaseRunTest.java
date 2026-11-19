@@ -127,6 +127,30 @@ class ReleaseRunTest {
         assertTrue(script.hasWindowsLineEndings());
     }
 
+    /**
+     * What a shell in ODK's container is given to run the script: the script itself, or - with
+     * Windows line endings, as Git for Windows checks nfdicore and MWO out - a copy read with
+     * the carriage returns taken off, run under the script's own name, the file not changed
+     * (1.155.0: before, such a release was refused). No word has a double quote in it: Java on
+     * Windows does not escape one inside an argument it hands to docker.
+     */
+    @Test
+    void aShellRunsAScriptWithWindowsLineEndingsWithoutTheCarriageReturns(
+            @TempDir File ontology) throws IOException {
+        write(ontology, "release.sh", NFDICORE_SCRIPT);
+        assertEquals(Arrays.asList("sh", "release.sh"),
+                ReleaseRun.scriptIn(ontology).shellWords());
+
+        write(ontology, "release.sh", NFDICORE_SCRIPT.replace("\n", "\r\n"));
+        List<String> words = ReleaseRun.scriptIn(ontology).shellWords();
+
+        assertEquals(Arrays.asList("sh", "-c", "sed 's/\\r$//' release.sh > /tmp/release.sh"
+                + " && exec sh -c '. /tmp/release.sh' release.sh"), words);
+        for (String word : words) {
+            assertFalse(word.contains("\""), word);
+        }
+    }
+
     @Test
     void aScriptWithoutAVersionLineSaysSo(@TempDir File ontology) throws IOException {
         write(ontology, "release.sh", "#!/bin/sh\nsh run.sh make prepare_release\n");
