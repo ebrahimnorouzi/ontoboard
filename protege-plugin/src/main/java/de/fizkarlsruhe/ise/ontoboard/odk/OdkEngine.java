@@ -114,6 +114,14 @@ public final class OdkEngine {
 
         // 1. and 2. May it, and can it? Asked before one line runs.
         String refused = whyNot(editFile, goal, commandLine, tools);
+        if (refused == null) {
+            // A Makefile another ODK wrote, or one the project changed, is run as it is - and
+            // the run says so first (1.155.0). The render is kept, so asking again costs nothing.
+            String notice = FallbackEligibility.of(editFile, goal, commandLine).notice();
+            if (notice != null) {
+                transcript.add(notice);
+            }
+        }
         if (refused != null) {
             return new Outcome(refused, transcript, false);
         }

@@ -379,7 +379,7 @@ class ReleaseByItselfTest {
      * nothing was run that could have said anything.
      */
     @Test
-    void whatOntoBoardItselfDoesNotBuildIsSaidWithItsReason() throws Exception {
+    void anEditedMakefileIsReleasedAsItIsAndTheLogSaysSo() throws Exception {
         File makefile = new File(edit.getParentFile(), "Makefile");
         Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
                 StandardCharsets.UTF_8) + "\n# a line of their own\n")
@@ -387,12 +387,12 @@ class ReleaseByItselfTest {
 
         OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
 
-        assertFalse(outcome.isOk());
+        // 1.155.0: as make in ODK's container runs it - the difference said before the run.
+        assertTrue(outcome.isOk(), outcome.getFailure());
         String log = String.join("\n", outcome.getTranscript());
         assertTrue(log.contains("This project's Makefile is not the one ODK"),
-                "why nothing was run is in the log: " + log);
-        assertFalse(new File(root, "eggboil.owl").exists());
-        assertEquals(new ArrayList<List<String>>(), gitRan);
+                "how the Makefile differs is in the log: " + log);
+        assertTrue(new File(root, "eggboil.owl").exists());
     }
 
     /**

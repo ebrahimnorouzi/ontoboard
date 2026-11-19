@@ -116,7 +116,8 @@ class FallbackEligibilityTest {
 
         write("eggboil-odk.yaml", read("eggboil-odk.yaml") + "\n");
 
-        org.junit.jupiter.api.Assertions.assertNotNull(why("test"),
+        org.junit.jupiter.api.Assertions.assertNotNull(FallbackEligibility.of(edit, "test",
+                new LinkedHashMap<String, String>()).notice(),
                 "the Makefile is not the render of this configuration");
         assertEquals(1, FallbackEligibility.rendersSoFar() - before);
     }
@@ -313,17 +314,20 @@ class FallbackEligibilityTest {
 
     // ------------------------------------------------------------------ whose Makefile it is
 
+    /** 1.155.0: run as it is, as make in ODK's container runs it - its version said first. */
     @Test
-    void aMakefileOfAnotherOdkIsRefusedWithItsVersion() throws IOException {
+    void aMakefileOfAnotherOdkIsRunWithItsVersionSaid() throws IOException {
         project("eggboil", "eggboil");
         write("Makefile", read("Makefile").replace("ODK_VERSION_MAKEFILE =      v1.6.1",
                 "ODK_VERSION_MAKEFILE =      v1.5.4"));
 
-        String why = why("test_fast");
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, "test_fast",
+                new LinkedHashMap<String, String>());
 
-        assertTrue(why.contains("ODK v1.5.4"), why);
-        assertNamesTheOtherWays(why);
-        assertTrue(why.contains("OntoBoard > Project > Update project files..."), why);
+        assertNull(verdict.why(), verdict.why());
+        String notice = String.valueOf(verdict.notice());
+        assertTrue(notice.contains("ODK v1.5.4"), notice);
+        assertTrue(notice.contains("OntoBoard > Project > Update project files..."), notice);
     }
 
     /** ODK's Makefile is written from the configuration. Changed since, it is the older one. */
@@ -333,10 +337,14 @@ class FallbackEligibilityTest {
         write("eggboil-odk.yaml", read("eggboil-odk.yaml").replace("title: \"Test kitchen "
                 + "ontology\"", "title: \"Another title\""));
 
-        String why = why("test_fast");
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, "test_fast",
+                new LinkedHashMap<String, String>());
 
-        assertTrue(why.contains("configuration"), why);
-        assertTrue(why.contains("OntoBoard > Project > Update project files..."), why);
+        // 1.155.0: run as it is, as make in ODK's container runs it - the difference said first.
+        assertNull(verdict.why(), verdict.why());
+        String notice = String.valueOf(verdict.notice());
+        assertTrue(notice.contains("configuration"), notice);
+        assertTrue(notice.contains("OntoBoard > Project > Update project files..."), notice);
     }
 
     /** A checkout with Windows line endings is the same Makefile and the same configuration. */
@@ -392,5 +400,53 @@ class FallbackEligibilityTest {
         assertTrue(why.contains("ODK's own tools"), why);
         assertTrue(why.contains("OntoBoard > Check requirements..."), why);
         assertFalse(why.toLowerCase(java.util.Locale.ROOT).contains("start docker"), why);
+    }
+
+    // ------------------------------------------------------------------ 1.155.0, as it is
+
+    /**
+     * nfdicore's and MWO's Makefiles say ODK v1.6, and their rules are the ones v1.6.1 writes:
+     * the engine runs them, and says so (the user, 2026-11-19: their development must go on
+     * with OntoBoard alone).
+     */
+    @Test
+    void aMakefileAnOlderOdkWroteWithV161sRulesIsRunAsV161s() throws IOException {
+        project("eggboil", "eggboil");
+        write("Makefile", read("Makefile").replace("# ODK Version: v1.6.1", "# ODK Version: v1.6")
+                .replace("ODK_VERSION_MAKEFILE =      v1.6.1", "ODK_VERSION_MAKEFILE =      v1.6"));
+
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, "test_fast",
+                java.util.Collections.<String, String>emptyMap());
+
+        assertTrue(verdict.allowed(), verdict.why());
+        assertTrue(verdict.notice() != null && verdict.notice().contains("written by ODK v1.6")
+                && verdict.notice().contains("rules are the ones ODK v1.6.1 writes"),
+                String.valueOf(verdict.notice()));
+    }
+
+    /** MWO: the configuration gained an import the Makefile never got. Run as it is, said. */
+    @Test
+    void aMakefileThatDiffersIsRunAsItIsAndSaysHow() throws IOException {
+        project("eggboil", "eggboil");
+        write("Makefile", read("Makefile") + "\n# a line of their own\n");
+
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(edit, "test_fast",
+                java.util.Collections.<String, String>emptyMap());
+
+        assertTrue(verdict.allowed(), verdict.why());
+        String notice = String.valueOf(verdict.notice());
+        assertTrue(notice.startsWith("This project's Makefile is not the one ODK v1.6.1 writes "
+                + "for its configuration"), notice);
+        assertTrue(notice.contains("# a line of their own"), notice);
+        assertTrue(notice.contains("runs it as it is"), notice);
+        assertTrue(notice.contains("Update project files..."), notice);
+    }
+
+    @Test
+    void odksOwnMakefileNeedsNoNotice() throws IOException {
+        project("eggboil", "eggboil");
+
+        assertNull(FallbackEligibility.of(edit, "test_fast",
+                java.util.Collections.<String, String>emptyMap()).notice());
     }
 }
