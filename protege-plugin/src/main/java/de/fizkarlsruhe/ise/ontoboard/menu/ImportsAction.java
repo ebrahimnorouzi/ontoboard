@@ -137,9 +137,9 @@ public class ImportsAction extends OntoBoardAction {
                     + " files call themselves") + " by another name than the one "
                     + (one ? "it is" : "they are") + " imported by. Protégé on its own leaves "
                     + "such a file out of the ontology; OntoBoard puts it in when the ontology "
-                    + "is opened, as ROBOT and ODK's make read it. OntoBoard > Reuse > Refresh "
-                    + "imports... builds the modules again under the names they are imported "
-                    + "by, as ODK names them.");
+                    + "is opened, as ROBOT and ODK's make read it. "
+                    + "OntoBoard > Reuse > Refresh imports... builds the modules again under the "
+                    + "names they are imported by, as ODK names them.");
             for (String line : otherwise) {
                 result.note(line);
             }

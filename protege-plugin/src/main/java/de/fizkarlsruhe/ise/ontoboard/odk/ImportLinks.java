@@ -282,10 +282,10 @@ public final class ImportLinks {
                 + "reads such a file and leaves it out of the ontology; ROBOT and ODK's make take "
                 + "the file the catalog gives, and OntoBoard has put " + (one ? "it" : "them")
                 + " in as they do - the terms and labels " + (one ? "it brings is" : "they bring "
-                + "are") + " shown, reasoned with and measured. No file was changed. OntoBoard > "
-                + "Reuse > Check imports names " + (one ? "it" : "each") + "; OntoBoard > Reuse > "
-                + "Refresh imports... builds the modules again under the names they are imported "
-                + "by, as ODK names them.";
+                + "are") + " shown, reasoned with and measured. No file was changed. "
+                + "OntoBoard > Reuse > Check imports names " + (one ? "it" : "each") + "; "
+                + "OntoBoard > Reuse > Refresh imports... builds the modules again under the "
+                + "names they are imported by, as ODK names them.";
     }
 
     /** The file as a path from the folder when it is under it, else whole. */

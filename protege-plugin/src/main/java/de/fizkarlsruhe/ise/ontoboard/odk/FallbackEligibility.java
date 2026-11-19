@@ -166,8 +166,9 @@ public final class FallbackEligibility {
         if (otherVersion && withPinnedVersion(written, version).equals(odks)) {
             return "This project's Makefile was written by ODK " + version + "; its rules are "
                     + "the ones ODK " + OdkPin.VERSION + " writes for its configuration, so "
-                    + "OntoBoard runs it as " + OdkPin.VERSION + "'s. OntoBoard > Project > "
-                    + "Update project files... writes " + OdkPin.VERSION + " into it.";
+                    + "OntoBoard runs it as " + OdkPin.VERSION + "'s. "
+                    + "OntoBoard > Project > Update project files... writes " + OdkPin.VERSION
+                    + " into it.";
         }
         List<String> theirs = onlyIn(written, odks);
         List<String> ours = onlyIn(odks, written);
@@ -181,8 +182,8 @@ public final class FallbackEligibility {
         if (!ours.isEmpty()) {
             said.append("; ODK's has ").append(quoted(ours));
         }
-        said.append(". OntoBoard runs it as it is, as make in ODK's container does; OntoBoard > "
-                + "Project > Update project files... writes ODK's again.");
+        said.append(". OntoBoard runs it as it is, as make in ODK's container does; "
+                + "OntoBoard > Project > Update project files... writes ODK's again.");
         return said.toString();
     }
 
