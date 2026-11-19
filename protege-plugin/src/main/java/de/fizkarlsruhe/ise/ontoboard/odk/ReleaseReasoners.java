@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
@@ -123,15 +122,7 @@ public final class ReleaseReasoners {
             throw new IllegalArgumentException("'" + name + "' is not a reasoner a release can "
                     + "use. These can: " + String.join(", ", NAMES) + ".");
         }
-        switch (known.toLowerCase(Locale.ROOT)) {
-            case "elk":
-                return new org.semanticweb.elk.owlapi.ElkReasonerFactory();
-            case "hermit":
-                return new org.semanticweb.HermiT.ReasonerFactory();
-            case "jfact":
-                return new uk.ac.manchester.cs.jfact.JFactFactory();
-            default:
-                return new org.geneontology.whelk.owlapi.WhelkOWLReasonerFactory();
-        }
+        // The same factories as every other reasoner choice of OntoBoard's.
+        return de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.byLabel(known).newFactory();
     }
 }

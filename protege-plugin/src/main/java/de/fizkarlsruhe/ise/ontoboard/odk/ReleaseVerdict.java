@@ -149,7 +149,29 @@ public final class ReleaseVerdict {
                             + "read with its imports, so " + name + " could not be asked: "
                             + firstLine(unreadable));
         }
+        return ask(ontology, name, factory, limitMillis, stopped, started);
+    }
 
+    /**
+     * Asks {@code reasoner} about an ontology already loaded, with the imports it was loaded
+     * with - the open ontology, for a release of an ontology in no project and for
+     * <i>Check this ontology...</i>.
+     */
+    public static ReleaseVerdict check(OWLOntology ontology, String reasoner, long limitMillis,
+            BooleanSupplier stopped) {
+        String name = ReleaseReasoners.canonical(reasoner);
+        if (name == null) {
+            return new ReleaseVerdict(Kind.FAILED, reasoner, 0, Collections.<String>emptyList(),
+                    "", "'" + reasoner + "' is not a reasoner a release can use. These can: "
+                            + String.join(", ", ReleaseReasoners.names()) + ".");
+        }
+        return ask(ontology, name, ReleaseReasoners.factory(name), limitMillis, stopped,
+                System.currentTimeMillis());
+    }
+
+    private static ReleaseVerdict ask(final OWLOntology ontology, String name,
+            final OWLReasonerFactory factory, long limitMillis, BooleanSupplier stopped,
+            long started) {
         final AtomicReference<OWLReasoner> running = new AtomicReference<OWLReasoner>();
         final AtomicReference<Found> found = new AtomicReference<Found>();
         ExecutorService worker = Executors.newSingleThreadExecutor(runnable -> {

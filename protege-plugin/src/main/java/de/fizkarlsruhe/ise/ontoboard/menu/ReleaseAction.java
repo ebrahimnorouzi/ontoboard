@@ -137,7 +137,10 @@ public class ReleaseAction extends OntoBoardAction {
         values.put(OPTION_DATE, proposed.getText());
         values.put(OPTION_CHECK, "true");
         values.put(OPTION_REASON, "true");
-        values.put(OPTION_REASONER, Reasoners.DEFAULT.getLabel());
+        // The release reasons with the person's choice, HermiT first (1.155.0): it is asked before
+        // anything is written, and ELK misses what an inverse property or a datatype implies.
+        values.put(OPTION_REASONER,
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.preselected(editFile));
         // On when there is something to merge: the guide promises the release is the merged,
         // reasoned file people use, and with it off a first release that imports anything warned
         // about a catalog nobody who reads the guide has heard of.
@@ -715,9 +718,18 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "distinguishes a release from the edit file.")
                         .build(),
                 Parameter.of(OPTION_REASONER, "Reasoner", Parameter.Kind.CHOICE)
-                        .choices(Reasoners.labels().toArray(new String[0]))
+                        .choices(releaseReasonerChoices().toArray(new String[0]))
                         .defaultValue(values.get(OPTION_REASONER))
-                        .help(Reasoners.help())
+                        .help("The reasoner this release reasons with. Before anything is "
+                                + "written it is asked whether the ontology, with its imports, "
+                                + "is consistent and every class can have members; either "
+                                + "problem stops the release, with the axioms that cause it. "
+                                + "With 'Write down the inferences' it also writes them. ELK "
+                                + "and Whelk reason in OWL 2 EL: they ignore inverse "
+                                + "properties, universal restrictions, cardinalities, unions "
+                                + "and negation, so a contradiction that needs one of them "
+                                + "goes unseen. HermiT and JFact read all of OWL 2 DL; on a "
+                                + "large ontology they take longer.")
                         .build(),
                 Parameter.of(OPTION_MERGE, "One self-contained file (merge the imports in)",
                         Parameter.Kind.FLAG)
@@ -737,6 +749,72 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "ontologies keep them because they explain the modelling. Off "
                                 + "by default for that reason.")
                         .build());
+    }
+
+    /** The reasoners a release can use - not Structural, which concludes nothing (1.155.0). */
+    static List<String> releaseReasonerChoices() {
+        return de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names();
+    }
+
+    /**
+     * D1 (1.155.0) for a release of an ontology in no project: what the reasoner the person
+     * chose says about the open ontology, with the imports it was loaded with.
+     *
+     * @param goOn asked when the reasoner did not finish in time: whether to release unchecked
+     * @return why nothing is released, or null to go on (what was found is in {@code result})
+     */
+    static String whatTheReasonerSays(OWLOntology ontology, String reasoner, long limitMillis,
+            java.util.function.BooleanSupplier stopped,
+            java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> goOn,
+            OperationResult.Builder result) {
+        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict =
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.check(ontology, reasoner,
+                        limitMillis, stopped);
+        result.note("Checked by " + verdict.reasoner() + ": " + verdict.kind().name()
+                .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
+        if (verdict.kind() == de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.Kind.TIMED_OUT) {
+            if (goOn == null || !goOn.test(verdict)) {
+                return verdict.said() + " The release was not checked, so it was not made. "
+                        + "Nothing was released.";
+            }
+            result.warn("Released not checked by " + verdict.reasoner() + ": "
+                    + verdict.said());
+            return null;
+        }
+        if (verdict.stopsARelease()) {
+            String why = verdict.said() + " Nothing was released.";
+            return verdict.explanation().isEmpty() ? why : why + "\n\n" + verdict.explanation();
+        }
+        String misses = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.whatItMisses(
+                verdict.reasoner());
+        if (misses != null) {
+            result.warn("Checked and released with " + verdict.reasoner() + ". " + misses);
+        }
+        return null;
+    }
+
+    /** Asked on the Swing thread when the reasoner did not finish in time. */
+    private boolean goOnWithoutVerdict(
+            final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
+        final boolean[] yes = {false};
+        Runnable ask = () -> yes[0] = javax.swing.JOptionPane.showConfirmDialog(
+                getOWLWorkspace(), wrapped(verdict.said() + " Release without the check? The "
+                        + "result will say it was not checked."), "The reasoner did not finish",
+                javax.swing.JOptionPane.YES_NO_OPTION,
+                javax.swing.JOptionPane.WARNING_MESSAGE) == javax.swing.JOptionPane.YES_OPTION;
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            ask.run();
+        } else {
+            try {
+                javax.swing.SwingUtilities.invokeAndWait(ask);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return false;
+            } catch (java.lang.reflect.InvocationTargetException failed) {
+                return false;
+            }
+        }
+        return yes[0];
     }
 
     @Override
@@ -773,6 +851,13 @@ public class ReleaseAction extends OntoBoardAction {
         } else {
             result.warn("The quality report was not run, so nothing checked this release against "
                     + "the project's own rules.");
+        }
+        // D1 (1.155.0): what the reasoner the person chose says, before anything is written.
+        String contradiction = whatTheReasonerSays(ontology, reasoner.getLabel(),
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.DEFAULT_LIMIT_MILLIS,
+                BackgroundRun::abandoned, this::goOnWithoutVerdict, result);
+        if (contradiction != null) {
+            return result.failed(contradiction).build();
         }
 
         String overwriting = Release.wouldOverwrite(projectRoot, id, date);
