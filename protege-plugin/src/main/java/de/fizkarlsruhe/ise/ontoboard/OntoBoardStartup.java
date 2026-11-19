@@ -64,6 +64,8 @@ public class OntoBoardStartup extends OWLEditorKitHook {
         try {
             if (getEditorKit() instanceof org.protege.editor.owl.OWLEditorKit) {
                 ImportLinksOnOpen.watch((org.protege.editor.owl.OWLEditorKit) getEditorKit());
+                // A release file opened is said for what it is, once (1.155.0).
+                ReleaseProductNotice.watch((org.protege.editor.owl.OWLEditorKit) getEditorKit());
             }
         } catch (Throwable neverLetThisStopProtege) {
             LOGGER.error("OntoBoard: imports left out by Protégé are not watched for",

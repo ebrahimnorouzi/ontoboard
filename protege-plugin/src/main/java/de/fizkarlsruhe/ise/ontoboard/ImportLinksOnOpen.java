@@ -103,8 +103,8 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener {
         }
     }
 
-    /** A notice that does not stop anything: the window stays usable while it is open. */
-    private static void notice(OWLEditorKit kit, String text) {
+    /** A long sentence as a dialog shows it, at a readable width. */
+    static javax.swing.JComponent wrapped(String text) {
         javax.swing.JTextArea message = new javax.swing.JTextArea(text);
         message.setEditable(false);
         message.setLineWrap(true);
@@ -114,6 +114,12 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener {
         message.setColumns(52);
         message.setFont(javax.swing.UIManager.getFont("Label.font"));
         message.setSize(message.getPreferredSize().width, Short.MAX_VALUE);
+        return message;
+    }
+
+    /** A notice that does not stop anything: the window stays usable while it is open. */
+    private static void notice(OWLEditorKit kit, String text) {
+        javax.swing.JComponent message = wrapped(text);
         javax.swing.JDialog dialog = new javax.swing.JOptionPane(message,
                 javax.swing.JOptionPane.INFORMATION_MESSAGE)
                 .createDialog(kit.getWorkspace(), "Imports put in");
