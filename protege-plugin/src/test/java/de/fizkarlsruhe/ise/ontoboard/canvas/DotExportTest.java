@@ -35,6 +35,22 @@ class DotExportTest {
         return new Projection(nodes, edges);
     }
 
+    /**
+     * A class drawn UML-like (1.155.0) is a record in DOT: its name over its rows, each row left
+     * aligned, and what a record would read as structure - braces, bars, angle brackets - escaped.
+     */
+    @Test
+    void aClassWithRowsIsARecordOfItsNameOverItsRows() {
+        CanvasNode person = cls("Person").withRows(Arrays.asList("age : integer [0..1]",
+                "kind = \"classic\"", "key: a|b"));
+
+        String dot = DotExport.of(board(Arrays.asList(person), new ArrayList<CanvasEdge>()), "o");
+
+        assertTrue(dot.contains("shape=record"), dot);
+        assertTrue(dot.contains("label=\"{Person|age : integer [0..1]\\lkind = \\\"classic\\\"\\lkey: a\\|b\\l}\""),
+                dot);
+    }
+
     /** A graph with a node and an edge produces a digraph containing both. */
     @Test
     void aBoardBecomesADigraph() {

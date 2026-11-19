@@ -113,6 +113,30 @@ class CanvasLegendTest {
      * edits an imported term loses the change at the next refresh of the imports, or leaves a second
      * definition behind that survives into a release - and neither shows up as an error.
      */
+    /**
+     * A board drawn UML-like (1.155.0) says in its key what a row in a class's box is, and when a
+     * property is a box of its own rather than a row or its arrows.
+     */
+    @Test
+    void theKeyExplainsAClassBoxsRowsAndWhenAPropertyIsABox() {
+        CanvasLegend.Entry rows = null;
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (entry.getLabel().contains("name : datatype")) {
+                rows = entry;
+            }
+        }
+
+        assertNotNull(rows, "no row of the key explains the rows in a class's box");
+        assertEquals(CanvasLegend.Form.MODIFIER, rows.getForm());
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (SchemaStyles.OBJECT_PROPERTY_NODE.equals(entry.getStyleName())
+                    || SchemaStyles.DATA_PROPERTY_NODE.equals(entry.getStyleName())) {
+                assertTrue(entry.getMeaning().contains("Properties as boxes")
+                        && entry.getMeaning().contains("Show unused properties"), entry.getMeaning());
+            }
+        }
+    }
+
     @Test
     void theKeyExplainsWhichTermsAreImported() {
         CanvasLegend.Entry imported = null;

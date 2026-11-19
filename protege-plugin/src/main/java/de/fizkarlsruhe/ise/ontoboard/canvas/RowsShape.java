@@ -99,24 +99,51 @@ class RowsShape extends mxRectangleShape {
             Font font = FallbackTextShape.fontFor(style, scale).deriveFont(Font.PLAIN);
             painter.setFont(font);
             painter.setColor(mxUtils.getColor(style, mxConstants.STYLE_FONTCOLOR, Color.BLACK));
-            FontMetrics metrics = painter.getFontMetrics();
-            double line = metrics.getHeight() + mxConstants.LINESPACING * scale;
-            double x = state.getX() + INSET * scale;
-            double room = state.getWidth() - 2 * INSET * scale;
-            double y = rule + GAP * scale + metrics.getAscent();
-            for (int i = 0; i < rows.size() && y + metrics.getDescent() <= bottom; i++) {
-                boolean last = i == rows.size() - 1;
-                if (!last && y + line + metrics.getDescent() > bottom) {
-                    painter.drawString(fitted("… " + (rows.size() - i) + " more", metrics, room),
-                            (float) x, (float) y);
-                    break;
-                }
-                painter.drawString(fitted(rows.get(i), metrics, room), (float) x, (float) y);
-                y += line;
+            for (Placed row : place(rows, state, scale, rule, painter.getFontMetrics())) {
+                painter.drawString(row.text, (float) row.x, (float) row.baseline);
             }
         } finally {
             painter.dispose();
         }
+    }
+
+    /** One row as it is drawn: its text, cut to fit, and where its baseline starts. */
+    static final class Placed {
+        final String text;
+        final double x;
+        final double baseline;
+
+        Placed(String text, double x, double baseline) {
+            this.text = text;
+            this.x = x;
+            this.baseline = baseline;
+        }
+    }
+
+    /**
+     * The rows as they are drawn below the rule: each cut to the box's width, as many as its
+     * height holds, and when not all fit the last one there is room for says how many more there
+     * are. The PNG and the SVG both place them here, so the two cannot disagree.
+     */
+    static List<Placed> place(List<String> rows, mxCellState state, double scale, double rule,
+            FontMetrics metrics) {
+        List<Placed> placed = new java.util.ArrayList<Placed>();
+        double bottom = state.getY() + state.getHeight();
+        double line = metrics.getHeight() + mxConstants.LINESPACING * scale;
+        double x = state.getX() + INSET * scale;
+        double room = state.getWidth() - 2 * INSET * scale;
+        double y = rule + GAP * scale + metrics.getAscent();
+        for (int i = 0; i < rows.size() && y + metrics.getDescent() <= bottom; i++) {
+            boolean last = i == rows.size() - 1;
+            if (!last && y + line + metrics.getDescent() > bottom) {
+                placed.add(new Placed(fitted("… " + (rows.size() - i) + " more", metrics, room),
+                        x, y));
+                break;
+            }
+            placed.add(new Placed(fitted(rows.get(i), metrics, room), x, y));
+            y += line;
+        }
+        return placed;
     }
 
     /** The row as it fits the box, shortened with an ellipsis when it does not. */

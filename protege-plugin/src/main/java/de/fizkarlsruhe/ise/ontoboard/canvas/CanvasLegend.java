@@ -236,13 +236,16 @@ public final class CanvasLegend {
                 "#FFF6DB", "#8A6A00", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.OBJECT_PROPERTY_NODE, "Object property",
-                "An owl:ObjectProperty as a node rather than an arrow label. Properties are only "
-                        + "nodes when you add them, because a diagram that boxed every property "
-                        + "would be unreadable - but a property hierarchy needs them.",
+                "An owl:ObjectProperty as a box of its own rather than its arrows: drawn so when "
+                        + "properties are drawn as boxes (More > Properties as boxes), which a "
+                        + "property hierarchy needs, or when it is one of this ontology's own that "
+                        + "no arrow shows (More > Show unused properties).",
                 "#FFEFDC", "#B35C00", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.DATA_PROPERTY_NODE, "Data property",
-                "An owl:DatatypeProperty as a node, for the same reason as an object property "
-                        + "node.",
+                "An owl:DatatypeProperty as a box of its own rather than a row in its class's "
+                        + "box: drawn so when properties are drawn as boxes (More > Properties as "
+                        + "boxes), or when it is one of this ontology's own that no row shows "
+                        + "(More > Show unused properties).",
                 "#E6F2F4", "#0E6E78", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.EXPRESSION, "Class expression",
@@ -330,6 +333,15 @@ public final class CanvasLegend {
                         + "conditions are sufficient as well as necessary - anything meeting them "
                         + "is one. The badge on the box's left shows three bars, as Prot\u00e9g\u00e9's class "
                         + "tree marks one. Without the mark, a class's arrows are necessary only.",
+                "#FFFFFF", "#2D6FBF", null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.CLASS,
+                "name : datatype [n..m] under a rule: a data property",
+                "A row in a class's box, as UML draws a class's attributes: a data property whose "
+                        + "domain is the class, or that an axiom about the class restricts, with "
+                        + "the datatype of its values and how many there are - [1] exactly one, "
+                        + "[0..1] at most one, [1..*] at least one. \"name = value\" is a value "
+                        + "every member has; \"key: a, b\" is the class's key. More > Properties "
+                        + "as boxes draws each property as a box of its own instead.",
                 "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "

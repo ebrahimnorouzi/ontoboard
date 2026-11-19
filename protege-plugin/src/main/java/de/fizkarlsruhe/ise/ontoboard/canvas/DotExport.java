@@ -55,9 +55,10 @@ public final class DotExport {
         for (CanvasNode node : projection.getNodes()) {
             String name = "n" + next++;
             names.put(node.getId(), name);
+            boolean record = !node.getRows().isEmpty();
             dot.append("  ").append(name)
-                    .append(" [label=").append(quote(labelOf(node)))
-                    .append(", shape=").append(shapeOf(node))
+                    .append(" [label=").append(record ? recordOf(node) : quote(labelOf(node)))
+                    .append(", shape=").append(record ? "record" : shapeOf(node))
                     .append(", tooltip=").append(quote(node.getId()));
             if (node.isUnsatisfiable()) {
                 // The one node state DOT can carry honestly: a reasoner said this can have no
@@ -96,6 +97,26 @@ public final class DotExport {
             return label;
         }
         return identifier + "\n" + label;
+    }
+
+    /**
+     * A class drawn UML-like as a DOT record (1.155.0): its name over its rows, each row left
+     * aligned. A record reads braces, bars and angle brackets as its structure, so in the text
+     * they are escaped.
+     */
+    private static String recordOf(CanvasNode node) {
+        StringBuilder label = new StringBuilder("\"{");
+        label.append(inRecord(labelOf(node)).replace("\n", "\\n")).append('|');
+        for (String row : node.getRows()) {
+            label.append(inRecord(row)).append("\\l");
+        }
+        return label.append("}\"").toString();
+    }
+
+    private static String inRecord(String text) {
+        return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "")
+                .replace("{", "\\{").replace("}", "\\}").replace("|", "\\|")
+                .replace("<", "\\<").replace(">", "\\>");
     }
 
     private static String shapeOf(CanvasNode node) {

@@ -33,6 +33,21 @@ class CanvasTooltipsTest {
         return labels;
     }
 
+    /**
+     * A class drawn UML-like (1.155.0) lists its rows on hover as well, whole: a box cuts a row too
+     * long for it short, and a box sized by hand can hold fewer than it has.
+     */
+    @Test
+    void aClassWithRowsListsThemInItsTooltip() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode("http://example.org/o#Person",
+                NodeKind.CLASS, "Person").withRows(Arrays.asList("age : integer [0..1]",
+                        "label = \"<b>bold</b>\"")));
+
+        assertTrue(tooltip.contains("age : integer [0..1]"), tooltip);
+        assertTrue(tooltip.contains("label = \"&lt;b&gt;bold&lt;/b&gt;\""), "escaped: " + tooltip);
+        assertTrue(tooltip.indexOf("age : integer") < tooltip.indexOf("label = "), "in their order");
+    }
+
     // ===================================================================== edges
 
     /** An edge names its two ends, the relation, and the OWL construct behind it. */
