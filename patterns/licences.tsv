@@ -1,0 +1,6 @@
+source_prefix	licence_iri	evidence_url	quoted_line
+https://materialdigital.github.io/core-ontology/	https://creativecommons.org/licenses/by/4.0/	https://github.com/materialdigital/core-ontology	Licensed under CC BY 4.0
+https://raw.githubusercontent.com/BFO-ontology/	https://creativecommons.org/licenses/by/4.0/	https://github.com/BFO-ontology/BFO-2020	These documents are licensed under the terms of the Creative Commons Attribution 4.0 International (CC BY 4.0) license
+https://nfdi.fiz-karlsruhe.de/matwerk/	https://opensource.org/licenses/MIT	https://github.com/ISE-FIZKarlsruhe/matwerk	This project is licensed under the MIT License.
+https://ise-fizkarlsruhe.github.io/mwo/	https://creativecommons.org/publicdomain/zero/1.0/	https://github.com/ISE-FIZKarlsruhe/mwo/blob/main/mwo.ttl	dcterms:license <https://creativecommons.org/publicdomain/zero/1.0/>
+https://ontologydesignpatterns.org/		https://ontologydesignpatterns.org/wiki/	none found: the portal refused connections on 2026-11-19, and github.com/odpa/patterns-repository names no licence - asked of the user
