@@ -394,4 +394,27 @@ class ReleaseByItselfTest {
         assertFalse(new File(root, "eggboil.owl").exists());
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
+
+    /**
+     * The reasoner the person chose reaches ROBOT on OntoBoard's own engine too: make takes
+     * {@code REASONER=} from its command line over the Makefile's line, and so must the engine
+     * (1.155.0).
+     */
+    @Test
+    void theEngineReasonsWithTheReasonerGiven() throws Exception {
+        OdkRelease.Outcome outcome = OdkRelease.run(
+                new OdkRelease.Request(edit, "1.0.0", null, false, true)
+                        .withReasoner("HermiT", ReleaseVerdict.DEFAULT_LIMIT_MILLIS),
+                OdkRelease.byOntoBoardItself(edit, null), git(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        return true;
+                    }
+                });
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String transcript = String.join("\n", outcome.getTranscript());
+        assertTrue(transcript.contains("--reasoner HermiT"), transcript);
+        assertFalse(transcript.contains("--reasoner ELK"), transcript);
+    }
 }
