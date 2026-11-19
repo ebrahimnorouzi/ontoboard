@@ -124,6 +124,27 @@ class CuriesTest {
                 Curies.curieFor(defaults, "http://www.w3.org/2000/01/rdf-schema#label"));
     }
 
+    /**
+     * A label that is the name in words says nothing the name does not, so it is one line, the
+     * label: "has pitch class", not "has pitch class" over "hasPitchClass" (1.155.0 - the library's
+     * curated patterns label their terms so, and two lines a box made a full board fuller). A
+     * name that says something the label does not still stands under it.
+     */
+    @Test
+    void aLabelThatIsTheNameInWordsIsOneLine() {
+        assertEquals("has pitch class", Curies.displayLabel(null, "has pitch class",
+                "https://purl.org/andreapoltronieri/notepattern/hasPitchClass"));
+        assertEquals("Homogeneous fragment", Curies.displayLabel(null, "Homogeneous fragment",
+                "https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment"));
+        assertEquals("≡ Homogeneous fragment", Curies.displayLabel(null,
+                "≡ Homogeneous fragment", "https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment"));
+        assertEquals("has pitch class", Curies.displayLabel("np:hasPitchClass", "has pitch class"));
+        assertEquals("hardness\nPMD_0000773",
+                Curies.displayLabel(null, "hardness", "https://w3id.org/pmd/co/PMD_0000773"));
+        assertEquals("role\nobo:BFO_0000023", Curies.displayLabel("obo:BFO_0000023", "role"));
+        assertEquals("foaf:Person", Curies.displayLabel("foaf:Person", "Person"));
+    }
+
     /** The defined-class mark does not make a label look different from its name. */
     @Test
     void aDefinedClassNamedAsItsIriIsOneLine() {

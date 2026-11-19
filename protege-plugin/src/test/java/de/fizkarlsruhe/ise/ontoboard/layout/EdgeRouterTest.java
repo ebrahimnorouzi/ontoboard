@@ -76,6 +76,33 @@ class EdgeRouterTest {
         return shared;
     }
 
+    /**
+     * A box with no side left to arrive at - its loop's two legs on its right, its subclass line's
+     * stub on its left, a box 20px above it and one 20px below - still takes the line, at the
+     * point between the loop's legs, rather than have it drawn through the box above. Found on
+     * scorepart once its labels were corrected (1.155.0): "has section" ran through "Homogeneous
+     * fragment".
+     */
+    @Test
+    void aBoxWithEverySideTakenStillTakesTheLine() {
+        EdgeRouter.Box parent = box("parent", 380, 140);
+        EdgeRouter.Box above = new EdgeRouter.Box("above", 420, 220, 240, 60);
+        EdgeRouter.Box target = box("target", 420, 300);
+        EdgeRouter.Box below = box("below", 420, 360);
+        Map<String, EdgeRouter.Route> routes = EdgeRouter.route(
+                Arrays.asList(parent, above, target, below), Collections.<EdgeRouter.Box>emptyList(),
+                Arrays.asList(new EdgeRouter.Link("loop", "target", "target", false, 80, 16),
+                        new EdgeRouter.Link("is-a", "target", "parent", true, 0, 0),
+                        new EdgeRouter.Link("below-is-a", "below", "parent", true, 0, 0),
+                        arrow("a", "parent", "target")));
+
+        assertTrue(routes.containsKey("a"), "the line has a route of its own: " + routes.keySet());
+        double[][] line = line(parent, routes.get("a"), target);
+        assertFalse(runsThrough(line, above), Arrays.deepToString(line));
+        assertFalse(runsThrough(line, below), Arrays.deepToString(line));
+        assertTrue(orthogonal(line), Arrays.deepToString(line));
+    }
+
     @Test
     void anArrowGoesRoundABoxInItsWay() {
         EdgeRouter.Box a = box("a", 0, 100);

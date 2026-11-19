@@ -1149,10 +1149,20 @@ public final class EdgeRouter {
          * not arrive, as its arrowhead would reach round the bend.
          */
         final boolean brief;
+        /**
+         * Its stub runs beside another line's - a loop's leg, a subclass line's stub - closer than
+         * {@link #APART}: offered only when a box has no point left otherwise (1.155.0).
+         */
+        final boolean crowded;
         /** How many lines leave or arrive here. */
         int uses;
 
         Port(int side, int point, double offset, boolean meeting, boolean spare, boolean brief) {
+            this(side, point, offset, meeting, spare, brief, false);
+        }
+
+        private Port(int side, int point, double offset, boolean meeting, boolean spare,
+                boolean brief, boolean crowded) {
             this.side = side;
             this.point = point;
             this.heading = side == RIGHT || side == LEFT ? ACROSS : DOWN;
@@ -1160,6 +1170,12 @@ public final class EdgeRouter {
             this.meeting = meeting;
             this.spare = spare;
             this.brief = brief;
+            this.crowded = crowded;
+        }
+
+        /** A whole stub beside another line's, never on it. */
+        static Port crowded(int side, int point, double offset, boolean spare) {
+            return new Port(side, point, offset, false, spare, false, true);
         }
     }
 
@@ -1192,6 +1208,14 @@ public final class EdgeRouter {
      * the alternative was a line drawn through the boxes.
      */
     private static final double SHARED = 400;
+
+    /**
+     * What a point whose stub runs beside another line's costs: only when a box has no point left
+     * otherwise, as scorepart's Section, its loop's legs on its right, its subclass line's stub on
+     * its left and a box 20px above and below it, where the alternative was a line drawn through
+     * the box above (1.155.0).
+     */
+    private static final double CROWDED = 400;
 
     /** Drops the points where a route goes straight on. */
     private static List<double[]> simplified(List<double[]> walk) {
@@ -1652,6 +1676,8 @@ public final class EdgeRouter {
                     list.add(new Port(RIGHT, out * rows + j, offset, false, spare, false));
                 } else if (clearAcross(j, near, near) && quiet(ACROSS, j, column(box.right()), near)) {
                     list.add(new Port(RIGHT, near * rows + j, offset, false, spare, true));
+                } else if (clearAcross(j, near, out) && free(ACROSS, j, column(box.right()), out)) {
+                    list.add(Port.crowded(RIGHT, out * rows + j, offset, spare));
                 }
                 // Past the lane the box's subclass line runs down, if it has one.
                 boolean busy = count[DOWN][lane * rows + j] > 0
@@ -1663,6 +1689,8 @@ public final class EdgeRouter {
                 } else if (!busy && clearAcross(j, near, near)
                         && quiet(ACROSS, j, near, column(box.x))) {
                     list.add(new Port(LEFT, near * rows + j, offset, false, spare, true));
+                } else if (clearAcross(j, in, near) && free(ACROSS, j, in, column(box.x))) {
+                    list.add(Port.crowded(LEFT, in * rows + j, offset, spare));
                 }
             }
             double meet = box.x + HierarchyColumns.INDENT / 2;
@@ -1678,6 +1706,8 @@ public final class EdgeRouter {
                     list.add(new Port(TOP, i * rows + up, offset, false, spare, false));
                 } else if (clearDown(i, near, near) && quiet(DOWN, i, near, row(box.y))) {
                     list.add(new Port(TOP, i * rows + near, offset, false, spare, true));
+                } else if (clearDown(i, up, near) && free(DOWN, i, up, row(box.y))) {
+                    list.add(Port.crowded(TOP, i * rows + up, offset, spare));
                 }
                 if (x - meet < APART) {
                     continue;
@@ -1689,6 +1719,8 @@ public final class EdgeRouter {
                     list.add(new Port(BOTTOM, i * rows + down, offset, false, spare, false));
                 } else if (clearDown(i, near, near) && quiet(DOWN, i, row(box.bottom()), near)) {
                     list.add(new Port(BOTTOM, i * rows + near, offset, false, spare, true));
+                } else if (clearDown(i, near, down) && free(DOWN, i, row(box.bottom()), down)) {
+                    list.add(Port.crowded(BOTTOM, i * rows + down, offset, spare));
                 }
             }
             int i = column(meet);
@@ -1700,6 +1732,20 @@ public final class EdgeRouter {
             found = list.toArray(new Port[0]);
             ports.put(box.id, found);
             return found;
+        }
+
+        /**
+         * Whether nothing already runs on the stub from step {@code from} to step {@code to} along
+         * line {@code fixed} - beside it may: a crowded point's test (1.155.0).
+         */
+        private boolean free(int heading, int fixed, int from, int to) {
+            int[] lines = count[heading];
+            for (int k = Math.min(from, to); k < Math.max(from, to); k++) {
+                if (lines[heading == ACROSS ? k * rows + fixed : fixed * rows + k] > 0) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /**
@@ -1781,11 +1827,12 @@ public final class EdgeRouter {
             if (port.meeting) {
                 return role == SUPERCLASS ? 0 : Double.MAX_VALUE;
             }
-            if (port.uses > 0 && !share) {
+            if ((port.uses > 0 || port.crowded) && !share) {
                 return Double.MAX_VALUE;
             }
             return SIDE_COST[role][port.side] + port.offset * PORT_COST + (port.spare ? SPARE : 0)
-                    + (port.brief ? BRIEF : 0) + (port.uses > 0 ? SHARED : 0);
+                    + (port.brief ? BRIEF : 0) + (port.uses > 0 ? SHARED : 0)
+                    + (port.crowded ? CROWDED : 0);
         }
 
         /**
