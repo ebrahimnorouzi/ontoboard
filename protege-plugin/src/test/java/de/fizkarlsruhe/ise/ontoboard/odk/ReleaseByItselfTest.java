@@ -394,12 +394,41 @@ class ReleaseByItselfTest {
 
         OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
 
-        // 1.155.0: as make in ODK's container runs it - the difference said before the run.
+        // 1.155.0: as make in ODK's container runs it - the difference said before the run,
+        // once in the release, not again for each call of make (clean, the build, the files).
         assertTrue(outcome.isOk(), outcome.getFailure());
         String log = String.join("\n", outcome.getTranscript());
-        assertTrue(log.contains("This project's Makefile is not the one ODK"),
-                "how the Makefile differs is in the log: " + log);
+        String notice = "This project's Makefile is not the one ODK";
+        assertTrue(log.contains(notice), "how the Makefile differs is in the log: " + log);
+        assertEquals(log.indexOf(notice), log.lastIndexOf(notice), "said once: " + log);
         assertTrue(new File(root, "eggboil.owl").exists());
+    }
+
+    /**
+     * A script calls make line after line. How the Makefile differs from ODK's is said once,
+     * before the script's first call of make - not before each (1.155.0: nfdicore's release
+     * said it four times, and MWO's three).
+     */
+    @Test
+    void howTheMakefileDiffersIsSaidOnceInAScriptsRun() throws Exception {
+        File makefile = new File(edit.getParentFile(), "Makefile");
+        Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
+                StandardCharsets.UTF_8) + "\n# a line of their own\n")
+                .getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make clean\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String log = String.join("\n", outcome.getTranscript());
+        String notice = "This project's Makefile is not the one ODK";
+        int first = log.indexOf(notice);
+        assertTrue(first >= 0, log);
+        assertEquals(first, log.lastIndexOf(notice), "said once: " + log);
+        assertTrue(log.contains("line 3: make VERSION=1.0.0 prepare_release_fast"), log);
     }
 
     /**

@@ -448,6 +448,13 @@ public final class OdkRelease {
     public static Odk byOntoBoardItself(final File editFile,
             final java.util.function.BooleanSupplier stopped) {
         return new Odk() {
+            /**
+             * Whether how the Makefile differs from ODK's has been said in this route's run: a
+             * release calls make several times - clean, the build, its files, or a script's own
+             * calls - and the person reads it once, before the first (1.155.0).
+             */
+            private boolean noticeSaid;
+
             @Override
             public ProcessRunner.Outcome run(List<String> command, boolean passThroughRunSh) {
                 if (command.size() == 2 && command.get(0).equals("sh")
@@ -490,6 +497,15 @@ public final class OdkRelease {
                 }
                 OdkEngine.Outcome outcome = OdkEngine.run(editFile, goal, variables, stopped);
                 List<String> said = new ArrayList<String>(outcome.getTranscript());
+                if (!said.isEmpty()) {
+                    String notice = FallbackEligibility.of(editFile, goal, variables).notice();
+                    if (notice != null && said.get(0).equals(notice)) {
+                        if (noticeSaid) {
+                            said.remove(0);
+                        }
+                        noticeSaid = true;
+                    }
+                }
                 if (!outcome.isOk()) {
                     said.add(outcome.getFailure());
                 }
