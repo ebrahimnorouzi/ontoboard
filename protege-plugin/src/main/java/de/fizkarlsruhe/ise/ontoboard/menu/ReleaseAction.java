@@ -294,9 +294,14 @@ public class ReleaseAction extends OntoBoardAction {
             whyNotFast = cannot[0];
             whyNotFull = cannot[1];
         }
+        // 1.155.0: a project's own script is run by OntoBoard itself where every line can run
+        // here - asked only where OntoBoard would be the one to run it.
+        String whyNotScript = script == null || container ? null
+                : de.fizkarlsruhe.ise.ontoboard.odk.ProjectScript.whyNotOnTheEngine(editFile,
+                        start.script().file());
         ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
-                container || choice == null ? null : choice.note(), script, whyNotFast,
-                whyNotFull);
+                container || choice == null ? null : choice.note(), script, whyNotScript,
+                whyNotFast, whyNotFull);
         // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is there.
         // Declined, the offer was the refusal.
         String cure = variables == null ? null : DosdpOffer.forRelease(route.refusal());
@@ -306,8 +311,14 @@ public class ReleaseAction extends OntoBoardAction {
             }
             String[] cannot = whyTheEngineCannot(editFile, variables);
             route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
-                    container || choice == null ? null : choice.note(), script, cannot[0],
-                    cannot[1]);
+                    container || choice == null ? null : choice.note(), script, whyNotScript,
+                    cannot[0], cannot[1]);
+        }
+        String inAShell = whyNotOnThisRoute(route.kind(), start.script());
+        if (route.refusal() == null && inAShell != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), wrapped(inAShell),
+                    "Cannot release", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return null;
         }
         if (route.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
@@ -749,6 +760,19 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "ontologies keep them because they explain the modelling. Off "
                                 + "by default for that reason.")
                         .build());
+    }
+
+    /**
+     * What stops a project's own script on this route, before the form: Windows line endings
+     * where a shell runs it - in ODK's container, with ODK's tools - and nothing where OntoBoard
+     * runs it itself, which reads them (1.155.0).
+     */
+    static String whyNotOnThisRoute(ReleaseRoute.Kind route,
+            de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.Script script) {
+        if (script == null || route == null || route == ReleaseRoute.Kind.ITSELF) {
+            return null;
+        }
+        return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.whyNotAScriptToRun(script, true);
     }
 
     /** The reasoners a release can use - not Structural, which concludes nothing (1.155.0). */

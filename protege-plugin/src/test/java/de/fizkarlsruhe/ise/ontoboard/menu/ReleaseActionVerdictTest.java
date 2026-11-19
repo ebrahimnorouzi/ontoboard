@@ -65,7 +65,7 @@ class ReleaseActionVerdictTest {
     void notFinishedAsksAndNoMeansNo() throws Exception {
         List<ReleaseVerdict> asked = new ArrayList<ReleaseVerdict>();
 
-        String refusal = ReleaseAction.whatTheReasonerSays(egg(), "HermiT", 1, () -> false,
+        String refusal = ReleaseAction.whatTheReasonerSays(egg(), "HermiT", 0, () -> false,
                 verdict -> {
                     asked.add(verdict);
                     return false;
@@ -81,7 +81,7 @@ class ReleaseActionVerdictTest {
     void notFinishedGoesOnWhenThePersonSaysSo() throws Exception {
         OperationResult.Builder result = OperationResult.of("Release");
 
-        assertNull(ReleaseAction.whatTheReasonerSays(egg(), "HermiT", 1, () -> false,
+        assertNull(ReleaseAction.whatTheReasonerSays(egg(), "HermiT", 0, () -> false,
                 verdict -> true, result));
         String said = result.summary("done").build().toPlainText();
         assertTrue(said.contains("not checked"), said);
@@ -91,5 +91,30 @@ class ReleaseActionVerdictTest {
     @Test
     void theReleaseOffersTheReleaseReasoners() {
         assertEquals(ReleaseReasoners.names(), ReleaseAction.releaseReasonerChoices());
+    }
+
+    /**
+     * A script with Windows line endings: refused before the form where a shell runs it - in
+     * ODK's container, with ODK's tools - and not where OntoBoard runs it itself, which reads
+     * them (1.155.0; nfdicore's and MWO's are checked out so on Windows).
+     */
+    @Test
+    void windowsLineEndingsStopOnlyAShellsRoute(@org.junit.jupiter.api.io.TempDir java.io.File top)
+            throws Exception {
+        java.io.File ontology = new java.io.File(top, "src/ontology");
+        assertTrue(ontology.mkdirs());
+        java.nio.file.Files.write(new java.io.File(ontology, "release.sh").toPath(),
+                "VERSION=1.0.0\r\nsh run.sh make prepare_release\r\n".getBytes("UTF-8"));
+        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.Script script =
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun.scriptIn(ontology);
+
+        String container = ReleaseAction.whyNotOnThisRoute(
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.CONTAINER, script);
+        assertNotNull(container);
+        assertTrue(container.contains("Windows line endings"), container);
+        assertNull(ReleaseAction.whyNotOnThisRoute(
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.ITSELF, script));
+        assertNull(ReleaseAction.whyNotOnThisRoute(
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.Kind.CONTAINER, null));
     }
 }

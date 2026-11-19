@@ -54,6 +54,21 @@ public final class ReleaseRoute {
     public static ReleaseRoute decide(boolean nativeEnvironment, boolean container,
             OdkRoute.Use use, String noContainer, String howToGetOne, String script,
             String whyNotFast, String whyNotFull) {
+        return decide(nativeEnvironment, container, use, noContainer, howToGetOne, script,
+                script == null ? null : "it was not asked whether OntoBoard can run it",
+                whyNotFast, whyNotFull);
+    }
+
+    /**
+     * As {@link #decide(boolean, boolean, OdkRoute.Use, String, String, String, String,
+     * String)}, with whether OntoBoard's own engine can run the project's script (1.155.0).
+     *
+     * @param whyNotScript why OntoBoard itself cannot run the project's own release script -
+     *                     {@link ProjectScript#whyNotOnTheEngine} - or null when it can
+     */
+    public static ReleaseRoute decide(boolean nativeEnvironment, boolean container,
+            OdkRoute.Use use, String noContainer, String howToGetOne, String script,
+            String whyNotScript, String whyNotFast, String whyNotFull) {
         boolean onlyAContainer = !OdkRoute.mayRunWithoutContainer(use);
         // A script of the project's own calls ODK through run.sh, which starts a container
         // whatever is installed: a native environment is for ODK's own target only.
@@ -69,10 +84,14 @@ public final class ReleaseRoute {
                     + (howToGetOne == null ? "" : "\n\n" + howToGetOne), noContainer);
         }
         if (script != null) {
+            // 1.155.0: OntoBoard reads and runs the project's own script itself
+            // (ProjectScript), each call of make on its engine - where every line can run here.
+            if (whyNotScript == null) {
+                return new ReleaseRoute(Kind.ITSELF, null, noContainer, null);
+            }
             return refused(noContainer + ", and this project is released by its own script, "
-                    + "src/ontology/" + script + ". OntoBoard itself builds what ODK's Makefile "
-                    + "builds; a script is run by a shell, and its lines call ODK through the "
-                    + "project's run.sh, which starts ODK's container."
+                    + "src/ontology/" + script + ", which OntoBoard itself cannot run: "
+                    + whyNotScript
                     + (howToGetOne == null ? "" : "\n\n" + howToGetOne), noContainer);
         }
         if (whyNotFast != null) {

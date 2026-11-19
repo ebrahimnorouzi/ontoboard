@@ -21,12 +21,15 @@ class ReleaseRouteTest {
         OdkRoute.Use use = OdkRoute.Use.AUTOMATIC;
         String howToGetOne;
         String script;
+        /** Why OntoBoard itself cannot run the script; null when it can (1.155.0). */
+        String whyNotScript;
         String whyNotFast;
         String whyNotFull;
 
         ReleaseRoute route() {
             return ReleaseRoute.decide(nativeEnvironment, container, use,
-                    container ? null : NONE, howToGetOne, script, whyNotFast, whyNotFull);
+                    container ? null : NONE, howToGetOne, script, whyNotScript, whyNotFast,
+                    whyNotFull);
         }
     }
 
@@ -100,20 +103,23 @@ class ReleaseRouteTest {
     }
 
     /**
-     * A project's own release script is a shell script, and its lines call ODK through the
-     * project's {@code run.sh}, which starts a container whatever is installed (ODK's run.sh
-     * knows Docker and Singularity, nothing else). So such a project is released in the
-     * container, also on a machine with a native environment - or not at all.
+     * A project's own release script calls ODK through the project's {@code run.sh}, which
+     * starts a container whatever is installed - so a native environment does not release it.
+     * Without a container, OntoBoard runs it itself (1.155.0) where every line can run here; a
+     * line that cannot is the refusal, named.
      */
     @Test
-    void aProjectReleasedByItsOwnScriptIsReleasedInTheContainerOrNotAtAll() {
+    void aScriptOntoBoardCannotRunIsRefusedWithTheLine() {
         Machine machine = new Machine();
         machine.script = "release.sh";
+        machine.whyNotScript = "Line 7 of the script cannot be run by OntoBoard itself - 'git' "
+                + "is a program OntoBoard's own engine has no stand-in for";
 
         ReleaseRoute route = machine.route();
 
         assertNull(route.kind());
         assertTrue(route.refusal().contains("release.sh"), route.refusal());
+        assertTrue(route.refusal().contains("Line 7"), route.refusal());
         assertTrue(route.refusal().startsWith(NONE), route.refusal());
 
         machine.nativeEnvironment = true;
@@ -137,5 +143,21 @@ class ReleaseRouteTest {
         assertNull(route.kind());
         assertTrue(route.refusal().startsWith(NONE), route.refusal());
         assertTrue(route.refusal().contains("eggboil.Makefile:12"), route.refusal());
+    }
+
+    /**
+     * The user, 2026-11-19: "i want this limit to be solved: a project released by its own
+     * release.sh (nfdicore, MWO) is still released in ODK's container".
+     */
+    @Test
+    void aProjectReleasedByItsOwnScriptIsReleasedByOntoBoardItselfWithoutAContainer() {
+        Machine machine = new Machine();
+        machine.script = "release.sh";
+        machine.whyNotScript = null;
+
+        ReleaseRoute route = machine.route();
+
+        assertEquals(ReleaseRoute.Kind.ITSELF, route.kind());
+        assertNull(route.refusal());
     }
 }

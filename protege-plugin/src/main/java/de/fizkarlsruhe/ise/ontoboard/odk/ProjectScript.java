@@ -30,7 +30,7 @@ import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
  * own text is not changed by reading it; its CR line ends, as Git checks them out on Windows,
  * end lines as in sh on Linux.
  */
-final class ProjectScript {
+public final class ProjectScript {
 
     /** What a line is. */
     enum Kind {
@@ -439,6 +439,56 @@ final class ProjectScript {
             }
         }
         return out.toString().trim();
+    }
+
+    // ------------------------------------------------------------------ before the release
+
+    /**
+     * Why OntoBoard's engine cannot run this project's script, or null when it can: the script
+     * read, and every call of make in it asked of the engine with its variables - before
+     * anything runs, so that a release does not stop half-way at a line nobody was told of.
+     *
+     * @param editFile the project's edit file, in the folder the script runs in
+     */
+    public static String whyNotOnTheEngine(java.io.File editFile, java.io.File script) {
+        String text;
+        try {
+            text = new String(java.nio.file.Files.readAllBytes(script.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IOException unreadable) {
+            return "The project's " + script.getName() + " could not be read: "
+                    + unreadable.getMessage();
+        }
+        Plan plan = read(text, OdkTools.forProject());
+        if (plan.whyNot() != null) {
+            return plan.whyNot();
+        }
+        for (Step step : plan.steps()) {
+            if (step.kind() != Kind.MAKE) {
+                continue;
+            }
+            Map<String, String> variables = new LinkedHashMap<String, String>();
+            List<String> targets = new ArrayList<String>();
+            for (String word : step.make().subList(1, step.make().size())) {
+                int equals = word.indexOf('=');
+                if (word.startsWith("-")) {
+                    continue;
+                } else if (equals > 0) {
+                    variables.put(word.substring(0, equals), word.substring(equals + 1));
+                } else {
+                    targets.add(word);
+                }
+            }
+            for (String target : targets.isEmpty() ? java.util.Collections.singletonList("all")
+                    : targets) {
+                String why = OdkEngine.whyNot(editFile, target, variables);
+                if (why != null) {
+                    return "Line " + step.line() + " of the script, " + step.shown()
+                            + ", cannot be run by OntoBoard itself: " + why;
+                }
+            }
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------ the run

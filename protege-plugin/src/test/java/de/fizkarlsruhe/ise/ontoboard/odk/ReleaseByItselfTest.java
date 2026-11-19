@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
@@ -361,16 +362,22 @@ class ReleaseByItselfTest {
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
 
-    /** A project's own release script is a shell script: it is not a target of make. */
+    /**
+     * A project's own release script is read and run as a script, line by line - not handed to
+     * make as a target (1.155.0: before, OntoBoard's engine refused every script).
+     */
     @Test
-    void aScriptOfTheProjectsOwnIsNotRunThisWay() throws Exception {
+    void aScriptOfTheProjectsOwnIsRunAsAScriptNotAsATarget() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(),
+                "VERSION=1.0.0\nsh run.sh make clean\n".getBytes(StandardCharsets.UTF_8));
+
         ProcessRunner.Outcome ran = OdkRelease.byOntoBoardItself(edit, null)
                 .run(Arrays.asList("sh", "release.sh"), true);
 
-        assertFalse(ran.isSuccess());
         String said = String.join("\n", ran.getOutput());
-        assertTrue(said.contains("'sh release.sh' is no target of make"), "it is not handed to "
-                + "make as if it were one of its targets: " + said);
+        assertTrue(ran.isSuccess(), said);
+        assertTrue(said.contains("line 2: make clean"), said);
+        assertFalse(said.contains("no target of make"), said);
     }
 
     /**
@@ -416,5 +423,56 @@ class ReleaseByItselfTest {
         String transcript = String.join("\n", outcome.getTranscript());
         assertTrue(transcript.contains("--reasoner HermiT"), transcript);
         assertFalse(transcript.contains("--reasoner ELK"), transcript);
+    }
+
+    /**
+     * A project's own release script, run by OntoBoard itself: its variables, its call of make
+     * through run.sh, and a copy - each line said as it starts (1.155.0; nfdicore and MWO are
+     * released by such scripts).
+     */
+    @Test
+    void aProjectsOwnScriptIsRunByOntoBoardItself() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("set -e\r\n"
+                + "VERSION=1.0.0\r\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\r\n"
+                + "cp ../../eggboil.owl ../../eggboil-as-released.owl\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String log = String.join("\n", outcome.getTranscript());
+        assertTrue(log.contains("line 3: make VERSION=1.0.0 prepare_release_fast"), log);
+        assertTrue(log.contains("line 4: cp ../../eggboil.owl ../../eggboil-as-released.owl"),
+                log);
+        assertTrue(new File(root, "eggboil-as-released.owl").isFile());
+        assertTrue(versionIriOf(new File(root, "eggboil.owl")).contains("1.0.0"));
+    }
+
+    @Test
+    void aScriptLineOntoBoardCannotRunStopsTheReleaseBeforeAnythingRuns() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n"
+                + "git push origin main\n").getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().contains("Line 3"), outcome.getFailure());
+        assertFalse(new File(root, "eggboil.owl").exists(), "nothing was built");
+    }
+
+    @Test
+    void whetherOntoBoardCanRunAScriptIsAskedBeforeTheRelease() throws Exception {
+        File script = new File(edit.getParentFile(), "release.sh");
+        Files.write(script.toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n")
+                .getBytes(StandardCharsets.UTF_8));
+        assertNull(ProjectScript.whyNotOnTheEngine(edit, script));
+
+        Files.write(script.toPath(), ("VERSION=1.0.0\nsh run.sh make no_such_target\n")
+                .getBytes(StandardCharsets.UTF_8));
+        String why = ProjectScript.whyNotOnTheEngine(edit, script);
+        assertTrue(why != null && why.contains("Line 2"), why);
     }
 }

@@ -340,6 +340,15 @@ public final class OdkRelease {
         default boolean runsTheMakefileAsItIs() {
             return true;
         }
+
+        /**
+         * Whether a project's own script is run by a shell - in ODK's container, or with ODK's
+         * tools - which reads a carriage return as part of a word; OntoBoard's engine reads the
+         * script itself and does not (1.155.0).
+         */
+        default boolean runsScriptsInAShell() {
+            return true;
+        }
     }
 
     /** The person, asked before git records anything. */
@@ -441,10 +450,16 @@ public final class OdkRelease {
         return new Odk() {
             @Override
             public ProcessRunner.Outcome run(List<String> command, boolean passThroughRunSh) {
+                if (command.size() == 2 && command.get(0).equals("sh")
+                        && !command.get(1).equals("run.sh")) {
+                    // A project's own release script (1.155.0): read and run by OntoBoard
+                    // itself, each call of make on this engine, each line said as it starts.
+                    return script(command.get(1));
+                }
                 if (command.isEmpty() || !command.get(0).equals("make")) {
-                    return refused("'" + String.join(" ", command) + "' is no target of make. "
-                            + "OntoBoard itself runs ODK's Makefile; a script of the project's "
-                            + "own is run by a shell, in ODK's container.");
+                    return refused("'" + String.join(" ", command) + "' is no target of make, "
+                            + "and no script of the project's own. OntoBoard itself runs ODK's "
+                            + "Makefile and the project's release script.");
                 }
                 String goal = null;
                 Map<String, String> variables = new LinkedHashMap<String, String>();
@@ -491,8 +506,36 @@ public final class OdkRelease {
 
             @Override
             public boolean runsTheMakefileAsItIs() {
-                // The engine runs ODK's own Makefile only, and refuses another with its reason.
+                // The engine says itself, first in its transcript, how a Makefile differs from
+                // ODK's (1.155.0): the note for make's own routes is not said again.
                 return false;
+            }
+
+            @Override
+            public boolean runsScriptsInAShell() {
+                return false;
+            }
+
+            /** The project's own release script, read and run by OntoBoard itself. */
+            private ProcessRunner.Outcome script(String name) {
+                File ontology = editFile.getAbsoluteFile().getParentFile();
+                File file = new File(ontology, name);
+                String text;
+                try {
+                    text = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IOException unreadable) {
+                    return refused("The project's " + name + " could not be read: "
+                            + unreadable.getMessage());
+                }
+                Map<String, RecipeShell.Tool> tools = OdkTools.forProject(stopped);
+                ProjectScript.Plan plan = ProjectScript.read(text, tools);
+                try {
+                    return ProjectScript.run(plan, ontology, make -> run(make, false), tools,
+                            stopped);
+                } catch (IOException broke) {
+                    return refused(broke.getMessage());
+                }
             }
 
             private ProcessRunner.Outcome refused(String why) {
@@ -686,7 +729,7 @@ public final class OdkRelease {
         try {
             script = ReleaseRun.scriptIn(facts.ontology());
             if (script != null) {
-                String why = whyNotThisScript(script, version);
+                String why = whyNotThisScript(script, version, odk.runsScriptsInAShell());
                 if (why != null) {
                     return log.failed(why);
                 }
@@ -903,8 +946,17 @@ public final class OdkRelease {
      * when it can: its line endings, or no version to read in it.
      */
     public static String whyNotAScriptToRun(ReleaseRun.Script script) {
+        return whyNotAScriptToRun(script, true);
+    }
+
+    /**
+     * As {@link #whyNotAScriptToRun(ReleaseRun.Script)}; Windows line endings stop a script
+     * only where a shell runs it ({@code inAShell}) - OntoBoard's engine reads them as line ends
+     * (1.155.0: nfdicore's and MWO's are checked out so on Windows).
+     */
+    public static String whyNotAScriptToRun(ReleaseRun.Script script, boolean inAShell) {
         String name = script.file().getName();
-        if (script.hasWindowsLineEndings()) {
+        if (inAShell && script.hasWindowsLineEndings()) {
             return name + " has Windows line endings. The shell in ODK's container reads the "
                     + "carriage return at the end of every line as part of its last word - "
                     + "the version, the target - so the script would release nothing, or the "
@@ -924,8 +976,14 @@ public final class OdkRelease {
 
     /** Why the project's release script is not run for this version, or null when it is. */
     static String whyNotThisScript(ReleaseRun.Script script, String version) {
+        return whyNotThisScript(script, version, true);
+    }
+
+    /** As {@link #whyNotThisScript(ReleaseRun.Script, String)}, for a shell or not (1.155.0). */
+    static String whyNotThisScript(ReleaseRun.Script script, String version,
+            boolean inAShell) {
         String name = script.file().getName();
-        String never = whyNotAScriptToRun(script);
+        String never = whyNotAScriptToRun(script, inAShell);
         if (never != null) {
             return never;
         }
