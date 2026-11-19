@@ -65,6 +65,27 @@ public final class ReleaseRun {
      */
     public static List<String> makeArguments(String version, VersionIriShape shape,
             String ontbase, boolean refreshImports) {
+        return makeArguments(version, shape, ontbase, refreshImports, null);
+    }
+
+    /**
+     * As {@link #makeArguments(String, VersionIriShape, String, boolean)}, with the reasoner the
+     * person chose for the release as {@code REASONER=} - ODK's Makefile variable, which every
+     * route hands to make (1.155.0: "for release the user define the reasoner").
+     *
+     * @param reasoner the reasoner's name as ROBOT takes it, or null for the project's own
+     */
+    public static List<String> makeArguments(String version, VersionIriShape shape,
+            String ontbase, boolean refreshImports, String reasoner) {
+        List<String> arguments = plainMakeArguments(version, shape, ontbase, refreshImports);
+        if (reasoner != null && !reasoner.trim().isEmpty()) {
+            arguments.add("REASONER=" + reasoner.trim());
+        }
+        return arguments;
+    }
+
+    private static List<String> plainMakeArguments(String version, VersionIriShape shape,
+            String ontbase, boolean refreshImports) {
         if (version == null || OntologyVersion.parseOrNull(version) == null) {
             throw new IllegalArgumentException("'" + version + "' is not a version: a date such "
                     + "as 2026-11-11, or numbers such as 1.0.0.");

@@ -538,4 +538,15 @@ class ReleaseRunTest {
         assertTrue(byTag != null && byTag.contains("2.0.0"), String.valueOf(byTag));
         assertNull(ReleaseRun.whyNotThisVersion(root, "1.0.1", Collections.<String>emptyList()));
     }
+
+    /** The reasoner the person chose for the release: one more variable for make. */
+    @Test
+    void theReasonerChosenIsOneMoreArgument() {
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0", "REASONER=HermiT"),
+                ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
+                        EGG, true, "HermiT"));
+        assertEquals(Arrays.asList("make", "prepare_release_fast", "VERSION=1.0.0"),
+                ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
+                        EGG, false, null));
+    }
 }

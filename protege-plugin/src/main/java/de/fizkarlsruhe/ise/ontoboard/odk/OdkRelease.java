@@ -189,6 +189,8 @@ public final class OdkRelease {
         private final boolean releaseUncompared;
         private final boolean commitNewFiles;
         private final List<String> newFiles;
+        private final String reasoner;
+        private final long limitMillis;
 
         /**
          * A release that stops where it cannot be compared with the last release.
@@ -246,6 +248,40 @@ public final class OdkRelease {
             this.commitNewFiles = commitNewFiles;
             this.newFiles = newFiles == null ? null
                     : Collections.unmodifiableList(new ArrayList<String>(newFiles));
+            this.reasoner = null;
+            this.limitMillis = ReleaseVerdict.DEFAULT_LIMIT_MILLIS;
+        }
+
+        private Request(Request from, String reasoner, long limitMillis) {
+            this.editFile = from.editFile;
+            this.version = from.version;
+            this.shape = from.shape;
+            this.refreshImports = from.refreshImports;
+            this.refuseRemovedTerms = from.refuseRemovedTerms;
+            this.releaseUncompared = from.releaseUncompared;
+            this.commitNewFiles = from.commitNewFiles;
+            this.newFiles = from.newFiles;
+            this.reasoner = reasoner == null || reasoner.trim().isEmpty() ? null : reasoner.trim();
+            this.limitMillis = limitMillis;
+        }
+
+        /**
+         * The same release, with the reasoner the person chose (1.155.0): it is asked before
+         * anything is built, and ODK reasons with it ({@code REASONER=}).
+         *
+         * @param limitMillis how long the check may take before the person is asked
+         */
+        public Request withReasoner(String reasoner, long limitMillis) {
+            return new Request(this, reasoner, limitMillis);
+        }
+
+        /** The reasoner the person chose, or null where none was named (the project's own). */
+        public String reasoner() {
+            return reasoner;
+        }
+
+        public long limitMillis() {
+            return limitMillis;
         }
 
         public File editFile() {
@@ -318,6 +354,15 @@ public final class OdkRelease {
          * for which the version was refused as released the next time (review of 1.153.0).
          */
         default boolean stopped() {
+            return false;
+        }
+
+        /**
+         * Whether to release although the reasoner did not finish within the limit, so that
+         * nobody knows whether the ontology is consistent (1.155.0). Not asked for a finding: an
+         * inconsistent ontology or a class with no members is never released (D1).
+         */
+        default boolean goOnWithoutVerdict(ReleaseVerdict verdict) {
             return false;
         }
     }
@@ -469,6 +514,8 @@ public final class OdkRelease {
         private final String tag;
         private final String summary;
 
+        private final ReleaseVerdict verdict;
+
         private Outcome(String failure, Log log, boolean committed, String tag, String summary) {
             this.failure = failure;
             this.transcript = Collections.unmodifiableList(new ArrayList<String>(log.transcript));
@@ -478,6 +525,12 @@ public final class OdkRelease {
             this.committed = committed;
             this.tag = tag;
             this.summary = summary;
+            this.verdict = log.verdict;
+        }
+
+        /** What the release's reasoner said before anything was built; null if it was not asked. */
+        public ReleaseVerdict getVerdict() {
+            return verdict;
         }
 
         public boolean isOk() {
@@ -529,6 +582,8 @@ public final class OdkRelease {
 
     /** What is said along the way. */
     private static final class Log {
+        /** What the release's reasoner said before the build (1.155.0). */
+        private ReleaseVerdict verdict;
         private final List<String> transcript = new ArrayList<String>();
         private final List<File> written = new ArrayList<File>();
         private final List<String> warnings = new ArrayList<String>();
@@ -597,6 +652,33 @@ public final class OdkRelease {
             return log.failed(released);
         }
 
+        // D1 (1.155.0): what the reasoner the person chose says, before anything is built. The
+        // user's egg project went out inconsistent because ODK reasons with ELK unless told
+        // otherwise, and ELK does not read inverse properties.
+        String chosen = ReleaseReasoners.canonical(request.reasoner);
+        String asking = chosen != null ? chosen : ReleaseReasoners.preselected(request.editFile);
+        ReleaseVerdict verdict = ReleaseVerdict.check(request.editFile, asking,
+                request.limitMillis, asks == null ? null : asks::stopped);
+        log.verdict = verdict;
+        log.note(verdict.said());
+        if (verdict.kind() == ReleaseVerdict.Kind.TIMED_OUT) {
+            if (asks == null || !asks.goOnWithoutVerdict(verdict)) {
+                return log.failed(verdict.said() + " The release was not checked, so it was "
+                        + "not made. Nothing was built, copied, committed or tagged.");
+            }
+            log.warn("Released not checked by " + asking + ": " + verdict.said());
+        } else if (verdict.stopsARelease()) {
+            String why = verdict.said() + " Nothing was built, copied, committed or tagged.";
+            if (!verdict.explanation().isEmpty()) {
+                why += "\n\n" + verdict.explanation();
+            }
+            return log.failed(why);
+        }
+        String misses = ReleaseReasoners.whatItMisses(asking);
+        if (misses != null) {
+            log.warn("Checked and released with " + asking + ". " + misses);
+        }
+
         // What builds it: the project's own script when it has one, else ODK's target.
         List<String> command;
         boolean passThrough = false;
@@ -610,6 +692,10 @@ public final class OdkRelease {
                 }
                 command = Arrays.asList("sh", script.file().getName());
                 passThrough = new File(facts.ontology(), "run.sh").isFile();
+                if (chosen != null) {
+                    log.warn("The project's " + script.file().getName() + " reasons with the "
+                            + "reasoner it chooses; " + chosen + " was asked before it ran.");
+                }
             } else {
                 if (facts.ontbase() == null
                         && request.shape.kind() != VersionIriShape.Kind.ODK) {
@@ -620,7 +706,7 @@ public final class OdkRelease {
                                     VersionIriShape.Kind.ODK).pattern() + ".");
                 }
                 command = ReleaseRun.makeArguments(version, request.shape, facts.ontbase(),
-                        request.refreshImports);
+                        request.refreshImports, chosen);
             }
         } catch (IllegalStateException cannotRead) {
             return log.failed(cannotRead.getMessage());

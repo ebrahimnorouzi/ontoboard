@@ -169,7 +169,7 @@ class OdkReleaseTest {
 
                     @Override
                     public boolean stopped() {
-                        return stoppedAfterTheBuild;
+                        return stoppedAfterTheBuild && !odkRan.isEmpty();
                     }
                 });
     }
@@ -1140,5 +1140,125 @@ class OdkReleaseTest {
         write(own, text + "\nONTBASE?=https://w3id.org/kitchen/eggboil\n");
         assertEquals("https://example.org/eggboil/eggboil", OdkRelease.Facts.of(edit).ontbase(),
                 "?= gives a value only to what has none");
+    }
+
+    // ------------------------------------------------------------------ the reasoner (1.155.0)
+
+    /** The egg project's contradiction in one file: only a reasoner reading inverses sees it. */
+    private void anInconsistentEditFile() throws IOException {
+        write(edit, "Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                + "Ontology(<https://example.org/eggboil/eggboil.owl>\n"
+                + "SubClassOf(obo:BFO_0000019 obo:BFO_0000020)\n"
+                + "DisjointClasses(obo:BFO_0000020 obo:BFO_0000031)\n"
+                + "SubClassOf(obo:IAO_0000003 obo:BFO_0000031)\n"
+                + "InverseObjectProperties(obo:IAO_0000039 obo:IAO_0000040)\n"
+                + "ObjectPropertyRange(obo:IAO_0000039 obo:IAO_0000003)\n"
+                + "SubClassOf(obo:EGG_0000001 obo:BFO_0000019)\n"
+                + "SubClassOf(obo:EGG_0000001 ObjectSomeValuesFrom(obo:IAO_0000040 "
+                + "obo:EGG_0000000))\n"
+                + "ClassAssertion(obo:EGG_0000001 obo:EGG_0000002)\n)\n");
+    }
+
+    private boolean goOn;
+    private final List<ReleaseVerdict> verdictsAsked = new ArrayList<ReleaseVerdict>();
+
+    private OdkRelease.Outcome releaseWith(String reasoner, long limitMillis) {
+        return OdkRelease.run(new OdkRelease.Request(edit, "1.0.0", null, true, true)
+                .withReasoner(reasoner, limitMillis), odk(), git(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return sayYes;
+                    }
+
+                    @Override
+                    public boolean goOnWithoutVerdict(ReleaseVerdict verdict) {
+                        verdictsAsked.add(verdict);
+                        return goOn;
+                    }
+                });
+    }
+
+    /** D1: inconsistent by the reasoner the person chose - nothing is built, nothing is run. */
+    @Test
+    void anInconsistentOntologyIsNotBuilt() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().contains("inconsistent"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("Nothing was built"), outcome.getFailure());
+        assertEquals(new ArrayList<List<String>>(), odkRan, "ODK was asked to run nothing");
+        assertEquals(ReleaseVerdict.Kind.INCONSISTENT, outcome.getVerdict().kind());
+    }
+
+    /** The person chose ELK: ELK is asked - it sees nothing here - and ODK reasons with it. */
+    @Test
+    void theChosenReasonerReachesOdk() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = releaseWith("ELK", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("make", "clean"), odkRan.get(0));
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0", "REASONER=ELK"),
+                odkRan.get(1));
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains("OWL 2 EL"),
+                outcome.getWarnings().toString());
+    }
+
+    /** A project's own release.sh chooses its own reasoner; the check runs all the same. */
+    @Test
+    void aReleaseScriptKeepsItsReasoner() throws IOException {
+        write(new File(ontology, "release.sh"), "VERSION=1.0.0\nPRIOR_VERSION=0.9.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release\n");
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("sh", "release.sh"), odkRan.get(0));
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains(
+                "release.sh reasons with the reasoner it chooses"),
+                outcome.getWarnings().toString());
+    }
+
+    /** Not finished is not a finding: the person is asked, and no means no. */
+    @Test
+    void notFinishedAsksAndStopsWhenTheAnswerIsNo() throws IOException {
+        goOn = false;
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 1);
+
+        assertFalse(outcome.isOk());
+        assertEquals(1, verdictsAsked.size());
+        assertEquals(ReleaseVerdict.Kind.TIMED_OUT, verdictsAsked.get(0).kind());
+        assertTrue(outcome.getFailure().contains("not checked"), outcome.getFailure());
+        assertEquals(new ArrayList<List<String>>(), odkRan);
+    }
+
+    @Test
+    void notFinishedGoesOnWhenThePersonSaysSo() throws IOException {
+        goOn = true;
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 1);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains("not checked"),
+                outcome.getWarnings().toString());
+    }
+
+    /** No reasoner named (an older caller): checked with what the form offers first. */
+    @Test
+    void aRequestThatNamesNoReasonerIsStillChecked() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk());
+        assertEquals("HermiT", outcome.getVerdict().reasoner());
+        assertEquals(new ArrayList<List<String>>(), odkRan);
     }
 }

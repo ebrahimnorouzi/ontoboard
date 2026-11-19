@@ -47,6 +47,13 @@ public final class ReleaseVerdict {
         CLEAN, INCONSISTENT, UNSATISFIABLE, NOT_LOADED, TIMED_OUT, STOPPED, FAILED
     }
 
+    /**
+     * How long the check may take before the person is asked: 3 minutes - three times the
+     * slowest HermiT measured (38 s on MWO with its imports, 1.155.0), with room for a busy
+     * machine.
+     */
+    public static final long DEFAULT_LIMIT_MILLIS = 3L * 60 * 1000;
+
     /** How many unsatisfiable classes are named, at most. */
     static final int NAMED = 50;
 

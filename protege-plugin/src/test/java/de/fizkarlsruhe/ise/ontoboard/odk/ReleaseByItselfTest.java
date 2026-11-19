@@ -245,9 +245,45 @@ class ReleaseByItselfTest {
                 versionIriOf(new File(root, "eggboil-base.owl")));
     }
 
-    /** A release that does not build is not recorded, and the reason is ROBOT's own word. */
+    /**
+     * A release that does not build is not recorded, and the reason is ROBOT's own word.
+     *
+     * <p>Two classes each the other's subclass: consistent, and every class can have members, so
+     * the release check lets it through (1.155.0) - but ODK reasons with
+     * {@code --equivalent-classes-allowed asserted-only}, and the equivalence is inferred.
+     */
     @Test
     void aReleaseThatDoesNotBuildIsNotRecordedAndSaysWhy() throws Exception {
+        String text = new String(Files.readAllBytes(edit.toPath()), StandardCharsets.UTF_8);
+        int end = text.lastIndexOf(')');
+        Files.write(edit.toPath(), (text.substring(0, end)
+                + "Declaration(Class(<https://example.org/eggboil/EGGBOIL_9999998>))\n"
+                + "Declaration(Class(<https://example.org/eggboil/EGGBOIL_9999999>))\n"
+                + "SubClassOf(<https://example.org/eggboil/EGGBOIL_9999999> "
+                + "<https://example.org/eggboil/EGGBOIL_9999998>)\n"
+                + "SubClassOf(<https://example.org/eggboil/EGGBOIL_9999998> "
+                + "<https://example.org/eggboil/EGGBOIL_9999999>)\n" + text.substring(end))
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind(),
+                "the check found nothing; the build did");
+        assertTrue(outcome.getFailure().contains("Nothing was copied, committed or tagged"),
+                outcome.getFailure());
+        assertTrue(String.join("\n", outcome.getTranscript()).contains("EGGBOIL_9999999"),
+                "which classes are inferred equivalent is in the log: " + outcome.getTranscript());
+        assertFalse(new File(root, "eggboil.owl").exists());
+        assertEquals(new ArrayList<List<String>>(), gitRan);
+    }
+
+    /**
+     * A class that can have no members stops the release before anything is built (D1), with the
+     * axioms that cause it - on OntoBoard's own engine, the route nothing is installed for.
+     */
+    @Test
+    void aClassWithNoMembersStopsTheReleaseBeforeTheBuild() throws Exception {
         String text = new String(Files.readAllBytes(edit.toPath()), StandardCharsets.UTF_8);
         int end = text.lastIndexOf(')');
         Files.write(edit.toPath(), (text.substring(0, end)
@@ -264,10 +300,11 @@ class ReleaseByItselfTest {
         OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
 
         assertFalse(outcome.isOk());
-        assertTrue(outcome.getFailure().contains("Nothing was copied, committed or tagged"),
+        assertEquals(ReleaseVerdict.Kind.UNSATISFIABLE, outcome.getVerdict().kind());
+        assertTrue(outcome.getFailure().contains("Nothing was built, copied, committed or tagged"),
                 outcome.getFailure());
-        assertTrue(String.join("\n", outcome.getTranscript()).contains("EGGBOIL_9999999"),
-                "which class cannot have members is in the log: " + outcome.getTranscript());
+        assertTrue(outcome.getFailure().contains("EGGBOIL_9999999"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("DisjointWith"), outcome.getFailure());
         assertFalse(new File(root, "eggboil.owl").exists());
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
