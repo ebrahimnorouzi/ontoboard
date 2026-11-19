@@ -80,6 +80,10 @@ public final class ReleaseRecord {
         private final String previous;
         private final String changes;
         private final List<String[]> imports;
+        /** Made by Release... alone, for an ontology in no project: no ODK report to read. */
+        private boolean alone;
+        /** What OntoBoard's own quality report found for it, or how it was not run. */
+        private String reportSaid;
 
         /**
          * @param madeBy     what built it, with its versions: "OntoBoard's own engine (ROBOT
@@ -134,6 +138,28 @@ public final class ReleaseRecord {
                 report == null ? null : shown(projectRoot, report), byLevel, byRule,
                 firstLineOf(new File(reports, "validate_profile_owl2dl_" + id + ".owl.txt")),
                 previous, changes, importsOf(projectRoot, id));
+    }
+
+    /**
+     * What is recorded of a release of an ontology in no project (1.155.0): Release... made it by
+     * OntoBoard alone beside the file it was made from, so there is no ODK report, profile check
+     * or ODK checks to read - what it checked is said as it was, and the dated copy it wrote is
+     * what is measured.
+     *
+     * @param released   the dated copy Release... wrote
+     * @param edit       the file it was made from, whose imports are read
+     * @param reportSaid what OntoBoard's quality report found, or how it was not run
+     */
+    public static Facts standalone(File released, File edit, String id, String version,
+            String date, String verdict, String reportSaid, String previous, String changes) {
+        Facts facts = new Facts(id, version, date, de.fizkarlsruhe.ise.ontoboard.assistant
+                .BuildInfo.version(), "Release... - OntoBoard alone, for an ontology in no "
+                + "project, from " + edit.getName(), verdict, measuresOf(released), null,
+                new int[3], new LinkedHashMap<String, Integer>(), null, previous, changes,
+                importsOfFile(edit));
+        facts.alone = true;
+        facts.reportSaid = reportSaid;
+        return facts;
     }
 
     /** ODK's ROBOT report of the edit file - {@code <id>-edit.<ext>-obo-report.tsv} - or any. */
@@ -215,9 +241,13 @@ public final class ReleaseRecord {
 
     /** The edit file's imports and the version each one's file declares. */
     private static List<String[]> importsOf(File projectRoot, String id) {
+        return importsOfFile(editFileOf(projectRoot, id));
+    }
+
+    /** Each import of this file, and the version its loaded document declares. */
+    private static List<String[]> importsOfFile(File edit) {
         List<String[]> imports = new ArrayList<String[]>();
-        File edit = editFileOf(projectRoot, id);
-        if (edit == null) {
+        if (edit == null || !edit.isFile()) {
             return imports;
         }
         try {
@@ -296,7 +326,12 @@ public final class ReleaseRecord {
         md.append("## How it was checked\n\n");
         md.append(REASONER_LINE).append(facts.verdict == null ? "not asked." : facts.verdict)
                 .append('\n');
-        if (facts.reportFile == null) {
+        if (facts.alone) {
+            // Release...'s own path: what it ran, as it ran, and nothing claimed of ODK's.
+            md.append("- **Quality report:** ").append(facts.reportSaid == null
+                    ? "not recorded." : facts.reportSaid).append('\n');
+            md.append("- **OWL 2 DL profile:** not checked by this release.\n\n");
+        } else if (facts.reportFile == null) {
             md.append("- **Quality report:** The quality report was not found: ODK did not write "
                     + "it.\n");
         } else {
@@ -309,9 +344,11 @@ public final class ReleaseRecord {
                         .append('\n');
             }
         }
-        md.append("- **OWL 2 DL profile:** ").append(facts.profile == null
-                ? "not checked: ODK wrote no profile report." : facts.profile).append('\n');
-        md.append("- **ODK's checks:** passed - a release stops at the first that fails.\n\n");
+        if (!facts.alone) {
+            md.append("- **OWL 2 DL profile:** ").append(facts.profile == null
+                    ? "not checked: ODK wrote no profile report." : facts.profile).append('\n');
+            md.append("- **ODK's checks:** passed - a release stops at the first that fails.\n\n");
+        }
 
         if (facts.previous == null) {
             md.append("## What changed\n\nThe first release.\n\n");

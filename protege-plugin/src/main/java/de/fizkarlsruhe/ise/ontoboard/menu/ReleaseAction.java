@@ -790,6 +790,28 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /**
+     * What a release of an ontology in no project records of itself (1.155.0): RELEASE.md beside
+     * its dated copy, as an ODK project's release keeps one.
+     *
+     * @param verdict    what the reasoner said, or null when it was not asked
+     * @param reportSaid what the quality report found, or how it was not run
+     * @return the record written
+     */
+    static File recordBeside(File dated, File edit, String id, String version, String date,
+            String verdict, String reportSaid, String previous, String changes)
+            throws java.io.IOException {
+        File record = new File(dated.getParentFile(), "RELEASE.md");
+        java.nio.file.Files.write(record.toPath(), de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRecord
+                .markdown(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRecord.standalone(dated, edit,
+                        id, version, date, verdict, reportSaid, previous, changes))
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return record;
+    }
+
+    /** What the quality report found for this release, or how it was not run: for its record. */
+    private volatile String reportSaid;
+
+    /**
      * D1 (1.155.0) for a release of an ontology in no project: what the reasoner the person
      * chose says about the open ontology, with the imports it was loaded with.
      *
@@ -800,9 +822,21 @@ public class ReleaseAction extends OntoBoardAction {
             java.util.function.BooleanSupplier stopped,
             java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> goOn,
             OperationResult.Builder result) {
+        return whatTheReasonerSays(ontology, reasoner, limitMillis, stopped, goOn, result, null);
+    }
+
+    /** The same, handing the verdict on - to the release's record. */
+    static String whatTheReasonerSays(OWLOntology ontology, String reasoner, long limitMillis,
+            java.util.function.BooleanSupplier stopped,
+            java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> goOn,
+            OperationResult.Builder result,
+            java.util.function.Consumer<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> found) {
         de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict =
                 de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.check(ontology, reasoner,
                         limitMillis, stopped);
+        if (found != null) {
+            found.accept(verdict);
+        }
         result.note("Checked by " + verdict.reasoner() + ": " + verdict.kind().name()
                 .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
         if (verdict.kind() == de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.Kind.TIMED_OUT) {
@@ -884,11 +918,14 @@ public class ReleaseAction extends OntoBoardAction {
         } else {
             result.warn("The quality report was not run, so nothing checked this release against "
                     + "the project's own rules.");
+            reportSaid = "not run: \"Refuse to release on an error\" was off.";
         }
         // D1 (1.155.0): what the reasoner the person chose says, before anything is written.
+        final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict[] checked =
+                new de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict[1];
         String contradiction = whatTheReasonerSays(ontology, reasoner.getLabel(),
                 de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.DEFAULT_LIMIT_MILLIS,
-                BackgroundRun::abandoned, this::goOnWithoutVerdict, result);
+                BackgroundRun::abandoned, this::goOnWithoutVerdict, result, v -> checked[0] = v);
         if (contradiction != null) {
             return result.failed(contradiction).build();
         }
@@ -1087,6 +1124,16 @@ public class ReleaseAction extends OntoBoardAction {
             }
         }
 
+        // What the release records of itself (1.155.0), as an ODK project's release keeps one.
+        try {
+            result.wrote(recordBeside(dated, editFile, id, version.getText(), date,
+                    checked[0] == null ? null : checked[0].said(), reportSaid, previous,
+                    diff == null ? null : diff.summary()));
+        } catch (java.io.IOException | RuntimeException cannotWrite) {
+            result.warn("The release was written but its record, RELEASE.md, was not: "
+                    + cannotWrite.getMessage());
+        }
+
         result.note("The dated copy is what the version IRI names, so leave it alone - it is the "
                 + "only thing that makes the IRI mean anything.");
         result.note("The copy at the project root is the same file under the name a PURL resolves "
@@ -1135,12 +1182,17 @@ public class ReleaseAction extends OntoBoardAction {
                         + " in the quality report, so nothing was written. Fix them, or turn the "
                         + "check off if you know what you are publishing.";
             }
+            reportSaid = "OntoBoard's quality report, with " + (profile == null
+                    ? "ROBOT's built-in profile" : profile.getName()) + ": no errors - an error "
+                    + "stops the release.";
             return null;
         } catch (RobotException cannotReport) {
             // Not a silent pass. A release that skipped its own gate and did not say so is worse
             // than one that refused.
             result.warn("The quality report could not run here, so this release was not checked: "
                     + cannotReport.getMessage());
+            reportSaid = "could not run here, so this release was not checked against its rules: "
+                    + cannotReport.getMessage();
             return null;
         }
     }
