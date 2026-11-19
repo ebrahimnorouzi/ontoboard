@@ -89,4 +89,21 @@ class CheckOntologyActionTest {
         assertTrue(String.join("\n", result.getLog()).contains("has not been saved"),
                 result.getLog().toString());
     }
+
+    /** The user, 2026-11-19: "check this ontology, is not offering the choice for reasoner". */
+    @Test
+    void theFormOffersTheReasoners() {
+        java.util.List<Parameter> parameters = CheckOntologyAction.parameters(null);
+
+        Parameter reasoner = null;
+        for (Parameter parameter : parameters) {
+            if ("reasoner".equals(parameter.getKey())) {
+                reasoner = parameter;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertNotNull(reasoner);
+        assertEquals(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names(),
+                reasoner.getChoices());
+        assertEquals("HermiT", reasoner.getDefaultValue());
+    }
 }

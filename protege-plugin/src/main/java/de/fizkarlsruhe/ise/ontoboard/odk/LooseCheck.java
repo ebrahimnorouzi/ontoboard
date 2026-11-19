@@ -43,29 +43,47 @@ public final class LooseCheck {
     public static final class Options {
         private final boolean secondOpinion;
         private final Map<String, String> report;
+        private final String reasoner;
 
-        private Options(boolean secondOpinion, Map<String, String> report) {
+        private Options(boolean secondOpinion, Map<String, String> report, String reasoner) {
             this.secondOpinion = secondOpinion;
             this.report = report;
+            this.reasoner = reasoner;
         }
 
-        /** ELK, and HermiT for ten seconds where ELK may miss something - as Build does. */
+        /**
+         * HermiT, as Release offers it first (1.155.0) - and, where an EL reasoner is chosen,
+         * HermiT for ten seconds where it may miss something, as Build does.
+         */
         public static Options defaults() {
-            return new Options(true, null);
+            return new Options(true, null, ReleaseReasoners.COMPLETE_DEFAULT);
         }
 
         /**
          * The defaults, with the quality report asked as {@code Quality report...} asks it of
          * this file: in a project, with the project's profile and on its own terms, as ODK's
-         * test counts them; for a file in no project that is ROBOT's own, as by default.
+         * test counts them; for a file in no project that is ROBOT's own, as by default. The
+         * reasoner is the project's own, else HermiT, as Release offers it.
          */
         public static Options forFile(java.io.File file) {
-            return new Options(true, QualityReport.optionsFor(file));
+            return new Options(true, file == null ? null : QualityReport.optionsFor(file),
+                    ReleaseReasoners.preselected(file));
         }
 
-        /** ELK alone. */
+        /** The chosen reasoner alone, without HermiT's second opinion. */
         public Options withoutSecondOpinion() {
-            return new Options(false, report);
+            return new Options(false, report, reasoner);
+        }
+
+        /** The reasoner the person chose (1.155.0: the check offered no choice before). */
+        public Options withReasoner(String name) {
+            String known = ReleaseReasoners.canonical(name);
+            return new Options(secondOpinion, report, known != null ? known : name);
+        }
+
+        /** The reasoner asked, as ROBOT names it. */
+        public String reasoner() {
+            return reasoner;
         }
 
         public boolean asksASecondOpinion() {
@@ -159,46 +177,39 @@ public final class LooseCheck {
 
     // ------------------------------------------------------------------ the reasoner
 
+    /**
+     * The reasoner the person chose (1.155.0), as a release asks it ({@link ReleaseVerdict}):
+     * consistent, and every class with members - else the axioms that make it otherwise. Where
+     * the choice is an EL reasoner, HermiT's ten-second second opinion as before.
+     */
     private static Line reasoner(OWLOntology ontology, Options options) {
-        OWLReasonerFactory elk = Reasoners.Choice.ELK.newFactory();
-        OWLReasoner reasoner = null;
         List<String> details = new ArrayList<String>();
-        try {
-            reasoner = elk.createReasoner(ontology);
-            if (!reasoner.isConsistent()) {
-                return new Line(REASONER, false, "ELK: the ontology is inconsistent - nothing "
-                        + "can be true of it. Check and test > Explain... says which axioms "
-                        + "make it so.", details);
+        ReleaseVerdict verdict = ReleaseVerdict.check(ontology, options.reasoner(),
+                ReleaseVerdict.DEFAULT_LIMIT_MILLIS, null);
+        String asked = verdict.reasoner();
+        if (verdict.kind() == ReleaseVerdict.Kind.CLEAN) {
+            String second = null;
+            if (options.asksASecondOpinion() && !ReleaseReasoners.isComplete(asked)) {
+                try {
+                    second = OdkTargets.secondOpinion(ontology, ReleaseReasoners.factory(asked));
+                } catch (IllegalArgumentException unknown) {
+                    second = null;
+                }
             }
-            List<String> unsatisfiable = new ArrayList<String>();
-            for (OWLClass empty : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
-                unsatisfiable.add(nameOf(ontology, empty));
-            }
-            Collections.sort(unsatisfiable);
-            details.addAll(unsatisfiable);
-            String second = options.asksASecondOpinion()
-                    ? OdkTargets.secondOpinion(ontology, elk) : null;
             if (second != null) {
                 details.add(second);
             }
-            if (!unsatisfiable.isEmpty()) {
-                return new Line(REASONER, false, "ELK: " + counted(unsatisfiable.size(),
-                        "class", "classes") + " can have no members - " + named(unsatisfiable)
-                        + ". Check and test > Explain... says which axioms make "
-                        + (unsatisfiable.size() == 1 ? "it" : "each") + " so."
-                        + (second == null ? "" : " " + second), details);
-            }
-            return new Line(REASONER, true, "ELK: consistent, and every class can have members."
-                    + (second == null ? "" : " " + second), details);
-        } catch (RuntimeException | LinkageError cannotReason) {
-            return new Line(REASONER, false, "ELK could not reason over it: "
-                    + (cannotReason.getMessage() == null ? cannotReason.getClass().getSimpleName()
-                            : cannotReason.getMessage()), details);
-        } finally {
-            if (reasoner != null) {
-                reasoner.dispose();
+            return new Line(REASONER, true, asked + ": consistent, and every class can have "
+                    + "members." + (second == null ? "" : " " + second), details);
+        }
+        for (String line : verdict.explanation().split("\\r?\\n")) {
+            if (!line.trim().isEmpty()) {
+                details.add(line.trim());
             }
         }
+        return new Line(REASONER, false, verdict.said()
+                + (verdict.stopsARelease() && verdict.kind() != ReleaseVerdict.Kind.NOT_LOADED
+                        ? " Check and test > Explain... says more." : ""), details);
     }
 
     // ------------------------------------------------------------------ the quality report
