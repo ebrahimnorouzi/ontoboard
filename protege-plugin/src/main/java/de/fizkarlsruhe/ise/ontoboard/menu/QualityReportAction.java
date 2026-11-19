@@ -146,7 +146,8 @@ public class QualityReportAction extends OntoBoardAction {
         boolean labels = !"false".equalsIgnoreCase(options.get(QualityReport.OPTION_LABELS));
         int errors = 0;
         for (QualityFinding finding : findings) {
-            result.row(finding.getSeverity().name(), finding.getRule(),
+            // A click on the row shows its subject on the board (1.155.0).
+            result.rowAbout(finding.getSubject(), finding.getSeverity().name(), finding.getRule(),
                     subjectShown(ontology, finding.getSubject(), labels),
                     messageShown(ontology, finding.getMessage(), labels));
             if (finding.getSeverity() == QualityFinding.Severity.ERROR) {

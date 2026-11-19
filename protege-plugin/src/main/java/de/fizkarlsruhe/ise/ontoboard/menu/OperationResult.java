@@ -81,6 +81,8 @@ public final class OperationResult {
     private final String summary;
     private final List<String> columns;
     private final List<List<String>> rows;
+    /** The term each row is about, or null: the same length as {@link #rows}. */
+    private final List<String> rowTerms;
     private final List<String> log;
     private final List<File> files;
     private final List<Fixable> fixes;
@@ -93,6 +95,7 @@ public final class OperationResult {
         this.summary = builder.summary;
         this.columns = Collections.unmodifiableList(new ArrayList<String>(builder.columns));
         this.rows = Collections.unmodifiableList(new ArrayList<List<String>>(builder.rows));
+        this.rowTerms = Collections.unmodifiableList(new ArrayList<String>(builder.rowTerms));
         this.log = Collections.unmodifiableList(new ArrayList<String>(builder.log));
         this.files = Collections.unmodifiableList(new ArrayList<File>(builder.files));
         this.fixes = Collections.unmodifiableList(new ArrayList<Fixable>(builder.fixes));
@@ -110,6 +113,7 @@ public final class OperationResult {
         more.summary = summary;
         more.columns.addAll(columns);
         more.rows.addAll(rows);
+        more.rowTerms.addAll(rowTerms);
         more.log.addAll(log);
         more.files.addAll(files);
         more.fixes.addAll(fixes);
@@ -146,6 +150,14 @@ public final class OperationResult {
 
     public List<String> getColumns() {
         return columns;
+    }
+
+    /**
+     * The term each row is about - its IRI - or null for a row about none, in the rows' order
+     * (1.155.0: a click on such a row shows the term).
+     */
+    public List<String> getRowTerms() {
+        return rowTerms;
     }
 
     public List<List<String>> getRows() {
@@ -242,6 +254,7 @@ public final class OperationResult {
         private final String operation;
         private final List<String> columns = new ArrayList<String>();
         private final List<List<String>> rows = new ArrayList<List<String>>();
+        private final List<String> rowTerms = new ArrayList<String>();
         private final List<String> log = new ArrayList<String>();
         private final List<File> files = new ArrayList<File>();
         private final List<Fixable> fixes = new ArrayList<Fixable>();
@@ -270,9 +283,15 @@ public final class OperationResult {
         }
 
         public Builder row(String... cells) {
+            return rowAbout(null, cells);
+        }
+
+        /** A row about a term, which a click on it shows: its IRI, or null for none. */
+        public Builder rowAbout(String termIri, String... cells) {
             List<String> row = new ArrayList<String>();
             Collections.addAll(row, cells);
             rows.add(row);
+            rowTerms.add(termIri == null || termIri.trim().isEmpty() ? null : termIri.trim());
             return this;
         }
 
