@@ -458,6 +458,36 @@ class ReleaseHistoryTest {
         assertEquals("+1 class", history.get(0).describeChange(), "Pan, the folder's");
     }
 
+    /**
+     * What a release recorded of itself (1.155.0): its RELEASE.md beside the kept copy, else its
+     * tag's message when that is a record; a tag that says only "demo 1.0.0" has none.
+     */
+    @Test
+    void aReleasesRecordIsRead(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        tagged(root, "1.0.0", demo("Egg"));
+        Files.write(new File(root, "demo.owl").toPath(), demo("Egg", "Pan"));
+        git(root, "add", "-f", "demo.owl");
+        git(root, "commit", "-q", "-m", "release(1.1.0)");
+        File message = new File(root, "message.md");
+        Files.write(message.toPath(), "# demo 1.1.0\n\nReleased on 2026-11-19 with OntoBoard.\n"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        git(root, "tag", "-a", "v1.1.0", "--cleanup=verbatim", "-F", "message.md");
+        File kept = kept(root, "1.2.0", demo("Egg", "Pan", "Lid"));
+        Files.write(new File(kept.getParentFile(), "RELEASE.md").toPath(),
+                "# demo 1.2.0\n\nKept beside the copy.\n".getBytes(
+                        java.nio.charset.StandardCharsets.UTF_8));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[1.2.0, 1.1.0, 1.0.0]", versionsOf(releases));
+        assertEquals("# demo 1.2.0\n\nKept beside the copy.\n", releases.get(0).record());
+        assertTrue(releases.get(1).record().startsWith("# demo 1.1.0\n"),
+                releases.get(1).record());
+        assertNull(releases.get(2).record(), "demo 1.0.0 is a tag's name, no record");
+    }
+
     /** History reads a release that is only a tag, beside one that is only a folder. */
     @Test
     void theHistoryReadsTaggedReleases(@TempDir File root) throws Exception {

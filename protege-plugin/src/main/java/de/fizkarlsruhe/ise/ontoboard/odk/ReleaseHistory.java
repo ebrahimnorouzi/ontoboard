@@ -222,6 +222,28 @@ public final class ReleaseHistory {
                     + ".");
         }
 
+        /**
+         * What the release recorded of itself (1.155.0): its RELEASE.md beside the kept copy,
+         * else its tag's message when that is a record - it starts "# &lt;id&gt; &lt;version&gt;";
+         * null when it has none.
+         */
+        public String record() {
+            File kept = folder == null ? null : new File(folder, "RELEASE.md");
+            if (kept != null && kept.isFile()) {
+                try {
+                    return new String(Files.readAllBytes(kept.toPath()),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IOException unreadable) {
+                    return null;
+                }
+            }
+            if (tag == null) {
+                return null;
+            }
+            String message = GitTags.messageOf(projectRoot, tag);
+            return message != null && message.startsWith("# " + id + " ") ? message : null;
+        }
+
         /** The released ontology, in a manager of its own: it declares the edit file's IRI. */
         public OWLOntology load() throws OWLOntologyCreationException {
             OWLOntologyManager manager = OWLManager.createOWLOntologyManager();

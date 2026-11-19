@@ -103,6 +103,48 @@ public final class GitTags {
      *
      * @param path from the project's root, with {@code /}
      */
+    /**
+     * The message of an annotated release tag - what follows its header - or null for a tag
+     * that has none, or when git could not be asked (1.155.0: a release's record).
+     */
+    public static String messageOf(File projectRoot, String tag) {
+        if (versionOf(tag) == null) {
+            return null;
+        }
+        File out = null;
+        try {
+            out = File.createTempFile("ontoboard-tag", ".txt");
+            Process git = new ProcessBuilder("git", "cat-file", "tag", "refs/tags/" + tag)
+                    .directory(projectRoot)
+                    .redirectOutput(out)
+                    .redirectError(ProcessBuilder.Redirect.appendTo(out.getAbsoluteFile()
+                            .getParentFile().toPath().resolve(out.getName() + ".err").toFile()))
+                    .start();
+            git.getOutputStream().close();
+            if (!git.waitFor(60, TimeUnit.SECONDS)) {
+                git.destroyForcibly();
+                return null;
+            }
+            if (git.exitValue() != 0) {
+                return null;
+            }
+            String text = new String(Files.readAllBytes(out.toPath()), StandardCharsets.UTF_8)
+                    .replace("\r\n", "\n");
+            int body = text.indexOf("\n\n");
+            return body < 0 ? null : text.substring(body + 2);
+        } catch (IOException noGit) {
+            return null;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            if (out != null) {
+                out.delete();
+                new File(out.getParentFile(), out.getName() + ".err").delete();
+            }
+        }
+    }
+
     public static byte[] fileAt(File projectRoot, String tag, String path) {
         if (versionOf(tag) == null || path.startsWith("-") || path.contains(":")) {
             return null;

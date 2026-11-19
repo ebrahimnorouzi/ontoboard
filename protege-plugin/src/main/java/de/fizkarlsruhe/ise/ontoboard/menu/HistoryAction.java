@@ -58,6 +58,7 @@ public class HistoryAction extends ProtegeOWLAction {
     private ChangesModel changes;
     private JComboBox<String> against;
     private JButton open;
+    private JButton record;
     private JLabel status;
     private OWLOntology workingCopy;
 
@@ -131,12 +132,18 @@ public class HistoryAction extends ProtegeOWLAction {
         open.setToolTipText("Opens the selected version in a Protege window of its own");
         open.setEnabled(false);
         open.addActionListener(e -> openSelected());
+        record = new JButton("Release record...");
+        record.setToolTipText("What the selected release recorded of itself: what built it, its "
+                + "reasoner's verdict, its checks, its measures, what changed");
+        record.setEnabled(false);
+        record.addActionListener(e -> showRecord(dialog));
         JButton close = new JButton("Close");
         close.addActionListener(e -> dialog.dispose());
         DialogKeys.escapePresses(dialog.getRootPane(), close);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(open);
+        buttons.add(record);
         buttons.add(new JLabel("   Compare with:"));
         buttons.add(against);
         // Releases kept on GitHub only (ODK v1.6.1 keeps release files out of git): fetched when
@@ -226,6 +233,48 @@ public class HistoryAction extends ProtegeOWLAction {
     }
 
     private static final String THE_ONE_BEFORE = "the version before";
+
+    /**
+     * Shows what the selected release recorded of itself (1.155.0): its RELEASE.md, or its
+     * tag's message - read off the Swing thread, since a tag's is git's to say.
+     */
+    private void showRecord(final JDialog dialog) {
+        final ReleaseHistory.Version version = selectedVersion();
+        if (version == null || version.getRelease() == null) {
+            return;
+        }
+        record.setEnabled(false);
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() {
+                return version.getRelease().record();
+            }
+
+            @Override
+            protected void done() {
+                record.setEnabled(true);
+                String text;
+                try {
+                    text = get();
+                } catch (Exception failed) {
+                    text = null;
+                }
+                if (text == null) {
+                    status.setText(version.getName() + " recorded nothing of itself: it was "
+                            + "released before 1.155.0, or not by OntoBoard.");
+                    return;
+                }
+                javax.swing.JTextArea area = new javax.swing.JTextArea(text);
+                area.setEditable(false);
+                area.setCaretPosition(0);
+                area.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+                JScrollPane scroll = new JScrollPane(area);
+                scroll.setPreferredSize(new Dimension(760, 480));
+                JOptionPane.showMessageDialog(dialog, scroll, "Release record of "
+                        + version.getName(), JOptionPane.PLAIN_MESSAGE);
+            }
+        }.execute();
+    }
 
     /**
      * "Fetch the whole history from GitHub": asks github.com which releases there are, says how
@@ -394,6 +443,7 @@ public class HistoryAction extends ProtegeOWLAction {
     private void selected() {
         ReleaseHistory.Version version = selectedVersion();
         open.setEnabled(version != null && !version.isWorkingCopy());
+        record.setEnabled(version != null && version.getRelease() != null);
         if (version == null) {
             return;
         }
