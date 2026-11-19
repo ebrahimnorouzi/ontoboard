@@ -198,6 +198,9 @@ public class SchemaGraph extends mxGraph {
      */
     public void render(Projection projection, CanvasLayout layout) {
         PrefixColours colours = new PrefixColours(layout.prefixColors);
+        // How faded an imported term is drawn: the look's, as installed (1.155.0).
+        int importedOpacity = mxUtils.getInt(getStylesheet().getStyles().get(SchemaStyles.IMPORTED),
+                mxConstants.STYLE_OPACITY, SchemaStyles.IMPORTED_OPACITY);
         boolean wasDense = dense;
         int drawn = 0;
         for (CanvasEdge edge : projection.getEdges()) {
@@ -332,7 +335,7 @@ public class SchemaGraph extends mxGraph {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
                 String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
                         node.getCurie(), node.getLabel(), node.getId());
-                String style = styleFor(node, colours);
+                String style = styleFor(node, colours, importedOpacity);
                 java.util.List<String> rows = node.getRows();
                 java.util.List<String> rowsWere = rowsBefore.containsKey(node.getId())
                         ? rowsBefore.get(node.getId()) : java.util.Collections.<String>emptyList();
@@ -1572,7 +1575,8 @@ public class SchemaGraph extends mxGraph {
      * the part that can be wrong in a way nobody notices.
      */
     static String styleForTesting(CanvasNode node) {
-        return styleFor(node, new PrefixColours(new java.util.HashMap<String, String>()));
+        return styleFor(node, new PrefixColours(new java.util.HashMap<String, String>()),
+                SchemaStyles.IMPORTED_OPACITY);
     }
 
     /**
@@ -1580,7 +1584,7 @@ public class SchemaGraph extends mxGraph {
      * gets a distinguishable outline while the shape still says what kind of thing it is.
      * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
      */
-    private static String styleFor(CanvasNode node, PrefixColours colours) {
+    private static String styleFor(CanvasNode node, PrefixColours colours, int importedOpacity) {
         // Border WEIGHT for a note, because every other channel is taken and says something
         // else: the shape says what kind of thing it is, the stroke colour says which namespace
         // it came from, and a dash would read as "inferred", which is what dashed edges mean two
@@ -1606,7 +1610,7 @@ public class SchemaGraph extends mxGraph {
                         ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "")
                 // Opacity for an imported term - the one channel the four above leave free, and the
                 // only one that also survives a PNG or SVG export.
-                + (node.isImported() ? ";opacity=" + SchemaStyles.IMPORTED_OPACITY : "");
+                + (node.isImported() ? ";opacity=" + importedOpacity : "");
     }
 
     /**

@@ -137,6 +137,33 @@ class CanvasLegendTest {
         }
     }
 
+    /** The key of a board drawn in a look of somebody's own (1.155.0) shows that look. */
+    @Test
+    void theKeyFollowsTheLook() {
+        BoardLook look = BoardLook.defaults().with("obClass.fill", "#FFEEDD").with("obClass.shape", "rectangle")
+                .with("obOnly.colour", "#123456").with("obOnly.line", "").with("obImported.opacity", "70")
+                .with("obDatatype.shape", "hexagon");
+        Map<String, CanvasLegend.Entry> byLabel = new java.util.HashMap<String, CanvasLegend.Entry>();
+        for (CanvasLegend.Entry entry : CanvasLegend.entries(look)) {
+            byLabel.put(entry.getLabel(), entry);
+        }
+
+        assertEquals("#FFEEDD", byLabel.get("Class").getFill());
+        assertEquals("rectangle", byLabel.get("Class").getShape());
+        assertEquals("#FFEEDD", byLabel.get("Has an editorial note").getFill(), "a marker on a class");
+        assertEquals("#123456", byLabel.get("∀ R - only").getStroke());
+        assertEquals(null, byLabel.get("∀ R - only").getDashPattern());
+        assertEquals(70, byLabel.get("Imported term").getOpacity());
+        assertEquals("hexagon", byLabel.get("Datatype").getShape());
+        for (int i = 0; i < CanvasLegend.entries().size(); i++) {
+            CanvasLegend.Entry plain = CanvasLegend.entries().get(i);
+            CanvasLegend.Entry drawn = CanvasLegend.entries(BoardLook.defaults()).get(i);
+            assertEquals(plain.getFill() + plain.getStroke() + plain.getDashPattern() + plain.getOpacity()
+                    + plain.getShape(), drawn.getFill() + drawn.getStroke() + drawn.getDashPattern()
+                    + drawn.getOpacity() + drawn.getShape(), "the default look's key is the key: " + plain.getLabel());
+        }
+    }
+
     @Test
     void theKeyExplainsWhichTermsAreImported() {
         CanvasLegend.Entry imported = null;

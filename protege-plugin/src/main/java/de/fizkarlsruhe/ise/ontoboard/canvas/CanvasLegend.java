@@ -55,6 +55,8 @@ public final class CanvasLegend {
         private final String stroke;
         private final String dashPattern;
         private final int opacity;
+        /** The box's shape in a look, or null for the default look's. */
+        private final String shape;
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern) {
@@ -63,6 +65,11 @@ public final class CanvasLegend {
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern, int opacity) {
+            this(form, styleName, label, meaning, fill, stroke, dashPattern, opacity, null);
+        }
+
+        private Entry(Form form, String styleName, String label, String meaning, String fill,
+                String stroke, String dashPattern, int opacity, String shape) {
             this.form = form;
             this.styleName = styleName;
             this.label = label;
@@ -71,6 +78,34 @@ public final class CanvasLegend {
             this.stroke = stroke;
             this.dashPattern = dashPattern;
             this.opacity = opacity;
+            this.shape = shape;
+        }
+
+        /**
+         * This row as a board drawn in this look shows it (1.155.0): a box's fill, outline and
+         * shape its kind's - a marker's the class's, which is what it marks - a line's colour and
+         * dash its kind's, the imported fade the look's. An unsatisfiable class keeps its red.
+         */
+        Entry in(BoardLook look) {
+            if (form == Form.EDGE) {
+                String colour = look.get(styleName + ".colour");
+                if (colour == null) {
+                    return this;
+                }
+                String dash = look.get(styleName + ".line");
+                return new Entry(form, styleName, label, meaning, fill, colour,
+                        dash == null || dash.isEmpty() ? null : dash, opacity, null);
+            }
+            String box = form == Form.NODE ? styleName : SchemaStyles.CLASS;
+            if (look.get(box + ".fill") == null) {
+                return this;
+            }
+            boolean red = SchemaStyles.UNSATISFIABLE.equals(styleName);
+            int fade = SchemaStyles.IMPORTED.equals(styleName)
+                    ? Integer.parseInt(look.get(BoardLook.IMPORTED_OPACITY)) : opacity;
+            return new Entry(form, styleName, label, meaning, red ? fill : look.get(box + ".fill"),
+                    red ? stroke : look.get(box + ".stroke"), dashPattern, fade,
+                    look.get(box + ".shape"));
         }
 
         /**
@@ -117,10 +152,31 @@ public final class CanvasLegend {
             return dashPattern;
         }
 
+        /**
+         * The box's shape - rectangle, rounded, ellipse or hexagon - as the board draws it; a
+         * marker's is the class's. Null for a line.
+         */
+        public String getShape() {
+            if (shape != null || form == Form.EDGE) {
+                return shape;
+            }
+            return BoardLook.defaults().get((form == Form.NODE ? styleName : SchemaStyles.CLASS)
+                    + ".shape");
+        }
+
         @Override
         public String toString() {
             return label;
         }
+    }
+
+    /** The key of a board drawn in this look: {@link #entries()}, each row in the look. */
+    public static List<Entry> entries(BoardLook look) {
+        List<Entry> drawn = new ArrayList<Entry>();
+        for (Entry entry : entries()) {
+            drawn.add(look == null ? entry : entry.in(look));
+        }
+        return drawn;
     }
 
     /**
