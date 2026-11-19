@@ -83,7 +83,8 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
  */
 final class PatternCuration {
 
-    static final String CURATED = "Curated by OntoBoard";
+    /** How the comment begins - the import carries it to a project's module by this (ImportProvenance). */
+    static final String CURATED = de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.CURATED;
     static final String VERSION = "1.155.0";
 
     private static final String SKOS = "http://www.w3.org/2004/02/skos/core#";

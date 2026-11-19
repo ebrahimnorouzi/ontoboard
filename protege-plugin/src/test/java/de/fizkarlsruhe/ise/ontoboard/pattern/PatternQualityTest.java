@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
  */
 class PatternQualityTest {
 
-    private static final String CURATED = "Curated by OntoBoard";
+    private static final String CURATED = de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.CURATED;
 
     private static Map<String, PatternAudit.Row> rows;           // NOPMD - audited once
 

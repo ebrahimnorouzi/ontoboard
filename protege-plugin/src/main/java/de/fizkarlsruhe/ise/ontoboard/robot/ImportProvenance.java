@@ -47,6 +47,12 @@ public final class ImportProvenance {
     /** When the module was extracted. */
     public static final IRI EXTRACTED_ON = IRI.create("http://purl.org/dc/terms/created");
 
+    /** What the source is published under - carried onto the module (1.155.0). */
+    public static final IRI LICENSE = IRI.create("http://purl.org/dc/terms/license");
+
+    /** How a library pattern's own comment that OntoBoard curated it begins (1.155.0). */
+    public static final String CURATED = "Curated by OntoBoard";
+
     /** What a module can be said about its upstream. */
     public enum Freshness {
         /** Nothing recorded; the module cannot be traced or safely regenerated. */
@@ -185,6 +191,19 @@ public final class ImportProvenance {
                     factory.getOWLAnnotationProperty(EXTRACTED_ON),
                     factory.getOWLLiteral(isoDate.trim(), factory.getOWLDatatype(
                             IRI.create("http://www.w3.org/2001/XMLSchema#date"))))));
+        }
+        // What the source is published under, and - for a library pattern - that OntoBoard
+        // curated it, with what changed (1.155.0). ROBOT's extraction leaves the source's header
+        // behind, so without these a project that imports a pattern could see neither.
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : source.getAnnotations()) {
+            boolean licence = annotation.getProperty().getIRI().equals(LICENSE);
+            boolean curated = annotation.getProperty().isComment()
+                    && annotation.getValue() instanceof org.semanticweb.owlapi.model.OWLLiteral
+                    && ((org.semanticweb.owlapi.model.OWLLiteral) annotation.getValue())
+                            .getLiteral().startsWith(CURATED);
+            if (licence || curated) {
+                changes.add(new AddOntologyAnnotation(module, annotation));
+            }
         }
         return changes;
     }
