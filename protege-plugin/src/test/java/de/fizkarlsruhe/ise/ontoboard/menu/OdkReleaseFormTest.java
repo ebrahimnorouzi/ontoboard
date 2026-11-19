@@ -203,18 +203,19 @@ class OdkReleaseFormTest {
         OdkReleaseForm.Start start = start();
 
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
-                + "VERSION=1.0.0", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+                + "VERSION=1.0.0 REASONER=HermiT", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
         assertEquals("Release, with the imports as they are - make clean, then make "
-                + "prepare_release_fast VERSION=1.0.0", OdkReleaseForm.lineUnder(start)
+                + "prepare_release_fast VERSION=1.0.0 REASONER=HermiT", OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.REFRESH, "false")));
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
                 + "VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V " + BASE
-                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0'", OdkReleaseForm.lineUnder(start)
+                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0' REASONER=HermiT",
+                OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.SHAPE,
                                 BASE + "/<version>/eggboil.owl")));
         // Not a version yet: what was typed; the form says what is wrong when it is sent.
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
-                + "VERSION=1.0.x", OdkReleaseForm.lineUnder(start)
+                + "VERSION=1.0.x REASONER=HermiT", OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.VERSION, "1.0.x")));
     }
 
@@ -239,7 +240,7 @@ class OdkReleaseFormTest {
                 "Docker is not running", null, null, null, "It needs the network."));
 
         assertEquals("Release, with the imports as they are - make clean, then make "
-                + "prepare_release_fast VERSION=1.0.0",
+                + "prepare_release_fast VERSION=1.0.0 REASONER=HermiT",
                 OdkReleaseForm.lineUnder(start).apply(chosen(start)));
     }
 
@@ -501,7 +502,8 @@ class OdkReleaseFormTest {
         List<Parameter> parameters = OdkReleaseForm.parameters(start, defaults);
 
         assertEquals(Arrays.asList(OdkReleaseForm.VERSION, OdkReleaseForm.PRIOR,
-                OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED), keys(parameters));
+                OdkReleaseForm.REASONER, OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED),
+                keys(parameters));
         assertEquals("3.0.6", defaults.get(OdkReleaseForm.VERSION));
         assertEquals("3.0.5", defaults.get(OdkReleaseForm.PRIOR));
         String explanation = OdkReleaseForm.explanation(start);
@@ -954,5 +956,47 @@ class OdkReleaseFormTest {
                 start.withRoute(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.decide(false,
                         true, de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC, null,
                         null, null, null, null))));
+    }
+
+    // ------------------------------------------------------------------ the reasoner (1.155.0)
+
+    /** "For release the user define the reasoner": the form offers ROBOT's, and says why. */
+    @Test
+    void theFormOffersTheReasoners() {
+        OdkReleaseForm.Start start = start();
+
+        Parameter reasoner = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.REASONER);
+
+        assertNotNull(reasoner);
+        assertEquals("Reasoner", reasoner.getLabel());
+        assertEquals(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names(),
+                reasoner.getChoices());
+        assertTrue(reasoner.getHelp().contains("stops the release"), reasoner.getHelp());
+        assertTrue(reasoner.getHelp().contains("inverse properties"), reasoner.getHelp());
+    }
+
+    /** A project that chose none: HermiT first, so the egg project's mistake does not pass. */
+    @Test
+    void aSeedProjectPreselectsHermiT() {
+        assertEquals("HermiT", OdkReleaseForm.defaults(start()).get(OdkReleaseForm.REASONER));
+    }
+
+    @Test
+    void aProjectThatSaysElkPreselectsElk() throws IOException {
+        File yaml = new File(ontology, "eggboil-odk.yaml");
+        write(yaml, read(yaml).replaceAll("\\s*$", "") + "\nreasoner: ELK\n");
+
+        assertEquals("ELK", OdkReleaseForm.defaults(start()).get(OdkReleaseForm.REASONER));
+    }
+
+    @Test
+    void theChoiceReachesTheRequestAndTheLineUnder() {
+        OdkReleaseForm.Start start = start();
+        Map<String, String> elk = chosen(start, OdkReleaseForm.REASONER, "ELK");
+
+        assertEquals("ELK", OdkReleaseForm.request(start, elk).reasoner());
+        String line = OdkReleaseForm.lineUnder(start).apply(elk);
+        assertTrue(line.endsWith("REASONER=ELK"), line);
     }
 }

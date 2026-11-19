@@ -36,6 +36,8 @@ final class OdkReleaseForm {
     static final String UNCOMPARED = "uncompared";
     static final String PRIOR = "prior";
     static final String COMMIT_NEW = "commitnew";
+    /** The reasoner the release uses: asked before the build, and ODK's REASONER= (1.155.0). */
+    static final String REASONER = "reasoner";
 
     /** The choice that makes the pattern field count. */
     static final String OWN_PATTERN = "The pattern typed below";
@@ -305,6 +307,8 @@ final class OdkReleaseForm {
             values.put(PRIOR, before == null ? start.script.priorVersion().trim()
                     : before.getText());
         }
+        values.put(REASONER, de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.preselected(
+                start.editFile));
         values.put(REFUSE, "true");
         values.put(UNCOMPARED, "false");
         if (!newFilesOfTheProject(start).isEmpty()) {
@@ -414,6 +418,7 @@ final class OdkReleaseForm {
                             + "follows. Normally the last release.")
                     .build());
         }
+        parameters.add(reasonerParameter(start, values));
         parameters.add(Parameter.of(REFUSE, OdkRelease.REFUSE_LABEL, Parameter.Kind.FLAG)
                 .defaultValue(values.get(REFUSE))
                 .help("When the release is built it is held against the last one. A term that "
@@ -544,6 +549,36 @@ final class OdkReleaseForm {
         return VersionIriShape.of(VersionIriShape.Kind.ODK);
     }
 
+    /**
+     * The reasoner the release uses - the person's choice (1.155.0: "for release the user define
+     * the reasoner"), offered first as the project's own, else HermiT.
+     */
+    static Parameter reasonerParameter(Start start, Map<String, String> values) {
+        String own = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.ofProject(start.editFile);
+        String help = "The reasoner this release reasons with. Before anything is built, "
+                + "OntoBoard asks it whether the ontology, with its imports, is consistent and "
+                + "every class can have members; either problem stops the release, with the "
+                + "axioms that cause it. "
+                + (start.script == null
+                        ? "ODK then reasons with it for the release files (REASONER=). "
+                        : "The project's " + start.script.file().getName() + " chooses its own "
+                                + "reasoner for the release files; this one is asked before it "
+                                + "runs. ")
+                + "ELK and Whelk reason in OWL 2 EL: they ignore inverse properties, universal "
+                + "restrictions, cardinalities, unions and negation, so a contradiction that "
+                + "needs one of them goes unseen. HermiT and JFact read all of OWL 2 DL; on a "
+                + "large ontology they take longer. "
+                + (own == null ? "This project's configuration names no reasoner, so ODK's "
+                        + "own targets use its default, ELK."
+                        : "This project's configuration says reasoner: " + own + ".");
+        return Parameter.of(REASONER, "Reasoner", Parameter.Kind.CHOICE)
+                .choices(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names()
+                        .toArray(new String[0]))
+                .defaultValue(values.get(REASONER))
+                .help(help)
+                .build();
+    }
+
     /** The release as chosen. For what {@link #problems} lets through. */
     static OdkRelease.Request request(Start start, Map<String, String> chosen) {
         return new OdkRelease.Request(start.editFile, versionIn(chosen, VERSION),
@@ -554,7 +589,9 @@ final class OdkReleaseForm {
                 !newFilesOfTheProject(start).isEmpty()
                         && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)),
                 // The files the box named, and only those, are committed first (M1).
-                newFilesOfTheProject(start));
+                newFilesOfTheProject(start))
+                .withReasoner(chosen.get(REASONER),
+                        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.DEFAULT_LIMIT_MILLIS);
     }
 
     /**
@@ -574,13 +611,18 @@ final class OdkReleaseForm {
         String target = fresh ? "prepare_release" : "prepare_release_fast";
         String version = versionIn(chosen, VERSION);
         List<String> make;
+        String reasoner = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.canonical(
+                chosen.get(REASONER));
         try {
             make = ReleaseRun.makeArguments(version, shape(start, chosen), start.facts.ontbase(),
-                    fresh);
+                    fresh, reasoner);
         } catch (IllegalArgumentException notYet) {
             // Not a version, or a pattern that cannot be one, yet: what was typed. The form
             // says what is wrong with it when it is sent.
-            make = Arrays.asList("make", target, "VERSION=" + version);
+            make = new ArrayList<String>(Arrays.asList("make", target, "VERSION=" + version));
+            if (reasoner != null) {
+                make.add("REASONER=" + reasoner);
+            }
         }
         // Here the box "Refresh the imports first" is what chooses the target, so a release
         // that fetches them can say so.
