@@ -49,6 +49,15 @@ public class CanvasLayout {
     public Boolean arrangedByHand;
 
     /**
+     * The project's board look (1.155.0): what it changes of the defaults - {@code obClass.fill},
+     * {@code board.spacing} - shared through git with the ontology, over each person's own. Left
+     * out of the file while the project has none, so a sidecar stays as 1.154.0 wrote it.
+     */
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+    public Map<String, String> look;
+
+    /**
      * A copy that shares nothing with this one.
      *
      * <p>For {@link BoardHistory}, which holds the board as it was before each action. Every collection
@@ -84,6 +93,7 @@ public class CanvasLayout {
         copy.arrangedByHand = arrangedByHand;
         copy.hidden = new ArrayList<>(hidden);
         copy.collapsed = new ArrayList<>(collapsed);
+        copy.look = look == null ? null : new LinkedHashMap<>(look);
         return copy;
     }
 
@@ -120,6 +130,7 @@ public class CanvasLayout {
         hidden.addAll(snapshot.hidden);
         collapsed.clear();
         collapsed.addAll(snapshot.collapsed);
+        look = snapshot.look;
     }
 
     /**
