@@ -334,7 +334,7 @@ public final class TermSearch {
                     definition = literal.getLiteral();
                     definitionRank = DEFINITIONS.indexOf(property.toString());
                 } else if (OWLRDFVocabulary.OWL_DEPRECATED.getIRI().equals(property)
-                        && literal.parseBoolean()) {
+                        && DeprecatedValue.isTrue(literal)) {
                     obsolete = true;
                 }
             }

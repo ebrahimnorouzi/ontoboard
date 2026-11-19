@@ -73,7 +73,8 @@ public final class Obsoletion {
         for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(term)) {
             if (OWLRDFVocabulary.OWL_DEPRECATED.getIRI().equals(axiom.getProperty().getIRI())
                     && axiom.getValue() instanceof OWLLiteral
-                    && ((OWLLiteral) axiom.getValue()).parseBoolean()) {
+                    && de.fizkarlsruhe.ise.ontoboard.robot.DeprecatedValue.isTrue(
+                            (OWLLiteral) axiom.getValue())) {
                 return true;
             }
         }

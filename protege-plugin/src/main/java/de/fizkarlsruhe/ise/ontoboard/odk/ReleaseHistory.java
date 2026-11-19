@@ -576,7 +576,8 @@ public final class ReleaseHistory {
                         Imports.INCLUDED)) {
             if (OWLRDFVocabulary.OWL_DEPRECATED.getIRI().equals(axiom.getProperty().getIRI())
                     && axiom.getValue() instanceof OWLLiteral
-                    && ((OWLLiteral) axiom.getValue()).parseBoolean()) {
+                    && de.fizkarlsruhe.ise.ontoboard.robot.DeprecatedValue.isTrue(
+                            (OWLLiteral) axiom.getValue())) {
                 obsolete++;
             }
         }

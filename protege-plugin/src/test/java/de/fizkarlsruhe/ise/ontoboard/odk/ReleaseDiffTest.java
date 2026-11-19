@@ -136,6 +136,32 @@ class ReleaseDiffTest {
                 .count(ReleaseDiff.Change.OBSOLETED));
     }
 
+    /**
+     * nfdicore v3.0.0 and v3.0.1 say owl:deprecated "please use BFO2020 property ..." - a
+     * sentence. The OWL API's parseBoolean() throws for it, and History fell over on nfdicore
+     * (1.155.0). It is no deprecation; a "true" written as a string is one.
+     */
+    @Test
+    void aDeprecationThatIsNoBooleanDoesNotStopTheComparison() {
+        declare(before, "Polymer");
+        declare(after, "Polymer");
+        manager.addAxiom(after, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(OWLRDFVocabulary.OWL_DEPRECATED.getIRI()),
+                cls("Polymer").getIRI(),
+                factory.getOWLLiteral("please use BFO2020 property 'has continuant part'")));
+        declare(before, "Monomer");
+        declare(after, "Monomer");
+        manager.addAxiom(after, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(OWLRDFVocabulary.OWL_DEPRECATED.getIRI()),
+                cls("Monomer").getIRI(), factory.getOWLLiteral("true")));
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        assertEquals(1, diff.count(ReleaseDiff.Change.OBSOLETED));
+        assertEquals(NS + "Monomer",
+                diff.of(ReleaseDiff.Change.OBSOLETED).get(0).getIri().toString());
+    }
+
     // ---------- the other four kinds ----------
 
     @Test
