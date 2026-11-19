@@ -195,6 +195,12 @@ public class CompareReleasesAction extends OntoBoardAction {
         }
         result.note("From: " + from);
         result.note("To: " + to);
+        // How each was checked, as its release recorded it: a comparison of two releases one
+        // reasoner passed and another never asked is read differently (1.155.0).
+        for (String checked : checkedNotes(editFile,
+                publishedUrl.isEmpty() ? from : GIVEN_BELOW, to)) {
+            result.note(checked);
+        }
 
         ReleaseDiff diff = ReleaseDiff.between(earlier, later);
         result.columns("Change", "Term", "Was", "Now");
@@ -361,6 +367,42 @@ public class CompareReleasesAction extends OntoBoardAction {
     }
 
     /** Whether release {@code one} came before {@code other}: by version, or else by name. */
+    /**
+     * How each of the two was checked, as its release recorded it (1.155.0): its reasoner and
+     * what it said. A release with no record, the copy that is open, and a published file given
+     * below say so.
+     */
+    static List<String> checkedNotes(File editFile, String from, String to) {
+        List<ReleaseHistory.Entry> releases = editFile == null
+                ? Collections.<ReleaseHistory.Entry>emptyList() : projectReleasesOf(editFile);
+        List<String> notes = new ArrayList<String>();
+        for (String version : new String[] {from, to}) {
+            notes.add(checkedNote(releases, version));
+        }
+        return notes;
+    }
+
+    private static String checkedNote(List<ReleaseHistory.Entry> releases, String version) {
+        if (WORKING_COPY.equals(version)) {
+            return "What is open now is not released: no release's reasoner has checked it.";
+        }
+        if (GIVEN_BELOW.equals(version)) {
+            return "The published release given below is not one this project kept: there is no "
+                    + "record of how it was checked.";
+        }
+        for (ReleaseHistory.Entry release : releases) {
+            if (release.version().equals(version)) {
+                String verdict = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRecord
+                        .verdictIn(release.record());
+                return verdict == null
+                        ? version + " has no record of how it was checked: it was released "
+                                + "before OntoBoard kept one, or without OntoBoard."
+                        : version + " was checked: " + verdict;
+            }
+        }
+        return version + " has no record of how it was checked.";
+    }
+
     static boolean isEarlier(String one, String other) {
         de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion first =
                 de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion.parseOrNull(one);

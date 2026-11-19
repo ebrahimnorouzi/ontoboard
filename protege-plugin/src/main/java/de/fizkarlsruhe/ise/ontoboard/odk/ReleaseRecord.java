@@ -40,7 +40,28 @@ public final class ReleaseRecord {
         {MetricsLabels.EXPRESSIVITY_INCL, "Expressivity"},
         {MetricsLabels.BOOL_PROFILE_OWL2_DL, "In OWL 2 DL"}};
 
+    /** How a record's reasoner line starts: {@link #markdown} writes it, {@link #verdictIn} reads it. */
+    static final String REASONER_LINE = "- **Reasoner:** ";
+
     private ReleaseRecord() {
+    }
+
+    /**
+     * What a record says its release's reasoner found - the text of its "Reasoner:" line, as
+     * {@link #markdown} writes it - or null when it says nothing of one, or there is no record.
+     */
+    public static String verdictIn(String record) {
+        if (record == null) {
+            return null;
+        }
+        String marker = REASONER_LINE;
+        for (String line : record.split("\r?\n")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith(marker)) {
+                return trimmed.substring(marker.length()).trim();
+            }
+        }
+        return null;
     }
 
     /** What is recorded of one release. */
@@ -273,7 +294,7 @@ public final class ReleaseRecord {
         }
 
         md.append("## How it was checked\n\n");
-        md.append("- **Reasoner:** ").append(facts.verdict == null ? "not asked." : facts.verdict)
+        md.append(REASONER_LINE).append(facts.verdict == null ? "not asked." : facts.verdict)
                 .append('\n');
         if (facts.reportFile == null) {
             md.append("- **Quality report:** The quality report was not found: ODK did not write "

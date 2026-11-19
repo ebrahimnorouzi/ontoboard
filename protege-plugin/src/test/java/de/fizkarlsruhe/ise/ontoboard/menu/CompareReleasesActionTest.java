@@ -75,6 +75,32 @@ class CompareReleasesActionTest {
                 "Lid is in the root's demo.owl now, not in either release");
     }
 
+    /**
+     * Compare says how each of the two was checked, as its release recorded it (1.155.0): which
+     * reasoner, and what it said; a release with no record, and the copy that is open, say so.
+     */
+    @Test
+    void compareShowsBothVerdicts(@TempDir File root) throws Exception {
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        write(edit, "<rdf:RDF/>");
+        write(new File(root, "releases/1.0.0/demo.owl"), demo("Egg"));
+        write(new File(root, "releases/1.1.0/demo.owl"), demo("Egg", "Pan"));
+        write(new File(root, "releases/1.2.0/demo.owl"), demo("Egg", "Pan", "Lid"));
+        write(new File(root, "releases/1.1.0/RELEASE.md"), "# demo 1.1.0\n\n## How it was checked\n\n"
+                + "- **Reasoner:** ELK said consistent; it does not reason with inverse properties.\n");
+        write(new File(root, "releases/1.2.0/RELEASE.md"), "# demo 1.2.0\n\n## How it was checked\n\n"
+                + "- **Reasoner:** HermiT said consistent, every class satisfiable.\n");
+
+        List<String> notes = CompareReleasesAction.checkedNotes(edit, "1.1.0", "1.2.0");
+        List<String> older = CompareReleasesAction.checkedNotes(edit, "1.0.0", "what I have open now");
+
+        assertEquals(Arrays.asList(
+                "1.1.0 was checked: ELK said consistent; it does not reason with inverse properties.",
+                "1.2.0 was checked: HermiT said consistent, every class satisfiable."), notes);
+        assertTrue(older.get(0).startsWith("1.0.0 has no record"), older.toString());
+        assertTrue(older.get(1).contains("not released"), older.toString());
+    }
+
     private static String demo(String... classes) {
         StringBuilder text = new StringBuilder("Prefix(:=<https://example.org/demo#>)\n"
                 + "Ontology(<https://example.org/demo.owl>\n");
