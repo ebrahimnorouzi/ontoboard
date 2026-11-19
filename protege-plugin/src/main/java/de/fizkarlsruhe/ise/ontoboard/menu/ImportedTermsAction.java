@@ -202,11 +202,26 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                     tip += " - " + String.join(", ", term.getAlsoIn()) + " gives it a different "
                             + "label or definition, so your ontology has both";
                 }
-                return tip;
+                return tip + ". Double-click to show it in Prot\u00e9g\u00e9.";
             }
         };
         sorter = new TableRowSorter<TermsModel>(terms);
         table.setRowSorter(sorter);
+        // A double-click shows the term in Protege, and on the board, as a click on a report's
+        // row about a term does (1.155.0). Double, because a click here selects rows to remove.
+        final java.util.function.Consumer<String> opening = TermLink.opener(getOWLWorkspace());
+        if (opening != null) {
+            table.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent event) {
+                    int row = table.rowAtPoint(event.getPoint());
+                    if (event.getClickCount() == 2 && row >= 0) {
+                        opening.accept(terms.at(table.convertRowIndexToModel(row)).getIri()
+                                .toString());
+                    }
+                }
+            });
+        }
         table.setRowHeight(22);
         table.getColumnModel().getColumn(0).setPreferredWidth(260);
         table.getColumnModel().getColumn(1).setPreferredWidth(110);
