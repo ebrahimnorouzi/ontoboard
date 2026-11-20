@@ -102,8 +102,8 @@ What OntoBoard does not do today, and the constraints of what it does.
 **History and Compare**
 
 - **A working copy is compared as ODK's full release would hold it** - its imports folded in,
-  reasoned, relaxed and reduced. A project whose primary release is the base or the simple one
-  may read moves its release does not hold.
+  reasoned with ELK, relaxed and reduced. A project whose primary release is the base or the
+  simple one, or one released with HermiT, may read moves its release does not hold.
 - **History names a property or an individual by its identifier**; *Compare releases* names both.
 
 **Spreadsheets and the knowledge graph**
@@ -140,7 +140,9 @@ What OntoBoard does not do today, and the constraints of what it does.
 - **The board:** layout is kept in a sidecar file, so it is not interoperable with CoModIDE; a
   crash while writing it can lose layout, never the ontology; a punned IRI resolves either way for
   selection; a board shows up to 1,500 terms, and on one with more than 150 relations they are
-  drawn straight; literals and annotations are not drawn. See [what the board draws](canvas.md).
+  drawn straight; literals and annotations are not drawn; a board's settings for the project, kept
+  in its board file, are dropped when OntoBoard 1.154.0 saves that board. See
+  [what the board draws](canvas.md).
 - **The bundle is about 64 MB**, because ROBOT runs inside it.
 
 ### Not covered by tests
