@@ -56,6 +56,20 @@ public class ImportTermsAction extends OntoBoardAction {
     private static final String OPTION_KIND = "kind";
     private static final String OPTION_OUTCOME = "outcome";
     private static final String OPTION_MODULE_FILE = "moduleFile";
+    // Each method's and each kind's own (1.155.0, asked by the user).
+    private static final String OPTION_INDIVIDUALS = "individuals";
+    private static final String OPTION_SOURCE_IMPORTS = "sourceImports";
+    private static final String OPTION_INTERMEDIATES = "intermediates";
+    private static final String OPTION_UPPER = "upperTerms";
+    private static final String OPTION_BRANCHES = "branchTerms";
+    private static final String OPTION_MARK_SOURCE = "annotateWithSource";
+    private static final String OPTION_COPY_HEADER = "copyOntologyAnnotations";
+    private static final String OPTION_ANNOTATION_PROPERTIES = "annotationProperties";
+    private static final String OPTION_BASE_IRIS = "baseIris";
+    private static final String OPTION_LARGE = "large";
+    private static final String OPTION_GZIPPED = "gzipped";
+    private static final String OPTION_USE_BASE = "useBase";
+    private static final String OPTION_MAKE_BASE = "makeBase";
 
     /** How many changed axioms to list before the table stops being worth reading. */
     private static final int MAX_LISTED = 500;
@@ -92,6 +106,13 @@ public class ImportTermsAction extends OntoBoardAction {
      * built by ODK's own rule for it. The extraction here, before ODK builds it, is BOT.
      */
     private volatile ImportProducts.Kind kind = ImportProducts.Kind.MODULE;
+    /** ROBOT extract's own options, as chosen (1.155.0). */
+    private volatile TermExtract.Options extractOptions = TermExtract.Options.defaults();
+    /** MIREOT's upper terms and branches, as typed; read with the terms' prefixes. */
+    private volatile String upperText = "";
+    private volatile String branchText = "";
+    /** In an ODK project: the import product's own fields, as given (1.155.0). */
+    private volatile ImportProducts.OdkFields odkFields = ImportProducts.OdkFields.none();
     private volatile Outcome outcome = Outcome.SAVE_AND_IMPORT;
     private volatile String moduleFileText = "";
 
@@ -284,11 +305,18 @@ public class ImportTermsAction extends OntoBoardAction {
             termFileText = "";
             method = TermExtract.DEFAULT_METHOD;
             kind = ImportProducts.Kind.MODULE;
+            extractOptions = TermExtract.Options.defaults();
+            upperText = "";
+            branchText = "";
+            odkFields = ImportProducts.OdkFields.none();
             outcome = Outcome.SAVE_AND_IMPORT;
             moduleFileText = "";
             return true;
         }
-        boolean odk = inAnOdkProject();
+        // A library pattern is cut here and kept as it is - ODK builds nothing of it - so how it
+        // is cut is ROBOT's method, not one of ODK's kinds (1.154.0's deferred minor: the kinds
+        // were offered and none was taken).
+        boolean odk = inAnOdkProject() && seededPattern == null;
         Map<String, String> values = new LinkedHashMap<String, String>();
         values.put(OPTION_SOURCE, seededSource);
         values.put(OPTION_TERMS, seededTerms);
@@ -297,6 +325,19 @@ public class ImportTermsAction extends OntoBoardAction {
         values.put(OPTION_KIND, kindLabel(ImportProducts.Kind.MODULE));
         values.put(OPTION_OUTCOME, Outcome.SAVE_AND_IMPORT.label);
         values.put(OPTION_MODULE_FILE, "");
+        values.put(OPTION_INDIVIDUALS, "include");
+        values.put(OPTION_SOURCE_IMPORTS, "include");
+        values.put(OPTION_INTERMEDIATES, "all");
+        values.put(OPTION_UPPER, "");
+        values.put(OPTION_BRANCHES, "");
+        values.put(OPTION_MARK_SOURCE, "false");
+        values.put(OPTION_COPY_HEADER, "false");
+        values.put(OPTION_ANNOTATION_PROPERTIES, "");
+        values.put(OPTION_BASE_IRIS, "");
+        values.put(OPTION_LARGE, "false");
+        values.put(OPTION_GZIPPED, "false");
+        values.put(OPTION_USE_BASE, "false");
+        values.put(OPTION_MAKE_BASE, "false");
 
         // A loop, because two of the rules span fields - a source is needed, and terms have to
         // come from somewhere - and a per-field validator cannot express either. Re-showing with
@@ -329,16 +370,61 @@ public class ImportTermsAction extends OntoBoardAction {
         sourceText = values.get(OPTION_SOURCE);
         termsText = values.get(OPTION_TERMS);
         termFileText = values.get(OPTION_TERM_FILE);
+        String individuals = values.get(OPTION_INDIVIDUALS);
         if (odk) {
-            // ODK builds the module by its rule for the kind; the extraction here is BOT.
+            // ODK builds the module by its rule for the kind; the extraction here, so that it
+            // works at once, is its SLME method where it has one, BOT otherwise.
             kind = kindByLabel(values.get(OPTION_KIND));
-            method = TermExtract.DEFAULT_METHOD;
+            method = slmeMethodOf(kind);
+            extractOptions = TermExtract.Options.defaults().withIndividuals(individuals);
+            odkFields = ImportProducts.OdkFields.none().withIndividuals(individuals)
+                    .withAnnotationProperties(lines(values.get(OPTION_ANNOTATION_PROPERTIES)))
+                    .withBaseIris(lines(values.get(OPTION_BASE_IRIS)))
+                    .large(flag(values, OPTION_LARGE)).gzipped(flag(values, OPTION_GZIPPED))
+                    .usingTheBase(flag(values, OPTION_USE_BASE))
+                    .makingABase(flag(values, OPTION_MAKE_BASE));
+            upperText = "";
+            branchText = "";
         } else {
             method = methodByLabel(values.get(OPTION_METHOD));
+            extractOptions = TermExtract.Options.defaults().withIndividuals(individuals)
+                    .withImports(values.get(OPTION_SOURCE_IMPORTS))
+                    .withIntermediates(values.get(OPTION_INTERMEDIATES))
+                    .annotatingWithSource(flag(values, OPTION_MARK_SOURCE))
+                    .copyingOntologyAnnotations(flag(values, OPTION_COPY_HEADER));
+            upperText = values.get(OPTION_UPPER) == null ? "" : values.get(OPTION_UPPER);
+            branchText = values.get(OPTION_BRANCHES) == null ? "" : values.get(OPTION_BRANCHES);
+            odkFields = ImportProducts.OdkFields.none();
         }
         outcome = Outcome.byLabel(values.get(OPTION_OUTCOME));
         moduleFileText = values.get(OPTION_MODULE_FILE);
         return true;
+    }
+
+    /** A ticked box of the form. */
+    private static boolean flag(Map<String, String> values, String key) {
+        return "true".equalsIgnoreCase(values.get(key));
+    }
+
+    /** The lines of a box, trimmed, the empty ones left out. */
+    private static List<String> lines(String text) {
+        List<String> found = new ArrayList<String>();
+        for (String line : (text == null ? "" : text).split("\\r?\\n")) {
+            if (!line.trim().isEmpty()) {
+                found.add(line.trim());
+            }
+        }
+        return found;
+    }
+
+    /** The extraction for a kind: its SLME method, BOT for any other. */
+    static TermExtract.Method slmeMethodOf(ImportProducts.Kind kind) {
+        for (TermExtract.Method available : TermExtract.Method.values()) {
+            if (available.isSlme() && available.getLabel().equalsIgnoreCase(kind.slmeMethod())) {
+                return available;
+            }
+        }
+        return TermExtract.DEFAULT_METHOD;
     }
 
     /** The rules a per-field validator cannot express. */
@@ -409,6 +495,14 @@ public class ImportTermsAction extends OntoBoardAction {
                         + "you chose both, with 'part of'. Their other parents are left out.\n\n"
                         + kindLabel(ImportProducts.Kind.WHOLE) + ": all of it, as the source "
                         + "has it - for a small ontology you use most of.\n\n"
+                        + kindLabel(ImportProducts.Kind.SLME_TOP) + ": each term with "
+                        + "everything under it - a module that can be large.\n\n"
+                        + kindLabel(ImportProducts.Kind.SLME_STAR) + ": the smallest module "
+                        + "that keeps what the terms mean; on a plain hierarchy it can be "
+                        + "nearly empty.\n\n"
+                        + kindLabel(ImportProducts.Kind.CUSTOM) + ": the module as it is "
+                        + "extracted here, until a rule of the project's own in its "
+                        + "<id>.Makefile builds it - ODK's refresh leaves it alone.\n\n"
                         + "The module is first extracted here, so that it works at once; ODK's "
                         + "own refresh of the import then builds it as chosen. An import "
                         + "already declared keeps the kind it has; "
@@ -435,7 +529,8 @@ public class ImportTermsAction extends OntoBoardAction {
                         .help(methodHelp.toString())
                         .build();
 
-        return Arrays.asList(
+        List<Parameter> own = odk ? odkFieldsFrom(values) : robotOptionsFrom(values);
+        List<Parameter> form = new ArrayList<Parameter>(Arrays.asList(
                 Parameter.of(OPTION_SOURCE, "Take terms from", Parameter.Kind.FILE)
                         .defaultValue(values.get(OPTION_SOURCE))
                         .help("The ontology to borrow from, as a path to a file on disk or as a "
@@ -491,6 +586,105 @@ public class ImportTermsAction extends OntoBoardAction {
                                 + "its Makefile knows where to find things. Fill it in only to "
                                 + "put the module somewhere else. Ignored when you choose to copy "
                                 + "the axioms in instead.")
+                        .build()));
+        // Each method's or kind's own fields, after the choice of it.
+        form.addAll(form.indexOf(how) + 1, own);
+        return form;
+    }
+
+    /** ROBOT extract's own options, each saying the methods it is for (1.155.0). */
+    private static List<Parameter> robotOptionsFrom(Map<String, String> values) {
+        return Arrays.asList(
+                Parameter.of(OPTION_INDIVIDUALS, "Individuals (BOT, TOP, STAR)",
+                        Parameter.Kind.CHOICE)
+                        .choices("include", "minimal", "definitions", "exclude")
+                        .defaultValue(values.get(OPTION_INDIVIDUALS))
+                        .help("ROBOT's --individuals. include: the individuals the module needs; "
+                                + "minimal: only those the terms' axioms name; definitions: "
+                                + "only those in the terms' definitions; exclude: none.")
+                        .build(),
+                Parameter.of(OPTION_SOURCE_IMPORTS, "The source's own imports (BOT, TOP, STAR)",
+                        Parameter.Kind.CHOICE)
+                        .choices("include", "exclude")
+                        .defaultValue(values.get(OPTION_SOURCE_IMPORTS))
+                        .help("ROBOT's --imports: whether what the source imports is searched "
+                                + "too, or the source alone.")
+                        .build(),
+                Parameter.of(OPTION_INTERMEDIATES, "Terms between (MIREOT)",
+                        Parameter.Kind.CHOICE)
+                        .choices("all", "minimal", "none")
+                        .defaultValue(values.get(OPTION_INTERMEDIATES))
+                        .help("ROBOT's --intermediates: the parents between a term and the top "
+                                + "- all of them, those that keep the hierarchy's branching, or "
+                                + "none.")
+                        .build(),
+                Parameter.of(OPTION_UPPER, "Stop at these terms (MIREOT)",
+                        Parameter.Kind.MULTILINE)
+                        .defaultValue(values.get(OPTION_UPPER))
+                        .help("ROBOT's --upper-term, one per line as in the terms box: the "
+                                + "chain of parents stops at them. Empty: up to the top.")
+                        .build(),
+                Parameter.of(OPTION_BRANCHES, "With everything under these (MIREOT)",
+                        Parameter.Kind.MULTILINE)
+                        .defaultValue(values.get(OPTION_BRANCHES))
+                        .help("ROBOT's --branch-from-term, one per line: each with everything "
+                                + "under it, beside the terms above.")
+                        .build(),
+                Parameter.of(OPTION_MARK_SOURCE, "Mark each term with where it came from",
+                        Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_MARK_SOURCE))
+                        .help("ROBOT's --annotate-with-source: rdfs:isDefinedBy the source, on "
+                                + "each term.")
+                        .build(),
+                Parameter.of(OPTION_COPY_HEADER, "Copy the source's ontology annotations",
+                        Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_COPY_HEADER))
+                        .help("ROBOT's --copy-ontology-annotations: the source's own title, "
+                                + "licence and the rest come into the module's header.")
+                        .build());
+    }
+
+    /** The import product's own fields ODK reads, each saying what it is for (1.155.0). */
+    private static List<Parameter> odkFieldsFrom(Map<String, String> values) {
+        return Arrays.asList(
+                Parameter.of(OPTION_INDIVIDUALS, "Individuals (the slme kinds)",
+                        Parameter.Kind.CHOICE)
+                        .choices("include", "minimal", "definitions", "exclude")
+                        .defaultValue(values.get(OPTION_INDIVIDUALS))
+                        .help("ODK's slme_individuals, ROBOT's --individuals for an slme "
+                                + "module: include (ODK's default), minimal, definitions, or "
+                                + "exclude.")
+                        .build(),
+                Parameter.of(OPTION_ANNOTATION_PROPERTIES, "Annotations to keep",
+                        Parameter.Kind.MULTILINE)
+                        .defaultValue(values.get(OPTION_ANNOTATION_PROPERTIES))
+                        .help("ODK's annotation_properties, one per line - rdfs:label, "
+                                + "IAO:0000115: which annotations of the terms come with them. "
+                                + "Empty: ODK's own list.")
+                        .build(),
+                Parameter.of(OPTION_BASE_IRIS, "The source's own addresses", Parameter.Kind.MULTILINE)
+                        .defaultValue(values.get(OPTION_BASE_IRIS))
+                        .help("ODK's base_iris, one per line - http://purl.obolibrary.org/obo/"
+                                + "COB_: what of the source is its own, for a base made of it.")
+                        .build(),
+                Parameter.of(OPTION_LARGE, "A large ontology", Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_LARGE))
+                        .help("ODK's is_large: its refresh of all imports leaves this one out "
+                                + "unless asked, as a large download takes long.")
+                        .build(),
+                Parameter.of(OPTION_GZIPPED, "Download it gzipped", Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_GZIPPED))
+                        .help("ODK's use_gzipped: the source is fetched as .owl.gz.")
+                        .build(),
+                Parameter.of(OPTION_USE_BASE, "Use the source's base release", Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_USE_BASE))
+                        .help("ODK's use_base: the source's -base.owl, its own terms only, is "
+                                + "fetched instead of the whole.")
+                        .build(),
+                Parameter.of(OPTION_MAKE_BASE, "Make a base of the source", Parameter.Kind.FLAG)
+                        .defaultValue(values.get(OPTION_MAKE_BASE))
+                        .help("ODK's make_base: a base is made of the source by its own "
+                                + "addresses, for a source that publishes none.")
                         .build());
     }
 
@@ -556,8 +750,16 @@ public class ImportTermsAction extends OntoBoardAction {
         }
         java.util.List<IRI> extracting = withWhatWasImportedBefore(ontology, source,
                 terms.getIris(), result);
+        TermExtract.Options options = extractOptions;
+        if (!isBlank(upperText)) {
+            options = options.withUpperTerms(termsIn(upperText, ontology, "Stop at", result));
+        }
+        if (!isBlank(branchText)) {
+            options = options.withBranchTerms(termsIn(branchText, ontology, "With everything "
+                    + "under", result));
+        }
         TermExtract.Result extracted =
-                TermExtract.run(source, extracting, method, moduleIri);
+                TermExtract.run(source, extracting, method, moduleIri, options);
         // Which release this module was cut from, recorded in the module itself. Without it a
         // module in src/ontology/imports/ says nothing about where it came from: nobody dares
         // regenerate it, because regenerating means guessing, and nobody can tell whether the
@@ -566,7 +768,8 @@ public class ImportTermsAction extends OntoBoardAction {
         extracted.getModule().getOWLOntologyManager().applyChanges(
                 ImportProvenance.stamp(extracted.getModule(), source, Provenance.today()));
 
-        result.note("Method: " + method.getLabel());
+        result.note("Method: " + method.getLabel() + (options.said().isEmpty() ? ""
+                : " - " + String.join(", ", options.said())));
         result.note("Module IRI: " + moduleIri);
         ImportProvenance.Report provenance =
                 ImportProvenance.check(extracted.getModule(), source.getOWLOntologyManager());
@@ -710,6 +913,17 @@ public class ImportTermsAction extends OntoBoardAction {
     private volatile boolean listStartsAfresh;
 
     /** Both boxes, combined, with this ontology's prefixes so its own CURIEs resolve. */
+    /** The terms of a box of the form, read as the terms box is; a line not read is said. */
+    private java.util.List<IRI> termsIn(String text, OWLOntology ontology, String box,
+            OperationResult.Builder result) {
+        TermList read = TermList.parse(text, prefixesOf(ontology));
+        for (TermList.Entry unresolved : read.getUnresolved()) {
+            result.warn(box + ", line " + unresolved.getLine() + ": '" + unresolved.getText()
+                    + "' - no prefix for that, so it was left out.");
+        }
+        return read.getIris();
+    }
+
     private TermList readTerms(OWLOntology ontology) {
         StringBuilder text = new StringBuilder();
         if (!isBlank(termsText)) {
@@ -1409,7 +1623,7 @@ public class ImportTermsAction extends OntoBoardAction {
             // layout: as 1.135.2 declared it, which its own Refresh imports reads.
             String from = sourceIri == null ? null : sourceIri.toString();
             ImportProducts.Declaration declaration = odk
-                    ? ImportProducts.declarationForImport(id, from, kind)
+                    ? ImportProducts.declarationForImport(id, from, kind, odkFields)
                     : ImportProducts.declarationAsBefore(id, from, method);
             fields = declaration.getFields();
             caveat = declaration.getCaveat();
@@ -1474,7 +1688,8 @@ public class ImportTermsAction extends OntoBoardAction {
         StringBuilder said = new StringBuilder();
         for (Map.Entry<String, String> field : fields.entrySet()) {
             said.append(said.length() == 0 ? "" : ", ")
-                    .append(field.getKey()).append(": ").append(field.getValue());
+                    .append(field.getKey()).append(": ")
+                    .append(de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml.shown(field.getValue()));
         }
         return said.toString();
     }

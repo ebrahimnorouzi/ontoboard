@@ -174,7 +174,8 @@ public final class ImportProducts {
                 return null;
             }
             for (TermExtract.Method method : TermExtract.Method.values()) {
-                if (method.getLabel().equalsIgnoreCase(slmeMethod)) {
+                // ODK's SLME takes BOT, TOP and STAR; MIREOT and subset are no SLME method.
+                if (method.isSlme() && method.getLabel().equalsIgnoreCase(slmeMethod)) {
                     return method;
                 }
             }
@@ -672,12 +673,21 @@ public final class ImportProducts {
     public enum Kind {
         /** ODK's default: {@code module_type: slme}, {@code module_type_slme: BOT}. */
         MODULE("The terms you chose and what they need", "slme", "BOT"),
+        /** {@code module_type: slme}, {@code module_type_slme: TOP} (1.155.0). */
+        SLME_TOP("The terms you chose and everything under them", "slme", "TOP"),
+        /** {@code module_type: slme}, {@code module_type_slme: STAR} (1.155.0). */
+        SLME_STAR("The smallest module that keeps their meaning", "slme", "STAR"),
         /** {@code module_type: filter}: of what holds between them, only "is a". */
         ONLY_THESE("Only the terms you chose, with their \"is a\" links", "filter", null),
         /** {@code module_type: minimal}: what holds between them through any relation too. */
         WITH_RELATIONS("The terms you chose, with every relation between them", "minimal", null),
         /** {@code module_type: mirror}. */
-        WHOLE("The whole ontology", "mirror", null);
+        WHOLE("The whole ontology", "mirror", null),
+        /**
+         * {@code module_type: custom}: kept as it is extracted here, or built by a rule of the
+         * project's own in its {@code <id>.Makefile} (1.155.0).
+         */
+        CUSTOM("Kept as extracted here, or built by a rule of your own", "custom", null);
 
         private final String words;
         private final String moduleType;
@@ -699,6 +709,11 @@ public final class ImportProducts {
             return slme == null ? moduleType : moduleType + ", " + slme;
         }
 
+        /** Its SLME method - BOT, TOP, STAR - or null for a kind that is no SLME module. */
+        public String slmeMethod() {
+            return slme;
+        }
+
         /** The kind whose words these are, or null. */
         public static Kind byWords(String words) {
             for (Kind kind : values()) {
@@ -711,8 +726,7 @@ public final class ImportProducts {
 
         /**
          * The kind a declared import is - its module type, and its SLME method where it has
-         * one, ODK's defaults filled in - or null for one that is none of the four (an SLME
-         * module by TOP or STAR).
+         * one, ODK's defaults filled in - or null for one that is none of these.
          */
         public static Kind of(Product product) {
             for (Kind kind : values()) {
@@ -732,6 +746,123 @@ public final class ImportProducts {
      * is.
      */
     public static Declaration declarationForImport(String id, String source, Kind kind) {
+        return declarationForImport(id, source, kind, OdkFields.none());
+    }
+
+    /**
+     * The fields of an import product ODK reads beside its module type, each as given in
+     * Import terms (1.155.0); what is not given is not written, and ODK's default stands.
+     */
+    public static final class OdkFields {
+        private static final java.util.List<String> INDIVIDUALS = java.util.Arrays.asList(
+                "include", "minimal", "definitions", "exclude");
+
+        private final String individuals;
+        private final java.util.List<String> annotationProperties;
+        private final java.util.List<String> baseIris;
+        private final boolean large;
+        private final boolean gzipped;
+        private final boolean useBase;
+        private final boolean makeBase;
+
+        private OdkFields(String individuals, java.util.List<String> annotationProperties,
+                java.util.List<String> baseIris, boolean large, boolean gzipped,
+                boolean useBase, boolean makeBase) {
+            this.individuals = individuals;
+            this.annotationProperties = java.util.Collections.unmodifiableList(
+                    new java.util.ArrayList<String>(annotationProperties));
+            this.baseIris = java.util.Collections.unmodifiableList(
+                    new java.util.ArrayList<String>(baseIris));
+            this.large = large;
+            this.gzipped = gzipped;
+            this.useBase = useBase;
+            this.makeBase = makeBase;
+        }
+
+        /** Nothing given: ODK's defaults for all of it. */
+        public static OdkFields none() {
+            return new OdkFields(null, java.util.Collections.<String>emptyList(),
+                    java.util.Collections.<String>emptyList(), false, false, false, false);
+        }
+
+        /** {@code slme_individuals}: include, minimal, definitions or exclude. */
+        public OdkFields withIndividuals(String value) {
+            String given = value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!INDIVIDUALS.contains(given)) {
+                throw new IllegalArgumentException("'" + value + "' is not what ODK's "
+                        + "slme_individuals takes: include, minimal, definitions or exclude.");
+            }
+            return new OdkFields(given, annotationProperties, baseIris, large, gzipped, useBase,
+                    makeBase);
+        }
+
+        /** {@code annotation_properties}: which annotations of the terms come with them. */
+        public OdkFields withAnnotationProperties(java.util.List<String> properties) {
+            return new OdkFields(individuals, properties == null
+                    ? java.util.Collections.<String>emptyList() : properties, baseIris, large,
+                    gzipped, useBase, makeBase);
+        }
+
+        /** {@code base_iris}: the addresses of the source's own terms. */
+        public OdkFields withBaseIris(java.util.List<String> iris) {
+            return new OdkFields(individuals, annotationProperties, iris == null
+                    ? java.util.Collections.<String>emptyList() : iris, large, gzipped,
+                    useBase, makeBase);
+        }
+
+        /** {@code is_large}: refreshed only when asked for. */
+        public OdkFields large(boolean yes) {
+            return new OdkFields(individuals, annotationProperties, baseIris, yes, gzipped,
+                    useBase, makeBase);
+        }
+
+        /** {@code use_gzipped}: downloaded as a .owl.gz. */
+        public OdkFields gzipped(boolean yes) {
+            return new OdkFields(individuals, annotationProperties, baseIris, large, yes,
+                    useBase, makeBase);
+        }
+
+        /** {@code use_base}: the source's base release, its own terms only. */
+        public OdkFields usingTheBase(boolean yes) {
+            return new OdkFields(individuals, annotationProperties, baseIris, large, gzipped,
+                    yes, makeBase);
+        }
+
+        /** {@code make_base}: a base made of the source by its base IRIs. */
+        public OdkFields makingABase(boolean yes) {
+            return new OdkFields(individuals, annotationProperties, baseIris, large, gzipped,
+                    useBase, yes);
+        }
+
+        /** Into a product's fields, after its module type. */
+        void writeInto(java.util.LinkedHashMap<String, String> fields, Kind kind) {
+            if (individuals != null && !"include".equals(individuals) && kind.slme != null) {
+                fields.put("slme_individuals", individuals);
+            }
+            if (!annotationProperties.isEmpty()) {
+                fields.put("annotation_properties", OdkYaml.flowList(annotationProperties));
+            }
+            if (!baseIris.isEmpty()) {
+                fields.put("base_iris", OdkYaml.flowList(baseIris));
+            }
+            if (large) {
+                fields.put("is_large", OdkYaml.raw("true"));
+            }
+            if (gzipped) {
+                fields.put("use_gzipped", OdkYaml.raw("true"));
+            }
+            if (useBase) {
+                fields.put("use_base", OdkYaml.raw("true"));
+            }
+            if (makeBase) {
+                fields.put("make_base", OdkYaml.raw("true"));
+            }
+        }
+    }
+
+    /** The declaration of an import of this kind, with ODK's fields as given. */
+    public static Declaration declarationForImport(String id, String source, Kind kind,
+            OdkFields given) {
         Declaration here = fromThisMachine(id, source);
         if (here != null) {
             return here;
@@ -747,7 +878,10 @@ public final class ImportProducts {
         if (kind.slme != null) {
             fields.put("module_type_slme", kind.slme);
         }
-        return new Declaration(fields, null);
+        (given == null ? OdkFields.none() : given).writeInto(fields, kind);
+        return new Declaration(fields, kind == Kind.CUSTOM ? "Declared as module_type: custom: "
+                + "the module is kept as it is extracted here, until a rule of the project's own "
+                + "in its <id>.Makefile builds it." : null);
     }
 
     /** The configuration with an import of this kind declared ({@link #withProduct}). */
