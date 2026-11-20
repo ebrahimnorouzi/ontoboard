@@ -60,6 +60,15 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return null;
     }
 
+    /**
+     * Whether the run may go on behind while the person works - Keep working on its progress
+     * window - and is told of when done (1.155.0: Build and Release). One that may is refused
+     * while another such run is going on behind.
+     */
+    protected boolean canRunBehind() {
+        return false;
+    }
+
     /** Whether to refuse when nothing is open. Most operations need an ontology; a few do not. */
     protected boolean needsAnOntology() {
         return true;
@@ -118,6 +127,13 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        if (canRunBehind() && !BackgroundRun.runningBehind().isEmpty()) {
+            JOptionPane.showMessageDialog(getOWLWorkspace(), String.join(" and ",
+                    BackgroundRun.runningBehind()) + " is running in the background. Its result "
+                    + "opens when it is done; " + operationName() + " can be started then.",
+                    operationName() + " waits", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         String work = worksBesideTheFile();
         if (work != null && ReleaseFileRefusal.said(getOWLWorkspace(),
                 ReleaseFileRefusal.documentOf(getOWLModelManager(), ontology), work)) {
@@ -161,7 +177,7 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                         if (result != null) {
                             ResultDialog.show(getOWLWorkspace(), result);
                         }
-                    });
+                    }, canRunBehind());
             return;
         }
         OperationResult result;

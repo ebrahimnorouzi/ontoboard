@@ -89,6 +89,11 @@ public class ReleaseAction extends OntoBoardAction {
         return "Release";
     }
 
+    @Override
+    protected boolean canRunBehind() {
+        return true;
+    }
+
     /** A release file is not released as an ontology of its own: one is made from the edit file. */
     @Override
     protected String worksBesideTheFile() {

@@ -77,6 +77,11 @@ public class BuildAction extends OntoBoardAction {
     private volatile OdkContainer.Host host = OdkContainer.Host.unknown();
 
     @Override
+    protected boolean canRunBehind() {
+        return true;
+    }
+
+    @Override
     protected String operationName() {
         return "Build";
     }

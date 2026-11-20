@@ -1,5 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.GraphicsEnvironment;
@@ -57,6 +60,113 @@ class BackgroundRunTest {
                     }
                 }
             });
+        }
+    }
+
+    // ---------- kept running behind (1.155.0) ----------
+
+    /** The button with this text in a window showing now, or null. */
+    private static javax.swing.JButton buttonShowing(final String text) throws Exception {
+        final javax.swing.JButton[] found = new javax.swing.JButton[1];
+        SwingUtilities.invokeAndWait(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window.isShowing() && found[0] == null) {
+                    found[0] = buttonIn(window, text);
+                }
+            }
+        });
+        return found[0];
+    }
+
+    private static javax.swing.JButton buttonIn(java.awt.Component component, String text) {
+        if (component instanceof javax.swing.JButton
+                && text.equals(((javax.swing.JButton) component).getText())) {
+            return (javax.swing.JButton) component;
+        }
+        if (component instanceof java.awt.Container) {
+            for (java.awt.Component child : ((java.awt.Container) component).getComponents()) {
+                javax.swing.JButton found = buttonIn(child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The progress window's Stop, once it shows - the window is up. */
+    private static javax.swing.JButton waitForTheWindow() throws Exception {
+        for (int tries = 0; tries < 100; tries++) {
+            javax.swing.JButton stop = buttonShowing("Stop");
+            if (stop != null) {
+                return stop;
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("the progress window did not show");
+    }
+
+    /**
+     * Build and Release may take a while: the person keeps working, and is told when the run is
+     * done - the result opens, and the desktop says so (asked by the user).
+     */
+    @Test
+    void aRunKeptBehindIsToldOfWhenItIsDone() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final CountDownLatch go = new CountDownLatch(1);
+        final CountDownLatch finished = new CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicReference<OperationResult> given =
+                new java.util.concurrent.atomic.AtomicReference<OperationResult>();
+        final java.util.List<String> told = new java.util.concurrent.CopyOnWriteArrayList<String>();
+        java.util.function.Consumer<String> desktop = BackgroundRun.whenDoneBehind;
+        BackgroundRun.whenDoneBehind = told::add;
+        try {
+            final Callable<OperationResult> work = () -> {
+                go.await(20, TimeUnit.SECONDS);
+                return OperationResult.of("Build").summary("Built.").build();
+            };
+            SwingUtilities.invokeAndWait(() -> BackgroundRun.execute(null, "Build", work,
+                    result -> {
+                        given.set(result);
+                        finished.countDown();
+                    }, true));
+            waitForTheWindow();
+            final javax.swing.JButton keep = buttonShowing("Keep working");
+            assertTrue(keep != null, "no Keep working on the progress window");
+            SwingUtilities.invokeAndWait(keep::doClick);
+
+            assertNull(buttonShowing("Stop"), "the progress window is still up");
+            assertTrue(BackgroundRun.runningBehind().contains("Build"));
+            go.countDown();
+            assertTrue(finished.await(10, TimeUnit.SECONDS), "the result was not given");
+            assertEquals("Built.", given.get().getSummary());
+            assertFalse(BackgroundRun.runningBehind().contains("Build"));
+            assertEquals(1, told.size(), String.valueOf(told));
+            assertTrue(told.get(0).startsWith("Build is done"), told.get(0));
+        } finally {
+            BackgroundRun.whenDoneBehind = desktop;
+            go.countDown();
+        }
+    }
+
+    /** Only a run that may go on behind offers it; the others keep their window. */
+    @Test
+    void aRunThatCannotGoBehindOffersNoWayToKeepWorking() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final CountDownLatch go = new CountDownLatch(1);
+        final CountDownLatch finished = new CountDownLatch(1);
+        final Callable<OperationResult> work = () -> {
+            go.await(20, TimeUnit.SECONDS);
+            return OperationResult.of("Report").summary("Done.").build();
+        };
+        try {
+            SwingUtilities.invokeAndWait(() -> BackgroundRun.execute(null, "Report", work,
+                    result -> finished.countDown()));
+            waitForTheWindow();
+            assertNull(buttonShowing("Keep working"));
+        } finally {
+            go.countDown();
+            assertTrue(finished.await(10, TimeUnit.SECONDS));
         }
     }
 }
