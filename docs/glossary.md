@@ -52,6 +52,14 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 :   The permanent address of one release, such as
     `https://w3id.org/myont/releases/1.4.0/myont.owl`.
 
+**Release file**
+:   A file a release writes - `<id>.owl` and the others at the top of an ODK project. It is made
+    from the edit file, never edited by hand.
+
+**Release record**
+:   What a release records of itself: what built it, its measures, the reasoner and what it said,
+    the quality report, what changed. `releases/<version>/RELEASE.md` and the tag's message.
+
 **Obsolete (deprecated)**
 :   A retired term that is kept and marked, with what to use instead. Removing a term breaks whoever
     uses it; obsoleting does not. *Obsolete the selected term...*.

@@ -267,6 +267,14 @@ ODK's update keeps only the imports the configuration declares ([section 3](#mak
 
 Nothing is downloaded again: what is known of an import is what Protégé has loaded.
 
+### An import module that calls itself by another name
+
+Protégé leaves out an import whose file's ontology IRI is not the one it is imported by - nfdicore's
+and MWO's modules, built with another `ONTBASE` - while ROBOT and ODK's make take the file the
+catalog gives. OntoBoard puts such modules in when the project is opened, and again when a run
+rebuilds them, without changing a file, and says so once; *Check imports* names each file;
+*Refresh imports...* builds them under the names they are imported by.
+
 ### The pattern library
 
 *Reuse → Pattern library…* browses the 162 ontology design patterns shipped with the plugin - `bfo` (4, from [BFO 2020 ‘notime’](http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl)), `odp` (122, the [ODP portal](https://ontologydesignpatterns.org/)), `nfdi` (15, [NFDI MatWerk](https://nfdi.fiz-karlsruhe.de/matwerk/patterns/)), `pmdco` (13, [PMDco](https://materialdigital.github.io/core-ontology/docs/patterns.html)) and `mwo` (8, [MWO](https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/)) - and your own, by collection, publisher, category or search. Ten ODP entries are another pattern under a second name, and say which.
@@ -296,19 +304,27 @@ You are asked to save first, as ODK builds from the file on disk; files new to g
 - **Version** - the next patch, or today's date for a dated version; for a first release, `1.0.0` in a project OntoBoard made, else today's date (ODK's default). It becomes the tag `v<version>`; one that has a tag or a `releases/` folder already is refused.
 - **Version IRI** - ODK's `<ONTBASE>/releases/<version>/<id>.owl`, `<ONTBASE>/<version>/<id>.owl`, `<ONTBASE>/<version>` (one IRI for the whole release) or a pattern from `{ontbase}`, `{version}` and `{file}`, where `<ONTBASE>` is `<uribase>/<id>`; the last release's shape is proposed. Any shape but ODK's reaches make as `ANNOTATE_ONTOLOGY_VERSION=...`.
 - **Refresh the imports first** - on, `prepare_release`, which fetches and rebuilds the imports and needs the network; off, `prepare_release_fast`. Missing, with the reason, where OntoBoard itself cannot build the full release.
+- **Reasoner** - the project's own (`reasoner:` in `<id>-odk.yaml`), else HermiT; ELK, HermiT,
+  JFact or Whelk. It is asked before anything is built: an inconsistent ontology, or a class that
+  can have no members, stops the release with the axioms behind it; a reasoner that does not finish
+  in time is said, and you decide. ELK is named with what it does not read.
 - **Refuse to release when a published term is gone** - on by default.
 - **Release even when it cannot be compared with the last release** - off by default, so a last release that cannot be read stops the release before anything is copied, committed or tagged.
 - **Commit the project's `<n>` new files first** - on by default, shown when files under `src/` are new to git (a new import module and its term list, a new test, the board's layout file); they get their own commit first, so the release's tag holds them. Files in `tmp/`, `mirror/` and `target/` are never offered.
 
-With a `release.sh`, OntoBoard sets only its `VERSION=` (and `PRIOR_VERSION=`, shown as **Previous version**) and runs it in ODK's container; the version IRI is the script's, and a script with Windows line endings or no `VERSION=` line is refused.
+With a `release.sh`, OntoBoard sets only its `VERSION=` (and `PRIOR_VERSION=`, shown as **Previous version**) and runs it: in ODK's container where one runs - a script with Windows line endings as a copy without them, the file unchanged - else itself, inside Protégé, each line said as it starts and each `make` it calls run with ODK's own Makefile; a line it cannot run is named before anything runs. The version IRI is the script's; a script with no `VERSION=` line is refused.
 
 **The run**: `make clean`, then `make prepare_release VERSION=<version>`. ODK's release runs `test` first, so a release whose test fails is not built; `clean` empties `mirror/`, so refreshed imports are fetched again. ODK writes the release files at the top of the project (by default `<id>.owl`, `<id>.obo` and their base and full variants). Then:
 
-1. The new `<id>.owl` is held against the last release; a term that is gone rather than deprecated is named, and with the box on, nothing is copied, committed or tagged.
+1. The new `<id>.owl` is held against the last release; a term that is gone rather than deprecated is named, and with the box on, nothing is copied, committed or tagged. One of the project's own (its ID ranges' prefix) is to be brought back and deprecated; one that came with an import, to be named in that import's term list where its source still has it.
 2. In a project OntoBoard made, or one that keeps them already, the files are copied to `releases/<version>/`, with `CHANGES.md` from the second release on.
 3. The git commands are shown, and run when you press **Commit and tag**: the new files' commit if chosen, then `release(<version>)`, with the release files added past ODK's `.gitignore`, and the tag `v<version>`. A tracked file that `clean` removed, such as `tmp/README.md`, is put back first. With **Not now**, or without git, the commands stay in the log. Pushing is yours: `git push --follow-tags`.
 
+4. The release records itself: in its log always, and as `releases/<version>/RELEASE.md` and the tag's message where the project keeps its releases - what built it, its measures, the reasoner and what it said, ODK's report and profile check, what changed. *History → Release record...* shows it; *Compare releases* says how each side was checked.
+
 Files the release rewrote are read again in Protégé. Stopped after ODK has built it, a release writes nothing of its own, so the version can still be released.
+
+A release file - `<id>.owl` and the others at the top of the project - opened in Protégé is said for what it is, once, with **Open the edit file** and **Keep this file**; importing a pattern or terms, refreshing imports and releasing are refused there.
 
 ### An ontology in no project
 

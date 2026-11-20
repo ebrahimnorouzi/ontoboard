@@ -53,8 +53,12 @@ Every example in the library is curated. `template-instance` (no classes or prop
 
 - **39 patterns declare no object property with both a domain and a range** - lists of classes
   rather than shapes; their graphs are unconnected dots.
-- **68 patterns' `.owl` and `.ttl` disagree**, and are left so: neither is a superset of the
-  other. `tools/sync-pattern-owl.py` syncs only patterns edited in the tree.
+- **Curated in 1.155.0**: every pattern passes ODK's quality report with its default profile
+  - but for a licence, where its source states none (119, from the ODP portal) - names every term
+  with a label, and is consistent and coherent; its `.owl` and `.ttl` say the same. Each pattern
+  says what was changed in an `rdfs:comment` ("Curated by OntoBoard 1.155.0 ... Changes: ...");
+  `patterns/licences.tsv` holds each source's licence, quoted from the source. A pattern's import
+  module carries the licence (`dcterms:license`) and that the pattern was curated.
 - **`metadata.json` names the source a pattern was harvested from**, which is not always the
   ontology it mostly uses (8 attributed to MWO, one built mostly from MWO terms).
 - Harvest damage that was repaired: `Error1`…`Error6` placeholder classes in `airline`,

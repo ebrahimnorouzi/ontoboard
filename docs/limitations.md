@@ -46,8 +46,10 @@ What OntoBoard does not do today, and the constraints of what it does.
   *Release* and *Refresh imports* by OntoBoard itself
   ([details](measurements.md#what-ontoboards-own-engine-runs-of-odks-79-sample-configurations)).
   [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has the order.
-- **What still needs ODK's container** (or ODK's own tools, on Linux and macOS): a project's own
-  `release.sh`, ODK's SSSOM targets, the `db` export, `update_patterns` and `public_release`.
+- **What still needs ODK's container** (or ODK's own tools, on Linux and macOS): ODK's SSSOM
+  targets, the `db` export, `update_patterns` and `public_release`. A project's own `release.sh`
+  runs by OntoBoard itself when every line of it can; a line it cannot run is named before
+  anything runs.
 - **Build passes ODK's four switches and no other variable:** `IMP`, `MIR`, `PAT` and `COMP`.
 - **ODK's `test` fetches the imports again on every run.** Use *Check quickly (keeps the imports
   as they are) - make test_fast*, or untick *Build the import modules again*.
@@ -60,9 +62,10 @@ What OntoBoard does not do today, and the constraints of what it does.
 - **Run by OntoBoard itself, ROBOT has Protégé's memory.** For a large import raise Protégé's
   heap: `max_heap_size` in `conf/jvm.conf` for Protégé 5.6; the `-Xmx` line of
   `Protege.l4j.ini` (or `run.bat`) for Protégé 5.5.0.
-- **Build and Release check consistency with ELK**, as ODK does. HermiT is asked as well, for ten
-  seconds, on ontologies of up to 20,000 logical axioms; for larger ones run
-  *OntoBoard > Check and test > Explain...* before releasing.
+- **Build checks consistency with ELK**, as ODK does; HermiT is asked as well, for ten seconds,
+  on ontologies of up to 20,000 logical axioms. **Release asks the reasoner you choose** (the
+  project's own, else HermiT) before anything is built, within a time limit; one that does not
+  finish in it is said, and you decide.
 
 **Releases**
 
@@ -88,12 +91,20 @@ What OntoBoard does not do today, and the constraints of what it does.
 
 **ID ranges**
 
-- **Protégé 5.6 asks for your ID range until the board has claimed one.** Its own "No Id Range
-  Found For Current User" comes up when a project whose ranges are ODK's placeholders is opened or
-  read again; the board claims your range at your first new term, and then Protégé stops asking.
-  Choose or cancel before that.
+- **Protégé 5.6 asks for your ID range until you have one.** Its own "No Id Range Found For
+  Current User" comes up when the project's ranges name nobody of your name. Where they are ODK's
+  placeholders, the board claims one at your first new term; where they name other editors
+  (nfdicore, MWO), the range chosen in Protégé's question is not one the board numbers from:
+  *Project → ID ranges...* allocates yours, and then Protégé stops asking.
 - **The board creates terms only from your own identifier block.** Without one, *No identifiers
   for you yet* until *Project → ID ranges...* allocates one.
+
+**History and Compare**
+
+- **A working copy is compared as ODK's full release would hold it** - its imports folded in,
+  reasoned, relaxed and reduced. A project whose primary release is the base or the simple one
+  may read moves its release does not hold.
+- **History names a property or an individual by its identifier**; *Compare releases* names both.
 
 **Spreadsheets and the knowledge graph**
 
