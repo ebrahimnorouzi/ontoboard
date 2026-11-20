@@ -27,6 +27,9 @@ public class OntoBoardStartup extends OWLEditorKitHook {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OntoBoardStartup.class);
 
+    /** What takes OntoBoard's listeners off this window's model manager when the window closes. */
+    private final java.util.List<Runnable> unwatch = new java.util.ArrayList<Runnable>();
+
     /**
      * Set this to run the self-test at startup as well as the self-check.
      *
@@ -63,9 +66,11 @@ public class OntoBoardStartup extends OWLEditorKitHook {
         // name - nfdicore's eight modules - are put in as ROBOT and ODK's make read them (1.155.0).
         try {
             if (getEditorKit() instanceof org.protege.editor.owl.OWLEditorKit) {
-                ImportLinksOnOpen.watch((org.protege.editor.owl.OWLEditorKit) getEditorKit());
+                unwatch.add(ImportLinksOnOpen.watch(
+                        (org.protege.editor.owl.OWLEditorKit) getEditorKit()));
                 // A release file opened is said for what it is, once (1.155.0).
-                ReleaseProductNotice.watch((org.protege.editor.owl.OWLEditorKit) getEditorKit());
+                unwatch.add(ReleaseProductNotice.watch(
+                        (org.protege.editor.owl.OWLEditorKit) getEditorKit()));
             }
         } catch (Throwable neverLetThisStopProtege) {
             LOGGER.error("OntoBoard: imports left out by Protégé are not watched for",
@@ -123,6 +128,18 @@ public class OntoBoardStartup extends OWLEditorKitHook {
 
     @Override
     public void dispose() {
-        // Nothing is held open: the self-check builds an in-memory ontology and drops it.
+        // The self-check holds nothing open: it builds an in-memory ontology and drops it. The
+        // listeners initialise put on this window's model manager are taken off: Protégé disposes
+        // this hook before the model manager, which names each listener still there as an ERROR -
+        // three each time a window closed, its error sign lit (the hand check of 1.155.0).
+        for (Runnable each : unwatch) {
+            try {
+                each.run();
+            } catch (Throwable neverLetThisStopProtege) {
+                LOGGER.warn("OntoBoard: a listener was not taken off the closing window",
+                        neverLetThisStopProtege);
+            }
+        }
+        unwatch.clear();
     }
 }

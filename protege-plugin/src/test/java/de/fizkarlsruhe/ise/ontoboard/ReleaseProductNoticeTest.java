@@ -1,17 +1,24 @@
 package de.fizkarlsruhe.ise.ontoboard;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.protege.editor.owl.model.OWLModelManager;
+import org.protege.editor.owl.model.event.OWLModelManagerListener;
 
 /**
  * A release file opened in Protégé is said for what it is, once for each file (1.155.0: the user
@@ -72,5 +79,25 @@ class ReleaseProductNoticeTest {
     void notToldForAFileOfNoProject() throws Exception {
         assertNull(ReleaseProductNotice.decide(file(top, "elsewhere/pizza.owl"), told));
         assertNull(ReleaseProductNotice.decide(null, told));
+    }
+
+    /**
+     * The notice is taken off a window's model manager when the window closes: Protégé named it
+     * as an ERROR each time a window closed (the hand check of 1.155.0).
+     */
+    @Test
+    void theNoticeIsTakenOffWhenTheWindowCloses() {
+        List<String> calls = new ArrayList<String>();
+        List<Object> with = new ArrayList<Object>();
+        OWLModelManager models = ImportLinksOnOpenTest.recording(calls, with);
+        OWLModelManagerListener notice = event -> { };
+
+        Runnable unwatch = ReleaseProductNotice.watch(models, notice);
+        assertEquals(Arrays.asList("addListener"), calls);
+        unwatch.run();
+
+        assertEquals(Arrays.asList("addListener", "removeListener"), calls);
+        assertSame(notice, with.get(0));
+        assertSame(notice, with.get(1));
     }
 }

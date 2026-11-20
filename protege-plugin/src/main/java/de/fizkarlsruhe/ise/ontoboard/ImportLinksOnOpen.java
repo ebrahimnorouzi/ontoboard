@@ -94,20 +94,42 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener,
             last = work;
             timer.restart();
         }
+
+        /** Lets go of the work waiting: the window it was for is closing. */
+        void stop() {
+            timer.stop();
+            last = null;
+        }
     }
 
-    /** Watches the editor kit's ontologies from now on. Never throws. */
-    static void watch(final OWLEditorKit kit) {
+    /** Watches the editor kit's ontologies from now on; what stops it. Never throws. */
+    static Runnable watch(final OWLEditorKit kit) {
         try {
             OWLModelManager models = kit.getModelManager();
+            AfterTheBurst telling = new AfterTheBurst(5000);
             ImportLinksOnOpen glue = new ImportLinksOnOpen(models,
-                    text -> notice(kit, text), javax.swing.SwingUtilities::invokeLater,
-                    new AfterTheBurst(5000));
-            models.addListener(glue);
-            models.addOntologyChangeListener(glue);
+                    text -> notice(kit, text), javax.swing.SwingUtilities::invokeLater, telling);
+            return watch(models, glue, telling::stop);
         } catch (Throwable notWatched) {
             LOGGER.warn("OntoBoard does not watch for imports Protégé leaves out", notWatched);
+            return () -> { };
         }
+    }
+
+    /**
+     * Puts the glue on Protégé's model manager, and gives what takes it off again and lets go of
+     * what waits to be told - run when the window closes: Protégé names a listener still there
+     * as an ERROR (the hand check of 1.155.0).
+     */
+    static Runnable watch(final OWLModelManager models, final ImportLinksOnOpen glue,
+            final Runnable letGo) {
+        models.addListener(glue);
+        models.addOntologyChangeListener(glue);
+        return () -> {
+            models.removeListener(glue);
+            models.removeOntologyChangeListener(glue);
+            letGo.run();
+        };
     }
 
     @Override

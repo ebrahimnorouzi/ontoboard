@@ -33,13 +33,24 @@ public final class ReleaseProductNotice implements OWLModelManagerListener {
         this.kit = kit;
     }
 
-    /** Watches the editor kit's ontologies from now on. Never throws. */
-    static void watch(OWLEditorKit kit) {
+    /** Watches the editor kit's ontologies from now on; what stops it. Never throws. */
+    static Runnable watch(OWLEditorKit kit) {
         try {
-            kit.getModelManager().addListener(new ReleaseProductNotice(kit));
+            return watch(kit.getModelManager(), new ReleaseProductNotice(kit));
         } catch (Throwable notWatched) {
             LOGGER.warn("OntoBoard does not say when a release file is opened", notWatched);
+            return () -> { };
         }
+    }
+
+    /**
+     * Puts the notice on Protégé's model manager, and gives what takes it off again - run when
+     * the window closes: Protégé names a listener still there as an ERROR (the hand check of
+     * 1.155.0).
+     */
+    static Runnable watch(final OWLModelManager models, final OWLModelManagerListener notice) {
+        models.addListener(notice);
+        return () -> models.removeListener(notice);
     }
 
     /**
