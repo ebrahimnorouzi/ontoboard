@@ -101,6 +101,35 @@ class CompareReleasesActionTest {
         assertTrue(older.get(1).contains("not released"), older.toString());
     }
 
+    /**
+     * What is open is compared as a release holds it - its imports folded in, reasoned, relaxed
+     * and reduced - as History compares its working copy. nfdicore's edit file holds 20 axioms and
+     * imports its terms from two components: 3.0.5 against "what I have open now" came back "356
+     * removed (2534 axioms to 20)" (Phase 7, probe host, 2026-11-20).
+     */
+    @Test
+    void whatIsOpenIsComparedWithItsImports(@TempDir File root) throws Exception {
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        write(edit, "<rdf:RDF/>");
+        write(new File(root, "releases/1.0.0/demo.owl"), demo("Egg", "Pan"));
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology component = manager.loadOntologyFromOntologyDocument(
+                new org.semanticweb.owlapi.io.StringDocumentSource(demo("Egg", "Pan")
+                        .replace("demo.owl", "components/main.owl")));
+        org.semanticweb.owlapi.model.OWLOntology open = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/demo.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(open,
+                manager.getOWLDataFactory().getOWLImportsDeclaration(
+                        component.getOntologyID().getOntologyIRI().get())));
+        assertEquals(2, open.getImportsClosure().size(), "the component is imported");
+
+        ReleaseDiff diff = ReleaseDiff.between(CompareReleasesAction.release(edit, "1.0.0"),
+                CompareReleasesAction.workingCopy(open));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges(), diff.summary());
+    }
+
     private static String demo(String... classes) {
         StringBuilder text = new StringBuilder("Prefix(:=<https://example.org/demo#>)\n"
                 + "Ontology(<https://example.org/demo.owl>\n");

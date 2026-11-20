@@ -704,7 +704,8 @@ public final class ReleaseHistory {
      * and reduced, they match it. As far as it got, if the reasoner cannot finish - which is still
      * right about everything but inferred parents.
      */
-    static OWLOntology asReleased(OWLOntology workingCopy) throws OWLOntologyCreationException {
+    public static OWLOntology asReleased(OWLOntology workingCopy)
+            throws OWLOntologyCreationException {
         OWLOntology copy = merged(workingCopy);
         try {
             for (de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind step

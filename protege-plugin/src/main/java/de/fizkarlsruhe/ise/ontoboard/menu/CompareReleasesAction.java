@@ -151,6 +151,16 @@ public class CompareReleasesAction extends OntoBoardAction {
         return true;
     }
 
+    /**
+     * What is open, as a release would hold it - History's working copy
+     * ({@link ReleaseHistory#asReleased}). Compared as it is, nfdicore's edit file, 20 axioms that
+     * import its terms from two components, lost 356 terms against 3.0.5 (Phase 7, 2026-11-20).
+     */
+    static OWLOntology workingCopy(OWLOntology open)
+            throws org.semanticweb.owlapi.model.OWLOntologyCreationException {
+        return ReleaseHistory.asReleased(open);
+    }
+
     @Override
     protected OperationResult run(OWLOntology ontology) {
         OperationResult.Builder result = OperationResult.of(operationName());
@@ -189,9 +199,12 @@ public class CompareReleasesAction extends OntoBoardAction {
                     ? load(find(releases, from, id))
                     : loadPublished(publishedUrl, result);
             laterRelease = WORKING_COPY.equals(to) ? null : find(releases, to, id);
-            later = laterRelease == null ? ontology : load(laterRelease);
+            later = laterRelease == null ? workingCopy(ontology) : load(laterRelease);
         } catch (RobotException cannotLoad) {
             return result.failed(cannotLoad.getMessage()).build();
+        } catch (org.semanticweb.owlapi.model.OWLOntologyCreationException cannotCopy) {
+            return result.failed("What is open could not be copied to be compared: "
+                    + cannotCopy.getMessage()).build();
         }
         result.note("From: " + from);
         result.note("To: " + to);
