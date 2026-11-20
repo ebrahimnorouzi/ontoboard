@@ -3359,11 +3359,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void explainNoRange(String why) {
         Object[] options = {"Open ID ranges...", "Close"};
-        int choice = JOptionPane.showOptionDialog(this, why + "\n\nAn ID range is a block of term"
-                        + " numbers kept for one editor, so two people never give two terms the"
-                        + " same identifier. Add one for yourself under"
+        // Wrapped at a readable width: as two long lines it opened 1507px wide in a 1024px
+        // Protégé, its sentence running off the screen (Phase 7, probe host, 2026-11-20).
+        int choice = JOptionPane.showOptionDialog(this,
+                de.fizkarlsruhe.ise.ontoboard.ImportLinksOnOpen.wrapped(why + "\n\nAn ID range is"
+                        + " a block of term numbers kept for one editor, so two people never give"
+                        + " two terms the same identifier. Add one for yourself under"
                         + " OntoBoard > Project > ID ranges...; in a shared project a maintainer"
-                        + " usually approves it in the pull request.",
+                        + " usually approves it in the pull request."),
                 "No identifiers for you yet", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) {

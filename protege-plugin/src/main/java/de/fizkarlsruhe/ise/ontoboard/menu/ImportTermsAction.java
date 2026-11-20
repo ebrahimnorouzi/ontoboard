@@ -890,8 +890,7 @@ public class ImportTermsAction extends OntoBoardAction {
             return importedIntoAnOdkProject(extracted, result, ontology, moduleIri, source,
                     requestedTerms, target, editFile, declared);
         }
-        wireUp(result, ontology, moduleIri, target, false);
-        result.note("Imported as " + moduleIri);
+        result.note("Imported as " + wireUp(result, ontology, moduleIri, target, false));
         return result.summary(moduleSummary(extracted.getAxiomCount(),
                 extracted.getRequested() - extracted.getMissing().size())).build();
     }
@@ -919,6 +918,9 @@ public class ImportTermsAction extends OntoBoardAction {
             OWLOntology source, java.util.List<IRI> requestedTerms, File target, File editFile,
             boolean declared) {
         ConfigSync.Done synced = null;
+        // The IRI the import is under: the module's own, or the one the edit file imports its
+        // file by already (Phase 7, nfdicore).
+        IRI importedAs = moduleIri;
         if (declared) {
             boolean unsaved = bringInLineLater
                     || getOWLModelManager().getDirtyOntologies().contains(ontology);
@@ -940,14 +942,14 @@ public class ImportTermsAction extends OntoBoardAction {
             }
         } else {
             // Nothing changed in the configuration, or the files could not follow it now.
-            wireUp(result, ontology, moduleIri, target, true);
+            importedAs = wireUp(result, ontology, moduleIri, target, true);
         }
         java.util.List<IRI> found = new ArrayList<IRI>(requestedTerms);
         found.removeAll(extracted.getMissing());
         int built = builtByOdk(result, editFile, moduleName(source), found, target,
                 synced == null || synced.inLine());
         int axioms = built < 0 ? extracted.getAxiomCount() : built;
-        result.note("Imported as " + moduleIri);
+        result.note("Imported as " + importedAs);
         return result.summary(moduleSummary(axioms,
                 extracted.getRequested() - extracted.getMissing().size())).build();
     }
@@ -1111,7 +1113,7 @@ public class ImportTermsAction extends OntoBoardAction {
      *                     already: in an ODK project the catalog is ODK's own, as its update
      *                     writes it, and writing it again here would put it out of line
      */
-    private void wireUp(OperationResult.Builder result, OWLOntology ontology, IRI moduleIri,
+    private IRI wireUp(OperationResult.Builder result, OWLOntology ontology, IRI moduleIri,
             File target, boolean unlessServed) {
         // The catalog entry is not optional. Without it the import resolves only in this session,
         // because the module's IRI has never been published anywhere - and the person who made
@@ -1187,6 +1189,7 @@ public class ImportTermsAction extends OntoBoardAction {
                     .setActiveOntologiesStrategy(
                             getOWLModelManager().getActiveOntologiesStrategy()));
         }
+        return importIri;
     }
 
     /**
