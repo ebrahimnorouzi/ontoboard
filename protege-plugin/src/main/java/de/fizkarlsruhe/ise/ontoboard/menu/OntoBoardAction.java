@@ -151,7 +151,12 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
             // an action doing that on the dispatch thread freezes all of Protege with no repaint
             // and no way out, and an action that blocks the EDT *waiting* for it deadlocks
             // outright against any operation that needs the EDT to apply its changes.
-            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> run(target),
+            final long started = System.currentTimeMillis();
+            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> {
+                        OperationResult ran = run(target);
+                        return ran == null ? null
+                                : ran.tookAtLeast(System.currentTimeMillis() - started);
+                    },
                     result -> {
                         if (result != null) {
                             ResultDialog.show(getOWLWorkspace(), result);
@@ -160,8 +165,12 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
             return;
         }
         OperationResult result;
+        long started = System.currentTimeMillis();
         try {
             result = run(target);
+            if (result != null) {
+                result = result.tookAtLeast(System.currentTimeMillis() - started);
+            }
         } catch (RuntimeException | LinkageError failure) {
             // LinkageError as well as RuntimeException: several ROBOT operations fail that way on
             // Protege 5.5's older OWL API, and a NoSuchMethodError escaping into Protege's log is

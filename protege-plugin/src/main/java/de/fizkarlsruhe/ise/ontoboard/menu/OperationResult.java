@@ -122,6 +122,20 @@ public final class OperationResult {
         return more;
     }
 
+    /**
+     * This result with the time the whole run took, where it says less (1.155.0): an action that
+     * makes its result after the work measured nothing of it - the Quality report said
+     * "Finished (0 ms)" for seconds.
+     */
+    OperationResult tookAtLeast(long elapsed) {
+        if (millis >= elapsed) {
+            return this;
+        }
+        Builder more = toBuilder();
+        more.millis = elapsed;
+        return more.build();
+    }
+
     public static Builder of(String operation) {
         return new Builder(operation);
     }

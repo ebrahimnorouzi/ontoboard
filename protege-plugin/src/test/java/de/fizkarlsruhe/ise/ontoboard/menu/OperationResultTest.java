@@ -29,6 +29,21 @@ import org.junit.jupiter.api.io.TempDir;
 class OperationResultTest {
 
     /**
+     * A result says how long the whole run took. The Quality report built its result after the
+     * work, and said "Finished (0 ms)" for seconds of it (Phase 7, probe host, 2026-11-20); the
+     * action times its run and the result keeps the longer of the two.
+     */
+    @Test
+    void aResultSaysHowLongTheWholeRunTook() {
+        OperationResult quick = OperationResult.of("Quality report").summary("No violations.").build();
+        OperationResult longer = OperationResult.of("Build").at(new java.util.Date(), 9000).build();
+
+        assertEquals(5000, quick.tookAtLeast(5000).getMillis());
+        assertEquals("No violations.", quick.tookAtLeast(5000).getSummary());
+        assertEquals(9000, longer.tookAtLeast(5000).getMillis(), "its own time when that is longer");
+    }
+
+    /**
      * A result an action built, with more said afterwards: what it held, and the lines
      * added. The result itself stays as it was.
      */
