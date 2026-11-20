@@ -601,6 +601,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         };
         getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                 .addListener(selectionListener);
+        // A term Protege has selected when the board is first built - a report's row clicked on
+        // another tab, a class picked in Entities - is shown on it, as Protege's own views show
+        // the selection they open with (the hand check of 1.155.0). Protege builds a view the
+        // first time it is shown, before it is laid out: the term is brought into view once the
+        // board has its size.
+        onceSized(graphComponent.getViewport(), () -> {
+            OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
+                    .getOWLSelectionModel().getSelectedEntity();
+            if (selected != null && selectionBridge != null) {
+                selectionBridge.selectOnCanvas(selected.getIRI().toString());
+            }
+        });
 
         changeListener = changes -> {
             // Publishing from here rather than from the canvas is deliberate: this listener sees
@@ -8073,6 +8085,26 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         BoardLook look = effectiveLook();
         CanvasLayouts.apply(graph, arrangementOf(look), look);
         capturePositions();
+    }
+
+    /**
+     * Runs {@code then} once {@code port} has a size: at once when it has one, else at its first
+     * resize to one.
+     */
+    static void onceSized(final java.awt.Component port, final Runnable then) {
+        if (port.getWidth() > 0 && port.getHeight() > 0) {
+            then.run();
+            return;
+        }
+        port.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent resized) {
+                if (port.getWidth() > 0 && port.getHeight() > 0) {
+                    port.removeComponentListener(this);
+                    then.run();
+                }
+            }
+        });
     }
 
     /**

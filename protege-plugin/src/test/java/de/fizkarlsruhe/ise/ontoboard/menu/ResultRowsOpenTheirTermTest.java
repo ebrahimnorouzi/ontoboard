@@ -1,8 +1,12 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import de.fizkarlsruhe.ise.ontoboard.views.OntoBoardTab;
 
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -12,6 +16,8 @@ import javax.swing.JTable;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
 import org.junit.jupiter.api.Test;
+import org.protege.editor.core.ui.workspace.WorkspaceTab;
+import org.protege.editor.owl.ui.OWLWorkspaceViewsTab;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddImport;
 import org.semanticweb.owlapi.model.IRI;
@@ -95,6 +101,39 @@ class ResultRowsOpenTheirTermTest {
         assertTrue(found.isOWLClass());
         assertNull(TermLink.find(edit, "https://example.org/nowhere"));
         assertNull(TermLink.find(edit, ""));
+    }
+
+    /**
+     * The hand check of 1.155.0: on the tab a window opens with, Active ontology, a click on a row
+     * made the term Protege's selection and changed nothing to be seen - and the row says "Show on
+     * the board". The term is selected, then the board is brought forward: a board shown for the
+     * first time opens on the term selected (BoardOpensOnTheSelectionTest).
+     */
+    @Test
+    void aClickSelectsTheTermAndThenBringsTheBoardForward() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLOntology edit = manager.createOntology(IRI.create("https://example.org/egg"));
+        manager.addAxiom(edit, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create("https://example.org/egg/Yolk"))));
+        List<String> done = new ArrayList<String>();
+
+        assertTrue(TermLink.open(edit, "https://example.org/egg/Yolk",
+                entity -> done.add("selected " + entity.getIRI()), () -> done.add("board")));
+        assertFalse(TermLink.open(edit, "https://example.org/egg/Shell",
+                entity -> done.add("selected " + entity.getIRI()), () -> done.add("board")));
+
+        assertEquals(Arrays.asList("selected https://example.org/egg/Yolk", "board"), done);
+    }
+
+    /** The board's tab among a window's tabs is OntoBoard's own; a window without it has none. */
+    @Test
+    void theBoardsTabIsOntoBoards() {
+        WorkspaceTab entities = new OWLWorkspaceViewsTab();
+        WorkspaceTab board = new OntoBoardTab();
+
+        assertSame(board, TermLink.boardTab(Arrays.asList(entities, board)));
+        assertNull(TermLink.boardTab(java.util.Collections.singletonList(entities)));
     }
 
     private static java.awt.Point at(JTable table, int row) {
