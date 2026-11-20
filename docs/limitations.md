@@ -70,7 +70,10 @@ What OntoBoard does not do today, and the constraints of what it does.
 **Releases**
 
 - **A Build or Release kept running behind** - *Keep working* - builds from the files as they are
-  on disk; changes saved meanwhile may or may not be in it, and a second Build or Release waits.
+  on disk; changes saved meanwhile may or may not be in it. A release names what Protégé and the
+  sheet editor saved while it ran before it commits; a file saved by another program is not
+  known. Anything else that writes the project waits, and quitting Protégé stops the run midway.
+  A release of an ontology outside an ODK project reads the open ontology, and keeps its window.
 - **A release commits the project's new files under `src/` first**, in a commit of their own; new
   files elsewhere are named but not committed.
 - **ODK's `.gitignore` leaves the release files out of git**; *Release...* adds them by name.
@@ -103,7 +106,8 @@ What OntoBoard does not do today, and the constraints of what it does.
 - **With readable names, Protégé's own *Add subclass...* still numbers a term from your range**:
   Protégé reads the ranges file of every project that has one, and the switch that stops it is
   one for all of Protégé. Make terms on the board; *Rename IRIs... → Readable names from labels*
-  names those no release has carried.
+  names those no release has carried - and nothing while a release's file is on GitHub only, until
+  History has fetched it.
 - **Sheets keep their own choice of identifiers**, per sheet, in a project with readable names.
 - **The board creates terms only from your own identifier block.** Without one, *No identifiers
   for you yet* until *Project → ID ranges...* allocates one.

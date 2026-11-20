@@ -47,6 +47,7 @@ The defects fixed in each release, newest first. Each release's notes on
 - Protégé asked which ID range was yours after every pattern imported into a new project.
 - Protégé froze when a sheet's heading was committed, or a column added.
 - Every new sheet got the same three example identifiers.
+- A number that a release made by ODK alone had carried could be given to a new term: ODK v1.6.1 keeps the release's files on GitHub, out of git.
 
 ## 1.154.0
 
