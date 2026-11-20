@@ -32,6 +32,18 @@ The defects fixed in each release, newest first. Each release's notes on
 - After a release, the notice of the imports put in named one of eight.
 - A property of a release's header read as a term added.
 - A release refused for an import's terms said to deprecate them.
+- An ODK project's release was refused, without a question, when the reasoner did not finish.
+- An ontology in no project was released as consistent with its imports while an import had not loaded.
+- A release that did not happen left the project's release script naming a version nobody released.
+- The record of a release made by the project's own script did not say that the script chose its reasoner.
+- A make line the engine cannot run passed the release script's check, and the script stopped after its earlier lines had written.
+- Of two projects whose imports were put in within one wait, one was not told of.
+- Two properties, each the other's sub-property, were missing from the board's Properties panel.
+- The curated *Eventprocessing* pattern lost its alignment to SSN.
+- A second release on a day that had its dated release was refused without saying how to release.
+- Why the reasoner stopped a release was shown with markdown's asterisks around it.
+- A quality report's row, clicked on a tab without the board, changed nothing to be seen.
+- Each window closed logged three errors naming OntoBoard.
 
 ## 1.154.0
 
