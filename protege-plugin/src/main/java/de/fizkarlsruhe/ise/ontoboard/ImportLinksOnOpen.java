@@ -163,9 +163,20 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener,
                 waiting.put(editFile, linkedSince);
             }
             linkedSince.addAll(linked);
-            tellLater.accept(() -> tellOf(editFile));
+            tellLater.accept(this::tellOfWhatWaits);
         } catch (Throwable notLinked) {
             LOGGER.warn("OntoBoard could not put in the imports Protégé left out", notLinked);
+        }
+    }
+
+    /**
+     * Tells of everything that waits, each project's apart: the wait keeps only the last thing
+     * given it, and a first project linked within it was never told of (the final review of
+     * 1.155.0).
+     */
+    private void tellOfWhatWaits() {
+        for (File editFile : new java.util.ArrayList<File>(waiting.keySet())) {
+            tellOf(editFile);
         }
     }
 
