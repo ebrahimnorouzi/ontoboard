@@ -69,6 +69,8 @@ What OntoBoard does not do today, and the constraints of what it does.
 
 **Releases**
 
+- **A Build or Release kept running behind** - *Keep working* - builds from the files as they are
+  on disk; changes saved meanwhile may or may not be in it, and a second Build or Release waits.
 - **A release commits the project's new files under `src/` first**, in a commit of their own; new
   files elsewhere are named but not committed.
 - **ODK's `.gitignore` leaves the release files out of git**; *Release...* adds them by name.
@@ -92,10 +94,17 @@ What OntoBoard does not do today, and the constraints of what it does.
 **ID ranges**
 
 - **Protégé 5.6 asks for your ID range until you have one.** Its own "No Id Range Found For
-  Current User" comes up when the project's ranges name nobody of your name. Where they are ODK's
-  placeholders, the board claims one at your first new term; where they name other editors
-  (nfdicore, MWO), the range chosen in Protégé's question is not one the board numbers from:
-  *Project → ID ranges...* allocates yours, and then Protégé stops asking.
+  Current User" comes up when the project's ranges name nobody of your name. A project made by
+  *New ODK project...* has the first range in your name; *Open existing ODK project...* asks
+  which is yours where the ranges are ODK's placeholders; *File → Open...* of such a project
+  still meets Protégé's question first. Where they name other editors (nfdicore, MWO), the range
+  chosen in Protégé's question is not one the board numbers from: *Project → ID ranges...*
+  allocates yours, and then Protégé stops asking.
+- **With readable names, Protégé's own *Add subclass...* still numbers a term from your range**:
+  Protégé reads the ranges file of every project that has one, and the switch that stops it is
+  one for all of Protégé. Make terms on the board; *Rename IRIs... → Readable names from labels*
+  names those no release has carried.
+- **Sheets keep their own choice of identifiers**, per sheet, in a project with readable names.
 - **The board creates terms only from your own identifier block.** Without one, *No identifiers
   for you yet* until *Project → ID ranges...* allocates one.
 

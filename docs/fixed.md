@@ -44,6 +44,9 @@ The defects fixed in each release, newest first. Each release's notes on
 - Why the reasoner stopped a release was shown with markdown's asterisks around it.
 - A quality report's row, clicked on a tab without the board, changed nothing to be seen.
 - Each window closed logged three errors naming OntoBoard.
+- Protégé asked which ID range was yours after every pattern imported into a new project.
+- Protégé froze when a sheet's heading was committed, or a column added.
+- Every new sheet got the same three example identifiers.
 
 ## 1.154.0
 

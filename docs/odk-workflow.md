@@ -32,6 +32,8 @@ In an ODK project, *Build...*, *Release...* and *Refresh imports...* run the pro
 
 **What OntoBoard's engine runs**: ODK's recipes and the project's own rules in `<id>.Makefile`, if the `Makefile` is the one ODK v1.6.1 writes for the configuration, every line the target reaches can run here, and nothing is written outside the project. This is checked before the first line, so a target is done or not started, never half done; otherwise it is not offered, and the reason names the rule and its line, or what the engine does not do. What still needs the container - a project's own `release.sh`, SSSOM, the `db` export, `update_patterns` - is in [limitations](limitations.md). ROBOT has the memory Protégé was started with, and the result says so where `robot_java_args` asks for more ([limitations](limitations.md)).
 
+**Keep working**, on the progress window of *Build...* and *Release...*, lets the run go on behind while you work; its result opens when it is done, and the desktop says so. Changes saved meanwhile may or may not be in it, and a second Build or Release waits for it.
+
 **Build's form** offers, where OntoBoard itself runs them, those of `test`, `test_fast`, `reason_test`, `sparql_test`, `robot_reports`, `validate_idranges` and `clean` it can run, the Target field's help saying why one is missing; with the container, every target of the Makefile and `<id>.Makefile`. ODK's targets are named in plain words, with make's command after them. Four boxes set ODK's switches, each ticked as ODK's default has it: *Build the import modules again* (`IMP`), *Download the imports' sources again* (`MIR`), *Make the DOSDP patterns' files again* (`PAT`) and *Build the components again* (`COMP`). Unticked, what the box would make again - the modules, the mirror copies, the patterns' files, the components - is used as it is, and the switch goes on make's command line as `NAME=false`, as the line under the form shows. If OntoBoard itself cannot build with the boxes as set, the form comes back with the reason; a fresh clone, for one, has no copies in `mirror/`. A Makefile that is not ODK's gets no boxes.
 
 ### The two kinds of tests
@@ -90,7 +92,8 @@ The form asks for an ontology ID, title, description, base IRI, licence and fold
 
 - **Configuration**: ID, title, description, licence, `uribase` (the base IRI without `/<id>.owl`), `repo`, `github_org`, and a `robot_report` block that fails on ERROR, uses the project's `profile.txt` (ROBOT's standard profile) and lists ODK's four checks and OntoBoard's label check. Release artefacts and formats are ODK's defaults (full and base, OWL and OBO).
 - **Pages**: ODK's `docs.yml` workflow publishes `docs/` to `gh-pages`; as a new GitHub repository lets workflows only read, `docs/index.md` and `docs/release.md` say how to allow writing.
-- **Edit file**: ODK's, in functional syntax, with the placeholder class `<ID>_0000000`. At your first new term, OntoBoard asks which of ODK's two placeholder ID ranges is yours and writes in your name.
+- **Edit file**: ODK's, in functional syntax, without ODK's placeholder class.
+- **ID ranges**: the first of ODK's two placeholder ranges is yours - the wizard writes in the name Protégé's ID ranges know you by - so Protégé does not ask. New terms are numbered from it, or named from what you type with *Name new terms from what is typed* ticked - readable names, under `<ontology>-idranges.owl` below.
 
 The project goes into `<chosen folder>/<ontology id>`, which must not exist yet; one that cannot be finished, or that you stop, is removed again.
 
@@ -208,7 +211,12 @@ OntoBoard does not help you edit the custom Makefile. An edited ODK `Makefile` i
 
 ### `<ontology>-idranges.owl` ✅
 
-*Project → ID ranges…* shows who holds which block and allocates a new block to an editor. The first time you add a term in a project whose ranges are all placeholders, OntoBoard asks which of ODK's two ranges is yours and writes in your name as Protégé's own ID ranges know it (git's user name where Protégé's *Preferences > User details* asks for it, else the name set there, else your login). Protégé 5.6's own ID range plugin asks the same whenever the file is read again while your name is in no range - see [limitations](limitations.md). Allocation rewrites the file from a template, normalising indentation; declarations the template does not model are carried through, and if anything would still be lost, OntoBoard names the lines and leaves the file untouched.
+*Project → ID ranges…* shows who holds which block, allocates a new block to an editor, and chooses how new terms are named, for everybody in the project:
+
+- **Numbered** from each editor's range, as OBO ontologies are - ODK's way, and the default.
+- **Readable** - *Name new terms from what is typed*: "boiled egg" a class `<uribase>/<id>/BoiledEgg`, "has part" a property or an individual `hasPart`, the typed name kept as the label. It is written into `<id>-odk.yaml` as `ontoboard_term_names: readable`, with ODK's `namespaces`, and the project's files are brought in line, so ODK's base release and its report keep the readable terms. *Terms → Rename IRIs… → Readable names from labels* gives the numbered terms no release has carried their readable names; a released term keeps its IRI.
+
+*Open existing ODK project…* asks once which range is yours when a project's ranges name nobody, before Protégé reads them. The first time you add a term in a project whose ranges are all placeholders, OntoBoard asks which of ODK's two ranges is yours and writes in your name as Protégé's own ID ranges know it (git's user name where Protégé's *Preferences > User details* asks for it, else the name set there, else your login). Protégé 5.6's own ID range plugin asks the same whenever the file is read again while your name is in no range - see [limitations](limitations.md). Allocation rewrites the file from a template, normalising indentation; declarations the template does not model are carried through, and if anything would still be lost, OntoBoard names the lines and leaves the file untouched.
 
 ### `profile.txt` ✅ (by location, not by configuration)
 
@@ -247,6 +255,11 @@ ODK's own walkthrough is six steps; OntoBoard does five of them in one operation
 | *Only the terms you chose, with their "is a" links* | `filter` | which of them is a kind of which, and nothing else |
 | *The terms you chose, with every relation between them* | `minimal` | also their links through other relations - "a is part of d" |
 | *The whole ontology* | `mirror` | all of it |
+| *The terms you chose and everything under them* | `slme`, TOP | everything below each, which can be large |
+| *The smallest module that keeps their meaning* | `slme`, STAR | what keeps them meaning what they mean |
+| *Kept as extracted here, or built by a rule of your own* | `custom` | the module as extracted here, until a rule in `<id>.Makefile` builds it |
+
+Each type's own fields are in the same form - the individuals an `slme` module keeps, the annotations to keep, the source's own addresses, a large or gzipped source, its base release or a base made of it - and are written into the product only when given; what is left empty is ODK's default. Outside a project, and for a library pattern, *Import terms…* asks ROBOT's method instead - BOT, TOP, STAR, MIREOT or subset - with ROBOT's own options for each: individuals and the source's imports (BOT, TOP, STAR), the terms between, the terms to stop at and the branches (MIREOT), and marking each term with its source.
 
 The module is extracted with BOT at once, and ODK's refresh then builds the type chosen; where that cannot run now, the result says the module is OntoBoard's extraction until *OntoBoard > Reuse > Refresh imports...* has ODK build it. ODK has no MIREOT type, so a new import in an ODK project is not offered one; `minimal` is the nearest. A pattern from OntoBoard's library, or terms from a file on this machine, are declared as kept as they are (`module_type: custom` with `mirror_type: no_mirror`), which ODK's refresh leaves alone, and no local path goes into the project. An OBO ontology needs no `mirror_from`, as ODK then downloads `http://purl.obolibrary.org/obo/<id>.owl`; any other import gets its source.
 

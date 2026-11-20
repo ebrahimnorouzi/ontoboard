@@ -31,6 +31,10 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 :   A block of term numbers kept for one editor, so two people never mint the same identifier.
     *Project → ID ranges...*.
 
+**Readable names**
+:   A project's choice to name new terms from what is typed - "boiled egg" a class `BoiledEgg` -
+    rather than numbering them. *Project → ID ranges...*.
+
 **Project configuration (`<id>-odk.yaml`)**
 :   The project's settings file, in ODK's format. *Project → Project configuration...* edits it.
 
