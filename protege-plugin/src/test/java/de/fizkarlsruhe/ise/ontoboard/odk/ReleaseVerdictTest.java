@@ -214,4 +214,52 @@ class ReleaseVerdictTest {
                 OWLReasonerFactory.class.getClassLoader(),
                 new Class<?>[] {OWLReasonerFactory.class}, factory);
     }
+
+    /**
+     * An ontology open with an import that did not load is not called consistent with its
+     * imports: a release of an ontology in no project, and Check this ontology..., asked the
+     * reasoner about what had loaded and recorded "with its imports, consistent" (the final
+     * review of 1.155.0).
+     */
+    @Test
+    void anOpenOntologyWhoseImportDidNotLoadIsNotChecked() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology open = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/open"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(open,
+                manager.getOWLDataFactory().getOWLImportsDeclaration(
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/missing.owl"))));
+
+        ReleaseVerdict verdict = ReleaseVerdict.check(open, "HermiT", 60_000, GOING_ON);
+
+        assertEquals(ReleaseVerdict.Kind.NOT_LOADED, verdict.kind(), verdict.said());
+        assertTrue(verdict.said().contains("http://example.org/missing.owl"), verdict.said());
+        assertFalse(verdict.said().contains("finds the ontology"), verdict.said());
+        assertTrue(verdict.stopsARelease());
+    }
+
+    /**
+     * Check this ontology... on a file whose import did not load asks the reasoner about what
+     * loaded, and says so: the import named, never "with its imports" (the final review of
+     * 1.155.0).
+     */
+    @Test
+    void whatLoadedIsCheckedAndTheImportThatDidNotIsNamed() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology open = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/open"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(open,
+                manager.getOWLDataFactory().getOWLImportsDeclaration(
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/missing.owl"))));
+
+        ReleaseVerdict verdict = ReleaseVerdict.checkWhatLoaded(open, "HermiT", 60_000,
+                GOING_ON);
+
+        assertEquals(ReleaseVerdict.Kind.CLEAN, verdict.kind(), verdict.said());
+        assertTrue(verdict.said().contains("http://example.org/missing.owl"), verdict.said());
+        assertTrue(verdict.said().contains("did not load"), verdict.said());
+        assertFalse(verdict.said().contains("with its imports"), verdict.said());
+    }
 }

@@ -184,7 +184,7 @@ public final class LooseCheck {
      */
     private static Line reasoner(OWLOntology ontology, Options options) {
         List<String> details = new ArrayList<String>();
-        ReleaseVerdict verdict = ReleaseVerdict.check(ontology, options.reasoner(),
+        ReleaseVerdict verdict = ReleaseVerdict.checkWhatLoaded(ontology, options.reasoner(),
                 ReleaseVerdict.DEFAULT_LIMIT_MILLIS, null);
         String asked = verdict.reasoner();
         if (verdict.kind() == ReleaseVerdict.Kind.CLEAN) {

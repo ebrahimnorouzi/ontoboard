@@ -165,8 +165,66 @@ public final class ReleaseVerdict {
                     "", "'" + reasoner + "' is not a reasoner a release can use. These can: "
                             + String.join(", ", ReleaseReasoners.names()) + ".");
         }
+        // An import that did not load leaves the reasoner a part of the ontology: said, never
+        // "with its imports, consistent" (the final review of 1.155.0).
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLImportsDeclaration declaration
+                    : part.getImportsDeclarations()) {
+                if (ontology.getOWLOntologyManager().getImportedOntology(declaration) == null) {
+                    return new ReleaseVerdict(Kind.NOT_LOADED, name, 0,
+                            Collections.<String>emptyList(), "", "The import "
+                                    + declaration.getIRI() + " did not load when the ontology "
+                                    + "was opened, so " + name + " could not be asked about the "
+                                    + "ontology with its imports. OntoBoard > Reuse > Check "
+                                    + "imports says why; open the ontology again once the "
+                                    + "import loads.");
+                }
+            }
+        }
         return ask(ontology, name, ReleaseReasoners.factory(name), limitMillis, stopped,
                 System.currentTimeMillis());
+    }
+
+    /**
+     * Asks {@code reasoner} about an ontology already loaded, as it loaded: an import that did
+     * not is named in what is said, never "with its imports" - for <i>Check this ontology...</i>
+     * on a loose file whose imports are elsewhere, where checking what is there is the point (the
+     * final review of 1.155.0). A release asks {@link #check(OWLOntology, String, long,
+     * BooleanSupplier)}, which stops there.
+     */
+    public static ReleaseVerdict checkWhatLoaded(OWLOntology ontology, String reasoner,
+            long limitMillis, BooleanSupplier stopped) {
+        String name = ReleaseReasoners.canonical(reasoner);
+        if (name == null) {
+            return check(ontology, reasoner, limitMillis, stopped);
+        }
+        List<String> missing = new java.util.ArrayList<String>();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLImportsDeclaration declaration
+                    : part.getImportsDeclarations()) {
+                String iri = declaration.getIRI().toString();
+                if (ontology.getOWLOntologyManager().getImportedOntology(declaration) == null
+                        && !missing.contains(iri)) {
+                    missing.add(iri);
+                }
+            }
+        }
+        ReleaseVerdict verdict = ask(ontology, name, ReleaseReasoners.factory(name),
+                limitMillis, stopped, System.currentTimeMillis());
+        return missing.isEmpty() ? verdict : verdict.without(missing);
+    }
+
+    /** This verdict, said of the ontology as it loaded, without the imports that did not. */
+    private ReleaseVerdict without(List<String> missing) {
+        boolean one = missing.size() == 1;
+        String named = String.join(", ", missing);
+        String told = said.contains("the ontology, with its imports,")
+                ? said.replace("the ontology, with its imports,", "the ontology as it loaded, "
+                        + "without " + named + " (" + (one ? "an import" : "imports")
+                        + " that did not load),")
+                : said + " " + (one ? "The import " : "The imports ") + named + " did not "
+                        + "load, so " + (one ? "it was" : "they were") + " not asked about.";
+        return new ReleaseVerdict(kind, reasoner, millis, unsatisfiable, explanation, told);
     }
 
     private static ReleaseVerdict ask(final OWLOntology ontology, String name,
