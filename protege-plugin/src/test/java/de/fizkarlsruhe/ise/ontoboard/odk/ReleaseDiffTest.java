@@ -596,4 +596,60 @@ class ReleaseDiffTest {
                 "the class, the ontology's own property and the one used on a term - not the "
                         + "property that was only ever in the header");
     }
+
+    /**
+     * A label or definition that runs over two lines, read from a file Git checked out with
+     * Windows line endings, is the same text as the release's: History said 2 definitions of
+     * nfdicore's IAO module changed since 3.0.5, its sources as they were at 3.0.5 compared with
+     * the release (Phase 7, 2026-11-20).
+     */
+    @Test
+    void textWithWindowsLineEndingsIsTheSameText() {
+        declare(before, "Software");
+        declare(after, "Software");
+        label(before, "Software", "soft\nware");
+        label(after, "Software", "soft\r\nware");
+        define(before, "Software", "A plan specification that can be \ninterpreted.");
+        define(after, "Software", "A plan specification that can be \r\ninterpreted.");
+
+        assertEquals(java.util.Collections.emptyList(),
+                ReleaseDiff.between(before, after).getChanges());
+    }
+
+    /**
+     * The working copy is compared as ODK's full release holds it: reasoned, relaxed and
+     * reduced. Reasoned only, a class under an intersection gained its named parent, which the
+     * release does not hold, and every class defined by an equivalence was another story:
+     * nfdicore's sources as they were at 3.0.5 came back "27 moved" against 3.0.5 (Phase 7,
+     * 2026-11-20). The release here holds the two terms as nfdicore 3.0.5 holds NFDI_0000110 and
+     * NFDI_0000006.
+     */
+    @Test
+    void theWorkingCopyIsComparedAsOdksFullReleaseHoldsIt() throws Exception {
+        org.semanticweb.owlapi.model.OWLObjectProperty r =
+                factory.getOWLObjectProperty(IRI.create(NS + "r"));
+        for (OWLOntology version : new OWLOntology[] {before, after}) {
+            for (String name : new String[] {"A", "X", "Y", "C", "D"}) {
+                declare(version, name);
+            }
+            manager.addAxiom(version, factory.getOWLDeclarationAxiom(r));
+        }
+        org.semanticweb.owlapi.model.OWLClassExpression definition =
+                factory.getOWLObjectIntersectionOf(cls("A"),
+                        factory.getOWLObjectSomeValuesFrom(r, cls("X")));
+        org.semanticweb.owlapi.model.OWLClassExpression under =
+                factory.getOWLObjectIntersectionOf(cls("A"),
+                        factory.getOWLObjectSomeValuesFrom(r, cls("Y")));
+        manager.addAxiom(after, factory.getOWLEquivalentClassesAxiom(cls("C"), definition));
+        manager.addAxiom(after, factory.getOWLSubClassOfAxiom(cls("D"), under));
+        manager.addAxiom(before, factory.getOWLEquivalentClassesAxiom(cls("C"), definition));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("C"), cls("A")));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("C"),
+                factory.getOWLObjectSomeValuesFrom(r, cls("X"))));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("D"), under));
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
 }

@@ -692,25 +692,34 @@ public final class ReleaseHistory {
     }
 
     /**
-     * The working copy as a release would hold it: its imports folded in, and reasoned the way
-     * Release reasons, with ELK.
+     * The working copy as a release would hold it: its imports folded in, then reasoned with
+     * ELK, relaxed and reduced - what ODK's full release, the one {@code <id>.owl} is, does.
      *
-     * <p>Because a release is both and the edit file is neither. Compared as they are, every term
-     * an import brings in was reported as removed since the last release, and every parent the
-     * reasoner had added to it as a term moved: the pizza walkthrough's working copy, identical to
-     * its 1.0.0 release, came back "7 moved". Unreasoned, if the reasoner cannot finish - which
-     * is still right about everything but inferred parents.
+     * <p>Because a release is all of these and the edit file is none. Compared as they are, every
+     * term an import brings in was reported as removed since the last release, and every parent
+     * the reasoner had added to it as a term moved: the pizza walkthrough's working copy,
+     * identical to its 1.0.0 release, came back "7 moved". Reasoned only, a class under an
+     * intersection gained a named parent the release does not hold, and nfdicore's sources as they
+     * were at 3.0.5 came back "27 moved" against 3.0.5 (Phase 7, 2026-11-20); reasoned, relaxed
+     * and reduced, they match it. As far as it got, if the reasoner cannot finish - which is still
+     * right about everything but inferred parents.
      */
     static OWLOntology asReleased(OWLOntology workingCopy) throws OWLOntologyCreationException {
         OWLOntology copy = merged(workingCopy);
         try {
-            de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Diff inferred =
-                    de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.preview(copy,
-                            de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REASON,
-                            de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.DEFAULT.newFactory());
-            copy.getOWLOntologyManager().applyChanges(inferred.getChanges());
+            for (de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind step
+                    : new de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind[] {
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REASON,
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.RELAX,
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REDUCE}) {
+                de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Diff made =
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.preview(copy, step,
+                                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.DEFAULT
+                                        .newFactory());
+                copy.getOWLOntologyManager().applyChanges(made.getChanges());
+            }
         } catch (RuntimeException cannotReason) {
-            // Compared unreasoned.
+            // Compared as far as it got.
         }
         return copy;
     }

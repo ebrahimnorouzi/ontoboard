@@ -506,7 +506,10 @@ public final class ReleaseDiff {
             }
         }
         String chosen = DisplayLabels.chooseFrom(values);
-        return chosen == null ? "" : chosen;
+        // Line endings as the release has them: a file Git checked out on Windows holds a text
+        // that runs over two lines with CR LF, the release read from its tag with LF - and two of
+        // nfdicore's IAO definitions read as changed since 3.0.5 (Phase 7, 2026-11-20).
+        return chosen == null ? "" : chosen.replace("\r\n", "\n").replace('\r', '\n');
     }
 
     /** Asserted named parents only; an anonymous superclass is a restriction, not a place. */
