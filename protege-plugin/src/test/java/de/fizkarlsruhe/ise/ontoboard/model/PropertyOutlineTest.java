@@ -113,4 +113,33 @@ class PropertyOutlineTest {
         assertTrue(find(outline.getObjectProperties(), "likes").isOwn());
         assertEquals(I + "relatedTo", find(outline.getObjectProperties(), "related to").getIri());
     }
+
+    /**
+     * Two properties each the other's sub-property are both listed: each counted as placed under
+     * the other, neither was a root, and both vanished from the panel (the final review of
+     * 1.155.0).
+     */
+    @Test
+    void twoPropertiesEachTheOthersSubPropertyAreBothListed() throws Exception {
+        OWLOntology ontology = OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(new StringDocumentSource("Prefix(:=<" + U
+                        + ">)\nOntology(<http://example.org/circle>\n"
+                        + "Declaration(ObjectProperty(:partOf))\n"
+                        + "Declaration(ObjectProperty(:componentOf))\n"
+                        + "SubObjectPropertyOf(:partOf :componentOf)\n"
+                        + "SubObjectPropertyOf(:componentOf :partOf)\n)"));
+
+        List<String> listed = new ArrayList<String>();
+        collect(PropertyOutline.of(ontology).getObjectProperties(), listed);
+
+        assertTrue(listed.contains(U + "partOf"), listed.toString());
+        assertTrue(listed.contains(U + "componentOf"), listed.toString());
+    }
+
+    private static void collect(List<PropertyOutline.Entry> entries, List<String> into) {
+        for (PropertyOutline.Entry entry : entries) {
+            into.add(entry.getIri());
+            collect(entry.getChildren(), into);
+        }
+    }
 }

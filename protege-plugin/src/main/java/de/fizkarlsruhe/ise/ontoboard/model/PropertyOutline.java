@@ -176,12 +176,40 @@ public final class PropertyOutline {
                 roots.add(each.getKey());
             }
         }
+        // A circle of properties - each the other's sub-property - has no root, and vanished
+        // from the panel: the first of it by IRI is one (the final review of 1.155.0).
+        Set<OWLEntity> reached = new HashSet<OWLEntity>();
+        for (OWLEntity root : roots) {
+            reach(root, under, reached);
+        }
+        List<OWLEntity> rest = new ArrayList<OWLEntity>(supers.keySet());
+        rest.sort((a, b) -> a.getIRI().toString().compareTo(b.getIRI().toString()));
+        for (OWLEntity left : rest) {
+            if (!reached.contains(left)) {
+                roots.add(left);
+                reach(left, under, reached);
+            }
+        }
         List<Entry> forest = new ArrayList<Entry>();
         for (OWLEntity root : roots) {
             forest.add(entry(ontology, root, under, new HashSet<OWLEntity>()));
         }
         sort(forest);
         return forest;
+    }
+
+    /** Every property under this one, itself with them. */
+    private static void reach(OWLEntity property, Map<OWLEntity, List<OWLEntity>> under,
+            Set<OWLEntity> reached) {
+        if (!reached.add(property)) {
+            return;
+        }
+        List<OWLEntity> children = under.get(property);
+        if (children != null) {
+            for (OWLEntity child : children) {
+                reach(child, under, reached);
+            }
+        }
     }
 
     private static Entry entry(OWLOntology ontology, OWLEntity property, Map<OWLEntity, List<OWLEntity>> under,
