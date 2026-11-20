@@ -59,6 +59,10 @@ public class HistoryAction extends ProtegeOWLAction {
     private JComboBox<String> against;
     private JButton open;
     private JButton record;
+    /** Opens the selected release on GitHub, where the project's origin is there (1.155.0). */
+    private JButton onGitHub;
+    /** The project's repository on GitHub, {@code owner/name}; null where its origin is not. */
+    private String repository;
     private JLabel status;
     private OWLOntology workingCopy;
 
@@ -99,6 +103,29 @@ public class HistoryAction extends ProtegeOWLAction {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setRowHeight(24);
         table.getColumnModel().getColumn(1).setCellRenderer(new TermsBar());
+        // A release's version leads to it on GitHub (1.155.0, asked by the user).
+        table.getColumnModel().getColumn(0).setCellRenderer(new VersionLink());
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent click) {
+                if (click.getButton() == java.awt.event.MouseEvent.BUTTON1
+                        && table.columnAtPoint(click.getPoint()) == 0) {
+                    String link = linkOf(table.rowAtPoint(click.getPoint()));
+                    if (link != null) {
+                        browse(link);
+                    }
+                }
+            }
+        });
+        table.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent moved) {
+                boolean onALink = table.columnAtPoint(moved.getPoint()) == 0
+                        && linkOf(table.rowAtPoint(moved.getPoint())) != null;
+                table.setCursor(java.awt.Cursor.getPredefinedCursor(onALink
+                        ? java.awt.Cursor.HAND_CURSOR : java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        });
         table.getColumnModel().getColumn(0).setPreferredWidth(110);
         table.getColumnModel().getColumn(1).setPreferredWidth(170);
         table.getColumnModel().getColumn(7).setPreferredWidth(380);
@@ -137,6 +164,16 @@ public class HistoryAction extends ProtegeOWLAction {
                 + "reasoner's verdict, its checks, its measures, what changed");
         record.setEnabled(false);
         record.addActionListener(e -> showRecord(dialog));
+        onGitHub = new JButton("Open on GitHub");
+        onGitHub.setToolTipText("Opens the selected release on GitHub: the files as its tag "
+                + "holds them");
+        onGitHub.setEnabled(false);
+        onGitHub.addActionListener(e -> {
+            String link = linkOf(table.getSelectedRow());
+            if (link != null) {
+                browse(link);
+            }
+        });
         JButton close = new JButton("Close");
         close.addActionListener(e -> dialog.dispose());
         DialogKeys.escapePresses(dialog.getRootPane(), close);
@@ -144,12 +181,15 @@ public class HistoryAction extends ProtegeOWLAction {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(open);
         buttons.add(record);
+        buttons.add(onGitHub);
         buttons.add(new JLabel("   Compare with:"));
         buttons.add(against);
         // Releases kept on GitHub only (ODK v1.6.1 keeps release files out of git): fetched when
         // the person asks, never on opening (1.155.0).
         final String repository = de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases
                 .repositoryOf(projectRoot);
+        this.repository = repository;
+        onGitHub.setVisible(repository != null);
         if (repository != null) {
             final JButton fetch = new JButton("Fetch the whole history from GitHub...");
             fetch.setToolTipText("Asks github.com which releases of " + repository
@@ -444,6 +484,7 @@ public class HistoryAction extends ProtegeOWLAction {
         ReleaseHistory.Version version = selectedVersion();
         open.setEnabled(version != null && !version.isWorkingCopy());
         record.setEnabled(version != null && version.getRelease() != null);
+        onGitHub.setEnabled(version != null && linkOf(table.getSelectedRow()) != null);
         if (version == null) {
             return;
         }
@@ -637,6 +678,82 @@ public class HistoryAction extends ProtegeOWLAction {
         } catch (Exception cannotOpen) {
             status.setText("Could not open " + version.getName() + ": "
                     + cannotOpen.getMessage());
+        }
+    }
+
+    /**
+     * Where a release is on GitHub: the files as its tag holds them, or its folder under
+     * {@code releases/} where the release is a folder only; null without a repository there, or
+     * for what is open, which no release is.
+     *
+     * @param repository {@code owner/name}
+     */
+    static String gitHubLink(String repository, String tag, String folderName) {
+        if (repository == null || (tag == null && folderName == null)) {
+            return null;
+        }
+        String base = "https://github.com/" + repository + "/tree/";
+        return tag != null ? base + pathSegment(tag)
+                : base + "HEAD/releases/" + pathSegment(folderName);
+    }
+
+    /** A tag or a folder's name as one segment of a link's path. */
+    private static String pathSegment(String text) {
+        StringBuilder written = new StringBuilder();
+        for (byte b : text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            char c = (char) (b & 0xff);
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '.' || c == '-' || c == '_' || c == '~') {
+                written.append(c);
+            } else {
+                written.append('%').append(String.format("%02X", b & 0xff));
+            }
+        }
+        return written.toString();
+    }
+
+    /** The link of the release in this row, or null. */
+    private String linkOf(int row) {
+        if (row < 0 || row >= versions.size()) {
+            return null;
+        }
+        ReleaseHistory.Entry release = versions.get(row).getRelease();
+        return release == null ? null : gitHubLink(repository, release.tag(),
+                release.folder() == null ? null : release.folder().getName());
+    }
+
+    private void browse(String link) {
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(link));
+            status.setText("Opened " + link);
+        } catch (Exception cannotOpen) {
+            status.setText("Could not open the browser for " + link + ": "
+                    + cannotOpen.getMessage());
+        }
+    }
+
+    /** The version, as a link where the release is on GitHub. */
+    private final class VersionLink extends javax.swing.table.DefaultTableCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Component getTableCellRendererComponent(JTable owner, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            // DefaultTableCellRenderer keeps a colour set on it for every cell after: the
+            // table's own is put back first, so only a link is blue.
+            setForeground(null);
+            super.getTableCellRendererComponent(owner, value, isSelected, hasFocus, row, column);
+            String link = linkOf(owner.convertRowIndexToModel(row));
+            if (link == null) {
+                setToolTipText(null);
+                return this;
+            }
+            setText("<html><u>" + escape(String.valueOf(value)) + "</u></html>");
+            if (!isSelected) {
+                setForeground(new java.awt.Color(0x0B, 0x57, 0xD0));
+            }
+            setToolTipText("Open it on GitHub: " + link);
+            return this;
         }
     }
 
