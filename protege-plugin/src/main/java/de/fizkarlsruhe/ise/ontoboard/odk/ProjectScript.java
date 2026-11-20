@@ -467,25 +467,15 @@ public final class ProjectScript {
             if (step.kind() != Kind.MAKE) {
                 continue;
             }
-            Map<String, String> variables = new LinkedHashMap<String, String>();
-            List<String> targets = new ArrayList<String>();
-            for (String word : step.make().subList(1, step.make().size())) {
-                int equals = word.indexOf('=');
-                if (word.startsWith("-")) {
-                    continue;
-                } else if (equals > 0) {
-                    variables.put(word.substring(0, equals), word.substring(equals + 1));
-                } else {
-                    targets.add(word);
-                }
-            }
-            for (String target : targets.isEmpty() ? java.util.Collections.singletonList("all")
-                    : targets) {
-                String why = OdkEngine.whyNot(editFile, target, variables);
-                if (why != null) {
-                    return "Line " + step.line() + " of the script, " + step.shown()
-                            + ", cannot be run by OntoBoard itself: " + why;
-                }
+            // Read as the engine reads it (OdkRelease.MakeLine): a line it would refuse is
+            // named here, before anything runs.
+            OdkRelease.MakeLine line = OdkRelease.MakeLine.read(
+                    step.make().subList(1, step.make().size()));
+            String why = line.refusal() != null ? line.refusal()
+                    : OdkEngine.whyNot(editFile, line.goal(), line.variables());
+            if (why != null) {
+                return "Line " + step.line() + " of the script, " + step.shown()
+                        + ", cannot be run by OntoBoard itself: " + why;
             }
         }
         return null;

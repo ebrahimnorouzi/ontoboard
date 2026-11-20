@@ -1250,6 +1250,22 @@ class OdkReleaseTest {
                 outcome.getWarnings().toString());
     }
 
+    /**
+     * The record of a script's release says that the script reasoned with its own reasoner: it
+     * said only what the reasoner asked before said (the final review of 1.155.0).
+     */
+    @Test
+    void aScriptsReleaseRecordsThatTheScriptChoseItsReasoner() throws IOException {
+        write(new File(ontology, "release.sh"), "VERSION=1.0.0\nPRIOR_VERSION=0.9.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release\n");
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String record = text(new File(root, "releases/1.0.0/RELEASE.md"));
+        assertTrue(record.contains("release.sh reasons with the reasoner it chooses"), record);
+    }
+
     /** Not finished is not a finding: the person is asked, and no means no. */
     @Test
     void notFinishedAsksAndStopsWhenTheAnswerIsNo() throws IOException {

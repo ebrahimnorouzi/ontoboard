@@ -484,33 +484,12 @@ public final class OdkRelease {
                             + "and no script of the project's own. OntoBoard itself runs ODK's "
                             + "Makefile and the project's release script.");
                 }
-                String goal = null;
-                Map<String, String> variables = new LinkedHashMap<String, String>();
-                for (String word : command.subList(1, command.size())) {
-                    int equals = word.indexOf('=');
-                    if (word.equals("-s")) {
-                        // make's "say no recipe line": asked for where only what a recipe
-                        // prints is wanted. The lines make says are told apart by whoever
-                        // reads the output.
-                        continue;
-                    } else if (word.equals("-B") || word.equals("--always-make")) {
-                        // Every target made again: carried with the variables, as make
-                        // carries both to a make below it.
-                        variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile
-                                .ALWAYS_MAKE, "");
-                    } else if (equals > 0
-                            && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
-                        variables.put(word.substring(0, equals), word.substring(equals + 1));
-                    } else if (goal == null && !word.startsWith("-")) {
-                        goal = word;
-                    } else {
-                        return refused("'" + word + "' on make's command line is not read by "
-                                + "OntoBoard's own engine: it takes one target and variables.");
-                    }
+                MakeLine line = MakeLine.read(command.subList(1, command.size()));
+                if (line.refusal() != null) {
+                    return refused(line.refusal());
                 }
-                if (goal == null) {
-                    return refused("make without a target is not run by OntoBoard's own engine.");
-                }
+                String goal = line.goal();
+                Map<String, String> variables = line.variables();
                 OdkEngine.Outcome outcome = OdkEngine.run(editFile, goal, variables, stopped);
                 List<String> said = new ArrayList<String>(outcome.getTranscript());
                 if (!said.isEmpty()) {
@@ -961,9 +940,17 @@ public final class OdkRelease {
 
         // What the release records of itself (1.155.0): its log always; RELEASE.md beside its
         // copy - and the tag's message - where the project keeps one.
+        // A script's release says that the script reasons with its own reasoner: the check
+        // was asked before it ran (the final review of 1.155.0).
+        String checked = log.verdict == null ? null : log.verdict.said();
+        if (checked != null && script != null) {
+            checked += " The project's " + script.file().getName() + " reasons with the "
+                    + "reasoner it chooses; " + log.verdict.reasoner() + " was asked before it "
+                    + "ran.";
+        }
         String record = ReleaseRecord.markdown(ReleaseRecord.collect(facts.root(), facts.id(),
                 version, java.time.LocalDate.now().toString(), odk.describe(),
-                log.verdict == null ? null : log.verdict.said(),
+                checked,
                 last == null ? null : last.version, diff == null ? null : diff.summary()));
         log.note("");
         for (String line : record.split("\n")) {
@@ -1258,6 +1245,70 @@ public final class OdkRelease {
             }
         }
         return OntologyVersion.newestFirst(versions);
+    }
+
+    /**
+     * A make command line as OntoBoard's own engine reads it: one target, its variables, -s and
+     * -B. The check of a project's own script reads its lines so too, so that a line the engine
+     * would refuse is named before anything runs (the final review of 1.155.0: the check read
+     * every target and skipped every option).
+     */
+    static final class MakeLine {
+        private final String goal;
+        private final Map<String, String> variables;
+        private final String refusal;
+
+        private MakeLine(String goal, Map<String, String> variables, String refusal) {
+            this.goal = goal;
+            this.variables = variables;
+            this.refusal = refusal;
+        }
+
+        /** @param words the line's words after {@code make} */
+        static MakeLine read(List<String> words) {
+            String goal = null;
+            Map<String, String> variables = new LinkedHashMap<String, String>();
+            for (String word : words) {
+                int equals = word.indexOf('=');
+                if (word.equals("-s")) {
+                    // make's "say no recipe line": asked for where only what a recipe prints
+                    // is wanted. The lines make says are told apart by whoever reads the output.
+                    continue;
+                } else if (word.equals("-B") || word.equals("--always-make")) {
+                    // Every target made again: carried with the variables, as make carries both
+                    // to a make below it.
+                    variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile.ALWAYS_MAKE,
+                            "");
+                } else if (equals > 0
+                        && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
+                    variables.put(word.substring(0, equals), word.substring(equals + 1));
+                } else if (goal == null && !word.startsWith("-")) {
+                    goal = word;
+                } else {
+                    return new MakeLine(null, variables, "'" + word + "' on make's command line "
+                            + "is not read by OntoBoard's own engine: it takes one target and "
+                            + "variables.");
+                }
+            }
+            if (goal == null) {
+                return new MakeLine(null, variables,
+                        "make without a target is not run by OntoBoard's own engine.");
+            }
+            return new MakeLine(goal, variables, null);
+        }
+
+        String goal() {
+            return goal;
+        }
+
+        Map<String, String> variables() {
+            return variables;
+        }
+
+        /** Why the engine does not run the line, or null when it reads it. */
+        String refusal() {
+            return refusal;
+        }
     }
 
     /** What went wrong, in its first line: a parser's message can run to pages. */

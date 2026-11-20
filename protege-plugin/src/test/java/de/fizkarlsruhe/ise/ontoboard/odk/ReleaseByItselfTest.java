@@ -506,4 +506,24 @@ class ReleaseByItselfTest {
         String why = ProjectScript.whyNotOnTheEngine(edit, script);
         assertTrue(why != null && why.contains("Line 2"), why);
     }
+
+    /**
+     * A make line the engine reads otherwise is named before anything runs: the check read every
+     * target of a line and skipped its options, while the engine takes one target, -s and -B -
+     * so "make clean all" stopped the script after its earlier lines had written (the final
+     * review of 1.155.0).
+     */
+    @Test
+    void aMakeLineTheEngineWouldRefuseIsNamedBeforeAnythingRuns() throws Exception {
+        File script = new File(edit.getParentFile(), "release.sh");
+        for (String line : new String[] {"sh run.sh make clean prepare_release_fast",
+            "sh run.sh make -j4 prepare_release_fast"}) {
+            Files.write(script.toPath(), ("VERSION=1.0.0\n" + line + "\n")
+                    .getBytes(StandardCharsets.UTF_8));
+
+            String why = ProjectScript.whyNotOnTheEngine(edit, script);
+
+            assertTrue(why != null && why.contains("Line 2"), line + ": " + why);
+        }
+    }
 }
