@@ -696,13 +696,9 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             final SheetHeaderTable header = new SheetHeaderTable(book, name, table);
             headers.put(name, header);
             JScrollPane scrolled = gridFor(table, header);
-            header.getModel().addTableModelListener(
-                    new javax.swing.event.TableModelListener() {
-                        @Override
-                        public void tableChanged(javax.swing.event.TableModelEvent event) {
-                            headerEdited(name, table, header);
-                        }
-                    });
+            // A person's edit of the two rows, not every change of the table's model: answering
+            // those by refreshing the table changed it again, without end (1.155.0).
+            header.whenEdited(() -> headerEdited(name, table, header));
             sheets.addTab(name, scrolled);
         }
         showWhere();
@@ -754,7 +750,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             return;
         }
         String[] ids = TemplateAction.starterIdentifiersFor(ontologyOrNull(),
-                ontologyFileOrNull());
+                ontologyFileOrNull(), created);
         try {
             java.nio.file.Files.write(file.toPath(),
                     de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet
@@ -854,15 +850,29 @@ public class SheetEditorView extends AbstractOWLViewComponent {
      */
     private void headerEdited(String name, SheetTable table, SheetHeaderTable header) {
         SheetTableModel model = models.get(name);
-        if (model == null) {
+        if (model == null || inHeaderEdit) {
             return;
         }
+        inHeaderEdit = true;
+        try {
+            answerTheHeaderEdit(model, table, header);
+        } finally {
+            inHeaderEdit = false;
+        }
+    }
+
+    /** Whether a heading's edit is being answered: what that does may not start it again. */
+    private boolean inHeaderEdit;
+
+    private void answerTheHeaderEdit(SheetTableModel model, SheetTable table,
+            SheetHeaderTable header) {
         if (model.getColumnCount() != table.getColumnCount()) {
             model.fireTableStructureChanged();
             header.refreshStructure();
         }
         table.configureColumns();
-        header.refresh();
+        // Its cells are read from the sheet as they are painted; only the marks change.
+        header.repaint();
         recheck();
         String wrong = header.summary();
         if (!wrong.isEmpty()) {
@@ -1293,6 +1303,11 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         SheetTableModel model = models.get(where);
         if (model != null) {
             model.fireTableDataChanged();
+        }
+        SheetHeaderTable header = headers.get(where);
+        if (header != null) {
+            // An undone heading shows what it is again.
+            header.repaint();
         }
         recheck();
         say("Undone, in " + where + ".");
