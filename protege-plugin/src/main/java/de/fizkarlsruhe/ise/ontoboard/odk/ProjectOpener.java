@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import java.awt.Component;
+import java.io.File;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import org.protege.editor.owl.OWLEditorKit;
@@ -21,6 +22,69 @@ import org.protege.editor.owl.OWLEditorKit;
 public final class ProjectOpener {
 
     private ProjectOpener() {
+    }
+
+    /**
+     * Before a project opens: when its ID ranges are still ODK's placeholders and none is this
+     * person's, asks which is theirs - the board's question - and writes their name into it.
+     * Protege reads the ranges as it opens the project and asked "No Id Range Found For Current
+     * User", and again each time the edit file was read again: after every pattern imported
+     * (1.155.0).
+     *
+     * @param choose given the choices, the one chosen; null when none was
+     * @return the placeholder claimed; null when nothing was asked, or nothing chosen
+     * @throws java.io.IOException when the ranges file cannot be read as UTF-8, or written
+     * @throws IllegalArgumentException when the name cannot be written into it
+     */
+    static String claimBeforeOpening(File editFile, String editor,
+            java.util.function.Function<String[], String> choose) throws java.io.IOException {
+        TermMinter minter = TermMinter.forOntologyFile(editFile, editor);
+        if (!minter.needsClaim()) {
+            return null;
+        }
+        java.util.List<String> placeholders = TermMinter.claimable(minter.getRanges());
+        String[] choices = new String[placeholders.size()];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
+        }
+        String chosen = choose.apply(choices);
+        int at = chosen == null ? -1 : java.util.Arrays.asList(choices).indexOf(chosen);
+        if (at < 0) {
+            return null;
+        }
+        minter.claim(placeholders.get(at));
+        return placeholders.get(at);
+    }
+
+    /** The question before the project opens, in words; what goes wrong is said, and it opens. */
+    private static void claimARangeFirst(Component parent, File editFile) {
+        final String editor = de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(editFile);
+        final File rangesFile = TermMinter.findRangesFile(editFile);
+        if (rangesFile == null) {
+            return;
+        }
+        try {
+            claimBeforeOpening(editFile, editor, choices ->
+                    de.fizkarlsruhe.ise.ontoboard.views.RangeChoice.ask(parent,
+                            TermMinter.onLines(openingQuestion(editor, rangesFile.getName()), 90),
+                            choices));
+        } catch (java.io.IOException | RuntimeException notClaimed) {
+            JOptionPane.showMessageDialog(parent, ProjectWizard.wrapped("Your name was not "
+                    + "written into " + rangesFile.getName() + ": " + notClaimed.getMessage()
+                    + "\n\nThe project opens, and Protege asks which range is yours."),
+                    "Range not claimed", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    /** What is asked before a project opens whose ID ranges name nobody. */
+    static String openingQuestion(String editor, String rangesFileName) {
+        return "This project's ID ranges are still the two placeholders ODK seeds a project with,"
+                + " allocated to nobody yet. Which range is yours?\n\n"
+                + "OntoBoard writes \"" + editor + "\" into the one you choose, in "
+                + rangesFileName + ", before the project opens, so that Protege finds your range "
+                + "and new terms are numbered from it. Commit " + rangesFileName + " so that "
+                + "nobody else claims the same range.\n\n"
+                + "Cancel writes nothing; the project opens, and Protege asks which range is yours.";
     }
 
     /**
@@ -61,6 +125,7 @@ public final class ProjectOpener {
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        claimARangeFirst(parent, project.getEditFile());
         try {
             // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
             // ontology into the OWLOntologyManager and stops there: Protege's OWLModelManager

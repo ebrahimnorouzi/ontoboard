@@ -1,9 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -52,5 +54,69 @@ class ProjectOpenerTest {
         assertTrue(said.contains(edit.getAbsolutePath()), said);
         assertTrue(said.contains("Nothing was read again"), said);
         assertTrue(said.contains("File > Reload"), said);
+    }
+
+    // ---------- a project whose ID ranges name nobody (1.155.0) ----------
+
+    /** ODK's seeded project: the edit file and the ranges file allocated to the placeholders. */
+    private static File seededProject(File root) throws Exception {
+        File ontology = new File(root, "src/ontology");
+        assertTrue(ontology.mkdirs());
+        java.util.Map<String, byte[]> seed = Goldens.seedTree("eggboil");
+        for (String name : new String[] {"eggboil-edit.owl", "eggboil-idranges.owl"}) {
+            Files.write(new File(ontology, name).toPath(), seed.get("src/ontology/" + name));
+        }
+        return new File(ontology, "eggboil-edit.owl");
+    }
+
+    private static String ranges(File editFile) throws Exception {
+        return new String(Files.readAllBytes(new File(editFile.getParentFile(),
+                "eggboil-idranges.owl").toPath()), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Protege reads the ranges as it opens the project and asked "No Id Range Found For Current
+     * User" - and again each time the edit file was read again, after every pattern imported.
+     * Asked here first, before the project opens: the board's question.
+     */
+    @Test
+    void aProjectWhoseRangesNameNobodyIsAskedAboutBeforeItOpens(@TempDir File root)
+            throws Exception {
+        File edit = seededProject(root);
+        java.util.List<String[]> asked = new java.util.ArrayList<String[]>();
+
+        String claimed = ProjectOpener.claimBeforeOpening(edit, "Ada Lovelace", choices -> {
+            asked.add(choices);
+            return choices[0];
+        });
+
+        assertEquals("ONTOLOGY-CREATOR", claimed);
+        assertEquals(1, asked.size());
+        assertEquals(2, asked.get(0).length);
+        assertTrue(asked.get(0)[0].startsWith("ONTOLOGY-CREATOR: 0 to 999999"), asked.get(0)[0]);
+        assertTrue(ranges(edit).contains("allocatedto: \"Ada Lovelace\""), ranges(edit));
+    }
+
+    @Test
+    void cancelledNothingIsWritten(@TempDir File root) throws Exception {
+        File edit = seededProject(root);
+        String before = ranges(edit);
+
+        assertNull(ProjectOpener.claimBeforeOpening(edit, "Ada Lovelace", choices -> null));
+        assertEquals(before, ranges(edit));
+    }
+
+    /** Once a range names somebody, the project allocates as it does: nothing is asked. */
+    @Test
+    void aProjectWhoseRangesNameSomebodyIsNotAsked(@TempDir File root) throws Exception {
+        File edit = seededProject(root);
+        ProjectOpener.claimBeforeOpening(edit, "Grace Hopper", choices -> choices[0]);
+
+        assertNull(ProjectOpener.claimBeforeOpening(edit, "Ada Lovelace", choices -> {
+            throw new AssertionError("asked");
+        }));
+        assertNull(ProjectOpener.claimBeforeOpening(edit, "Grace Hopper", choices -> {
+            throw new AssertionError("asked");
+        }));
     }
 }
