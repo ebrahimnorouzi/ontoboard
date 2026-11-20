@@ -926,7 +926,8 @@ public final class OdkRelease {
                 log.warn("Removed: " + named(removed));
             }
             if (request.refuseRemovedTerms) {
-                return log.failed(whyTermsAreMissed(diff.removals(), last.version));
+                return log.failed(whyTermsAreMissed(diff.removals(), last.version,
+                        ownTermPrefix(facts.ontology(), facts.id())));
             }
         }
 
@@ -1273,21 +1274,90 @@ public final class OdkRelease {
                 + (removed.getBefore().isEmpty() ? "" : " (" + removed.getBefore() + ")");
     }
 
-    private static String whyTermsAreMissed(List<ReleaseDiff.TermChange> removals,
-            String previous) {
+    /**
+     * Why a release with terms gone was refused, and what to do, by whose terms they are: one of
+     * the project's own is brought back and deprecated; one an import brought is named in that
+     * import's term list, where its source still has it - a project cannot deprecate another's
+     * terms. MWO's release after a Build was refused for 20 PMDco terms its module no longer
+     * brings, and told to deprecate them (Phase 7, 2026-11-20).
+     *
+     * @param ownPrefix the prefix of the project's own identifiers - its ID ranges' idprefix
+     *                  ({@link #ownTermPrefix}); null when not known, and then both ways are said
+     */
+    static String whyTermsAreMissed(List<ReleaseDiff.TermChange> removals, String previous,
+            String ownPrefix) {
         boolean one = removals.size() == 1;
         String it = one ? "it" : "them";
         // Short: the dialog that shows it keeps the build's log on screen below. Every term
         // that is gone is a line of that log.
-        return (one ? "1 term that the " + previous + " release published is gone from this "
-                + "one: " + named(removals.get(0)) + "."
+        String gone = one ? "1 term that the " + previous + " release published is gone from "
+                + "this one: " + named(removals.get(0))
                 : removals.size() + " terms that the " + previous + " release published are "
-                        + "gone from this one, " + named(removals.get(0)) + " among them.")
-                + " ODK built the release files and put them at the top of the project; "
-                + "nothing was copied to releases/, committed or tagged. "
-                + "Bring " + it + " back and mark " + it + " owl:deprecated with a replacement, "
-                + "so that what imported " + it + " still resolves; then release again. To "
-                + "drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
+                        + "gone from this one, " + named(removals.get(0)) + " among them";
+        String built = " ODK built the release files and put them at the top of the project; "
+                + "nothing was copied to releases/, committed or tagged. ";
+        String untick = "To drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
+        String list = "its import's term list (src/ontology/imports/<import>_terms.txt)";
+        String namespace = namespaceOf(ownPrefix);
+        int own = 0;
+        for (ReleaseDiff.TermChange removed : removals) {
+            if (namespace != null && removed.getIri().toString().startsWith(namespace)) {
+                own++;
+            }
+        }
+        int imported = removals.size() - own;
+        if (namespace == null) {
+            return gone + "." + built + "Bring a term of this project's own back and mark it "
+                    + "owl:deprecated with a replacement, so that what imported it still "
+                    + "resolves; name one that came with an import in " + list + ", where its "
+                    + "source still has it; then release again. " + untick;
+        }
+        if (imported == 0) {
+            return gone + "." + built + "Bring " + it + " back and mark " + it
+                    + " owl:deprecated with a replacement, so that what imported " + it
+                    + " still resolves; then release again. " + untick;
+        }
+        if (own == 0) {
+            return gone + (one ? " - not this project's own: it came with an import"
+                    : " - none of them this project's own: they came with its imports")
+                    + ", built again from " + (one ? "its source, which no longer brings it"
+                            : "their sources, which no longer bring them") + "." + built
+                    + "Name " + (one ? "it" : "each") + " in " + list + " to keep " + it
+                    + ", where the source still has " + it + "; then release again. " + untick;
+        }
+        return gone + ": " + own + " of them this project's own, " + imported + " from its "
+                + "imports." + built + "Bring this project's own back and mark them "
+                + "owl:deprecated with a replacement, so that what imported them still "
+                + "resolves; name an import's in " + list + ", where its source still has it; "
+                + "then release again. " + untick;
+    }
+
+    /** A prefix's namespace: up to its last slash or hash; null for none. */
+    private static String namespaceOf(String prefix) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            return null;
+        }
+        int end = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf('#'));
+        return end < 0 ? prefix : prefix.substring(0, end + 1);
+    }
+
+    /**
+     * The prefix of the project's own identifiers - the idprefix of {@code <id>-idranges.owl}
+     * beside the edit file - or null when there is none to read.
+     */
+    static String ownTermPrefix(File ontologyFolder, String id) {
+        File ranges = ontologyFolder == null || id == null ? null
+                : new File(ontologyFolder, id + "-idranges.owl");
+        if (ranges == null || !ranges.isFile()) {
+            return null;
+        }
+        try {
+            String prefix = IdRanges.parse(new String(Files.readAllBytes(ranges.toPath()),
+                    StandardCharsets.UTF_8)).getIdPrefix();
+            return prefix == null || prefix.trim().isEmpty() ? null : prefix.trim();
+        } catch (IOException | RuntimeException unreadable) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------ what the dialog proposes
