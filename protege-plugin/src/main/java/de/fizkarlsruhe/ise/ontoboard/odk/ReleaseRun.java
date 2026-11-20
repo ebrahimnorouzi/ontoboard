@@ -307,9 +307,18 @@ public final class ReleaseRun {
                         + "the next release gets the next number.";
             }
         }
-        return there == null ? null : "Version " + version + " has been released: " + there
-                + ". A version IRI cannot be taken back once somebody has imported it, so the "
-                + "next release gets the next number.";
+        if (there == null) {
+            return null;
+        }
+        // A dated version names its day: the next number is tomorrow's, or another scheme's
+        // (the hand check of 1.155.0 - the egg project had a release dated today).
+        OntologyVersion asked = OntologyVersion.parseOrNull(version);
+        return "Version " + version + " has been released: " + there + ". A version IRI cannot "
+                + "be taken back once somebody has imported it, " + (asked != null
+                        && asked.getScheme() == OntologyVersion.Scheme.DATE
+                        ? "and a dated version names its day: release tomorrow, or now under a "
+                                + "semantic version such as 1.0.0."
+                        : "so the next release gets the next number.");
     }
 
     /**

@@ -227,6 +227,26 @@ class ReleaseRunTest {
                 Files.readAllBytes(new File(root, "releases/1.0.0/eggboil.owl").toPath()));
     }
 
+    /**
+     * A dated version names its day: one released today is not "given the next number" - the
+     * refusal says to release tomorrow, or now under a semantic version. The egg project had a
+     * release dated today, and the form's refusal said "the next release gets the next number"
+     * (the hand check of 1.155.0).
+     */
+    @Test
+    void aDayThatHasItsReleaseIsToldHowToReleaseAgain(@TempDir File root) throws IOException {
+        write(root, "releases/2026-11-20/eggboil.owl", "released");
+
+        String why = ReleaseRun.whyNotThisVersion(root, "2026-11-20",
+                Collections.<String>emptyList());
+
+        assertTrue(why.contains("releases/2026-11-20 is there already"), why);
+        assertTrue(why.contains("names its day"), why);
+        assertTrue(why.contains("tomorrow"), why);
+        assertTrue(why.contains("semantic version"), why);
+        assertFalse(why.contains("next number"), why);
+    }
+
     @Test
     void aVersionThatHasATagIsNotReleasedAgain(@TempDir File root) {
         assertNull(ReleaseRun.whyNotThisVersion(root, "1.1.0", Arrays.asList("v1.0.0")));
