@@ -652,4 +652,78 @@ class ReleaseDiffTest {
 
         assertEquals(java.util.Collections.emptyList(), diff.getChanges());
     }
+
+    /**
+     * A property an import uses only in its own header - declared there, as RDF/XML declares
+     * every one it uses - is no term of the working copy, as it is none of the release: MWO's
+     * sources as they were at 3.0.2 came back "2 added" (dcterms:bibliographicCitation and
+     * dcterms:created, from its modules' headers) against 3.0.2 (Phase 7, 2026-11-20).
+     */
+    @Test
+    void aPropertyOfAnImportsHeaderIsNoTermOfTheWorkingCopy() throws Exception {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty created =
+                factory.getOWLAnnotationProperty(IRI.create("http://purl.org/dc/terms/created"));
+        OWLOntology module = manager.createOntology(IRI.create("http://example.org/module"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(module,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-20"))));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(created));
+        declare(module, "Imported");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(after,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/module"))));
+        declare(after, "Own");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(before,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-19"))));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(created));
+        declare(before, "Imported");
+        declare(before, "Own");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
+
+    /**
+     * A property a release only declares - ODK's merge keeps the declarations of the properties
+     * its imports used in their headers, and drops the headers - is no term, as it is none of the
+     * working copy whose module uses it in its header: nfdicore's sources as they were at 3.0.5
+     * read dc:description and dc:source as removed since 3.0.5 once a header's declarations were
+     * left out of the working copy (Phase 7, 2026-11-20).
+     */
+    @Test
+    void aPropertyAReleaseOnlyDeclaresIsNoTerm() throws Exception {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty source = factory
+                .getOWLAnnotationProperty(IRI.create("http://purl.org/dc/elements/1.1/source"));
+        OWLOntology module = manager.createOntology(IRI.create("http://example.org/module"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(module,
+                factory.getOWLAnnotation(source, factory.getOWLLiteral("an upstream"))));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(source));
+        declare(module, "Imported");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(after,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/module"))));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(source));
+        declare(before, "Imported");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
+
+    /**
+     * A property a release newly writes into its header is not a published term removed: the
+     * one before had it only declared, as ODK's merge keeps a property its imports' headers used.
+     * Counted on one side only, "Refuse to release when a published term is gone" would have
+     * refused it.
+     */
+    @Test
+    void aPropertyTheNextReleaseWritesIntoItsHeaderIsNotRemoved() {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty created =
+                factory.getOWLAnnotationProperty(IRI.create("http://purl.org/dc/terms/created"));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(created));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(after,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-20"))));
+        manager.addAxiom(after, factory.getOWLDeclarationAxiom(created));
+
+        assertTrue(ReleaseDiff.between(before, after).removals().isEmpty(),
+                ReleaseDiff.between(before, after).getChanges().toString());
+    }
 }

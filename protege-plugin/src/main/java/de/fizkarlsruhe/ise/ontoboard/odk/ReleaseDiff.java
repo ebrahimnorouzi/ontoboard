@@ -158,17 +158,28 @@ public final class ReleaseDiff {
             throw new IllegalArgumentException("two ontologies are needed to compare them");
         }
         List<TermChange> changes = new ArrayList<TermChange>();
+        // The properties of either version's own header are the header's in both: ODK writes
+        // dcterms:created and dcterms:bibliographicCitation into a release's header, where the
+        // working copy has them only as declarations its modules carry - MWO's sources as they
+        // were at 3.0.2 read both as added since 3.0.2 (Phase 7, 2026-11-20) - and a release that
+        // newly writes one there would have read it as a published term removed.
+        Set<OWLEntity> ofTheHeaders = new java.util.HashSet<OWLEntity>();
+        for (OWLOntology version : new OWLOntology[] {before, after}) {
+            for (org.semanticweb.owlapi.model.OWLAnnotation said : version.getAnnotations()) {
+                ofTheHeaders.add(said.getProperty());
+            }
+        }
         for (EntityType<?> type : TERM_TYPES) {
-            compare(before, after, type, changes);
+            compare(before, after, type, changes, ofTheHeaders);
         }
         return new ReleaseDiff(changes, before.getAxiomCount(), after.getAxiomCount());
     }
 
     /** The terms of one kind, compared; what changed is added to {@code changes}. */
     private static void compare(OWLOntology before, OWLOntology after, EntityType<?> type,
-            List<TermChange> changes) {
-        Set<IRI> beforeTerms = termIrisOf(before, type);
-        Set<IRI> afterTerms = termIrisOf(after, type);
+            List<TermChange> changes, Set<OWLEntity> ofTheHeaders) {
+        Set<IRI> beforeTerms = termIrisOf(before, type, ofTheHeaders);
+        Set<IRI> afterTerms = termIrisOf(after, type, ofTheHeaders);
 
         for (IRI iri : afterTerms) {
             if (!beforeTerms.contains(iri)) {
@@ -389,7 +400,8 @@ public final class ReleaseDiff {
      * rest of what OWL API counts as built in, and anything else from the OWL, RDF, RDFS and XSD
      * namespaces - the rule {@link ImportedTerms#termsOf} applies to what an import brings.
      */
-    private static Set<IRI> termIrisOf(OWLOntology ontology, EntityType<?> type) {
+    private static Set<IRI> termIrisOf(OWLOntology ontology, EntityType<?> type,
+            Set<OWLEntity> ofTheHeaders) {
         // By IRI: the OWL API hands its axioms out in no order that stays, and what is
         // listed from them - a release's notes - is to be the same every time.
         Set<IRI> iris = new java.util.TreeSet<IRI>();
@@ -400,16 +412,13 @@ public final class ReleaseDiff {
         // property: RDF/XML - what a release is written in - declares every one it uses, so
         // that a release read back from its file had the header's properties as terms again.
         // One the ontology says something about - a label, a definition - is its own term.
-        Set<OWLEntity> ofTheHeader = new java.util.HashSet<OWLEntity>();
-        for (org.semanticweb.owlapi.model.OWLAnnotation said : ontology.getAnnotations()) {
-            ofTheHeader.add(said.getProperty());
-        }
+        // The header's: of either version compared (between).
         Set<OWLEntity> signature = new LinkedHashSet<OWLEntity>();
         for (org.semanticweb.owlapi.model.OWLAxiom axiom : ontology.getAxioms()) {
             if (axiom instanceof org.semanticweb.owlapi.model.OWLDeclarationAxiom) {
                 OWLEntity declared = ((org.semanticweb.owlapi.model.OWLDeclarationAxiom) axiom)
                         .getEntity();
-                if (ofTheHeader.contains(declared)
+                if (ofTheHeaders.contains(declared)
                         && ontology.getAnnotationAssertionAxioms(declared.getIRI()).isEmpty()) {
                     continue;
                 }
