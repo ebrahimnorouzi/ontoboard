@@ -155,7 +155,7 @@ public class SheetCheckAction extends OntoBoardAction {
         // own command line, and ODK, read them one after another - so say in which order.
         SheetOrder order = SheetOrder.of(sheets, index);
         if (order.hasReferences()) {
-            result.note("Sheets name rows of other sheets by label. Spreadsheets > Template... "
+            result.note("Sheets name rows of other sheets by label. Knowledge graph > Build from sheets... "
                     + "builds them in any order. ROBOT's command line - and ODK, for a component "
                     + "that lists several templates - reads them one after another and finds a "
                     + "label only in a sheet it has already read, so give it them in this order: "

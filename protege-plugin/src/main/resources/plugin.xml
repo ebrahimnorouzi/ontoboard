@@ -328,9 +328,9 @@
   <!-- = Spreadsheets: a sheet per kind of thing, turned into terms or a knowledge graph.
        Named after what somebody has in hand, not after ROBOT's template command. = -->
 
-  <extension id="menu.OntoBoard.kg" name="Spreadsheets"
+  <extension id="menu.OntoBoard.kg" name="Knowledge graph"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Spreadsheets"/>
+    <name value="Knowledge graph"/>
     <path value="ontoboard.menu.OntoBoard/SlotB-D"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
@@ -338,8 +338,8 @@
   <!-- The way to the tab for anybody who has not noticed it in Window > Tabs. -->
   <extension id="menu.OntoBoard.kg.sheets"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Sheet editor"/>
-    <toolTip value="Open the spreadsheet editor, in a tab of its own - edit, clean, complete and mint identifiers"/>
+    <name value="Edit sheets"/>
+    <toolTip value="Edit the sheets that build the knowledge graph - a row for each term or individual - in a tab of their own: clean, complete, give rows identifiers"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetEditorAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
@@ -348,7 +348,7 @@
   <extension id="menu.OntoBoard.robot.sheetCheck"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Check sheets..."/>
-    <toolTip value="Check a folder of spreadsheets as data - duplicated things, names that mean two things, pasted whitespace"/>
+    <toolTip value="Check a folder of sheets before building from them - duplicated things, names that mean two things, pasted whitespace; nothing is changed"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetCheckAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
@@ -356,8 +356,8 @@
 
   <extension id="menu.OntoBoard.robot.template"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Template..."/>
-    <toolTip value="Turn a spreadsheet of terms into axioms - every problem reported at once"/>
+    <name value="Build from sheets..."/>
+    <toolTip value="Turn the rows of sheets into terms and individuals of the open ontology, as ROBOT's template does - every problem reported at once"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>

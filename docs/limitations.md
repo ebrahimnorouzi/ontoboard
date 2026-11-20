@@ -108,11 +108,11 @@ What OntoBoard does not do today, and the constraints of what it does.
 
 **Spreadsheets and the knowledge graph**
 
-- **No round trip.** *Spreadsheets → Template...* adds what a sheet produces and never removes or
+- **No round trip.** *Knowledge graph → Build from sheets...* adds what a sheet produces and never removes or
   updates it; rebuild into a fresh copy instead - [how](knowledge-graph.md#4-build-the-graph).
 - **The identifiers' prefix must be declared in the graph file**
   (*Active ontology → Ontology Prefixes*), exactly, final slash included.
-- ***Template...* types a value only when the cell says so**
+- ***Build from sheets...* types a value only when the cell says so**
   (`2026-11-01T18:00:00^^xsd:dateTime`).
 - **The sheet editor looks for templates in four places**; others are opened with *Open folder...*.
 

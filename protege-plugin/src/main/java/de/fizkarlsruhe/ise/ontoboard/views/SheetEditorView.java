@@ -719,7 +719,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
      *
      * <p>A knowledge graph is many sheets - the one this was built against is twenty-six - so
      * adding the second is not an unusual thing to want. The new sheet gets the same starter
-     * columns {@code Spreadsheets > Template...} writes, with identifiers taken from the project's
+     * columns {@code Knowledge graph > Build from sheets...} writes, with identifiers taken from the project's
      * own id ranges, because a new sheet full of examples that produce nothing is how the old
      * starter wasted people's time.
      */

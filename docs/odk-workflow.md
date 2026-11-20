@@ -149,11 +149,11 @@ Up to 1.135 the wizard wrote a project of OntoBoard's own (a short Makefile call
 | `src/sparql/` | ✅ | ODK's checks and your questions, run by *Check and test → SPARQL…* as `make test` runs them ([the two kinds of tests](#the-two-kinds-of-tests)) |
 | `src/scripts/` | ✅ | *Project → Run a project script…* runs one (below) |
 | `src/metadata/` | 🔶 | The OBO Foundry registry entry. *Check and test → Check project metadata* compares it with the ontology; nothing edits it, since for a project not in the Foundry the build never reads it - [and three of four measured projects are not](limitations.md#roadmap) |
-| `src/templates/` | ✅ | ROBOT templates, opened in the **OntoBoard Sheets** tab (below) and built by *Spreadsheets → Template…* |
+| `src/templates/` | ✅ | ROBOT templates, opened in the **OntoBoard Sheets** tab (below) and built by *Knowledge graph → Build from sheets…* |
 
 ### The sheet editor
 
-**Window → Tabs → OntoBoard Sheets**, or *Spreadsheets → Sheet editor*, shows a grid for each template of whatever you have open, from the first of these folders that holds a `.tsv` or `.csv`:
+**Window → Tabs → OntoBoard Sheets**, or *Knowledge graph → Edit sheets*, shows a grid for each template of whatever you have open, from the first of these folders that holds a `.tsv` or `.csv`:
 
 1. `templates/` beside the open file - for an ODK edit file, the project's `src/templates/`;
 2. the project's `src/templates/`;

@@ -63,7 +63,7 @@ public class TemplateAction extends OntoBoardAction {
 
     @Override
     protected String operationName() {
-        return "Template";
+        return "Build from sheets";
     }
 
     /**
@@ -379,7 +379,7 @@ public class TemplateAction extends OntoBoardAction {
                 + " a datatype its column already gives, and ROBOT keeps it as part of the text, "
                 + "so the value written is not a valid one: " + first.where() + " says \""
                 + first.getCell() + "\"; write \"" + first.getSuggestion() + "\". "
-                + "Spreadsheets > Check sheets... lists every one.");
+                + "Knowledge graph > Check sheets... lists every one.");
     }
 
     /**
@@ -403,7 +403,7 @@ public class TemplateAction extends OntoBoardAction {
         if (ambiguous > 0) {
             result.warn(ambiguous + (ambiguous == 1 ? " name means" : " names mean") + " more "
                     + "than one thing across these sheets, and a cell naming one gets whichever "
-                    + "ROBOT picks. Spreadsheets > Check sheets... lists them.");
+                    + "ROBOT picks. Knowledge graph > Check sheets... lists them.");
         }
     }
 

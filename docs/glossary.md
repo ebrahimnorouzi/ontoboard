@@ -129,7 +129,7 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 **ROBOT template**
 :   A spreadsheet whose second row says what each column is (`ID`, `TYPE`,
     `AL rdfs:label@en`); every row after it becomes a term or an individual.
-    *Spreadsheets → Template...*.
+    *Knowledge graph → Build from sheets...*.
 
 **Sheet editor**
-:   *Spreadsheets → Sheet editor*: a folder's templates, edited inside Protégé.
+:   *Knowledge graph → Edit sheets*: a folder's templates, edited inside Protégé.
