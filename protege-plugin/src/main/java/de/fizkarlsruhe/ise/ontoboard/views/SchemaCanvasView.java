@@ -7052,7 +7052,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         IRI iri;
         try {
-            iri = minter.mintFor(ontology, name);
+            iri = minter.mintFor(ontology, name, kind);
         } catch (IllegalArgumentException invalid) {
             JOptionPane.showMessageDialog(this, invalid.getMessage(),
                     "Cannot use that name", JOptionPane.WARNING_MESSAGE);
@@ -7411,7 +7411,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
             IRI propertyIri;
             try {
-                propertyIri = minter.mintFor(ontology, choice.getNewPropertyName());
+                propertyIri = minter.mintFor(ontology, choice.getNewPropertyName(),
+                        EntityFactory.Kind.OBJECT_PROPERTY);
             } catch (IllegalArgumentException invalid) {
                 JOptionPane.showMessageDialog(this, invalid.getMessage(),
                         "Cannot use that name", JOptionPane.WARNING_MESSAGE);

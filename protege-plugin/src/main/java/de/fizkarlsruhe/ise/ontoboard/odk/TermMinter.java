@@ -55,19 +55,38 @@ public final class TermMinter {
         /** Numeric identifiers from an allocated range, with the typed name as rdfs:label. */
         NUMERIC,
         /** An IRI built from the typed name, under the ontology's namespace. */
-        FROM_NAME
+        FROM_NAME,
+        /**
+         * An ODK project that chose readable names ({@code ontoboard_term_names: readable} in its
+         * configuration, 1.155.0): an IRI from the typed name under the project's own address -
+         * a class BoiledEgg, a property or an individual hasPart - with the name as its label.
+         */
+        READABLE
     }
+
+    /** The configuration key and value a project chooses readable names with. */
+    public static final String TERM_NAMES_KEY = "ontoboard_term_names";
+    public static final String READABLE_NAMES = "readable";
+    public static final String NUMBERED_NAMES = "numbered";
 
     private final Style style;
     private final IdRanges ranges;
     private final String editor;
     private final File rangesFile;
+    /** Where readable names go, ending in a slash; null unless {@link Style#READABLE}. */
+    private final String readableNamespace;
 
     private TermMinter(Style style, IdRanges ranges, String editor, File rangesFile) {
+        this(style, ranges, editor, rangesFile, null);
+    }
+
+    private TermMinter(Style style, IdRanges ranges, String editor, File rangesFile,
+            String readableNamespace) {
         this.style = style;
         this.ranges = ranges;
         this.editor = editor;
         this.rangesFile = rangesFile;
+        this.readableNamespace = readableNamespace;
     }
 
     /**
@@ -82,7 +101,23 @@ public final class TermMinter {
      * @param editor who is minting - matched against the ranges' allocations
      */
     public static TermMinter forOntologyFile(File ontologyFile, String editor) {
+        String readable = readableNamespaceOf(ontologyFile);
         File found = findRangesFile(ontologyFile);
+        if (readable != null) {
+            // The ranges are still read: Protege reads them as well, and the person's range is
+            // claimed so that it does not ask (rangesNameNobodyYet).
+            IdRanges kept = null;
+            if (found != null) {
+                try {
+                    kept = IdRanges.parse(new String(Files.readAllBytes(found.toPath()),
+                            StandardCharsets.UTF_8));
+                } catch (IOException | RuntimeException unusable) {
+                    kept = null;
+                }
+            }
+            return new TermMinter(Style.READABLE, kept, editor, kept == null ? null : found,
+                    readable);
+        }
         if (found == null) {
             return new TermMinter(Style.FROM_NAME, null, editor, null);
         }
@@ -199,7 +234,16 @@ public final class TermMinter {
      * way that project gives them - ID ranges... - and told so when minting is refused.
      */
     public boolean needsClaim() {
-        return isNumeric() && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
+        return isNumeric() && rangesNameNobodyYet();
+    }
+
+    /**
+     * Whether the project's ID ranges are still ODK's placeholders and none is this editor's -
+     * whatever the project's names: Protege reads the ranges and asks "No Id Range Found For
+     * Current User" in a project with readable names as well.
+     */
+    public boolean rangesNameNobodyYet() {
+        return ranges != null && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
     }
 
     /** The placeholders the question offers, in the file's order; none unless all are. */
@@ -278,7 +322,7 @@ public final class TermMinter {
      * @throws IOException when the file cannot be read as UTF-8, or written
      */
     public TermMinter claim(String placeholder) throws IOException {
-        if (!needsClaim()) {
+        if (!rangesNameNobodyYet()) {
             throw new IllegalStateException("'" + editor + "' has nothing to claim: "
                     + (isNumeric() ? "the ranges in " + rangesFile.getName() + " are not all "
                             + "ODK's placeholders, or one is theirs already"
@@ -291,7 +335,76 @@ public final class TermMinter {
                 .toString();
         String after = IdRanges.claim(before, placeholder, editor);
         Files.write(rangesFile.toPath(), after.getBytes(StandardCharsets.UTF_8));
-        return new TermMinter(Style.NUMERIC, IdRanges.parse(after), editor, rangesFile);
+        return new TermMinter(style, IdRanges.parse(after), editor, rangesFile,
+                readableNamespace);
+    }
+
+    /**
+     * Where readable names go when the project beside {@code ontologyFile} chose them - the
+     * {@code ontoboard_term_names: readable} of its {@code <id>-odk.yaml} - or null: its
+     * {@code uribase}, then its {@code uribase_suffix} or id, as ODK names the project's own
+     * address, and a slash.
+     */
+    public static String readableNamespaceOf(File ontologyFile) {
+        File folder = ontologyFile == null ? null : ontologyFile.getAbsoluteFile().getParentFile();
+        File[] files = folder == null ? null : folder.listFiles();
+        if (files == null) {
+            return null;
+        }
+        for (File file : files) {
+            String name = file.getName();
+            if (!file.isFile() || !name.endsWith("-odk.yaml")) {
+                continue;
+            }
+            try {
+                Map<String, String> values = new LinkedHashMap<String, String>();
+                for (OdkYaml.Entry entry : OdkYaml.entriesIn(new String(
+                        Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8))) {
+                    values.put(entry.getPath(), entry.getValue());
+                }
+                String chosen = values.get(TERM_NAMES_KEY);
+                if (chosen == null || !READABLE_NAMES.equalsIgnoreCase(chosen.trim())) {
+                    return null;
+                }
+                return projectAddress(values, name.substring(0, name.length()
+                        - "-odk.yaml".length())) + "/";
+            } catch (IOException | RuntimeException unreadable) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** ODK's address of the project: uribase, then uribase_suffix or the id. */
+    static String projectAddress(Map<String, String> values, String idFromFileName) {
+        String uribase = values.get("uribase");
+        String base = uribase == null || uribase.trim().isEmpty()
+                ? "http://purl.obolibrary.org/obo" : uribase.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String suffix = values.get("uribase_suffix");
+        String id = values.get("id");
+        String last = suffix != null && !suffix.trim().isEmpty() ? suffix.trim()
+                : id != null && !id.trim().isEmpty() ? id.trim() : idFromFileName;
+        return base + "/" + last;
+    }
+
+    /**
+     * What a typed name becomes in a readable IRI: its words joined as {@link #localNameFor}
+     * joins them, beginning in upper case for a class and in lower case for a property or an
+     * individual - "boiled egg" a class BoiledEgg, "has part" a property hasPart.
+     */
+    public static String readableName(String typed, EntityFactory.Kind kind) {
+        String name = localNameFor(typed);
+        int first = name.charAt(0) == '_' ? 1 : 0;
+        if (first < name.length() && Character.isLetter(name.charAt(first))) {
+            char letter = name.charAt(first);
+            char cased = kind == EntityFactory.Kind.CLASS ? Character.toUpperCase(letter)
+                    : Character.toLowerCase(letter);
+            name = name.substring(0, first) + cased + name.substring(first + 1);
+        }
+        return name;
     }
 
     /**
@@ -332,6 +445,12 @@ public final class TermMinter {
     }
 
     public String describe() {
+        if (style == Style.READABLE) {
+            return "New terms are named from what you type, in " + readableNamespace + " - "
+                    + "'boiled egg' becomes BoiledEgg, a property or an individual 'has part' "
+                    + "hasPart - with what you type as the label. This project chose readable "
+                    + "names (" + TERM_NAMES_KEY + " in its ODK configuration).";
+        }
         if (!isNumeric()) {
             return "New terms are named from what you type - 'tensile test' becomes TensileTest,"
                     + " labelled 'tensile test' - in the namespace this ontology's terms use.";
@@ -360,7 +479,30 @@ public final class TermMinter {
      *     which is deliberately not caught here - creating a term with a colliding identifier is
      *     worse than not creating one
      */
+    public IRI mintFor(OWLOntology ontology, String label, EntityFactory.Kind kind) {
+        if (style != Style.READABLE) {
+            return mintFor(ontology, label);
+        }
+        IRI iri = IRI.create(readableNamespace + readableName(label, kind));
+        if (!ontology.getEntitiesInSignature(iri,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED).isEmpty()) {
+            throw new IllegalArgumentException(iri + " is the name of a term this ontology has "
+                    + "already. Give the new " + (kind == EntityFactory.Kind.CLASS ? "class"
+                            : kind == EntityFactory.Kind.INDIVIDUAL ? "individual" : "property")
+                    + " another name.");
+        }
+        return iri;
+    }
+
+    /**
+     * The IRI for a new term whose label is {@code label}, by the numbered or the from-name
+     * style; a project with readable names mints with {@link #mintFor(OWLOntology, String,
+     * EntityFactory.Kind)}, which knows the kind.
+     */
     public IRI mintFor(OWLOntology ontology, String label) {
+        if (style == Style.READABLE) {
+            return mintFor(ontology, label, EntityFactory.Kind.CLASS);
+        }
         if (!isNumeric()) {
             return IRI.create(namespaceForNewTerms(ontology) + localNameFor(label));
         }
@@ -614,7 +756,8 @@ public final class TermMinter {
         // A name typed with spaces is the label: the IRI carries only "TensileTest".
         boolean renamed = label != null && !label.trim().isEmpty()
                 && !iri.toString().endsWith(label.trim());
-        if ((isNumeric() || renamed) && label != null && !label.trim().isEmpty()) {
+        if ((isNumeric() || style == Style.READABLE || renamed) && label != null
+                && !label.trim().isEmpty()) {
             OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
                     factory.getRDFSLabel(), iri, factory.getOWLLiteral(label.trim(), "en"))));

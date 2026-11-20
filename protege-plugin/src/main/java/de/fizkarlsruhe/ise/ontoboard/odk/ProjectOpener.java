@@ -39,7 +39,7 @@ public final class ProjectOpener {
     static String claimBeforeOpening(File editFile, String editor,
             java.util.function.Function<String[], String> choose) throws java.io.IOException {
         TermMinter minter = TermMinter.forOntologyFile(editFile, editor);
-        if (!minter.needsClaim()) {
+        if (!minter.rangesNameNobodyYet()) {
             return null;
         }
         java.util.List<String> placeholders = TermMinter.claimable(minter.getRanges());
