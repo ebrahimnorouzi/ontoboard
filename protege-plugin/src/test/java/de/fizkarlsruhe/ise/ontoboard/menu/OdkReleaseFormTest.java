@@ -595,6 +595,27 @@ class OdkReleaseFormTest {
                 + "PRIOR_VERSION=3.0.5"), result.getLog().toString());
     }
 
+    /**
+     * A release that does not happen leaves the project's script as it was: the form sets
+     * VERSION= and PRIOR_VERSION= before the reasoner is asked, and a release it stopped left
+     * release.sh naming a version nobody released (the final review of 1.155.0).
+     */
+    @Test
+    void aReleaseThatDoesNotHappenLeavesTheScriptAsItWas() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+        tags = Arrays.asList("v3.0.5");
+        buildFails = true;
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null);
+
+        assertEquals(OperationResult.Status.FAILED, result.getStatus());
+        assertEquals(SCRIPT, read(new File(ontology, "release.sh")));
+        assertTrue(result.getLog().toString().contains("release.sh is as it was"),
+                result.getLog().toString());
+    }
+
     @Test
     void aPreviousVersionThatIsNotOneIsRefused() throws IOException {
         write(new File(ontology, "release.sh"), SCRIPT);

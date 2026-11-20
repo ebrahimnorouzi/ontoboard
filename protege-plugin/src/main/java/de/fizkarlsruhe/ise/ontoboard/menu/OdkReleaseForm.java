@@ -764,6 +764,19 @@ final class OdkReleaseForm {
         for (String line : outcome.getTranscript()) {
             result.note(line);
         }
+        // Its lines were set before the reasoner was asked: a release that did not happen
+        // leaves the script as it was (the final review of 1.155.0).
+        if (start.script != null && !outcome.isOk()) {
+            try {
+                start.script.write(start.script.text());
+                result.note(start.script.file().getName() + " is as it was: the release did "
+                        + "not happen.");
+            } catch (IOException cannotWrite) {
+                result.warn(start.script.file().getName() + " could not be put back as it was: "
+                        + cannotWrite.getMessage() + " Its VERSION= names a version that was "
+                        + "not released.");
+            }
+        }
         for (File file : outcome.getWritten()) {
             result.wrote(file);
         }
