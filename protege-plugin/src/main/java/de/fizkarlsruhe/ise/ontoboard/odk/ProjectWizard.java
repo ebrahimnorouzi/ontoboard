@@ -167,6 +167,9 @@ public final class ProjectWizard {
                 config.adopting();
             }
             config.setGithubOrg(owner.getText());
+            // The first range is claimed for whoever makes the project, so that Protege finds
+            // it and does not ask after every pattern imported (1.155.0).
+            config.setCreatorAsProtegeKnowsThem();
             try {
                 config.validate();
                 OdkConfigWriter.forNewProject(config);

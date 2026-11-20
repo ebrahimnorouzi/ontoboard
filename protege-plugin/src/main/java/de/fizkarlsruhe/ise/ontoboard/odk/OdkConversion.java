@@ -99,6 +99,7 @@ public final class OdkConversion {
         String title;
         boolean modules = true;
         boolean git = true;
+        boolean claim;
         ProcessRunner.Runner runner = ProcessRunner.real();
         java.util.function.Function<File, OdkRelease.Odk> odk;
 
@@ -155,6 +156,15 @@ public final class OdkConversion {
 
         public Request git(boolean recordInGit) {
             this.git = recordInGit;
+            return this;
+        }
+
+        /**
+         * ODK's first range claimed for whoever runs Protege, by the name its ID ranges know them
+         * by, so that Protege does not ask (1.155.0); no range is claimed otherwise.
+         */
+        public Request claimingARange() {
+            this.claim = true;
             return this;
         }
     }
@@ -288,6 +298,9 @@ public final class OdkConversion {
                 ? request.title.trim() : titleOf(current.ontology, id);
         OdkProjectConfig config = new OdkProjectConfig(id, title, descriptionOf(current.ontology),
                 ontologyIri.toString(), licenceOf(current.ontology), request.parent).adopting();
+        if (request.claim) {
+            config.setCreatorAsProtegeKnowsThem();
+        }
         File root = config.getProjectRoot().getAbsoluteFile();
         if (root.exists()) {
             throw new IllegalArgumentException(root.getAbsolutePath() + " is there already. "

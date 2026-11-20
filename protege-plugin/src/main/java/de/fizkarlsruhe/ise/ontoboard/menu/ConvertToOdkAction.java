@@ -143,7 +143,7 @@ public class ConvertToOdkAction extends ProtegeOWLAction {
         OdkConversion.Request request = new OdkConversion.Request()
                 .current(source.getText().trim()).into(new File(folder.getText().trim()))
                 .id(id.getText()).title(title.getText()).modules(modules.isSelected())
-                .git(git.isSelected());
+                .git(git.isSelected()).claimingARange();
         for (int at = 0; at < earlier.size(); at++) {
             request.earlier(earlier.get(at));
         }
