@@ -14,6 +14,8 @@ import org.protege.editor.owl.model.event.OWLModelManagerChangeEvent;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
+import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +27,15 @@ import org.slf4j.LoggerFactory;
  * every view, Measure and the reasoner see them. The person is told once for each file; the log
  * says it each time (1.155.0: nfdicore's eight modules).
  *
+ * <p>An ontology renamed - Protégé reads a module built again under another name - keeps its
+ * imports: what the manager links to the old name is forgotten as the rename is made
+ * ({@link ImportLinks#forgetRenamed}).
+ *
  * <p>Nothing is read again and no ontology changes: nothing is left unsaved. It cannot throw -
  * Protégé is in the middle of opening an ontology.
  */
-public final class ImportLinksOnOpen implements OWLModelManagerListener {
+public final class ImportLinksOnOpen implements OWLModelManagerListener,
+        OWLOntologyChangeListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ImportLinksOnOpen.class);
 
@@ -51,8 +58,10 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener {
     static void watch(final OWLEditorKit kit) {
         try {
             OWLModelManager models = kit.getModelManager();
-            models.addListener(new ImportLinksOnOpen(models,
-                    text -> notice(kit, text), javax.swing.SwingUtilities::invokeLater));
+            ImportLinksOnOpen glue = new ImportLinksOnOpen(models,
+                    text -> notice(kit, text), javax.swing.SwingUtilities::invokeLater);
+            models.addListener(glue);
+            models.addOntologyChangeListener(glue);
         } catch (Throwable notWatched) {
             LOGGER.warn("OntoBoard does not watch for imports Protégé leaves out", notWatched);
         }
@@ -62,6 +71,27 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener {
     public void handleChange(OWLModelManagerChangeEvent event) {
         if (event.isType(EventType.ONTOLOGY_LOADED) || event.isType(EventType.ONTOLOGY_RELOADED)) {
             later.accept(this::linkNow);
+        }
+    }
+
+    /**
+     * Each rename, as it is made: before Protégé's reload makes its record of what is active
+     * again, the imports answered by the renamed ontology find it. Never throws - it runs
+     * inside the change.
+     */
+    @Override
+    public void ontologiesChanged(List<? extends OWLOntologyChange> changes) {
+        try {
+            int forgotten = ImportLinks.forgetRenamed(models.getOWLOntologyManager(), changes);
+            if (forgotten > 0) {
+                boolean one = forgotten == 1;
+                LOGGER.info("OntoBoard: {} renamed; the imports {} answered find {} by the new "
+                        + "name", one ? "an ontology was" : forgotten + " ontologies were",
+                        one ? "it" : "they", one ? "it" : "them");
+            }
+        } catch (Throwable notForgotten) {
+            LOGGER.warn("OntoBoard could not keep the imports of a renamed ontology",
+                    notForgotten);
         }
     }
 

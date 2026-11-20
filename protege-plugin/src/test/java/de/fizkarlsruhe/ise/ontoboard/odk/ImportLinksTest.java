@@ -10,6 +10,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -18,8 +19,10 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
+import org.semanticweb.owlapi.model.OWLOntologyID;
 import org.semanticweb.owlapi.model.OWLOntologyIRIMapper;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.SetOntologyID;
 import org.semanticweb.owlapi.model.parameters.OntologyCopy;
 
 /**
@@ -120,6 +123,98 @@ class ImportLinksTest {
     private static OWLImportsDeclaration declarationOf(OWLOntology ontology, String iri) {
         return ontology.getOWLOntologyManager().getOWLDataFactory()
                 .getOWLImportsDeclaration(IRI.create(iri));
+    }
+
+    /**
+     * What Protégé's reload does to an ontology whose file now calls itself by another name
+     * ({@code OntologyReloader}, read in 5.6.9): the open ontology is renamed in its manager.
+     */
+    private static List<OWLOntologyChange> readAgainAs(OWLOntology ontology, String iri) {
+        List<OWLOntologyChange> reload = Collections.<OWLOntologyChange>singletonList(
+                new SetOntologyID(ontology, new OWLOntologyID(
+                        com.google.common.base.Optional.of(IRI.create(iri)),
+                        com.google.common.base.Optional.<IRI>absent())));
+        ontology.getOWLOntologyManager().applyChanges(reload);
+        return reload;
+    }
+
+    /**
+     * A module OntoBoard linked, built again under the name it is imported by and read again by
+     * Protégé: the manager keeps the import's link under the module's old name, which no
+     * ontology has now, and the module dropped out - Check imports said "8 of 10 imports did not
+     * resolve" and the board lost nfdicore's imported terms until the project was opened again
+     * (Phase 7, probe host, 2026-11-20). The old name's links are forgotten, and the import finds
+     * the module by its name; nothing is read again and no ontology changes.
+     */
+    @Test
+    void aModuleReadAgainUnderTheNameItIsImportedByStaysIn(@TempDir File where)
+            throws Exception {
+        project(where, MODULE_A);
+        OWLOntology open = openedAsProtegeOpensIt();
+        OWLOntologyManager manager = open.getOWLOntologyManager();
+        ImportLinks.link(open, catalog);
+        OWLOntology module = manager.getOntology(IRI.create(BASE + "/imports/a_import.owl"));
+        List<OWLOntologyChange> reload = readAgainAs(module, BASE + "/proj/imports/a_import.owl");
+        OWLImportsDeclaration a = declarationOf(open, BASE + "/proj/imports/a_import.owl");
+        assertNull(manager.getImportedOntology(a), "the fixture is the reload's: the link is stale");
+        assertEquals(2, open.getImportsClosure().size());
+        int loaded = manager.getOntologies().size();
+        final List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        manager.addOntologyChangeListener(changes::addAll);
+
+        assertEquals(1, ImportLinks.forgetRenamed(manager, reload));
+
+        assertSame(module, manager.getImportedOntology(a));
+        assertEquals(3, open.getImportsClosure().size(), "the closure holds the module again");
+        assertEquals(loaded, manager.getOntologies().size(), "nothing was read again");
+        assertEquals(new ArrayList<OWLOntologyChange>(), changes, "no ontology changed");
+        assertTrue(ImportLinks.of(open, catalog).isEmpty(), "nothing is left to link");
+    }
+
+    /**
+     * Read again under a third name - ODK builds the modules with another base - the module is
+     * linked again: the old link no longer stands in the way of the new one.
+     */
+    @Test
+    void aModuleReadAgainUnderAThirdNameIsLinkedAgain(@TempDir File where) throws Exception {
+        project(where, MODULE_A);
+        OWLOntology open = openedAsProtegeOpensIt();
+        OWLOntologyManager manager = open.getOWLOntologyManager();
+        ImportLinks.link(open, catalog);
+        OWLOntology module = manager.getOntology(IRI.create(BASE + "/imports/a_import.owl"));
+        List<OWLOntologyChange> reload = readAgainAs(module, BASE + "/again/a_import.owl");
+
+        ImportLinks.forgetRenamed(manager, reload);
+        List<ImportLinks.Unlinked> linked = ImportLinks.link(open, catalog);
+
+        assertEquals(1, linked.size(), String.valueOf(linked));
+        assertSame(module, manager.getImportedOntology(declarationOf(open,
+                BASE + "/proj/imports/a_import.owl")));
+        assertEquals(3, open.getImportsClosure().size());
+    }
+
+    /**
+     * An ontology that took the old name in the same reload is that name's now: forgetting the
+     * old name's links never takes an ontology out of the manager.
+     */
+    @Test
+    void anOntologyThatTookTheOldNameKeepsIt(@TempDir File where) throws Exception {
+        project(where, MODULE_A);
+        OWLOntology open = openedAsProtegeOpensIt();
+        OWLOntologyManager manager = open.getOWLOntologyManager();
+        ImportLinks.link(open, catalog);
+        OWLOntology a = manager.getOntology(IRI.create(BASE + "/imports/a_import.owl"));
+        OWLOntology b = manager.getOntology(IRI.create(BASE + "/proj/imports/b_import.owl"));
+        int loaded = manager.getOntologies().size();
+        List<OWLOntologyChange> reload = new ArrayList<OWLOntologyChange>();
+        reload.addAll(readAgainAs(a, BASE + "/proj/imports/a_import.owl"));
+        reload.addAll(readAgainAs(b, BASE + "/imports/a_import.owl"));
+
+        assertEquals(1, ImportLinks.forgetRenamed(manager, reload), "b's old name only");
+
+        assertEquals(loaded, manager.getOntologies().size());
+        assertTrue(manager.getOntologies().contains(b));
+        assertSame(b, manager.getOntology(IRI.create(BASE + "/imports/a_import.owl")));
     }
 
     @Test

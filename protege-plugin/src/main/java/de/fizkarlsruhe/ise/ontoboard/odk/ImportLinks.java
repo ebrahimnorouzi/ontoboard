@@ -14,8 +14,11 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
+import org.semanticweb.owlapi.model.OWLOntologyID;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.SetOntologyID;
 import org.semanticweb.owlapi.util.SimpleIRIMapper;
 
 /**
@@ -35,6 +38,8 @@ import org.semanticweb.owlapi.util.SimpleIRIMapper;
  * each such import and finds the ontology it already has from that file. Nothing is read again
  * and no ontology changes, so nothing is left unsaved; the files keep their names, and Refresh
  * imports gives the modules ODK's names again.
+ *
+ * <p>{@link #forgetRenamed} keeps them in when a module is read again under another name.
  */
 public final class ImportLinks {
 
@@ -119,6 +124,55 @@ public final class ImportLinks {
     }
 
     /**
+     * Forgets what the manager still links to the old name of an ontology that was renamed.
+     *
+     * <p>Protégé reads a file again by renaming the open ontology to what the file calls it now
+     * ({@code OntologyReloader}: a {@link SetOntologyID}). OWL API's manager moves the ontology
+     * to its new name and keeps which import it answers - and that the import was asked for -
+     * under the old one, which no ontology has: the import finds nothing, and the module drops
+     * out of the closure. A Build that rebuilt nfdicore's modules under ODK's names left 8 of
+     * its 10 imports out until the project was opened again (Phase 7, 2026-11-20).
+     * {@code removeOntology} of a name no ontology has takes out no ontology - only those
+     * records (OWL API 4.5.9 and 4.5.29). The import then finds its module by its name, or
+     * {@link #link} links it again. Nothing is read again and no ontology changes.
+     *
+     * @param changes changes the manager applied; all but renames are passed over
+     * @return how many old names were forgotten - none that an ontology has now
+     */
+    public static int forgetRenamed(OWLOntologyManager manager,
+            List<? extends OWLOntologyChange> changes) {
+        Set<OWLOntologyID> forgotten = new LinkedHashSet<OWLOntologyID>();
+        OWLOntology renamed = null;
+        for (OWLOntologyChange change : changes) {
+            if (!(change instanceof SetOntologyID)) {
+                continue;
+            }
+            OWLOntologyID was = ((SetOntologyID) change).getOriginalOntologyID();
+            if (forgotten.contains(was) || isHeld(manager, was)) {
+                continue;
+            }
+            manager.removeOntology(was);
+            forgotten.add(was);
+            renamed = change.getOntology();
+        }
+        if (renamed != null && manager.contains(renamed)) {
+            // The closures a listener before this one asked for were made with the old links.
+            forgetClosures(manager, renamed);
+        }
+        return forgotten.size();
+    }
+
+    /** Whether an ontology of the manager has this name now. */
+    private static boolean isHeld(OWLOntologyManager manager, OWLOntologyID id) {
+        for (OWLOntology one : manager.getOntologies()) {
+            if (one.getOntologyID().equals(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Links each import {@link #of} finds - and what those import in turn - to the ontology
      * already read from its file, as ROBOT's loading links it.
      *
@@ -171,7 +225,7 @@ public final class ImportLinks {
     }
 
     /** The ontology the manager read from this file, or null. */
-    private static OWLOntology readFrom(OWLOntologyManager manager, File file) {
+    static OWLOntology readFrom(OWLOntologyManager manager, File file) {
         File wanted = canonical(file);
         for (OWLOntology one : manager.getOntologies()) {
             IRI document = manager.getOntologyDocumentIRI(one);

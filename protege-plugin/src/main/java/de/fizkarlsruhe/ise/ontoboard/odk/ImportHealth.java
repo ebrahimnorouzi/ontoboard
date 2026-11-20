@@ -33,11 +33,20 @@ public final class ImportHealth {
         private final IRI iri;
         private final boolean inCatalog;
         private final boolean fileExists;
+        private final boolean read;
+        private final IRI readAs;
 
-        Missing(IRI iri, boolean inCatalog, boolean fileExists) {
+        /**
+         * @param readFromFile the ontology the manager read from the file the catalog gives,
+         *                     or null
+         */
+        Missing(IRI iri, boolean inCatalog, boolean fileExists, OWLOntology readFromFile) {
             this.iri = iri;
             this.inCatalog = inCatalog;
             this.fileExists = fileExists;
+            this.read = readFromFile != null;
+            this.readAs = readFromFile == null ? null
+                    : readFromFile.getOntologyID().getOntologyIRI().orNull();
         }
 
         public IRI getIri() {
@@ -62,6 +71,17 @@ public final class ImportHealth {
          * committed, and a remote ontology that simply could not be fetched.
          */
         public String explain() {
+            if (inCatalog && fileExists && read) {
+                // The file is open in Protégé, and is not this import's answer: it calls itself
+                // by another name, or the manager lost the link when Protégé read the file again.
+                // Calling it truncated sent the person to a file that was fine (Phase 7,
+                // nfdicore, 2026-11-20).
+                String called = readAs == null ? ", an ontology with no name of its own,"
+                        : readAs.equals(iri) ? "" : " - it calls itself " + readAs + " -";
+                return iri + " is mapped by catalog-v001.xml to a file that Protégé has read"
+                        + called + " but has not taken as this import, so what the file holds "
+                        + "is left out. Opening the project again puts it in.";
+            }
             if (inCatalog && fileExists) {
                 // Both halves of the mapping are in place, so nothing was fetched and nothing was
                 // missing - the file itself did not parse. Sending this user to check their
@@ -134,7 +154,9 @@ public final class ImportHealth {
             boolean fileExists = mapped != null && catalog != null
                     && catalog.getParentFile() != null
                     && new File(catalog.getParentFile(), mapped).isFile();
-            missing.add(new Missing(iri, mapped != null, fileExists));
+            missing.add(new Missing(iri, mapped != null, fileExists, fileExists
+                    ? ImportLinks.readFrom(manager, new File(catalog.getParentFile(), mapped))
+                    : null));
         }
         return missing;
     }
