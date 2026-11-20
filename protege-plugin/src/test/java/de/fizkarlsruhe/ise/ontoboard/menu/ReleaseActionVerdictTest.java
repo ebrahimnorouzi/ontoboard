@@ -92,4 +92,18 @@ class ReleaseActionVerdictTest {
     void theReleaseOffersTheReleaseReasoners() {
         assertEquals(ReleaseReasoners.names(), ReleaseAction.releaseReasonerChoices());
     }
+
+    /**
+     * An ODK project's release asks too when the reasoner did not finish: its Asks answered no
+     * without asking, so a reasoner that ran past the limit refused every large project's release
+     * (the final review of 1.155.0).
+     */
+    @Test
+    void anOdkProjectsReleaseAsksWhenTheReasonerDidNotFinish() {
+        assertTrue(ReleaseAction.odkAsks(staging -> false, () -> false, verdict -> true)
+                .goOnWithoutVerdict(null), "the person said go on");
+        org.junit.jupiter.api.Assertions.assertFalse(ReleaseAction.odkAsks(staging -> false,
+                () -> false, verdict -> false)
+                .goOnWithoutVerdict(null), "the person said no");
+    }
 }

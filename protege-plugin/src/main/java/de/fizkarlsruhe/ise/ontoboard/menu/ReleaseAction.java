@@ -424,17 +424,9 @@ public class ReleaseAction extends OntoBoardAction {
                         start.facts().ontology())
                 : imageNote;
         return OdkReleaseForm.run(operationName(), start, odkChosen, odk,
-                ProcessRunner.real(), new OdkRelease.Asks() {
-                    @Override
-                    public boolean commit(ReleaseRun.Staging staging) {
-                        return askToCommit(staging, start.facts().root());
-                    }
-
-                    @Override
-                    public boolean stopped() {
-                        return BackgroundRun.abandoned();
-                    }
-                }, routeNote, protegeReadsAgain());
+                ProcessRunner.real(), odkAsks(staging -> askToCommit(staging,
+                        start.facts().root()), BackgroundRun::abandoned,
+                        this::goOnWithoutVerdict), routeNote, protegeReadsAgain());
     }
 
     /**
@@ -482,6 +474,13 @@ public class ReleaseAction extends OntoBoardAction {
         javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(text);
         scroll.setPreferredSize(new java.awt.Dimension(680, 300));
         return scroll;
+    }
+
+    /** The window in front - the progress dialog while a release runs - else the workspace. */
+    private java.awt.Component inFront() {
+        java.awt.Window front = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                .getActiveWindow();
+        return front != null ? front : getOWLWorkspace();
     }
 
     /**
@@ -860,12 +859,44 @@ public class ReleaseAction extends OntoBoardAction {
         return null;
     }
 
+    /**
+     * What an ODK project's release asks the person: whether to commit, whether they stopped it,
+     * and whether to go on when the reasoner did not finish - which it answered "no" without
+     * asking, so a reasoner that ran past the limit refused every large project's release (the
+     * final review of 1.155.0).
+     */
+    static de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Asks odkAsks(
+            final java.util.function.Predicate<ReleaseRun.Staging> commit,
+            final java.util.function.BooleanSupplier stopped,
+            final java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict>
+                    goOn) {
+        return new de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Asks() {
+            @Override
+            public boolean commit(ReleaseRun.Staging staging) {
+                return commit.test(staging);
+            }
+
+            @Override
+            public boolean stopped() {
+                return stopped.getAsBoolean();
+            }
+
+            @Override
+            public boolean goOnWithoutVerdict(
+                    de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
+                return goOn.test(verdict);
+            }
+        };
+    }
+
     /** Asked on the Swing thread when the reasoner did not finish in time. */
     private boolean goOnWithoutVerdict(
             final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
         final boolean[] yes = {false};
+        // Owned by the window in front - the progress dialog, which is modal - as the
+        // question to commit is, so that it cannot open behind it.
         Runnable ask = () -> yes[0] = javax.swing.JOptionPane.showConfirmDialog(
-                getOWLWorkspace(), wrapped(verdict.said() + " Release without the check? The "
+                inFront(), wrapped(verdict.said() + " Release without the check? The "
                         + "result will say it was not checked."), "The reasoner did not finish",
                 javax.swing.JOptionPane.YES_NO_OPTION,
                 javax.swing.JOptionPane.WARNING_MESSAGE) == javax.swing.JOptionPane.YES_OPTION;
