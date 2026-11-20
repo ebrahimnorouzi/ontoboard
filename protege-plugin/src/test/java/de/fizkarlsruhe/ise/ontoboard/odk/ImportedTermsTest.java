@@ -318,4 +318,47 @@ class ImportedTermsTest {
         assertTrue(recorded.containsKey(IRI.create("http://purl.org/dc/terms/source")),
                 "where it came from is recorded: " + recorded);
     }
+
+    /**
+     * An ontology imported whole that imports modules itself - nfdicore's
+     * components/imports-edit.owl, 4 axioms and 7 terms - brings its own terms, also once its
+     * signature with imports was asked for. OWL API 4.5.x then answers the signature without
+     * imports with the imports' terms as well (OntologyProjection.termIdentifiers): Imported
+     * terms said "196 terms, imported whole", and every term its modules bring along counted as
+     * chosen, so the board drew them on one opening and not after a reload (Phase 7, probe host,
+     * 2026-11-20).
+     */
+    @Test
+    void aWholeImportBringsItsOwnTermsAfterItsImportsWereAskedFor() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLOntology module = manager.createOntology(IRI.create("http://example.org/m.owl"));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create("http://example.org/m#Brought"))));
+        OWLOntology component = manager.createOntology(IRI.create("http://example.org/c.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(component,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/m.owl"))));
+        manager.addAxiom(component, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create("http://example.org/c#Own"))));
+        manager.addAxiom(component, factory.getOWLDeclarationAxiom(
+                factory.getOWLAnnotationProperty(IRI.create("http://example.org/c#note"))));
+        assertEquals(2, component.getImportsClosure().size(), "the module is imported");
+        java.util.Set<String> before = iris(ImportedTerms.termsOf(component));
+
+        component.getSignature(org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+
+        java.util.Set<String> after = iris(ImportedTerms.termsOf(component));
+        assertEquals(new HashSet<String>(Arrays.asList("http://example.org/c#Own",
+                "http://example.org/c#note")), after);
+        assertEquals(before, after);
+    }
+
+    private static java.util.Set<String> iris(
+            List<org.semanticweb.owlapi.model.OWLEntity> entities) {
+        java.util.Set<String> iris = new HashSet<String>();
+        for (org.semanticweb.owlapi.model.OWLEntity entity : entities) {
+            iris.add(entity.getIRI().toString());
+        }
+        return iris;
+    }
 }
