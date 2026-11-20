@@ -122,6 +122,19 @@ class ProjectOpenerTest {
         assertTrue(numbered.contains("new terms are numbered from it"), numbered);
     }
 
+    /** Nor is it told so once the project is open (seen in the hand check of 1.155.0). */
+    @Test
+    void anOpenedProjectWithReadableNamesIsToldHowItsTermsAreNamed(@TempDir File folder) {
+        File edit = new File(folder, "eggboil-edit.owl");
+        String readable = ProjectOpener.opened("Eggs", edit, true);
+        String numbered = ProjectOpener.opened("Eggs", edit, false);
+
+        assertTrue(readable.startsWith("Opened Eggs"), readable);
+        assertFalse(readable.contains("numbered"), readable);
+        assertTrue(readable.contains("named from what you type"), readable);
+        assertTrue(numbered.contains("is numbered from your ID range"), numbered);
+    }
+
     /** Once a range names somebody, the project allocates as it does: nothing is asked. */
     @Test
     void aProjectWhoseRangesNameSomebodyIsNotAsked(@TempDir File root) throws Exception {

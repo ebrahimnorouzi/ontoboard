@@ -97,6 +97,28 @@ class OdkExtrasTest {
         }
     }
 
+    /**
+     * The editing page says how the project names its terms: readable, from what is typed, where
+     * it chose so - not numbered - and that the first range is the one of the person who made the
+     * project, not one asked for at the first term (1.155.0: the wizard claims it).
+     */
+    @Test
+    void theEditingPageSaysHowTheProjectNamesItsTerms() {
+        OdkProjectConfig readable = project("Test kitchen ontology",
+                "https://example.org/eggboil/eggboil.owl");
+        readable.setReadableNames(true);
+        String named = OdkExtras.files(readable).get("docs/editing.md");
+        String numbered = pages("https://example.org/eggboil/eggboil.owl").get("docs/editing.md");
+
+        assertTrue(named.contains("named from what is typed"), named);
+        assertFalse(named.contains("New terms are numbered"), named);
+        assertTrue(numbered.contains("New terms are numbered"), numbered);
+        for (String page : new String[] {named, numbered}) {
+            assertFalse(page.contains("the first time\nyou add a term"), page);
+            assertTrue(page.contains("the person who made the project"), page);
+        }
+    }
+
     /** {@code site_name: Eggs: boiled} is a YAML error, and the site then does not build. */
     @Test
     void aTitleWithAColonOrAQuoteIsStillAConfigMkdocsReads() {

@@ -168,11 +168,8 @@ public final class ProjectOpener {
             // it - and Active ontology was the tab in front after opening.
             ProjectWizard.showTheBoard(parent);
             JOptionPane.showMessageDialog(parent,
-                    ProjectWizard.wrapped("Opened " + project.getTitle() + "\n\n"
-                            + project.getEditFile().getAbsolutePath()
-                            + "\n\nTo add a class of your own, right-click its superclass on the "
-                            + "board and choose New subclass..., or double-click empty board: it "
-                            + "is numbered from your ID range."),
+                    ProjectWizard.wrapped(opened(project.getTitle(), project.getEditFile(),
+                            TermMinter.readableNamespaceOf(project.getEditFile()) != null)),
                     "Project opened", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotLoad) {
             JOptionPane.showMessageDialog(parent,
@@ -191,6 +188,19 @@ public final class ProjectOpener {
     static org.semanticweb.owlapi.model.OWLOntology openFrom(
             org.semanticweb.owlapi.model.OWLOntologyManager manager, java.io.File editFile) {
         return ImportLinks.readFrom(manager, editFile);
+    }
+
+    /**
+     * What the person reads once the project is open: in a project that chose readable names,
+     * that a class made on the board is named from what is typed, not numbered (seen in the hand
+     * check of 1.155.0).
+     */
+    static String opened(String title, java.io.File editFile, boolean readable) {
+        return "Opened " + title + "\n\n" + editFile.getAbsolutePath()
+                + "\n\nTo add a class of your own, right-click its superclass on the "
+                + "board and choose New subclass..., or double-click empty board: it "
+                + (readable ? "is named from what you type, as this project chose."
+                        : "is numbered from your ID range.");
     }
 
     /** What the person reads when the project is open in this window already. */
