@@ -72,6 +72,8 @@ public final class OdkConfigWriter {
                 + (config.getGithubOrg().isEmpty() ? ""
                         : "github_org: " + plain(config.getGithubOrg()) + "\n")
                 + "repo: " + plain(id) + "\n"
+                + (config.isReadableNames() ? TermMinter.TERM_NAMES_KEY + ": "
+                        + TermMinter.READABLE_NAMES + "\n" : "")
                 + own
                 + "robot_report:\n"
                 + "  use_labels: TRUE\n"
@@ -157,17 +159,31 @@ public final class OdkConfigWriter {
      *         Makefile could carry as a word
      */
     static List<String> namespaces(OdkProjectConfig config) {
-        if (!config.isAdopted()) {
-            return Collections.emptyList();
-        }
-        String own = ProjectIri.stemOf(config.getBaseIri());
         String named = uriBase(config) + "/" + config.getOntologyId().toUpperCase(Locale.ROOT)
                 + "_";
-        if (own == null || !own.matches(WORD_OF_AN_ADDRESS)
-                || !named.matches(WORD_OF_AN_ADDRESS)) {
-            return Collections.emptyList();
+        java.util.List<String> found = new java.util.ArrayList<String>();
+        if (config.isAdopted()) {
+            String own = ProjectIri.stemOf(config.getBaseIri());
+            if (own != null && own.matches(WORD_OF_AN_ADDRESS)
+                    && named.matches(WORD_OF_AN_ADDRESS)) {
+                found.add(own);
+                found.add(named);
+            }
         }
-        return Collections.unmodifiableList(Arrays.asList(own, named));
+        // Readable names (1.155.0) go under the project's own address, which ODK's base release
+        // keeps only when its namespaces name it - with the numbered ones beside it.
+        if (config.isReadableNames()) {
+            String suffix = uriBaseSuffix(config);
+            String readable = uriBase(config) + "/" + (suffix == null ? config.getOntologyId()
+                    : suffix) + "/";
+            if (found.isEmpty() && named.matches(WORD_OF_AN_ADDRESS)) {
+                found.add(named);
+            }
+            if (!found.contains(readable) && readable.matches(WORD_OF_AN_ADDRESS)) {
+                found.add(readable);
+            }
+        }
+        return Collections.unmodifiableList(found);
     }
 
     /**

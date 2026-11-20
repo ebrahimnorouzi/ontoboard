@@ -357,22 +357,35 @@ public final class TermMinter {
                 continue;
             }
             try {
-                Map<String, String> values = new LinkedHashMap<String, String>();
-                for (OdkYaml.Entry entry : OdkYaml.entriesIn(new String(
-                        Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8))) {
-                    values.put(entry.getPath(), entry.getValue());
-                }
-                String chosen = values.get(TERM_NAMES_KEY);
-                if (chosen == null || !READABLE_NAMES.equalsIgnoreCase(chosen.trim())) {
-                    return null;
-                }
-                return projectAddress(values, name.substring(0, name.length()
-                        - "-odk.yaml".length())) + "/";
-            } catch (IOException | RuntimeException unreadable) {
+                return readableNamespaceOf(new String(Files.readAllBytes(file.toPath()),
+                        StandardCharsets.UTF_8), name);
+            } catch (IOException unreadable) {
                 return null;
             }
         }
         return null;
+    }
+
+    /**
+     * The same, of a configuration's text and its file name ({@code <id>-odk.yaml}); null when
+     * it does not choose readable names, or cannot be read.
+     */
+    public static String readableNamespaceOf(String configText, String fileName) {
+        try {
+            Map<String, String> values = new LinkedHashMap<String, String>();
+            for (OdkYaml.Entry entry : OdkYaml.entriesIn(configText)) {
+                values.put(entry.getPath(), entry.getValue());
+            }
+            String chosen = values.get(TERM_NAMES_KEY);
+            if (chosen == null || !READABLE_NAMES.equalsIgnoreCase(chosen.trim())) {
+                return null;
+            }
+            String name = fileName == null ? "" : fileName;
+            return projectAddress(values, name.endsWith("-odk.yaml")
+                    ? name.substring(0, name.length() - "-odk.yaml".length()) : name) + "/";
+        } catch (RuntimeException unreadable) {
+            return null;
+        }
     }
 
     /** ODK's address of the project: uribase, then uribase_suffix or the id. */

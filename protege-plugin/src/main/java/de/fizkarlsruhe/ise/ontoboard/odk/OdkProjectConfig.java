@@ -89,6 +89,18 @@ public final class OdkProjectConfig {
         creator = file -> name;
     }
 
+    /** Whether the project names its new terms readably, from what is typed (1.155.0). */
+    private boolean readableNames;
+
+    /** Readable names, {@code ontoboard_term_names: readable}; numbered from the ranges if not. */
+    public void setReadableNames(boolean readable) {
+        readableNames = readable;
+    }
+
+    public boolean isReadableNames() {
+        return readableNames;
+    }
+
     /**
      * The creator is whoever runs Protege, by the name its ID ranges know them by
      * ({@link ProtegeUserName#here}) - New ODK project... and the conversion.
