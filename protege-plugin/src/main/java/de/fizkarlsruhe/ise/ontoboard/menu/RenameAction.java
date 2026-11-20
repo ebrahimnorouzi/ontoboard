@@ -30,6 +30,13 @@ public class RenameAction extends OntoBoardAction {
     /** Enough to see the shape of the change; a namespace move is thousands of axioms. */
     private static final int MAX_LISTED = 300;
 
+    /**
+     * The project's numbered terms no release has carried, named from their labels (1.155.0),
+     * in a project that chose readable names; the mappings are worked out, not typed.
+     */
+    private static final String READABLE = "Readable names from labels";
+
+    private volatile boolean readableNames;
     private volatile TermRename.Mode mode = TermRename.Mode.PREFIX;
     private volatile Map<String, String> mappings;
     private volatile boolean apply;
@@ -53,6 +60,12 @@ public class RenameAction extends OntoBoardAction {
             modeHelp.append(available.getLabel()).append(" - ").append(available.getHelp())
                     .append("\n\n");
         }
+        labels.add(READABLE);
+        modeHelp.append(READABLE).append(" - in a project that names its new terms from what is "
+                + "typed (OntoBoard > Project > ID ranges...), its numbered terms that no release "
+                + "has carried get the name their label makes: 'boiled egg' a class BoiledEgg, "
+                + "'has part' a property hasPart. A released term keeps its IRI. The mappings "
+                + "are worked out, so the box below is not read.\n\n");
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Rename IRIs",
                 "Changes term IRIs in bulk. Nothing is modified unless you turn on 'Apply the "
@@ -66,7 +79,6 @@ public class RenameAction extends OntoBoardAction {
                                 .build(),
                         Parameter.of(OPTION_MAPPINGS, "Mappings, one per line",
                                 Parameter.Kind.MULTILINE)
-                                .required()
                                 .help("Write 'old -> new', or separate the two with a tab so a "
                                         + "column pair pastes straight out of a spreadsheet. "
                                         + "Blank lines and lines starting with # are ignored.\n\n"
@@ -92,6 +104,19 @@ public class RenameAction extends OntoBoardAction {
             }
         }
         apply = "true".equalsIgnoreCase(chosen.get(OPTION_APPLY));
+        readableNames = READABLE.equals(chosen.get(OPTION_MODE));
+        if (readableNames) {
+            mode = TermRename.Mode.FULL_IRI;
+            mappings = new java.util.LinkedHashMap<String, String>();
+            return true;
+        }
+        String typed = chosen.get(OPTION_MAPPINGS);
+        if (typed == null || typed.trim().isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), "Write at least one "
+                    + "mapping, 'old -> new'.", "Rename IRIs",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
         try {
             mappings = TermRename.parse(chosen.get(OPTION_MAPPINGS));
         } catch (de.fizkarlsruhe.ise.ontoboard.robot.RobotException badList) {
@@ -106,11 +131,21 @@ public class RenameAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
-        TermRename.Plan plan = TermRename.plan(ontology, mode, mappings);
-
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Change", "Axiom");
-        result.note("Match: " + mode.getLabel());
+        if (readableNames) {
+            String refused = readableMappings(ontology, result);
+            if (refused != null) {
+                return result.failed(refused).build();
+            }
+            if (mappings.isEmpty()) {
+                return result.summary("No numbered term to name: every one has been released, "
+                        + "or is left for the reason above.").build();
+            }
+        }
+        TermRename.Plan plan = TermRename.plan(ontology, mode, mappings);
+
+        result.note("Match: " + (readableNames ? READABLE : mode.getLabel()));
         result.note("Mappings: " + mappings.size());
 
         for (String unmatched : plan.getUnmatched()) {
@@ -156,5 +191,51 @@ public class RenameAction extends OntoBoardAction {
         }
         result.note("Edit > Undo reverses the whole rename in one step.");
         return result.summary("Renamed " + counts + ".").build();
+    }
+
+    /**
+     * The renames for Readable names from labels, into {@link #mappings}, with what is left and
+     * why said in the result; the reason nothing can be named, or null.
+     */
+    private String readableMappings(OWLOntology ontology, OperationResult.Builder result) {
+        java.io.File editFile = fileOf(ontology);
+        String namespace = de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.readableNamespaceOf(
+                editFile);
+        if (namespace == null) {
+            return "This project numbers its new terms. Choose readable names first - OntoBoard "
+                    + "> Project > ID ranges..., Name new terms from what is typed - which also "
+                    + "tells ODK's release where the readable terms are.";
+        }
+        java.io.File rangesFile = de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.findRangesFile(
+                editFile);
+        de.fizkarlsruhe.ise.ontoboard.odk.IdRanges ranges = null;
+        if (rangesFile != null) {
+            try {
+                ranges = de.fizkarlsruhe.ise.ontoboard.odk.IdRanges.parse(new String(
+                        java.nio.file.Files.readAllBytes(rangesFile.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8));
+            } catch (java.io.IOException | RuntimeException unreadable) {
+                ranges = null;
+            }
+        }
+        if (ranges == null || ranges.getIdPrefix().isEmpty()) {
+            return "This project has no ID ranges to read its numbering from, so there are no "
+                    + "numbered terms to name.";
+        }
+        de.fizkarlsruhe.ise.ontoboard.odk.ReadableNames.Plan names =
+                de.fizkarlsruhe.ise.ontoboard.odk.ReadableNames.plan(ontology,
+                        ranges.getIdPrefix(), namespace,
+                        de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.releasedIdentifiers(
+                                rangesFile, ranges));
+        mappings = new java.util.LinkedHashMap<String, String>(names.mappings());
+        for (java.util.Map.Entry<String, String> rename : mappings.entrySet()) {
+            result.note(rename.getKey() + " -> " + rename.getValue());
+        }
+        for (String left : names.left()) {
+            result.note("Left as it is: " + left);
+        }
+        result.note("Files outside the ontology that name these terms - sheets, term lists, "
+                + "notes - are not changed.");
+        return null;
     }
 }
