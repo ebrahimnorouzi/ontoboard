@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
+import de.fizkarlsruhe.ise.ontoboard.odk.TermNames;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -36,11 +37,17 @@ public class IdRangesAction extends OntoBoardAction {
 
     private static final String JUST_SHOW = "Just show me who has what";
     private static final String ALLOCATE = "Allocate a block to an editor";
+    /** The project's choice of names (1.155.0): its ODK configuration's ontoboard_term_names. */
+    private static final String NAME_READABLY =
+            "Name new terms from what is typed (readable IRIs)";
+    private static final String NAME_NUMBERED = "Number new terms from the ID ranges";
 
     /** ODK's own default. Big enough that nobody exhausts one, small enough to allocate freely. */
     private static final long DEFAULT_BLOCK = 1000;
 
     private volatile boolean allocating;
+    /** Readable names chosen, numbered chosen, or null when neither was. */
+    private volatile Boolean naming;
     private volatile String editor = "";
     private volatile long blockSize = DEFAULT_BLOCK;
 
@@ -61,13 +68,18 @@ public class IdRangesAction extends OntoBoardAction {
 
         List<Parameter> parameters = Arrays.asList(
                 Parameter.of(OPTION_WHAT, "Do what", Parameter.Kind.CHOICE)
-                        .choices(JUST_SHOW, ALLOCATE)
+                        .choices(JUST_SHOW, ALLOCATE, NAME_READABLY, NAME_NUMBERED)
                         .defaultValue(JUST_SHOW)
                         .required()
                         .help("Showing is read-only. Allocating writes one new range into "
                                 + rangesFile.getName() + " and changes nothing else - it is the "
                                 + "answer to 'why can I not create a term', which is nearly "
-                                + "always that the name you are editing under has no block.")
+                                + "always that the name you are editing under has no block.\n\n"
+                                + "The last two choose how new terms are named in this project, "
+                                + "for everybody: readable - 'boiled egg' a class BoiledEgg, 'has "
+                                + "part' a property hasPart, under the project's own address - or "
+                                + "numbered from each editor's range, as OBO ontologies are. The "
+                                + "choice is written into the project's ODK configuration.")
                         .build(),
                 Parameter.of(OPTION_EDITOR, "Editor", Parameter.Kind.TEXT)
                         .defaultValue(defaultEditorName())
@@ -89,14 +101,19 @@ public class IdRangesAction extends OntoBoardAction {
                                 + "somebody needs a second block.")
                         .build());
 
+        String readable = TermMinter.readableNamespaceOf(rangesFile);
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "ID ranges",
                 "Which editor may mint which identifiers in this project. Read from "
-                        + rangesFile.getName() + ".",
+                        + rangesFile.getName() + ". New terms here are "
+                        + (readable == null ? "numbered from the ranges"
+                                : "named from what is typed, in " + readable) + ".",
                 parameters);
         if (chosen == null) {
             return false;
         }
         allocating = ALLOCATE.equals(chosen.get(OPTION_WHAT));
+        naming = NAME_READABLY.equals(chosen.get(OPTION_WHAT)) ? Boolean.TRUE
+                : NAME_NUMBERED.equals(chosen.get(OPTION_WHAT)) ? Boolean.FALSE : null;
         editor = chosen.get(OPTION_EDITOR) == null ? "" : chosen.get(OPTION_EDITOR).trim();
         try {
             blockSize = Long.parseLong(chosen.get(OPTION_SIZE).trim());
@@ -109,6 +126,9 @@ public class IdRangesAction extends OntoBoardAction {
     @Override
     protected OperationResult run(OWLOntology ontology) {
         File ontologyFile = fileOf(ontology);
+        if (naming != null) {
+            return chooseNames(naming.booleanValue(), ontology, ontologyFile);
+        }
         File rangesFile = TermMinter.findRangesFile(ontologyFile);
         if (rangesFile == null) {
             return OperationResult.of(operationName())
@@ -140,6 +160,100 @@ public class IdRangesAction extends OntoBoardAction {
             return allocate(ranges, rangesFile);
         }
         return describe(ranges, rangesFile, ontologyFile);
+    }
+
+    /**
+     * Writes the project's choice of names into its ODK configuration and, where ODK's
+     * namespaces changed, brings the project's files in line as Update project files does - so
+     * that ODK's base release keeps the readable terms (1.155.0).
+     */
+    private OperationResult chooseNames(boolean readable, OWLOntology ontology, File editFile) {
+        OperationResult.Builder result = OperationResult.of(operationName());
+        File config = configBeside(editFile);
+        if (config == null) {
+            return result.failed("No ODK configuration (<id>-odk.yaml) beside "
+                    + (editFile == null ? "this ontology" : editFile.getName()) + ": how new "
+                    + "terms are named is an ODK project's choice. An ontology in no project "
+                    + "names them from what is typed already.").build();
+        }
+        String before;
+        String after;
+        try {
+            before = new String(Files.readAllBytes(config.toPath()), Charset.forName("UTF-8"));
+            after = TermNames.choose(before, readable, config.getName());
+        } catch (IOException cannotRead) {
+            return result.failed("Could not read " + config.getAbsolutePath() + ": "
+                    + cannotRead.getMessage()).build();
+        } catch (RuntimeException refused) {
+            return result.failed("Nothing was written: " + said(refused)).build();
+        }
+        String editor = de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(editFile);
+        if (after.equals(before)) {
+            return result.summary(readable ? "This project names its new terms from what is "
+                    + "typed already." : "This project numbers its new terms already.")
+                    .note(TermMinter.forOntologyFile(editFile, editor).describe()).build();
+        }
+        try {
+            Files.write(config.toPath(), after.getBytes(Charset.forName("UTF-8")));
+        } catch (IOException cannotWrite) {
+            return result.failed("Could not write " + config.getAbsolutePath() + ": "
+                    + cannotWrite.getMessage()).build();
+        }
+        result.wrote(config);
+        if (readable && !namespacesOf(before).equals(namespacesOf(after))) {
+            boolean unsaved = getOWLModelManager().getDirtyOntologies().contains(ontology);
+            ConfigSync.Done synced = ConfigSync.run(getOWLWorkspace(), getOWLModelManager(),
+                    editFile, unsaved ? de.fizkarlsruhe.ise.ontoboard.odk.OdkSync.later("The "
+                            + "ontology has changes that are not saved, and bringing the "
+                            + "project's files in line rewrites the edit file and reads it "
+                            + "again, so that was left for now")
+                            : ConfigSync.wayFor(editFile));
+            ConfigSync.tell(result, synced);
+        }
+        TermMinter now = TermMinter.forOntologyFile(editFile, editor);
+        result.note(now.describe());
+        if (readable) {
+            result.note("Protege's own Add subclass... still numbers a new term from your ID "
+                    + "range: Protege reads the ranges file of every project that has one, and "
+                    + "the switch that stops it is one for all of Protege. Make terms on the "
+                    + "board; Rename IRIs... - Readable names from labels gives the numbered "
+                    + "terms no release has carried their readable names.");
+        }
+        return result.summary(readable ? "New terms are named from what you type now, in "
+                + TermMinter.readableNamespaceOf(editFile) + "."
+                : "New terms are numbered from the ID ranges now. The readable terms made "
+                        + "meanwhile keep their names, and stay in ODK's namespaces.").build();
+    }
+
+    /** The project's {@code <id>-odk.yaml} beside its edit file, or null. */
+    private static File configBeside(File editFile) {
+        File folder = editFile == null ? null : editFile.getAbsoluteFile().getParentFile();
+        File[] files = folder == null ? null : folder.listFiles();
+        if (files == null) {
+            return null;
+        }
+        for (File file : files) {
+            if (file.isFile() && file.getName().endsWith("-odk.yaml")) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    /** The configuration's namespaces, in order; empty where it names none. */
+    private static List<String> namespacesOf(String configText) {
+        List<String> found = new java.util.ArrayList<String>();
+        try {
+            for (de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml.Entry entry
+                    : de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml.entriesIn(configText)) {
+                if (entry.getPath().startsWith("namespaces[")) {
+                    found.add(entry.getValue());
+                }
+            }
+        } catch (RuntimeException unreadable) {
+            // Read before it was written, so this does not happen; nothing to compare then.
+        }
+        return found;
     }
 
     /** The lost lines, quoted, for a refusal a user can act on. */
