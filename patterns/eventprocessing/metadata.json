@@ -63,6 +63,9 @@
     "label added: <http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> \"is part of\"@en - from its name",
     "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
     "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
-    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> \"is specialization of\"@en - from its name"
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> \"is specialization of\"@en - from its name",
+    "axiom added: EquivalentObjectProperties(<http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSensorReadingValue> <http://purl.oclc.org/NET/ssnx/ssn#hasValue>) - the source says hasSensorReadingValue owl:equivalentProperty ssn:hasValue and declares ssn:hasValue nowhere, so the OWL API read no axiom from it and the curated file lost the statement (the final review of 1.155.0); kept as the source says it, ssn:hasValue an object property as hasSensorReadingValue is",
+    "term declared: <http://purl.oclc.org/NET/ssnx/ssn#hasValue> as an object property",
+    "label added: <http://purl.oclc.org/NET/ssnx/ssn#hasValue> \"has value\"@en - from the library's pattern actuation-actuator-effect"
   ]
 }

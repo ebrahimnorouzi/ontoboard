@@ -24,7 +24,7 @@
         <cpannotationschema:coversRequirements rdf:datatype="http://www.w3.org/2001/XMLSchema#string">What is the timestamp of this event object?</cpannotationschema:coversRequirements>
         <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer.</cpannotationschema:hasIntent>
         <cpannotationschema:isSpecializationOf rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The pattern extends both the SSN ontology and the Event-F model, which in turn are based on DUL.</cpannotationschema:isSpecializationOf>
-        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x25; term declared x5;
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x26; term declared x6;
 - header: dcterms:title &quot;Eventprocessing Pattern&quot; - the library&apos;s name for the pattern
 - header: dcterms:description - the library&apos;s description of the pattern
 - file: pattern.owl declares &lt;http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription&gt; as a class, as pattern.ttl did
@@ -47,6 +47,7 @@
 - file: pattern.owl declares &lt;http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf&gt; as an object property, as pattern.ttl did
 - file: pattern.owl declares &lt;http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue&gt; as a data property, as pattern.ttl did
 - file: pattern.owl declares &lt;http://purl.org/dc/elements/1.1/creator&gt; as an annotation property, as pattern.ttl did
+- axiom added: EquivalentObjectProperties(&lt;http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSensorReadingValue&gt; &lt;http://purl.oclc.org/NET/ssnx/ssn#hasValue&gt;) - the source says hasSensorReadingValue owl:equivalentProperty ssn:hasValue and declares ssn:hasValue nowhere, so the OWL API read no axiom from it and the curated file lost the statement (the final review of 1.155.0); kept as the source says it, ssn:hasValue an object property as hasSensorReadingValue is
 Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
         <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created with TopBraid Composer</owl:versionInfo>
     </owl:Ontology>
@@ -120,6 +121,15 @@ Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.j
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
+    
+
+
+    <!-- http://purl.oclc.org/NET/ssnx/ssn#hasValue -->
+
+    <owl:ObjectProperty rdf:about="http://purl.oclc.org/NET/ssnx/ssn#hasValue">
+        <owl:equivalentProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSensorReadingValue"/>
+        <rdfs:label xml:lang="en">has value</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
