@@ -46,7 +46,8 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener,
 
     /**
      * @param tell  shows the person what was put in
-     * @param later runs the linking once Protégé has done with the event - on its event thread
+     * @param later runs the linking once Protégé has done with the event, and with those that
+     *              follow it at once - on its event thread
      */
     ImportLinksOnOpen(OWLModelManager models, Consumer<String> tell, Consumer<Runnable> later) {
         this.models = models;
@@ -54,12 +55,40 @@ public final class ImportLinksOnOpen implements OWLModelManagerListener,
         this.later = later;
     }
 
+    /**
+     * Runs the last work it was given once, a moment after it was last given one, on Swing's
+     * event thread. Protégé reads the files a run changed one by one, each its own event: linked
+     * after each, the notice named the first file and said "1 file" where nfdicore's release had
+     * renamed eight (Phase 7, 2026-11-20). Given on the event thread, as Protégé's events are.
+     */
+    static final class AfterTheBurst implements Consumer<Runnable> {
+        private final javax.swing.Timer timer;
+        private Runnable last;
+
+        AfterTheBurst(int millis) {
+            timer = new javax.swing.Timer(millis, event -> {
+                Runnable work = last;
+                last = null;
+                if (work != null) {
+                    work.run();
+                }
+            });
+            timer.setRepeats(false);
+        }
+
+        @Override
+        public void accept(Runnable work) {
+            last = work;
+            timer.restart();
+        }
+    }
+
     /** Watches the editor kit's ontologies from now on. Never throws. */
     static void watch(final OWLEditorKit kit) {
         try {
             OWLModelManager models = kit.getModelManager();
             ImportLinksOnOpen glue = new ImportLinksOnOpen(models,
-                    text -> notice(kit, text), javax.swing.SwingUtilities::invokeLater);
+                    text -> notice(kit, text), new AfterTheBurst(400));
             models.addListener(glue);
             models.addOntologyChangeListener(glue);
         } catch (Throwable notWatched) {
