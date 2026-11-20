@@ -49,6 +49,18 @@ public final class ProjectOpener {
                     "Not an ODK project", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        org.semanticweb.owlapi.model.OWLOntology already = openFrom(
+                editorKit.getModelManager().getOWLOntologyManager(), project.getEditFile());
+        if (already != null) {
+            if (!already.equals(editorKit.getModelManager().getActiveOntology())) {
+                editorKit.getModelManager().setActiveOntology(already);
+            }
+            ProjectWizard.showTheBoard(parent);
+            JOptionPane.showMessageDialog(parent, ProjectWizard.wrapped(alreadyOpen(
+                    project.getTitle(), project.getEditFile())), "Already open",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         try {
             // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
             // ontology into the OWLOntologyManager and stops there: Protege's OWLModelManager
@@ -95,6 +107,23 @@ public final class ProjectOpener {
                             + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
                     "Could not open", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * The ontology this window has open from the project's edit file, or null. Opened again,
+     * Protégé listed the eleven ontologies of nfdicore it had ("They have not been
+     * replaced/overwritten") and this then said "Project opened" for nothing opened (Phase 7,
+     * 2026-11-20).
+     */
+    static org.semanticweb.owlapi.model.OWLOntology openFrom(
+            org.semanticweb.owlapi.model.OWLOntologyManager manager, java.io.File editFile) {
+        return ImportLinks.readFrom(manager, editFile);
+    }
+
+    /** What the person reads when the project is open in this window already. */
+    static String alreadyOpen(String title, java.io.File editFile) {
+        return title + " is already open in this window, from\n" + editFile.getAbsolutePath()
+                + "\n\nNothing was read again. File > Reload reads it again from its file.";
     }
 
     /** The file the active ontology was loaded from, or null. */
