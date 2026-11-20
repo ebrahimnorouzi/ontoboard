@@ -175,9 +175,9 @@ public final class ReleaseVerdict {
                             Collections.<String>emptyList(), "", "The import "
                                     + declaration.getIRI() + " did not load when the ontology "
                                     + "was opened, so " + name + " could not be asked about the "
-                                    + "ontology with its imports. OntoBoard > Reuse > Check "
-                                    + "imports says why; open the ontology again once the "
-                                    + "import loads.");
+                                    + "ontology with its imports. "
+                                    + "OntoBoard > Reuse > Check imports says why; open the "
+                                    + "ontology again once the import loads.");
                 }
             }
         }
