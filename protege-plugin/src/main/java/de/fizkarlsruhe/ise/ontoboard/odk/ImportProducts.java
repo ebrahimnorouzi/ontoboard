@@ -878,10 +878,17 @@ public final class ImportProducts {
         if (kind.slme != null) {
             fields.put("module_type_slme", kind.slme);
         }
+        if (kind == Kind.CUSTOM) {
+            // Without it ODK's custom rule needs the mirror, and once the mirror is newer than
+            // the module it runs - and that rule only says it has to be overwritten, and stops:
+            // at the import itself, and at every refresh and release (the 1.155.0 review's I1).
+            fields.put("mirror_type", NO_MIRROR);
+        }
         (given == null ? OdkFields.none() : given).writeInto(fields, kind);
-        return new Declaration(fields, kind == Kind.CUSTOM ? "Declared as module_type: custom: "
-                + "the module is kept as it is extracted here, until a rule of the project's own "
-                + "in its <id>.Makefile builds it." : null);
+        return new Declaration(fields, kind == Kind.CUSTOM ? "Declared as module_type: custom, "
+                + "with mirror_type: no_mirror: the module is kept as it is extracted here - "
+                + "ODK's refresh leaves it alone - until a rule of the project's own in its "
+                + "<id>.Makefile builds it." : null);
     }
 
     /** The configuration with an import of this kind declared ({@link #withProduct}). */

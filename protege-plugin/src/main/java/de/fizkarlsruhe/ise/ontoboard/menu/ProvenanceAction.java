@@ -69,7 +69,7 @@ public class ProvenanceAction extends OntoBoardAction {
         // Whether this is an ODK project decides the FOLLOW_THE_ONTOLOGY default, so it has to
         // be asked properly rather than assumed.
         boolean odk = TermMinter.forOntologyFile(
-                ontologyFileOf(ontology), chosen.getAgent()).isNumeric();
+                ontologyFileOf(ontology), chosen.getAgent()).isOdkProject();
         OperationResult.Builder result = OperationResult.of(operationName())
                 .summary(chosen.describe(ontology, odk));
         result.note("Recorded as: " + (chosen.getAgent().isEmpty() ? "(nobody)"

@@ -33,6 +33,12 @@ public class ImportsAction extends OntoBoardAction {
 
     private static final long serialVersionUID = 1L;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Imports";

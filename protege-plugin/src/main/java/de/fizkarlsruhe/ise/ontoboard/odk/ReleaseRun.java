@@ -432,19 +432,44 @@ public final class ReleaseRun {
         private final List<String> leftOut;
         private final String head;
         private final List<String> committedFirst;
+        private final List<String> savedMeanwhile;
 
         Staging(List<List<String>> commands, List<String> leftOut, String head,
                 List<String> committedFirst) {
+            this(commands, leftOut, head, committedFirst, Collections.<String>emptyList());
+        }
+
+        private Staging(List<List<String>> commands, List<String> leftOut, String head,
+                List<String> committedFirst, List<String> savedMeanwhile) {
             this.commands = Collections.unmodifiableList(commands);
             this.leftOut = Collections.unmodifiableList(leftOut);
             this.head = head == null ? "" : head.trim();
             this.committedFirst = Collections.unmodifiableList(
                     new ArrayList<String>(committedFirst));
+            this.savedMeanwhile = Collections.unmodifiableList(
+                    new ArrayList<String>(savedMeanwhile));
         }
 
         /** The project's new files, committed before the release in a commit of their own. */
         public List<String> committedFirst() {
             return committedFirst;
+        }
+
+        /**
+         * The same, knowing what was saved in the project while the release ran - kept behind,
+         * Keep working - as the project names the files (the 1.155.0 review's I3).
+         */
+        public Staging withSavedMeanwhile(List<String> saved) {
+            return new Staging(commands, leftOut, head, committedFirst,
+                    saved == null ? Collections.<String>emptyList() : saved);
+        }
+
+        /**
+         * What was saved in the project while the release ran: the release may hold some of it
+         * or none, and {@code git add -u} takes it in as it is now. Empty when nothing was.
+         */
+        public List<String> savedMeanwhile() {
+            return savedMeanwhile;
         }
 
         /** The commands, in the order they are run, each from the project's root. */

@@ -47,6 +47,12 @@ public class UpdateProjectAction extends OntoBoardAction {
     /** Who makes the update, decided when the form is confirmed. */
     private volatile OdkUpdateForm.Way odkWay;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Update project files";

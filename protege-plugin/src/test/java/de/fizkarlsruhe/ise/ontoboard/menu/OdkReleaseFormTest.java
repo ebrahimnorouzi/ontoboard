@@ -762,6 +762,26 @@ class OdkReleaseFormTest {
         assertTrue(shown.contains("Nothing is pushed"), shown);
     }
 
+    /**
+     * What was saved while the release ran behind is named before the commit: the release may
+     * hold some of it or none, and git add -u would take it in as it is now (the 1.155.0
+     * review's I3).
+     */
+    @Test
+    void whatWasSavedWhileTheReleaseRanIsSaidBeforeTheCommit() throws IOException {
+        write(new File(root, "eggboil.owl"), owl(null));
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(new File(root, "eggboil.owl")),
+                Arrays.asList("## main...origin/main", " M src/ontology/eggboil-edit.owl"))
+                .withSavedMeanwhile(Collections.singletonList("src/ontology/eggboil-edit.owl"));
+
+        String shown = OdkReleaseForm.confirmation(staging, root);
+
+        assertTrue(shown.contains("Saved while the release ran: src/ontology/eggboil-edit.owl"),
+                shown);
+        assertTrue(shown.contains("Not now"), shown);
+    }
+
     /** A commit made with no branch checked out is reachable through its tag only. */
     @Test
     void aDetachedHeadIsSaidBeforeTheCommit() throws IOException {

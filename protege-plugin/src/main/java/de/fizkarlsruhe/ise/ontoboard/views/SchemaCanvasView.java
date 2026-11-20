@@ -7085,7 +7085,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 }
             }
         }
-        changes.addAll(provenanceFor(ontology, iri, minter.isNumeric()));
+        changes.addAll(provenanceFor(ontology, iri, minter.isOdkProject()));
         if (!changes.isEmpty()) {
             getOWLModelManager().applyChanges(changes);
         }
@@ -7425,7 +7425,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // rdfs:label, which is the only thing that makes MWO_0001000 readable afterwards.
             changes.addAll(minter.declare(ontology, propertyIri,
                     EntityFactory.Kind.OBJECT_PROPERTY, choice.getNewPropertyName()));
-            changes.addAll(provenanceFor(ontology, propertyIri, minter.isNumeric()));
+            changes.addAll(provenanceFor(ontology, propertyIri, minter.isOdkProject()));
             property = factory.getOWLObjectProperty(propertyIri);
         }
 

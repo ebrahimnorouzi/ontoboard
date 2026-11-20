@@ -537,6 +537,88 @@ class TermMinterTest {
         assertEquals(before + 2, TermMinter.tagFilesRead(), "and only the new one was read");
     }
 
+    // ---------- a release whose file git does not hold (ODK v1.6.1) ----------
+
+    /**
+     * A project released as ODK v1.6.1 releases: its .gitignore keeps the release files out of
+     * git, so the tag holds none, and the files are on GitHub. Tagged v{@code version}, with a
+     * GitHub remote.
+     */
+    private static File releasedTheOdkWay(File root, String version) throws Exception {
+        File rangesFile = TermMinter.findRangesFile(demoProject(root));
+        ReleaseHistoryTest.git(root, "init", "-q");
+        ReleaseHistoryTest.git(root, "remote", "add", "origin", "https://github.com/o/demo.git");
+        Files.write(new File(root, "README.md").toPath(), "demo\n".getBytes(StandardCharsets.UTF_8));
+        ReleaseHistoryTest.git(root, "add", "README.md");
+        ReleaseHistoryTest.git(root, "commit", "-q", "-m", "release(" + version + ")");
+        ReleaseHistoryTest.git(root, "tag", "-a", "v" + version, "-m", "demo " + version);
+        return rangesFile;
+    }
+
+    private static IdRanges rangesIn(File rangesFile) throws Exception {
+        return IdRanges.parse(new String(Files.readAllBytes(rangesFile.toPath()),
+                StandardCharsets.UTF_8));
+    }
+
+    private static void ontologyWith(File file, String... identifiers) throws Exception {
+        StringBuilder text = new StringBuilder("Prefix(:=<https://example.org/>)\n"
+                + "Ontology(<https://example.org/demo.owl>\n");
+        for (String identifier : identifiers) {
+            text.append("Declaration(Class(:").append(identifier).append("))\n");
+        }
+        assertTrue(file.getParentFile().isDirectory() || file.getParentFile().mkdirs());
+        Files.write(file.toPath(), text.append(")\n").toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * A release fetched from GitHub - History's Fetch the whole history - counts: its terms keep
+     * their IRIs, and their numbers are not given out again. It was listed and never read, so
+     * Readable names from labels renamed a released term (the 1.155.0 review's I2).
+     */
+    @Test
+    void aReleaseFetchedFromGitHubCounts(@TempDir Path dir) throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        File root = new File(dir.toFile(), "demo");
+        File cache = new File(dir.toFile(), "cache");
+        File rangesFile = releasedTheOdkWay(root, "1.0.0");
+        ontologyWith(new File(cache, "o/demo/v1.0.0/demo.owl"), "DEMO_0001000");
+
+        assertTrue(TermMinter.releasedIdentifiers(rangesFile, rangesIn(rangesFile), cache)
+                .contains("https://example.org/DEMO_0001000"));
+    }
+
+    /** The release files at the root - what the last release made here, out of git - count. */
+    @Test
+    void theReleaseFilesAtTheRootCount(@TempDir Path dir) throws Exception {
+        File root = dir.toFile();
+        File rangesFile = TermMinter.findRangesFile(demoProject(root));
+        ontologyWith(new File(root, "demo.owl"), "DEMO_0001001");
+        ontologyWith(new File(root, "demo-base.owl"), "DEMO_0001002");
+
+        java.util.Set<String> released = TermMinter.releasedIdentifiers(rangesFile,
+                rangesIn(rangesFile), new File(root, "no-cache"));
+
+        assertTrue(released.contains("https://example.org/DEMO_0001001"), String.valueOf(released));
+        assertTrue(released.contains("https://example.org/DEMO_0001002"), String.valueOf(released));
+    }
+
+    /**
+     * A release whose file is on GitHub only, and not fetched, is named: which terms it carried
+     * is not known here, so what would rename them is not done on a guess (I2).
+     */
+    @Test
+    void aReleaseWhoseFileIsNotHereIsNamed(@TempDir Path dir) throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        File root = new File(dir.toFile(), "demo");
+        File cache = new File(dir.toFile(), "cache");
+        File rangesFile = releasedTheOdkWay(root, "1.0.0");
+
+        assertEquals(Arrays.asList("v1.0.0"), TermMinter.releasesNotRead(rangesFile, cache));
+
+        ontologyWith(new File(cache, "o/demo/v1.0.0/demo.owl"), "DEMO_0001000");
+        assertTrue(TermMinter.releasesNotRead(rangesFile, cache).isEmpty());
+    }
+
     /**
      * Seen live (1.153.0): the first New subclass... in a new project showed a dialog 1417
      * pixels wide, wider than the screen. The sentence about ODK's placeholder ranges is

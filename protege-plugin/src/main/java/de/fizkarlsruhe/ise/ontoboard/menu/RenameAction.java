@@ -222,6 +222,23 @@ public class RenameAction extends OntoBoardAction {
             return "This project has no ID ranges to read its numbering from, so there are no "
                     + "numbered terms to name.";
         }
+        // A release whose file is on GitHub only may have carried any of these terms: renamed,
+        // its published IRIs would stop meaning anything (the 1.155.0 review's I2).
+        java.util.List<String> unread =
+                de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.releasesNotRead(rangesFile);
+        if (!unread.isEmpty()) {
+            String notHere = (unread.size() == 1 ? "The release " : "The releases ")
+                    + String.join(", ", unread) + (unread.size() == 1 ? " keeps its file"
+                            : " keep their files") + " on GitHub only, so which terms "
+                    + (unread.size() == 1 ? "it" : "they") + " carried is not known here. Fetch "
+                    + (unread.size() == 1 ? "it" : "them") + " first - "
+                    + "OntoBoard > Build and release > History..., "
+                    + "Fetch the whole history from GitHub... - and name the terms then.";
+            if (apply) {
+                return "Nothing was renamed. " + notHere;
+            }
+            result.warn(notHere);
+        }
         de.fizkarlsruhe.ise.ontoboard.odk.ReadableNames.Plan names =
                 de.fizkarlsruhe.ise.ontoboard.odk.ReadableNames.plan(ontology,
                         ranges.getIdPrefix(), namespace,

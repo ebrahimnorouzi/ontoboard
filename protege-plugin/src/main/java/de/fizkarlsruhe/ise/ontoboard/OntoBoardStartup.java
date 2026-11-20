@@ -71,6 +71,9 @@ public class OntoBoardStartup extends OWLEditorKitHook {
                 // A release file opened is said for what it is, once (1.155.0).
                 unwatch.add(ReleaseProductNotice.watch(
                         (org.protege.editor.owl.OWLEditorKit) getEditorKit()));
+                // What is saved, for a release kept behind to name before it commits (1.155.0).
+                unwatch.add(SavesRecorded.watch(
+                        (org.protege.editor.owl.OWLEditorKit) getEditorKit()));
             }
         } catch (Throwable neverLetThisStopProtege) {
             LOGGER.error("OntoBoard: imports left out by Protégé are not watched for",

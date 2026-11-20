@@ -59,6 +59,12 @@ public class WidocoAction extends OntoBoardAction {
     private volatile String language = Widoco.DEFAULT_LANGUAGE;
     private volatile boolean webVowl;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Documentation";

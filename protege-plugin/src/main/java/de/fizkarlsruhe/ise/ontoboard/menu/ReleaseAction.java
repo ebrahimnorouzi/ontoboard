@@ -84,14 +84,26 @@ public class ReleaseAction extends OntoBoardAction {
     private volatile ReleaseRoute odkRoute;
     private volatile File odkEditFile;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Release";
     }
 
+    /**
+     * Only an ODK project's release goes on behind: it is built from the files on disk. Any other
+     * reads the ontology open in Protege - the report, the reasoner, the copy released - on the
+     * run's own thread, and would read it while it is edited (the 1.155.0 review's open
+     * question). Until a release is set up, none does.
+     */
     @Override
     protected boolean canRunBehind() {
-        return true;
+        return odkStart != null;
     }
 
     /** A release file is not released as an ontology of its own: one is made from the edit file. */
@@ -481,6 +493,21 @@ public class ReleaseAction extends OntoBoardAction {
         return scroll;
     }
 
+    /**
+     * The answer the question to commit starts on: Not now when the run is behind - it comes up
+     * while the person works on, and a stray Enter committed and tagged - or when files were
+     * saved while it ran, which the release may hold some of or none (the 1.155.0 review's I3,
+     * I4).
+     */
+    static String commitDefault(boolean behind, boolean savedMeanwhile) {
+        return behind || savedMeanwhile ? "Not now" : "Commit and tag";
+    }
+
+    /** The answer "Release without the check?" starts on: No when the run is behind (I4). */
+    static String withoutTheCheckDefault(boolean behind) {
+        return behind ? "No" : "Yes";
+    }
+
     /** The window in front - the progress dialog while a release runs - else the workspace. */
     private java.awt.Component inFront() {
         java.awt.Window front = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager()
@@ -499,6 +526,9 @@ public class ReleaseAction extends OntoBoardAction {
         if (BackgroundRun.abandoned()) {
             return false;
         }
+        // Asked here, on the run's own thread, which knows whether it was kept behind.
+        final String startsOn = commitDefault(BackgroundRun.questionWaits(),
+                !staging.savedMeanwhile().isEmpty());
         final boolean[] agreed = new boolean[1];
         Runnable ask = new Runnable() {
             @Override
@@ -511,7 +541,7 @@ public class ReleaseAction extends OntoBoardAction {
                 agreed[0] = javax.swing.JOptionPane.showOptionDialog(
                         front != null ? front : getOWLWorkspace(), scroll,
                         "Record the release in git", javax.swing.JOptionPane.YES_NO_OPTION,
-                        javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0])
+                        javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, startsOn)
                         == javax.swing.JOptionPane.YES_OPTION;
             }
         };
@@ -898,13 +928,19 @@ public class ReleaseAction extends OntoBoardAction {
     private boolean goOnWithoutVerdict(
             final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
         final boolean[] yes = {false};
+        // On the run's own thread, which knows whether it was kept behind: then No is where the
+        // question starts (the 1.155.0 review's I4).
+        final String startsOn = withoutTheCheckDefault(BackgroundRun.questionWaits());
         // Owned by the window in front - the progress dialog, which is modal - as the
         // question to commit is, so that it cannot open behind it.
-        Runnable ask = () -> yes[0] = javax.swing.JOptionPane.showConfirmDialog(
-                inFront(), wrapped(verdict.said() + " Release without the check? The "
-                        + "result will say it was not checked."), "The reasoner did not finish",
-                javax.swing.JOptionPane.YES_NO_OPTION,
-                javax.swing.JOptionPane.WARNING_MESSAGE) == javax.swing.JOptionPane.YES_OPTION;
+        Runnable ask = () -> {
+            Object[] options = {"Yes", "No"};
+            yes[0] = javax.swing.JOptionPane.showOptionDialog(inFront(),
+                    wrapped(verdict.said() + " Release without the check? The result will say it "
+                            + "was not checked."), "The reasoner did not finish",
+                    javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE,
+                    null, options, startsOn) == javax.swing.JOptionPane.YES_OPTION;
+        };
         if (javax.swing.SwingUtilities.isEventDispatchThread()) {
             ask.run();
         } else {

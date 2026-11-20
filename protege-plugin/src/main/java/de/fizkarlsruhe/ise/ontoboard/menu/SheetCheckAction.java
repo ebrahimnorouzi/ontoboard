@@ -164,9 +164,9 @@ public class SheetCheckAction extends OntoBoardAction {
             for (List<String> cycle : order.getCycles()) {
                 result.warn(String.join(" and ", cycle) + " name each other's rows by label, so "
                         + "no order works for ROBOT's command line or ODK: each needs the other "
-                        + "first. Template... builds them together. For a ROBOT or ODK build, "
-                        + "name the rows by ID, without quotes, in one direction - such an ID needs no "
-                        + "order.");
+                        + "first. Build from sheets... builds them together. For a ROBOT or "
+                        + "ODK build, name the rows by ID, without quotes, in one direction - "
+                        + "such an ID needs no order.");
             }
         }
 

@@ -712,6 +712,8 @@ public final class OdkRelease {
      * @param asks may be null, which is a no
      */
     public static Outcome run(Request request, Odk odk, ProcessRunner.Runner git, Asks asks) {
+        // What is saved in the project from now on is said before the commit (1.155.0, I3).
+        long started = System.currentTimeMillis();
         Log log = new Log();
         Facts facts;
         try {
@@ -973,7 +975,7 @@ public final class OdkRelease {
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
         return recorded(facts, version, assets, git, asks, log, done,
-                request.commitsNewFilesFirst(), request.newFiles(), tagMessage);
+                request.commitsNewFilesFirst(), request.newFiles(), tagMessage, started);
     }
 
     /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
@@ -1520,10 +1522,12 @@ public final class OdkRelease {
      *
      * @param commitNewFirst whether the project's new files are committed first, in a commit
      *                       of their own, so that the tag holds them
+     * @param started        when the release began: what was saved in the project since is
+     *                       named in the question to commit
      */
     private static Outcome recorded(Facts facts, String version, List<File> assets,
             ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst,
-            List<String> newFiles, String tagMessage) {
+            List<String> newFiles, String tagMessage, long started) {
         String where = facts.root().getAbsolutePath();
         String tag = GitTags.tagFor(version);
         if (GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")) == null) {
@@ -1560,7 +1564,8 @@ public final class OdkRelease {
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
                 GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
-                version, assets, status, commitNewFirst, newFiles, tagMessage);
+                version, assets, status, commitNewFirst, newFiles, tagMessage)
+                .withSavedMeanwhile(SavedMeanwhile.under(facts.root(), started));
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "

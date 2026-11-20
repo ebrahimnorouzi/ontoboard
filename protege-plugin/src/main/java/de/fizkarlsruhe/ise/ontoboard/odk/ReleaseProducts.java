@@ -140,20 +140,28 @@ public final class ReleaseProducts {
             return null;
         }
         String name = file.getName();
+        return isProductName(name, project.id)
+                ? new Product(file, root, project.id, project.editFile, Where.TOP, null) : null;
+    }
+
+    /**
+     * Whether a file of this name at a project's top is one of ODK's release files of the
+     * ontology {@code id}: {@code <id>.owl} and its other formats, {@code <id>-base.owl}, ...
+     */
+    static boolean isProductName(String name, String id) {
         int dot = name.lastIndexOf('.');
         if (dot < 0) {
-            return null;
+            return false;
         }
         String stem = name.substring(0, dot);
         String format = name.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
-        boolean product = stem.equals(project.id) && FORMATS.contains(format);
+        boolean product = stem.equals(id) && FORMATS.contains(format);
         for (String variant : VARIANTS) {
-            if (stem.equals(project.id + "-" + variant)) {
+            if (stem.equals(id + "-" + variant)) {
                 product = true;
             }
         }
-        return product ? new Product(file, root, project.id, project.editFile, Where.TOP, null)
-                : null;
+        return product;
     }
 
     /** An ODK project's id and edit file, when {@code root} is the top of one. */

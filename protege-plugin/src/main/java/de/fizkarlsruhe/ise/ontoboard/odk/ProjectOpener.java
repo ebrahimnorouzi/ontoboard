@@ -66,7 +66,8 @@ public final class ProjectOpener {
         try {
             claimBeforeOpening(editFile, editor, choices ->
                     de.fizkarlsruhe.ise.ontoboard.views.RangeChoice.ask(parent,
-                            TermMinter.onLines(openingQuestion(editor, rangesFile.getName()), 90),
+                            TermMinter.onLines(openingQuestion(editor, rangesFile.getName(),
+                                    TermMinter.readableNamespaceOf(rangesFile) != null), 90),
                             choices));
         } catch (java.io.IOException | RuntimeException notClaimed) {
             JOptionPane.showMessageDialog(parent, ProjectWizard.wrapped("Your name was not "
@@ -76,14 +77,21 @@ public final class ProjectOpener {
         }
     }
 
-    /** What is asked before a project opens whose ID ranges name nobody. */
-    static String openingQuestion(String editor, String rangesFileName) {
+    /**
+     * What is asked before a project opens whose ID ranges name nobody: in a project that chose
+     * readable names, not that its new terms are numbered from the range - the board names them
+     * from what is typed, and the range is for Protege's own Add subclass... (the 1.155.0
+     * review's M11).
+     */
+    static String openingQuestion(String editor, String rangesFileName, boolean readable) {
         return "This project's ID ranges are still the two placeholders ODK seeds a project with,"
                 + " allocated to nobody yet. Which range is yours?\n\n"
                 + "OntoBoard writes \"" + editor + "\" into the one you choose, in "
                 + rangesFileName + ", before the project opens, so that Protege finds your range "
-                + "and new terms are numbered from it. Commit " + rangesFileName + " so that "
-                + "nobody else claims the same range.\n\n"
+                + (readable ? "- its own Add subclass... numbers new terms from it; the board "
+                        + "names them from what you type, as this project chose. "
+                        : "and new terms are numbered from it. ")
+                + "Commit " + rangesFileName + " so that nobody else claims the same range.\n\n"
                 + "Cancel writes nothing; the project opens, and Protege asks which range is yours.";
     }
 

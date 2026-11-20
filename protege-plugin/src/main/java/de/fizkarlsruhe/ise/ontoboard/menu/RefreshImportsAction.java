@@ -78,6 +78,12 @@ public class RefreshImportsAction extends OntoBoardAction {
     /** How much of a run's log is shown, as for Build. */
     private static final int MAX_LINES = 4000;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Refresh imports";

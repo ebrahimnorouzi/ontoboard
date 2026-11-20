@@ -149,6 +149,103 @@ class BackgroundRunTest {
         }
     }
 
+    /**
+     * A question a run kept behind asks is announced - the desktop says one waits - and the run
+     * asking it is told it is behind, so that it can make the safe answer the default: a person
+     * typing elsewhere, or away from Protege, would otherwise commit, tag or release unchecked
+     * with a stray Enter, or leave the run waiting unseen (the 1.155.0 review's I4). Asked by a
+     * run in front, it is not announced.
+     */
+    @Test
+    void aQuestionOfARunKeptBehindIsAnnounced() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final CountDownLatch go = new CountDownLatch(1);
+        final CountDownLatch finished = new CountDownLatch(1);
+        final java.util.List<Boolean> behind =
+                new java.util.concurrent.CopyOnWriteArrayList<Boolean>();
+        final java.util.List<String> told = new java.util.concurrent.CopyOnWriteArrayList<String>();
+        java.util.function.Consumer<String> desktop = BackgroundRun.whenAskingBehind;
+        java.util.function.Consumer<String> done = BackgroundRun.whenDoneBehind;
+        BackgroundRun.whenAskingBehind = told::add;
+        BackgroundRun.whenDoneBehind = sentence -> { };
+        try {
+            final Callable<OperationResult> work = () -> {
+                behind.add(BackgroundRun.questionWaits());
+                go.await(20, TimeUnit.SECONDS);
+                behind.add(BackgroundRun.questionWaits());
+                return OperationResult.of("Release").summary("Released.").build();
+            };
+            SwingUtilities.invokeAndWait(() -> BackgroundRun.execute(null, "Release", work,
+                    result -> finished.countDown(), true));
+            waitForTheWindow();
+            SwingUtilities.invokeAndWait(buttonShowing("Keep working")::doClick);
+            go.countDown();
+            assertTrue(finished.await(10, TimeUnit.SECONDS), "the result was not given");
+
+            assertEquals(java.util.Arrays.asList(false, true), behind);
+            assertEquals(1, told.size(), String.valueOf(told));
+            assertTrue(told.get(0).startsWith("Release has a question for you"), told.get(0));
+        } finally {
+            BackgroundRun.whenAskingBehind = desktop;
+            BackgroundRun.whenDoneBehind = done;
+            go.countDown();
+        }
+    }
+
+    /**
+     * A run kept behind can be stopped: the window that held Stop is gone, and Build and Release
+     * wait until the run ends - a run that hung held them until Protege was closed (the 1.155.0
+     * review's I5). Stopped, it is given as stopped, and is not running behind any more.
+     */
+    @Test
+    void aRunKeptBehindCanBeStopped() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Swing needs a display");
+        final CountDownLatch go = new CountDownLatch(1);
+        final CountDownLatch finished = new CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicReference<OperationResult> given =
+                new java.util.concurrent.atomic.AtomicReference<OperationResult>();
+        final java.util.concurrent.atomic.AtomicBoolean sawItStopped =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.function.Consumer<String> done = BackgroundRun.whenDoneBehind;
+        final java.util.List<String> told = new java.util.concurrent.CopyOnWriteArrayList<String>();
+        BackgroundRun.whenDoneBehind = told::add;
+        try {
+            final Callable<OperationResult> work = () -> {
+                go.await(20, TimeUnit.SECONDS);
+                sawItStopped.set(BackgroundRun.abandoned());
+                return OperationResult.of("Build").summary("Built.").build();
+            };
+            SwingUtilities.invokeAndWait(() -> BackgroundRun.execute(null, "Build", work,
+                    result -> {
+                        given.set(result);
+                        finished.countDown();
+                    }, true));
+            waitForTheWindow();
+            SwingUtilities.invokeAndWait(buttonShowing("Keep working")::doClick);
+            assertTrue(BackgroundRun.runningBehind().contains("Build"));
+
+            final boolean[] stopped = new boolean[1];
+            SwingUtilities.invokeAndWait(() -> stopped[0] = BackgroundRun.stopBehind("Build"));
+
+            assertTrue(stopped[0], "nothing was stopped");
+            assertTrue(finished.await(10, TimeUnit.SECONDS), "the stop was not given");
+            assertFalse(given.get().isSuccess(), given.get().getSummary());
+            assertTrue(given.get().getSummary().startsWith("Stopped after"),
+                    given.get().getSummary());
+            assertFalse(BackgroundRun.runningBehind().contains("Build"));
+            go.countDown();
+            for (int tries = 0; tries < 100 && !sawItStopped.get(); tries++) {
+                Thread.sleep(20);
+            }
+            assertTrue(sawItStopped.get(), "the work was not told it was stopped");
+            assertTrue(told.isEmpty(), "a stopped run is not announced as done: " + told);
+            assertFalse(BackgroundRun.stopBehind("Build"), "stopped twice");
+        } finally {
+            BackgroundRun.whenDoneBehind = done;
+            go.countDown();
+        }
+    }
+
     /** Only a run that may go on behind offers it; the others keep their window. */
     @Test
     void aRunThatCannotGoBehindOffersNoWayToKeepWorking() throws Exception {

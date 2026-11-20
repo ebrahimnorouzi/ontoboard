@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,6 +105,21 @@ class ProjectOpenerTest {
 
         assertNull(ProjectOpener.claimBeforeOpening(edit, "Ada Lovelace", choices -> null));
         assertEquals(before, ranges(edit));
+    }
+
+    /**
+     * A project that chose readable names is not told its new terms are numbered from the range
+     * claimed: the board names them from what is typed, and the range is Protege's, for its own
+     * Add subclass... (the 1.155.0 review's M11).
+     */
+    @Test
+    void aProjectWithReadableNamesIsNotToldItsTermsAreNumbered() {
+        String readable = ProjectOpener.openingQuestion("Ada", "eggboil-idranges.owl", true);
+        String numbered = ProjectOpener.openingQuestion("Ada", "eggboil-idranges.owl", false);
+
+        assertFalse(readable.contains("numbered from it"), readable);
+        assertTrue(readable.contains("from what you type"), readable);
+        assertTrue(numbered.contains("new terms are numbered from it"), numbered);
     }
 
     /** Once a range names somebody, the project allocates as it does: nothing is asked. */

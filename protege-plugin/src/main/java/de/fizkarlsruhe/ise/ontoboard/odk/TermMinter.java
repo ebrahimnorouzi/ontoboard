@@ -213,6 +213,16 @@ public final class TermMinter {
         return style == Style.NUMERIC;
     }
 
+    /**
+     * Whether the terms are minted for an ODK project - numbered from its ranges, or named
+     * readably as the project chose - and not for a file of its own. Asked by Record who edits
+     * terms, which follows an ODK project; isNumeric() answered it, and the new terms of a project
+     * with readable names were never stamped (the 1.155.0 review's M8).
+     */
+    public boolean isOdkProject() {
+        return style == Style.NUMERIC || style == Style.READABLE;
+    }
+
     /** The ranges in force, or null when naming from the typed name. */
     public IdRanges getRanges() {
         return ranges;
@@ -550,10 +560,19 @@ public final class TermMinter {
      * unnoticed - and which tags there are and which hold the file is asked of git again only
      * when the repository's tags have changed ({@link ReleaseTags}).
      *
+     * <p>ODK v1.6.1's .gitignore keeps the release files out of git, so its tags hold none (the
+     * 1.155.0 review's I2): the release files at the project's root - what the last release made
+     * here - are read too, and every release History fetched from GitHub.
+     *
      * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
      *     the project root that file's directory belongs to
      */
     public static Set<String> releasedIdentifiers(File rangesFile, IdRanges ranges) {
+        return releasedIdentifiers(rangesFile, ranges, GitHubReleases.cacheFolder());
+    }
+
+    /** {@link #releasedIdentifiers(File, IdRanges)}, the GitHub releases fetched into {@code cache}. */
+    static Set<String> releasedIdentifiers(File rangesFile, IdRanges ranges, File cache) {
         Set<String> released = new HashSet<String>();
         File directory = rangesFile == null ? null : rangesFile.getAbsoluteFile().getParentFile();
         if (directory == null || ranges == null || ranges.getIdPrefix().isEmpty()) {
@@ -584,9 +603,20 @@ public final class TermMinter {
         }
         String id = idOf(rangesFile);
         if (id != null) {
-            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id)) {
-                // A folder that holds the file was read above.
-                if (release.tag() != null && release.file() == null) {
+            for (File file : releaseFilesAtTheRoot(root, directory, id)) {
+                for (String digits : numbersIn(file, identifier)) {
+                    released.add(prefix + digits);
+                }
+            }
+            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id,
+                    de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real(), cache)) {
+                File file = release.file();
+                if (file != null && release.folder() == null) {
+                    // Fetched from GitHub; a folder that holds the file was read above.
+                    for (String digits : numbersIn(file, identifier)) {
+                        released.add(prefix + digits);
+                    }
+                } else if (file == null && release.tag() != null) {
                     for (String digits : numbersIn(release, identifier)) {
                         released.add(prefix + digits);
                     }
@@ -594,6 +624,63 @@ public final class TermMinter {
             }
         }
         return released;
+    }
+
+    /**
+     * ODK's release files in OWL at the project's root - {@code <id>.owl}, {@code <id>-base.owl}
+     * and the rest - which prepare_release copies there and v1.6.1's .gitignore keeps out of
+     * git. None where the edit file is at the root itself: there {@code <id>.owl} may be the
+     * edit file.
+     */
+    private static List<File> releaseFilesAtTheRoot(File root, File editDirectory, String id) {
+        List<File> found = new ArrayList<File>();
+        if (root.getAbsoluteFile().equals(editDirectory.getAbsoluteFile())) {
+            return found;
+        }
+        File[] files = root.listFiles();
+        for (File file : files == null ? new File[0] : files) {
+            if (file.isFile() && file.getName().toLowerCase(Locale.ROOT).endsWith(".owl")
+                    && ReleaseProducts.isProductName(file.getName(), id)) {
+                found.add(file);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The release tags whose ontology is not on this machine: the tag holds no file - ODK v1.6.1
+     * keeps them on GitHub - and History has not fetched it, nor is there a copy under
+     * {@code releases/}. Which terms such a release carried is not known here, so Readable names
+     * from labels does not rename on a guess (the 1.155.0 review's I2). Empty without git.
+     */
+    public static List<String> releasesNotRead(File rangesFile) {
+        return releasesNotRead(rangesFile, GitHubReleases.cacheFolder());
+    }
+
+    /** {@link #releasesNotRead(File)}, the GitHub releases fetched into {@code cache}. */
+    static List<String> releasesNotRead(File rangesFile, File cache) {
+        List<String> unread = new ArrayList<String>();
+        File directory = rangesFile == null ? null : rangesFile.getAbsoluteFile().getParentFile();
+        String id = rangesFile == null ? null : idOf(rangesFile);
+        if (directory == null || id == null) {
+            return unread;
+        }
+        File root = projectRootAbove(directory);
+        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner git =
+                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
+        Set<String> read = new HashSet<String>();
+        for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id, git, cache)) {
+            if (release.file() != null || release.tag() != null) {
+                read.add(release.version());
+            }
+        }
+        for (String tag : GitTags.releases(root, git)) {
+            String version = GitTags.versionOf(tag);
+            if (version != null && !read.contains(version)) {
+                unread.add(tag);
+            }
+        }
+        return unread;
     }
 
     /** The ontology's id, from its {@code <id>-idranges.owl}; null when the name has none. */

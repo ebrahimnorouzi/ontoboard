@@ -45,6 +45,12 @@ public class PullRequestAction extends OntoBoardAction {
     private volatile String base = "";
     private volatile boolean draft;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Pull request";

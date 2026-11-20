@@ -116,6 +116,12 @@ public class ImportTermsAction extends OntoBoardAction {
     private volatile Outcome outcome = Outcome.SAVE_AND_IMPORT;
     private volatile String moduleFileText = "";
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Import terms";
@@ -603,20 +609,22 @@ public class ImportTermsAction extends OntoBoardAction {
                                 + "minimal: only those the terms' axioms name; definitions: "
                                 + "only those in the terms' definitions; exclude: none.")
                         .build(),
-                Parameter.of(OPTION_SOURCE_IMPORTS, "The source's own imports (BOT, TOP, STAR)",
+                Parameter.of(OPTION_SOURCE_IMPORTS,
+                        "The source's own imports (BOT, TOP, STAR, subset)",
                         Parameter.Kind.CHOICE)
                         .choices("include", "exclude")
                         .defaultValue(values.get(OPTION_SOURCE_IMPORTS))
                         .help("ROBOT's --imports: whether what the source imports is searched "
                                 + "too, or the source alone.")
                         .build(),
-                Parameter.of(OPTION_INTERMEDIATES, "Terms between (MIREOT)",
+                Parameter.of(OPTION_INTERMEDIATES, "Terms between (BOT, TOP, STAR, MIREOT)",
                         Parameter.Kind.CHOICE)
                         .choices("all", "minimal", "none")
                         .defaultValue(values.get(OPTION_INTERMEDIATES))
                         .help("ROBOT's --intermediates: the parents between a term and the top "
                                 + "- all of them, those that keep the hierarchy's branching, or "
-                                + "none.")
+                                + "none. ROBOT takes it for BOT, TOP and STAR as well as "
+                                + "MIREOT; a subset has none.")
                         .build(),
                 Parameter.of(OPTION_UPPER, "Stop at these terms (MIREOT)",
                         Parameter.Kind.MULTILINE)
@@ -768,8 +776,8 @@ public class ImportTermsAction extends OntoBoardAction {
         extracted.getModule().getOWLOntologyManager().applyChanges(
                 ImportProvenance.stamp(extracted.getModule(), source, Provenance.today()));
 
-        result.note("Method: " + method.getLabel() + (options.said().isEmpty() ? ""
-                : " - " + String.join(", ", options.said())));
+        result.note("Method: " + method.getLabel() + (options.said(method).isEmpty() ? ""
+                : " - " + String.join(", ", options.said(method))));
         result.note("Module IRI: " + moduleIri);
         ImportProvenance.Report provenance =
                 ImportProvenance.check(extracted.getModule(), source.getOWLOntologyManager());

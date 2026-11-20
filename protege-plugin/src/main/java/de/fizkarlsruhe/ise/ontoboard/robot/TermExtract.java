@@ -145,11 +145,11 @@ public final class TermExtract {
 
     /**
      * ROBOT extract's own options, each for the methods it is for (1.155.0: "each may have some
-     * unique parameters and fields"): {@code --individuals} and {@code --imports} for BOT, TOP
-     * and STAR; {@code --intermediates} for MIREOT (a subset never has them); upper terms and
-     * branches for
-     * MIREOT; {@code --annotate-with-source} and {@code --copy-ontology-annotations} for every
-     * method. The defaults are ROBOT's own.
+     * unique parameters and fields"): {@code --individuals} for BOT, TOP and STAR;
+     * {@code --imports} for those and subset; {@code --intermediates} for those and MIREOT (a
+     * subset never has them); upper terms and branches for MIREOT; {@code --annotate-with-source}
+     * and {@code --copy-ontology-annotations} for every method - the header copied here for
+     * MIREOT and subset, which ROBOT 1.9.8 leaves without it. The defaults are ROBOT's own.
      */
     public static final class Options {
         static final List<String> INDIVIDUALS =
@@ -274,7 +274,10 @@ public final class TermExtract {
             return branchTerms;
         }
 
-        /** As ROBOT's ExtractOperation and MireotOperation take them. */
+        /**
+         * As ROBOT's ExtractOperation and MireotOperation take them. MIREOT reads its own
+         * spelling of the mark, {@code annotate-with-sources} (ROBOT 1.9.8): both are given.
+         */
         java.util.Map<String, String> forRobot() {
             java.util.Map<String, String> options = new java.util.HashMap<String, String>(
                     ExtractOperation.getDefaultOptions());
@@ -282,20 +285,29 @@ public final class TermExtract {
             options.put("imports", imports);
             options.put("intermediates", intermediates);
             options.put("annotate-with-source", String.valueOf(annotateWithSource));
+            options.put("annotate-with-sources", String.valueOf(annotateWithSource));
             options.put("copy-ontology-annotations", String.valueOf(copyOntologyAnnotations));
             return options;
         }
 
-        /** What differs from ROBOT's own, in words for a result; empty when nothing does. */
-        public List<String> said() {
+        /**
+         * What differs from ROBOT's own and the method takes, in words for a result; empty when
+         * nothing does. ROBOT 1.9.8 takes the individuals for BOT, TOP and STAR; the source's
+         * imports for those and subset; the terms between for those and MIREOT; upper terms and
+         * branches for MIREOT; the mark and the header for every method (the header copied here
+         * for MIREOT and subset, which ROBOT leaves without it).
+         */
+        public List<String> said(Method method) {
+            boolean slme = method != null && method.isSlme();
+            boolean mireot = method == Method.MIREOT;
             List<String> said = new ArrayList<String>();
-            if (!"include".equals(individuals)) {
+            if (slme && !"include".equals(individuals)) {
                 said.add("individuals: " + individuals);
             }
-            if (!"include".equals(imports)) {
+            if ((slme || method == Method.SUBSET) && !"include".equals(imports)) {
                 said.add("the source's imports: " + imports);
             }
-            if (!"all".equals(intermediates)) {
+            if ((slme || mireot) && !"all".equals(intermediates)) {
                 said.add("intermediates: " + intermediates);
             }
             if (annotateWithSource) {
@@ -304,10 +316,10 @@ public final class TermExtract {
             if (copyOntologyAnnotations) {
                 said.add("the source's ontology annotations copied");
             }
-            if (!upperTerms.isEmpty()) {
+            if (mireot && !upperTerms.isEmpty()) {
                 said.add("upper terms: " + upperTerms.size());
             }
-            if (!branchTerms.isEmpty()) {
+            if (mireot && !branchTerms.isEmpty()) {
                 said.add("branches: " + branchTerms.size());
             }
             return said;
@@ -440,6 +452,15 @@ public final class TermExtract {
             } else {
                 module = ExtractOperation.extract(source, present, iri, moduleTypeOf(method),
                         options.forRobot());
+            }
+            if (options.copiesOntologyAnnotations()
+                    && (method == Method.MIREOT || method == Method.SUBSET)) {
+                // ROBOT 1.9.8 copies the source's header for BOT, TOP and STAR alone; asked for,
+                // a MIREOT or subset module came without it (the 1.155.0 review's I6).
+                for (org.semanticweb.owlapi.model.OWLAnnotation header : source.getAnnotations()) {
+                    module.getOWLOntologyManager().applyChange(
+                            new org.semanticweb.owlapi.model.AddOntologyAnnotation(module, header));
+                }
             }
             module.getOWLOntologyManager().applyChanges(annotationPropertyLabels(source, module));
             return new Result(module, missing, terms.size());

@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,7 +10,9 @@ import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.AddOntologyAnnotation;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -135,6 +138,65 @@ class TermExtractOptionsTest {
                 .anyMatch(axiom -> axiom.getProperty().getIRI().toString()
                         .equals("http://www.w3.org/2000/01/rdf-schema#isDefinedBy")),
                 String.valueOf(marked.getAnnotationAssertionAxioms(iri("A"))));
+    }
+
+    private static boolean definedBy(OWLOntology module, String local) {
+        return module.getAnnotationAssertionAxioms(iri(local)).stream()
+                .anyMatch(axiom -> axiom.getProperty().getIRI().toString()
+                        .equals("http://www.w3.org/2000/01/rdf-schema#isDefinedBy"));
+    }
+
+    /**
+     * MIREOT reads the option in its own spelling, annotate-with-sources: the box marked nothing
+     * of a MIREOT extraction, and the result said it had (the 1.155.0 review's I6).
+     */
+    @Test
+    void mireotMarksEachTermWithItsSourceToo() {
+        OWLOntology marked = extract(TermExtract.Method.MIREOT, TermExtract.Options.defaults()
+                .annotatingWithSource(true), "A");
+
+        assertTrue(definedBy(marked, "A"),
+                String.valueOf(marked.getAnnotationAssertionAxioms(iri("A"))));
+    }
+
+    /**
+     * The source's own header comes along whatever the method: ROBOT copies it for BOT, TOP and
+     * STAR alone, and MIREOT and subset came without it although the result said otherwise
+     * (the 1.155.0 review's I6).
+     */
+    @Test
+    void theSourcesOntologyAnnotationsComeAlongWhateverTheMethod() {
+        OWLAnnotation title = factory.getOWLAnnotation(factory.getOWLAnnotationProperty(
+                IRI.create("http://purl.org/dc/terms/title")), factory.getOWLLiteral("The source"));
+        manager.applyChange(new AddOntologyAnnotation(source, title));
+
+        for (TermExtract.Method method : new TermExtract.Method[] {TermExtract.Method.BOT,
+            TermExtract.Method.MIREOT, TermExtract.Method.SUBSET}) {
+            OWLOntology module = extract(method, TermExtract.Options.defaults()
+                    .copyingOntologyAnnotations(true), "A", "C");
+            assertTrue(module.getAnnotations().contains(title),
+                    method + ": " + module.getAnnotations());
+        }
+        assertFalse(extract(TermExtract.Method.MIREOT, TermExtract.Options.defaults(), "A")
+                .getAnnotations().contains(title), "not unless asked");
+    }
+
+    /**
+     * What a result says of the options is what the method takes: a subset takes none of these,
+     * and ROBOT's BOT, TOP and STAR take the terms between as MIREOT does (the 1.155.0 review's
+     * I6).
+     */
+    @Test
+    void whatIsSaidIsWhatTheMethodTakes() {
+        TermExtract.Options options = TermExtract.Options.defaults().withIndividuals("exclude")
+                .withIntermediates("none").withUpperTerms(Collections.singletonList(iri("B")));
+
+        assertTrue(options.said(TermExtract.Method.SUBSET).isEmpty(),
+                String.valueOf(options.said(TermExtract.Method.SUBSET)));
+        assertEquals(Arrays.asList("intermediates: none", "upper terms: 1"),
+                options.said(TermExtract.Method.MIREOT));
+        assertEquals(Arrays.asList("individuals: exclude", "intermediates: none"),
+                options.said(TermExtract.Method.BOT));
     }
 
     @Test

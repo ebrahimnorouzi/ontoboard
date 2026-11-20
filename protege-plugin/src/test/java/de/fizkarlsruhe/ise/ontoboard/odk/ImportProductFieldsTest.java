@@ -75,7 +75,12 @@ class ImportProductFieldsTest {
         assertFalse(fields.containsKey("slme_individuals"));
     }
 
-    /** A custom module is kept as it is extracted here, until a rule of the project's own. */
+    /**
+     * A custom module is kept as it is extracted here, until a rule of the project's own: with no
+     * mirror, as ODK v1.6.1's custom rule otherwise needs the mirror first and then stops with
+     * "This rule needs to be overwritten" - at the import itself, at every refresh and release
+     * (the 1.155.0 review's I1).
+     */
     @Test
     void aCustomModuleIsKeptAsItIs() {
         Map<String, String> fields = ImportProducts.declarationForImport("cob",
@@ -84,5 +89,10 @@ class ImportProductFieldsTest {
 
         assertEquals("custom", fields.get("module_type"));
         assertFalse(fields.containsKey("module_type_slme"));
+        assertEquals("no_mirror", fields.get("mirror_type"));
+        ImportProducts.Product declared =
+                ImportProducts.declaredIn(ImportProducts.withProduct(CONFIG,
+                        new java.util.LinkedHashMap<String, String>(fields))).get(1);
+        assertTrue(ImportProducts.isKeptAsItIs(declared), String.valueOf(fields));
     }
 }

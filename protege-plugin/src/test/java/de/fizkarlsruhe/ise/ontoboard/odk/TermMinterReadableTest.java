@@ -133,4 +133,16 @@ class TermMinterReadableTest {
         assertEquals(TermMinter.Style.NUMERIC, TermMinter.forOntologyFile(
                 project("ontoboard_term_names: numbered\n"), "Ada").getStyle());
     }
+
+    /**
+     * A project with readable names is an ODK project all the same: Record who edits terms, set
+     * to follow the ontology, stamps its new terms as it does a numbered project's (the 1.155.0
+     * review's M8 - the board asked whether the names were numbered).
+     */
+    @Test
+    void aReadableProjectIsAnOdkProject() throws Exception {
+        assertTrue(readable().isOdkProject());
+        assertFalse(TermMinter.forOntologyFile(new File(root, "plain.owl"), "Ada")
+                .isOdkProject(), "a file of its own, outside any ODK project");
+    }
 }

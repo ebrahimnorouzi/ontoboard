@@ -42,6 +42,12 @@ public class GitAction extends OntoBoardAction {
     private volatile String message = "";
     private volatile String branch = "";
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Git";

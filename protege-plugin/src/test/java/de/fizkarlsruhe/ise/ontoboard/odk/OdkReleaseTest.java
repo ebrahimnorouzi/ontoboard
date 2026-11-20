@@ -186,6 +186,49 @@ class OdkReleaseTest {
         return release(version, VersionIriShape.of(VersionIriShape.Kind.ODK), true);
     }
 
+    /**
+     * What the person saved while the release ran - kept behind, Keep working - is named in the
+     * question to commit: the release may hold some of it or none, and the commit would take it
+     * as it is now (the 1.155.0 review's I3). A file saved before the release began is not.
+     */
+    @Test
+    void whatWasSavedWhileTheReleaseRanIsNamedBeforeItIsCommitted() throws Exception {
+        SavedMeanwhile.saved(new File(ontology, "eggboil-idranges.owl"),
+                System.currentTimeMillis() - 60000L);
+        final java.util.concurrent.atomic.AtomicBoolean saved =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        final OdkRelease.Odk building = odk();
+        OdkRelease.Odk savedMeanwhile = new OdkRelease.Odk() {
+            @Override
+            public ProcessRunner.Outcome run(List<String> inContainer, boolean passThroughRunSh)
+                    throws IOException {
+                if (saved.compareAndSet(false, true)) {
+                    SavedMeanwhile.saved(edit);
+                }
+                return building.run(inContainer, passThroughRunSh);
+            }
+
+            @Override
+            public String shown(List<String> inContainer, boolean passThroughRunSh) {
+                return building.shown(inContainer, passThroughRunSh);
+            }
+        };
+
+        OdkRelease.run(new OdkRelease.Request(edit, "1.0.0",
+                VersionIriShape.of(VersionIriShape.Kind.ODK), true, true), savedMeanwhile, git(),
+                new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return false;
+                    }
+                });
+
+        assertEquals(1, asked.size());
+        assertEquals(Arrays.asList("src/ontology/eggboil-edit.owl"),
+                asked.get(0).savedMeanwhile());
+    }
+
     // ------------------------------------------------------------------ the whole of it
 
     /** What git says in {@code folder}, line by line. */

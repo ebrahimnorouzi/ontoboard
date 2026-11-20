@@ -93,6 +93,54 @@ public final class BackgroundRun {
      */
     static Consumer<String> whenDoneBehind = BackgroundRun::tellTheDesktop;
 
+    /**
+     * What tells the desktop that a run kept behind asks a question - the sound and the notice;
+     * the question itself is open in Protege. A test puts its own (the 1.155.0 review's I4).
+     */
+    static Consumer<String> whenAskingBehind = BackgroundRun::tellTheDesktop;
+
+    /** On the worker thread: the run's name, and whether it has been kept behind. */
+    private static final ThreadLocal<String> NAME = new ThreadLocal<String>();
+    private static final ThreadLocal<AtomicBoolean> KEPT_BEHIND = new ThreadLocal<AtomicBoolean>();
+
+    /** How to stop each run kept behind, by name: the window that held Stop is gone (I5). */
+    private static final java.util.Map<String, Runnable> STOPS =
+            new java.util.concurrent.ConcurrentHashMap<String, Runnable>();
+
+    /**
+     * Called by the work on its own thread just before it asks a question: whether its run has
+     * been kept behind - the question then comes up while the person works on, or is away from
+     * Protege, so its safe answer is to be the default - and if it has, the desktop is told that
+     * a question waits (the 1.155.0 review's I4). False off a run's thread.
+     */
+    public static boolean questionWaits() {
+        AtomicBoolean behind = KEPT_BEHIND.get();
+        if (behind == null || !behind.get()) {
+            return false;
+        }
+        try {
+            whenAskingBehind.accept(NAME.get() + " has a question for you, in Protege.");
+        } catch (RuntimeException notTold) {
+            // The question opens all the same.
+        }
+        return true;
+    }
+
+    /**
+     * Stops a run kept behind, as Stop on its window would have: an external command is killed,
+     * the result is given as stopped, and nothing it produces afterwards is applied or shown.
+     *
+     * @return whether a run of that name was going on behind
+     */
+    public static boolean stopBehind(String what) {
+        Runnable stop = what == null ? null : STOPS.get(what);
+        if (stop == null) {
+            return false;
+        }
+        stop.run();
+        return true;
+    }
+
     /** The runs going on behind now, by name; empty when none is. */
     public static java.util.Set<String> runningBehind() {
         synchronized (BEHIND) {
@@ -161,12 +209,16 @@ public final class BackgroundRun {
             protected OperationResult doInBackground() throws Exception {
                 ABANDONED.set(abandoned);
                 ASKING.set(asking);
+                NAME.set(what);
+                KEPT_BEHIND.set(behind);
                 de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.cancelWith(cancellation);
                 try {
                     return work.call();
                 } finally {
                     ABANDONED.remove();
                     ASKING.remove();
+                    NAME.remove();
+                    KEPT_BEHIND.remove();
                     de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.stopCancelling();
                 }
             }
@@ -182,6 +234,7 @@ public final class BackgroundRun {
                 OperationResult result = resultOf(this, what);
                 if (behind.get()) {
                     BEHIND.remove(what);
+                    STOPS.remove(what);
                     try {
                         whenDoneBehind.accept(what + (result != null && !result.isSuccess()
                                 ? " did not finish" : " is done") + ". Its result is open in "
@@ -193,26 +246,32 @@ public final class BackgroundRun {
                 onFinished.accept(result);
             }
         };
-        JButton keep = (JButton) dialog.getRootPane().getClientProperty("ontoboard.behind");
-        if (keep != null) {
-            keep.addActionListener(a -> {
-                behind.set(true);
-                BEHIND.add(what);
-                dialog.dispose();
-            });
-        }
-
-        abandonButton(dialog).addActionListener(a -> {
+        final Runnable stop = () -> {
             abandoned.set(true);
             // Kills the external command if there is one. An in-process ROBOT operation keeps
             // going - it has no cancellation hook - but a build, a script or a git command stops
             // here rather than holding a container for the rest of its run.
             cancellation.cancel();
             dialog.dispose();
+            if (behind.get()) {
+                BEHIND.remove(what);
+                STOPS.remove(what);
+            }
             if (delivered.compareAndSet(false, true)) {
                 onFinished.accept(cancelled(what, started));
             }
-        });
+        };
+        JButton keep = (JButton) dialog.getRootPane().getClientProperty("ontoboard.behind");
+        if (keep != null) {
+            keep.addActionListener(a -> {
+                behind.set(true);
+                STOPS.put(what, stop);
+                BEHIND.add(what);
+                dialog.dispose();
+            });
+        }
+
+        abandonButton(dialog).addActionListener(a -> stop.run());
 
         worker.execute();
 

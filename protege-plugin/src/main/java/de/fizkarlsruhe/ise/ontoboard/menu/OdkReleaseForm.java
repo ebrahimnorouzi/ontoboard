@@ -702,6 +702,17 @@ final class OdkReleaseForm {
             }
             text.append(".\n");
         }
+        List<String> saved = staging.savedMeanwhile();
+        if (!saved.isEmpty()) {
+            // Kept behind - Keep working - the release ran while these were saved (I3).
+            text.append("Saved while the release ran: ").append(String.join(", ", saved))
+                    .append(". The release may hold some of what was saved, or none of it - "
+                            + "make reads the sources more than once - and git add -u would "
+                            + "commit ").append(saved.size() == 1 ? "it" : "them")
+                    .append(" as ").append(saved.size() == 1 ? "it is" : "they are")
+                    .append(" now. Not now leaves everything as it is, to check and commit by "
+                            + "hand.\n");
+        }
         return text.append("Nothing is pushed.").toString();
     }
 

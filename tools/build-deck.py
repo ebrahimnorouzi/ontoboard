@@ -403,7 +403,7 @@ def _entry(label):
 
 
 def path(label, full=True):
-    """The way to a menu item, read from plugin.xml: "OntoBoard -> Spreadsheets -> Template..."."""
+    """The way to a menu item, read from plugin.xml: "OntoBoard -> Knowledge graph -> Build from sheets..."."""
     names = _entry(label)["chain"]
     return ARROW.join(shown(n) for n in (names if full else names[1:]))
 
@@ -1535,7 +1535,7 @@ def main():
         ("src/scripts/", path("Run a project script...", full=False)
          + " lists them and runs one, with arguments", "Driven", True),
         ("src/templates/", "ROBOT templates: opened in the OntoBoard Sheets tab, built by "
-         + path("Template...", full=False), "Driven", True),
+         + path("Build from sheets...", full=False), "Driven", True),
         ("src/metadata/", "The OBO Foundry entry: " + path("Check project metadata", full=False)
          + " reads it, nothing writes it", "Checked", False),
     ]
@@ -1714,7 +1714,8 @@ def main():
     # needs the slide.
     notes(s, "Read from plugin.xml when the deck was built. Since " + F["menu_moved"] + " the "
           "menu is grouped by job rather than by tool: ROBOT's items are split between Reuse, "
-          "Terms and Check and test; Notes are part of Terms; Knowledge graph is Spreadsheets; "
+          "Terms and Check and test; Notes are part of Terms; Knowledge graph holds Edit sheets, "
+          "Check sheets... and Build from sheets...; "
           "Provenance... is " + item("Record who edits terms...") + "; Build..., Release..., "
           "History..., Compare releases... and Documentation... moved from Project to Build and "
           "release; Imports is " + path("Check imports", full=False) + ".")
@@ -1736,7 +1737,7 @@ def main():
              ("validate-profile", "Profile..."), ("explain", "Explain..."),
              ("query", "SPARQL..."), ("extract", "Import terms from a list..."),
              ("rename", "Rename IRIs..."), (", ".join(F["transform_kinds"]), "Transform..."),
-             ("export", "Export terms..."), ("template", "Template..."),
+             ("export", "Export terms..."), ("template", "Build from sheets..."),
              ("diff", "Compare releases..."), ("reason", "Release...")]
     cols, gap_x = 3, 0.2
     cw = (10 - 2 * M - gap_x * (cols - 1)) / cols
@@ -1825,7 +1826,7 @@ def main():
     # 27 ------------------------------------------------ the sheet editor
     s = page()
     y = heading(s, "A spreadsheet inside Protégé",
-                tab("OntoBoard Sheets") + ", or " + path("Sheet editor", full=False))
+                tab("OntoBoard Sheets") + ", or " + path("Edit sheets", full=False))
     text(s, M, y, 10 - 2 * M, 0.62,
          "Each sheet is a ROBOT template: row 1 is your headings, row 2 says what each column is, "
          "and every row after that is one thing. The editor opens the whole folder at once, "
@@ -1966,15 +1967,15 @@ def main():
     ]
     points(s, M, y + 0.04, 10 - 2 * M, pts, step=1.08, bar=0.88)
 
-    # 32 ----------------------------------- what Template does, and what it does not
-    # docs/knowledge-graph.md, "What Template... does, and what it does not", and the known
+    # 32 ----------------------------- what Build from sheets does, and what it does not
+    # docs/knowledge-graph.md, on what building from sheets does and does not do, and the known
     # constraints in limitations.md. The deck said "and back again" for a release; it is not.
     s = page()
-    y = heading(s, "What " + item("Template...") + " does, and does not",
+    y = heading(s, "What " + item("Build from sheets...") + " does, and does not",
                 "no round trip, no live sync")
     pts = [
         ("It only adds",
-         path("Template...") + " adds the axioms a sheet produces to the ontology open in "
+         path("Build from sheets...") + " adds the axioms a sheet produces to the ontology open in "
          "Protégé, in memory until File → Save. It never removes or updates any: change a "
          "label, run it again, and the graph has both labels."),
         ("Nothing keeps the sheets and the graph in step",
@@ -1982,14 +1983,14 @@ def main():
          "(Edit → Undo, same session) or build into a fresh copy of the graph file."),
         ("Declare the identifiers' prefix in the graph file",
          "IDs such as kg:PB_0000001 build nothing until the graph declares kg: (Active ontology → "
-         "Ontology Prefixes). " + item("Template...") + " names the missing prefix, and so does "
+         "Ontology Prefixes). " + item("Build from sheets...") + " names the missing prefix, and so does "
          + item("Check sheets...") + " once the graph holds the rows."),
         (item("SPARQL...") + " answers from what is asserted",
          "It queries the ontology and its imports, not the reasoner's conclusions — ask Protégé's "
          "DL Query, with a reasoner running."),
         (item("Build...") + " does not build the graph",
          "It builds the ontology, from the ontology's own window, and the Makefile OntoBoard "
-         "writes has no target for the graph: " + item("Template...") + " is what builds it."),
+         "writes has no target for the graph: " + item("Build from sheets...") + " is what builds it."),
     ]
     points(s, M, y, 10 - 2 * M, pts, step=0.76, bar=0.6, head_size=11)
 
@@ -2041,7 +2042,7 @@ def main():
          "legal, all silent, all marked."),
         ("\u201cA rdfs:label@en\u201d gives no name at all",
          "It looks like an English label and makes a property called rdfs:label@en; "
-         "\u201cAL rdfs:label@en\u201d is the spelling that works, and " + item("Template...")
+         "\u201cAL rdfs:label@en\u201d is the spelling that works, and " + item("Build from sheets...")
          + " says so. In the MatWerk graph it had hidden the names in " + F["label_cells"]
          + " filled cells."),
     ]
@@ -2191,7 +2192,7 @@ def main():
                 "Patterns and other ontologies' terms, reused the ODK way",
              ]),
             ("Known constraints", ACCENT, [
-                "Sheets and graph do not round-trip: " + item("Template...") + " only adds",
+                "Sheets and graph do not round-trip: " + item("Build from sheets...") + " only adds",
                 item("SPARQL...") + " answers from asserted axioms, not inferences",
                 "Live editing carries " + words(F["collab_kinds"]) + " kinds of axiom",
                 "Protégé 6 is not supported",

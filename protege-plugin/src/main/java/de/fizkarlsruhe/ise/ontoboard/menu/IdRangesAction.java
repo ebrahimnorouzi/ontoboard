@@ -51,6 +51,12 @@ public class IdRangesAction extends OntoBoardAction {
     private volatile String editor = "";
     private volatile long blockSize = DEFAULT_BLOCK;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "ID ranges";
@@ -58,11 +64,14 @@ public class IdRangesAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
+        // What an earlier run in this window chose is not this run's: kept, a choice of names
+        // was written into another project's configuration unasked (the 1.155.0 review's M7).
+        allocating = false;
+        naming = null;
         File rangesFile = rangesFile();
         if (rangesFile == null) {
             // Nothing to allocate into. run() explains why in full; asking first would be asking
             // about a file that is not there.
-            allocating = false;
             return true;
         }
 
@@ -408,7 +417,8 @@ public class IdRangesAction extends OntoBoardAction {
         return DEFAULT_BLOCK;
     }
 
-    private File rangesFile() {
+    /** The open ontology's {@code -idranges.owl}, or null; a test puts its own. */
+    File rangesFile() {
         return TermMinter.findRangesFile(fileOf(getOWLModelManager().getActiveOntology()));
     }
 

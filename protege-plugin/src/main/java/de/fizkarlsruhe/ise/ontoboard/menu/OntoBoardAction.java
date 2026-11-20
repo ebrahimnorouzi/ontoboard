@@ -116,6 +116,36 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return !runsInBackground();
     }
 
+    /**
+     * Whether this action writes the project's files or runs make or git in it: it waits while a
+     * Build or Release goes on behind (Keep working), as two makes in one project write the same
+     * files. Only Build and Release waited, so an import or a refresh ran make beside a build
+     * kept behind (the 1.155.0 review's I5). What only reads, or changes the open ontology in
+     * Protege, goes on.
+     */
+    protected boolean writesTheProject() {
+        return false;
+    }
+
+    /**
+     * Says that this action waits for the runs going on behind, with the way to stop them - the
+     * window that held Stop was closed by Keep working.
+     */
+    private void waitForTheRunsBehind(java.util.Set<String> behind) {
+        String names = String.join(" and ", behind);
+        Object[] options = {"OK", behind.size() == 1 ? "Stop " + names : "Stop them"};
+        int chosen = JOptionPane.showOptionDialog(getOWLWorkspace(), names
+                + (behind.size() == 1 ? " is" : " are") + " running in the background. Its result "
+                + "opens when it is done; " + operationName() + " can be started then.",
+                operationName() + " waits", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (chosen == 1) {
+            for (String what : behind) {
+                BackgroundRun.stopBehind(what);
+            }
+        }
+    }
+
     @Override
     public final void actionPerformed(ActionEvent event) {
         OWLOntology ontology = getOWLModelManager() == null ? null
@@ -127,11 +157,9 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        if (canRunBehind() && !BackgroundRun.runningBehind().isEmpty()) {
-            JOptionPane.showMessageDialog(getOWLWorkspace(), String.join(" and ",
-                    BackgroundRun.runningBehind()) + " is running in the background. Its result "
-                    + "opens when it is done; " + operationName() + " can be started then.",
-                    operationName() + " waits", JOptionPane.INFORMATION_MESSAGE);
+        java.util.Set<String> behind = BackgroundRun.runningBehind();
+        if ((canRunBehind() || writesTheProject()) && !behind.isEmpty()) {
+            waitForTheRunsBehind(behind);
             return;
         }
         String work = worksBesideTheFile();
