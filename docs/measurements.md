@@ -102,7 +102,7 @@ with OntoBoard's code without a container; the results must agree.
 | Clean | egg | 1.9 (1.3-2.3) | 0.08 (0.07-0.21) | yes |
 
 Medians of five runs (lowest-highest), measured at 1.153.0 on one busy Windows 11 laptop, so not
-a benchmark; not measured again for 1.154.0. On a quiet machine, with Docker and ODK's image:
+a benchmark; not measured again for 1.154.0 or 1.155.0. On a quiet machine, with Docker and ODK's image:
 
 ```
 cd protege-plugin
@@ -161,7 +161,7 @@ on both OWL APIs (`mvn test -Dtest=DosdpEquivalenceLiveTest`, with DOSDP-Tools i
 
 ## The test suite
 
-`mvn -B clean test`: 5,968 tests at 1.154.0, 0 failures; a few skip where the platform lacks what
+`mvn -B clean test`: 6,302 tests at 1.155.0, 0 failures; a few skip where the platform lacks what
 they test. The 43 live tests start ODK's container or the collaboration server and skip without
 them. CI runs the suite on Linux under `xvfb-run -a` and on Windows.
 
