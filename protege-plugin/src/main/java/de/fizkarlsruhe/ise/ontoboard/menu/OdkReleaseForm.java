@@ -341,9 +341,16 @@ final class OdkReleaseForm {
                 + "when you agree. Nothing is pushed.";
         if (start.script != null) {
             String annotate = start.script.annotate();
+            // Where it runs, as the route has it: with no container OntoBoard runs the script
+            // itself, and the form said "in ODK's container" (Phase 7, nfdicore, 2026-11-20).
+            String where = start.isBuiltBy(ReleaseRoute.Kind.ITSELF)
+                    ? ". " + start.route.noContainer() + ", so OntoBoard runs it itself, inside "
+                            + "Protege, and each make it calls with ODK's own Makefile."
+                    : start.isBuiltBy(ReleaseRoute.Kind.NATIVE)
+                            ? ", in the native ODK environment." : ", in ODK's container.";
             return "This project is released by its own script, src/ontology/"
-                    + start.script.file().getName() + ", so that is what runs, in ODK's "
-                    + "container. OntoBoard sets its line VERSION="
+                    + start.script.file().getName() + ", so that is what runs" + where
+                    + " OntoBoard sets its line VERSION="
                     + (start.script.priorVersion() == null ? "" : " and its line PRIOR_VERSION=")
                     + " first and changes nothing else in it. The version IRI is the script's: "
                     + (annotate == null ? "it sets none of its own, so ODK's is written."

@@ -534,6 +534,25 @@ class OdkReleaseFormTest {
                 + "writes it: " + explanation);
     }
 
+    /**
+     * A project's own script run by OntoBoard itself, without a container, is said to be: the
+     * form said release.sh runs "in ODK's container" with the container switched off (Phase 7,
+     * nfdicore in the probe host, 2026-11-20).
+     */
+    @Test
+    void aProjectsOwnScriptRunByOntoBoardItselfIsSaidToBe() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+        tags = Arrays.asList("v3.0.5", "v3.0.4");
+        OdkReleaseForm.Start start = start().withRoute(itself(null));
+
+        String explanation = OdkReleaseForm.explanation(start);
+
+        assertTrue(explanation.contains("release.sh, so that is what runs. " + NO_CONTAINER
+                + ", so OntoBoard runs it itself"), explanation);
+        assertFalse(explanation.contains("in ODK's container"), explanation);
+        assertTrue(explanation.contains("Nothing is pushed."), explanation);
+    }
+
     /** A maintainer who has set the script to the next version already is not second-guessed. */
     @Test
     void aVersionTheScriptAlreadyNamesAndNobodyReleasedIsProposed() throws IOException {
