@@ -190,6 +190,21 @@ public final class ImportModules {
                 // A list that cannot be read names no source.
             }
         }
+        // The list named for the source, where it holds the source's terms, before any other that
+        // does: IAO's signature holds BFO's terms too, and nfdicore's lists, as ODK's own, record
+        // no source - a term imported from IAO went into the BFO module, the first list
+        // alphabetically whose terms IAO declares (Phase 7, 2026-11-20).
+        for (File list : lists) {
+            String name = nameOfList(list);
+            try {
+                if ((name.equals(before) || name.equals(recognisable)) && patternIn(list) == null
+                        && Boolean.TRUE.equals(holdsTermsOf(list, fromSource))) {
+                    return name;
+                }
+            } catch (IOException unreadable) {
+                // Read again below, and as unreadable there.
+            }
+        }
         for (File list : lists) {
             try {
                 if (patternIn(list) == null

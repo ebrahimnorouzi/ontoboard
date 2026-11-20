@@ -1117,12 +1117,24 @@ public class ImportTermsAction extends OntoBoardAction {
         // because the module's IRI has never been published anywhere - and the person who made
         // the module never sees the failure.
         File ontologyFile = fileOf(ontology);
+        // The name the edit file imports the module's file by, where that is another than the
+        // module's own IRI (nfdicore's shape): the import and the catalog entry are wired under
+        // it, and there is nothing new to wire (Phase 7, 2026-11-20).
+        IRI importIri = moduleIri;
         if (ontologyFile != null && ontologyFile.getParentFile() != null) {
             File catalog = new File(ontologyFile.getParentFile(), "catalog-v001.xml");
             String path = relativePath(ontologyFile.getParentFile(), target);
             try {
-                if (!(unlessServed && serves(catalog, moduleIri, path))) {
-                    Catalog.addEntry(catalog, moduleIri.toString(), path);
+                String already = catalog.isFile() ? importedAs(new String(
+                        java.nio.file.Files.readAllBytes(catalog.toPath()), "UTF-8"), path,
+                        importsOf(ontology)) : null;
+                if (already != null) {
+                    importIri = IRI.create(already);
+                    result.note("Imported as " + already + ", as before: the module calls "
+                            + "itself " + moduleIri + ".");
+                }
+                if (!(unlessServed && serves(catalog, importIri, path))) {
+                    Catalog.addEntry(catalog, importIri.toString(), path);
                     result.wrote(catalog);
                 }
             } catch (IOException cannotWrite) {
@@ -1162,7 +1174,7 @@ public class ImportTermsAction extends OntoBoardAction {
             });
         }
         org.semanticweb.owlapi.model.OWLImportsDeclaration declaration = getOWLModelManager()
-                .getOWLDataFactory().getOWLImportsDeclaration(moduleIri);
+                .getOWLDataFactory().getOWLImportsDeclaration(importIri);
         if (!ontology.getImportsDeclarations().contains(declaration)) {
             applyOnEventThread(java.util.Collections.<OWLOntologyChange>singletonList(
                     new AddImport(ontology, declaration)));
@@ -1506,6 +1518,40 @@ public class ImportTermsAction extends OntoBoardAction {
             return null;
         }
         String here = relativePath(ontologyFile.getParentFile(), target);
+        return clashAt(catalogXml, here, moduleIri, ModuleRebuild.declaredIriOf(target),
+                importsOf(ontology), target.getAbsolutePath());
+    }
+
+    /**
+     * The IRI the edit file already imports the module's file by - the catalog's name for it -
+     * or null when it imports it by none. nfdicore's modules call themselves by another IRI than
+     * that (the shape of Task 14c), and an import of more terms into one is that module still.
+     *
+     * @param here     the module's file, relative to the catalog's folder
+     * @param imported the IRIs the edit file imports
+     */
+    static String importedAs(String catalogXml, String here, java.util.Set<String> imported) {
+        for (String mapped : Catalog.mappedIris(catalogXml)) {
+            if (here.equals(Catalog.entryFor(catalogXml, mapped)) && imported.contains(mapped)) {
+                return mapped;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Why writing the module to {@code here} would destroy another module, or null: the catalog
+     * gives the file to another IRI. Not when that IRI is the one the edit file imports the
+     * file by, and the file declares this module's IRI - it is this module, under the name it is
+     * imported by (Phase 7, nfdicore, 2026-11-20: "two imports resolving to one file" refused
+     * every term imported into one of its modules).
+     *
+     * @param declaredInFile the ontology IRI the file on disk declares, or null
+     * @param imported       the IRIs the edit file imports
+     * @param target         the file, as the refusal names it
+     */
+    static String clashAt(String catalogXml, String here, IRI moduleIri, IRI declaredInFile,
+            java.util.Set<String> imported, String target) {
         String mine = Catalog.entryFor(catalogXml, moduleIri.toString());
         if (here.equals(mine)) {
             return null; // this module's own file; overwriting it is the point
@@ -1513,7 +1559,10 @@ public class ImportTermsAction extends OntoBoardAction {
         for (String otherIri : Catalog.mappedIris(catalogXml)) {
             if (here.equals(Catalog.entryFor(catalogXml, otherIri))
                     && !otherIri.equals(moduleIri.toString())) {
-                return target.getAbsolutePath() + " is already the module for " + otherIri
+                if (moduleIri.equals(declaredInFile) && imported.contains(otherIri)) {
+                    return null;
+                }
+                return target + " is already the module for " + otherIri
                         + ", according to catalog-v001.xml. Writing this module there would "
                         + "leave two imports resolving to one file, and whichever of them is not "
                         + "in that file would silently vanish the next time the project is "
@@ -1521,6 +1570,16 @@ public class ImportTermsAction extends OntoBoardAction {
             }
         }
         return null;
+    }
+
+    /** The IRIs an ontology imports. */
+    private static java.util.Set<String> importsOf(OWLOntology ontology) {
+        java.util.Set<String> imported = new java.util.HashSet<String>();
+        for (org.semanticweb.owlapi.model.OWLImportsDeclaration declaration
+                : ontology.getImportsDeclarations()) {
+            imported.add(declaration.getIRI().toString());
+        }
+        return imported;
     }
 
     /** Whether the module lies outside the tree that gets committed with the ontology. */

@@ -16,6 +16,44 @@ import org.junit.jupiter.api.Test;
  */
 class ImportTermsActionTest {
 
+    private static final String IMPORTED = "https://nfdi.example.org/ontology/nfdicore/imports/iao_import.owl";
+    private static final String DECLARED = "https://nfdi.example.org/ontology/imports/iao_import.owl";
+    private static final String CATALOG = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+            + "<catalog prefer=\"public\" xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
+            + "    <uri name=\"" + IMPORTED + "\" uri=\"imports/iao_import.owl\" />\n</catalog>\n";
+
+    /**
+     * nfdicore's modules call themselves by another IRI than the edit file imports them by (the
+     * shape of Task 14c): importing a term into one was refused as "two imports resolving to one
+     * file" (Phase 7, probe host, 2026-11-20). The file is that very module, imported under the
+     * catalog's name: it is written in place and wired under that name - no second import.
+     */
+    @Test
+    void aModuleImportedUnderAnotherNameIsTheSameModule() {
+        java.util.Set<String> imports = java.util.Collections.singleton(IMPORTED);
+        org.semanticweb.owlapi.model.IRI declared = org.semanticweb.owlapi.model.IRI.create(DECLARED);
+
+        assertEquals(IMPORTED, ImportTermsAction.importedAs(CATALOG, "imports/iao_import.owl", imports));
+        assertEquals(null, ImportTermsAction.clashAt(CATALOG, "imports/iao_import.owl", declared,
+                declared, imports, "iao_import.owl"));
+    }
+
+    /** A file the catalog gives to an import the edit file does not have is another module's. */
+    @Test
+    void aFileAnotherImportClaimsIsStillRefused() {
+        org.semanticweb.owlapi.model.IRI declared = org.semanticweb.owlapi.model.IRI.create(DECLARED);
+
+        assertEquals(null, ImportTermsAction.importedAs(CATALOG, "imports/iao_import.owl",
+                java.util.Collections.<String>emptySet()));
+        assertTrue(ImportTermsAction.clashAt(CATALOG, "imports/iao_import.owl", declared, declared,
+                java.util.Collections.<String>emptySet(), "iao_import.owl")
+                .contains("two imports resolving to one file"));
+        assertTrue(ImportTermsAction.clashAt(CATALOG, "imports/iao_import.owl",
+                org.semanticweb.owlapi.model.IRI.create("https://example.org/other_import.owl"),
+                declared, java.util.Collections.singleton(IMPORTED), "iao_import.owl")
+                .contains("two imports resolving to one file"), "a module the file does not declare");
+    }
+
     @Test
     void aModuleBesideTheOntologyGetsARelativePath() {
         String path = ImportTermsAction.relativePath(

@@ -63,6 +63,25 @@ class ANewModuleIsNamedRecognisablyTest {
         assertEquals("skos", TermExtract.recognisableNameOf(skos));
     }
 
+    /**
+     * nfdicore's term lists record no source, as ODK's own do, and IAO's signature holds BFO's
+     * terms as well as its own: importing a term from IAO went into the BFO module - the first
+     * list, alphabetically, whose terms IAO declares (Phase 7, probe host, 2026-11-20). The list
+     * named for the source is its own.
+     */
+    @Test
+    void theListNamedForTheSourceIsItsOwnWhereNoListRecordsOne() throws Exception {
+        String bfo = "http://purl.obolibrary.org/obo/BFO_0000001";
+        String iao = "http://purl.obolibrary.org/obo/IAO_0000030";
+        ImportModules.writeTerms(root, "bfo", Arrays.asList(IRI.create(bfo)), null);
+        ImportModules.writeTerms(root, "iao", Arrays.asList(IRI.create(iao)), null);
+        java.util.Set<String> iaoDeclares = new java.util.HashSet<String>(Arrays.asList(bfo, iao));
+
+        assertEquals("iao", ImportModules.nameFor(root, "iao", "iao",
+                Collections.singletonList("http://purl.obolibrary.org/obo/iao.owl"),
+                term -> iaoDeclares.contains(term.toString())));
+    }
+
     @Test
     void aNewModuleGetsTheRecognisableName() {
         assertEquals("pmdco", ImportModules.nameFor(root, "co", "pmdco",
