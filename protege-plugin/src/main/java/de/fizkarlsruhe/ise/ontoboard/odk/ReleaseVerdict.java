@@ -357,7 +357,9 @@ public final class ReleaseVerdict {
     private static String explained(Explanations.Result result) {
         StringBuilder text = new StringBuilder();
         for (Explanations.Justification justification : result.getJustifications()) {
-            text.append("**").append(justification.getEntailment()).append("**\n\n");
+            // In words: where it is shown - a dialog, the log - "**" is no emphasis (the hand
+            // check of 1.155.0).
+            text.append(justification.getEntailment()).append(" follows from these axioms:\n");
             for (String axiom : justification.getAxioms()) {
                 text.append("- ").append(axiom).append('\n');
             }

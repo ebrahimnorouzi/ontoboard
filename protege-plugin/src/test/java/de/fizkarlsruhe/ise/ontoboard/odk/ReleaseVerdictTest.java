@@ -105,6 +105,11 @@ class ReleaseVerdictTest {
         assertTrue(verdict.explanation().contains("measurement unit label of"),
                 verdict.explanation());
         assertTrue(verdict.explanation().contains("InverseOf"), verdict.explanation());
+        // In words where it is shown - a dialog, the log - not in a file's markdown: the
+        // release's refusal showed "**Thing SubClassOf Nothing**" (the hand check of 1.155.0).
+        assertFalse(verdict.explanation().contains("**"), verdict.explanation());
+        assertTrue(verdict.explanation().contains("follows from these axioms:"),
+                verdict.explanation());
     }
 
     @Test
