@@ -220,6 +220,10 @@ public final class ParameterDialog {
             at.gridx = 0;
             JLabel label = new JLabel(parameter.getLabel()
                     + (parameter.isRequired() ? " *" : ""));
+            // Room beyond the measured text: Protege's look paints a label a few pixels wider
+            // than Swing measures it, and the Release form showed "... with the last releas" and
+            // "Commit the project's 1 new file firs" (Phase 7, 2026-11-20).
+            label.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 14));
             // Beside the first line of a tall control rather than halfway down it. A label
             // centred against a six-line text area reads as belonging to the middle of the box,
             // and the eye has to travel up again to find where typing starts.

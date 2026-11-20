@@ -767,4 +767,42 @@ class DialogDesignProofTest {
         return new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_MOVED,
                 0L, 0, x, y, x, y, 0, false, java.awt.event.MouseEvent.NOBUTTON);
     }
+
+    /**
+     * A field's name has room beyond what Swing measures for it: Protege's look paints a label a
+     * few pixels wider than it measures, and the Release form showed "Release even when it cannot
+     * be compared with the last releas" and "Commit the project's 1 new file firs" (Phase 7, probe
+     * host, 2026-11-20) - Board settings had the same (1.155.0, Phase 6). A test that renders the
+     * cut cannot see it headless; this pins the room.
+     */
+    @Test
+    void aFieldsNameHasRoomBeyondItsMeasuredText() {
+        String name = "Commit the project's 1 new file first";
+        JPanel content = ParameterDialog.content(null, "Explained.", Arrays.asList(
+                Parameter.of("commit", name, Parameter.Kind.FLAG).help("Commits the "
+                        + "project's new file before the release, so that the release holds it.")
+                        .build()),
+                new java.util.LinkedHashMap<String, java.awt.Component>(), null);
+        javax.swing.JLabel label = labelSaying(content, name);
+
+        int measured = label.getFontMetrics(label.getFont()).stringWidth(label.getText());
+        assertTrue(label.getPreferredSize().width >= measured + 12,
+                label.getPreferredSize().width + " for text measured at " + measured);
+    }
+
+    private static javax.swing.JLabel labelSaying(java.awt.Container in, String text) {
+        for (java.awt.Component child : in.getComponents()) {
+            if (child instanceof javax.swing.JLabel
+                    && text.equals(((javax.swing.JLabel) child).getText())) {
+                return (javax.swing.JLabel) child;
+            }
+            if (child instanceof java.awt.Container) {
+                javax.swing.JLabel deeper = labelSaying((java.awt.Container) child, text);
+                if (deeper != null) {
+                    return deeper;
+                }
+            }
+        }
+        return null;
+    }
 }
