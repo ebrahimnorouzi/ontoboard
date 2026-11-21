@@ -48,6 +48,7 @@ The defects fixed in each release, newest first. Each release's notes on
 - Protégé froze when a sheet's heading was committed, or a column added.
 - Every new sheet got the same three example identifiers.
 - A number that a release made by ODK alone had carried could be given to a new term: ODK v1.6.1 keeps the release's files on GitHub, out of git.
+- A line could run through the arrowhead of a subclass line joining two frames.
 
 ## 1.154.0
 
