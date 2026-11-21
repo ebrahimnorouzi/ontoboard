@@ -221,6 +221,38 @@ class EdgeRouterTest {
         }
     }
 
+    /**
+     * A subclass line between two frames is routed by search, not down a lane, and its arrowhead
+     * was not kept clear as a lane's is: an arrow ran through it. Found by 1.155.0's Linux build,
+     * whose board is drawn in DejaVu Sans: "has specified output" through the head of "textual
+     * entity is-a information content entity" on the study's three patterns.
+     */
+    @Test
+    void anArrowKeepsOffTheArrowheadOfASubclassLineBetweenFrames() {
+        EdgeRouter.Box upper = new EdgeRouter.Box("upper", 0, 0, 700, 200);
+        EdgeRouter.Box lower = new EdgeRouter.Box("lower", 0, 300, 700, 200);
+        EdgeRouter.Box parent = new EdgeRouter.Box("p", 260, 60, 160, 40);
+        EdgeRouter.Box child = new EdgeRouter.Box("c", 40, 380, 160, 40);
+        EdgeRouter.Box from = new EdgeRouter.Box("s", 40, 80, 160, 40);
+        EdgeRouter.Box to = new EdgeRouter.Box("t", 500, 80, 160, 40);
+        Map<String, EdgeRouter.Route> routes = EdgeRouter.route(
+                Arrays.asList(parent, child, from, to), Arrays.asList(upper, lower),
+                Arrays.asList(new EdgeRouter.Link("is-a", "c", "p", true, 0, 0),
+                        arrow("r", "s", "t")));
+
+        double[][] isA = line(child, routes.get("is-a"), parent);
+        double[] end = isA[isA.length - 1];
+        double[] before = isA[isA.length - 2];
+        assertEquals(end[0], before[0], 0.5, "arrives upright: " + Arrays.deepToString(isA));
+        double sign = Math.signum(before[1] - end[1]);
+        // The arrowhead as SchemaStyles draws it: the line's last 13px, 10px wide.
+        double[] head = {end[0] - 5, Math.min(end[1], end[1] + 13 * sign), 10, 13};
+        assertNotNull(routes.get("r"));
+        double[][] arrow = line(from, routes.get("r"), to);
+        assertFalse(crosses(arrow, head), "through the arrowhead at " + Arrays.toString(head)
+                + ": " + Arrays.deepToString(arrow));
+    }
+
     @Test
     void aBoxInTheLaneSendsTheLineRoundIt() {
         EdgeRouter.Box parent = box("p", 0, 0);

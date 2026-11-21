@@ -184,6 +184,22 @@ class BoardGlyphsTest {
         assertEquals(Font.SANS_SERIF, SchemaStyles.resolveFont(new HashSet<String>()));
     }
 
+    /**
+     * A check can draw the board in another system's font where that font is installed -
+     * {@code -Dontoboard.boardFont="DejaVu Sans"}, as GitHub's Linux runners draw it. 1.155.0's
+     * Linux build found a line through an arrowhead that boards drawn in Segoe UI did not have,
+     * and nothing here could draw them as Linux does.
+     */
+    @Test
+    void aCheckCanDrawTheBoardInAnotherSystemsFont() {
+        java.util.Set<String> installed = new HashSet<String>(Arrays.asList("DejaVu Sans",
+                "Segoe UI"));
+
+        assertEquals("DejaVu Sans", SchemaStyles.resolveFont(installed, "DejaVu Sans"));
+        assertEquals("Segoe UI", SchemaStyles.resolveFont(installed, "Not Installed"));
+        assertEquals("Segoe UI", SchemaStyles.resolveFont(installed, null));
+    }
+
     static Projection box(NodeKind kind, String label) {
         return new Projection(Collections.singletonList(
                 new CanvasNode("http://example.org/glyphs#A", kind, label)),

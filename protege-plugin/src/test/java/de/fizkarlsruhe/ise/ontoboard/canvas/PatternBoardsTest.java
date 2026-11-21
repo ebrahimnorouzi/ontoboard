@@ -463,7 +463,8 @@ class PatternBoardsTest {
     private static String details(BoardMeasures measured) {
         StringBuilder text = new StringBuilder(measured.summary());
         for (List<String> wrong : Arrays.asList(measured.sharing, measured.beside, measured.onBoxes,
-                measured.onLabels, measured.onLines, measured.offTheirLine, measured.through)) {
+                measured.onLabels, measured.onLines, measured.offTheirLine, measured.through,
+                measured.throughArrowheads)) {
             for (int i = 0; i < Math.min(6, wrong.size()); i++) {
                 text.append("\n  ").append(wrong.get(i));
             }

@@ -511,6 +511,10 @@ public final class EdgeRouter {
                     drawn.add(line);
                     searched.add(line);
                     grid.occupy(line.points, owner);
+                    // A subclass line routed by search - between two frames, or with its lane in
+                    // the way - keeps its arrowhead clear as a lane's is. Found by 1.155.0's Linux
+                    // build: an arrow ran through one on the study's board.
+                    grid.markHead(line.points, owner);
                     grid.cover(line.chip, 1);
                 }
             }
@@ -689,6 +693,7 @@ public final class EdgeRouter {
                     searched.add(line);
                     added.add(line);
                     grid.occupy(line.points, owner);
+                    grid.markHead(line.points, owner);
                     grid.cover(line.chip, 1);
                 } else {
                     noWay.add(link.id);
@@ -2174,6 +2179,8 @@ public final class EdgeRouter {
                         }
                     }
                     count(line.points, line.owner, 1);
+                    // A subclass line moved keeps its new arrowhead clear as well.
+                    markHead(line.points, line.owner);
                     cover(line.chip, 1);
                 }
                 if (!moved) {

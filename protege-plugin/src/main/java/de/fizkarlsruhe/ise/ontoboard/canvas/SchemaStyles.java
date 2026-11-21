@@ -183,11 +183,22 @@ public final class SchemaStyles {
         try {
             return resolveFont(new HashSet<String>(Arrays.asList(
                     GraphicsEnvironment.getLocalGraphicsEnvironment()
-                            .getAvailableFontFamilyNames(Locale.ENGLISH))));
+                            .getAvailableFontFamilyNames(Locale.ENGLISH))),
+                    System.getProperty("ontoboard.boardFont"));
         } catch (Throwable noFontsAvailable) {
             // A headless or font-less JRE. The logical family always exists.
             return Font.SANS_SERIF;
         }
+    }
+
+    /**
+     * {@link #resolveFont(Set)}, or {@code forced} where it is installed: so that a check draws the
+     * board as another system does - {@code -Dontoboard.boardFont="DejaVu Sans"}, as GitHub's
+     * Linux runners have it. 1.155.0's Linux build found a line through an arrowhead that boards
+     * drawn in Segoe UI did not have.
+     */
+    static String resolveFont(Set<String> installed, String forced) {
+        return forced != null && installed.contains(forced) ? forced : resolveFont(installed);
     }
 
     /** The first preferred family that is installed; the logical sans-serif family if none is. */
