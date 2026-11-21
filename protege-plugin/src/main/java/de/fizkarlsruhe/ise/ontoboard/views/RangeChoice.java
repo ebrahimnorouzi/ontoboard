@@ -16,7 +16,7 @@ import javax.swing.JOptionPane;
  * the value is as high as its text, and the border's line lies on the text's last row). The
  * value has room under its text now, so the border lies below the underscore.
  */
-final class RangeChoice {
+public final class RangeChoice {
 
     /** What is added under the text, and over it so the text stays in the middle. */
     private static final int BELOW = 2;
@@ -52,7 +52,7 @@ final class RangeChoice {
      *
      * @return the choice, or null when nothing was chosen
      */
-    static String ask(Component parent, String question, String[] choices) {
+    public static String ask(Component parent, String question, String[] choices) {
         JComboBox<String> combo = combo(choices);
         int answer = JOptionPane.showConfirmDialog(parent, new Object[] {question, combo},
                 "Which range is yours?", JOptionPane.OK_CANCEL_OPTION,

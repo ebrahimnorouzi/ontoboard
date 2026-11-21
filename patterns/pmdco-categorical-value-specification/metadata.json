@@ -11,5 +11,24 @@
   "publisher": "materialdigital.github.io",
   "extracted_from": "pmdco",
   "class_count": 7,
-  "property_count": 4
+  "property_count": 4,
+  "curated": [
+    "label moved to skos:prefLabel: <https://w3id.org/pmd/co/PMD_0000000> \"Material\"@de",
+    "label moved to skos:prefLabel: <https://w3id.org/pmd/co/PMD_0020139> \"Schmelze\"@de",
+    "header: dcterms:title \"Categorical value specification\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "header: dcterms:license <https://creativecommons.org/licenses/by/4.0/> - https://github.com/materialdigital/core-ontology",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/license> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.w3.org/2004/02/skos/core#prefLabel> as an annotation property",
+    "label added: <http://purl.obolibrary.org/obo/IAO_0000112> \"example of usage\"@en - from http://purl.obolibrary.org/obo/iao.owl",
+    "label added: <http://purl.obolibrary.org/obo/IAO_0000115> \"definition\"@en - from http://purl.obolibrary.org/obo/iao.owl",
+    "label added: <http://purl.obolibrary.org/obo/IAO_0000116> \"editor note\"@en - from http://purl.obolibrary.org/obo/iao.owl",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/license> \"License\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.w3.org/2004/02/skos/core#definition> \"definition (SKOS)\"@en - from http://www.w3.org/2004/02/skos/core, with its source in brackets: in the library it shares \"definition\" with another term",
+    "label added: <http://www.w3.org/2004/02/skos/core#prefLabel> \"preferred label\"@en - from http://www.w3.org/2004/02/skos/core"
+  ]
 }

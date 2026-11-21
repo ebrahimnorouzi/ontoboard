@@ -11,5 +11,28 @@
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Spatial_Graph_Adapter_(SGA)",
   "class_count": 6,
   "property_count": 6,
-  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none",
+  "curated": [
+    "header: dcterms:title \"Spatial Graph Adapter (SGA) Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "axiom removed: ObjectPropertyDomain(<http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasType> <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Attribute>) - two rdfs:domain axioms mean their intersection, and the pattern makes Attribute and ContextualizedRelation disjoint while each has exactly one hasType - so both were unsatisfiable; the domain is their union, the one reading under which both classes' own restrictions hold",
+    "axiom added: ObjectPropertyDomain(<http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasType> ObjectUnionOf(<http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Attribute> <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#ContextualizedRelation>)) - two rdfs:domain axioms mean their intersection, and the pattern makes Attribute and ContextualizedRelation disjoint while each has exactly one hasType - so both were unsatisfiable; the domain is their union, the one reading under which both classes' own restrictions hold",
+    "axiom removed: ObjectPropertyDomain(<http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasType> <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#ContextualizedRelation>) - replaced by the union above",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Attribute> \"attribute\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#ContextualizedRelation> \"contextualized relation\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#SpatialInformationObject> \"spatial information object\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#SpatialObject> \"spatial object\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Type> \"type\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Value> \"value\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasAttribute> \"has attribute\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasContextRelation> \"has context relation\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasType> \"has type\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasValue> \"has value\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#refersTo> \"refers to\"@en - from its name",
+    "label added: <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#represents> \"represents\"@en - from its name"
+  ]
 }

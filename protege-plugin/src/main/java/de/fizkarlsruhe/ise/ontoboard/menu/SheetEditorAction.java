@@ -29,7 +29,7 @@ public class SheetEditorAction extends OntoBoardAction {
 
     @Override
     protected String operationName() {
-        return "Sheet editor";
+        return "Edit sheets";
     }
 
     /** It opens a tab; there is nothing to do to an ontology, and none need be open. */

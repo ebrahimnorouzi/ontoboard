@@ -4,21 +4,32 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix topic: <http://www.ontologydesignpatterns.org/cp/owl/topic.owl#> .
+@prefix partof: <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> rdf:type owl:Ontology ;
                                                           owl:imports <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ,
                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """What is the topic of something?,
+                                                          dcterms:description "To represent topics and their relations."^^xsd:string ;
+                                                          dcterms:title "Topic Pattern"^^xsd:string ;
+                                                          cpannotationschema:coversRequirements """What is the topic of something?,
 What topics are included in this one?,
 What are the topics near to that one?""" ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/ontopic.owl" ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Sara Bernardini" ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We are able to represent topics, subjects, or themes of something, and to organize topics into partonomic and topological structures.
+                                                          cpannotationschema:extractedFrom "http://www.ontologydesignpatterns.org/ont/dul/ontopic.owl" ;
+                                                          cpannotationschema:hasAuthor "Sara Bernardini" ;
+                                                          cpannotationschema:hasConsequences """We are able to represent topics, subjects, or themes of something, and to organize topics into partonomic and topological structures.
 In order to represent more sophisticated relations between topics, concepts, terms, etc., refer to the full ontopic.owl ontology.""" ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent topics and their relations." ;
-                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "\"The topic of Moby Dick is the hatred of humanity\",\"What is the main subjects in neswpapers today? And more specifically?\"" ;
-                                                          rdfs:comment "It is a simplified version of the ontology http://ontologydesignpatterns.org/ont/dul/ontopic.owl" ;
+                                                          cpannotationschema:hasIntent "To represent topics and their relations."^^xsd:string ;
+                                                          cpannotationschema:scenarios "\"The topic of Moby Dick is the hatred of humanity\",\"What is the main subjects in neswpapers today? And more specifically?\"" ;
+                                                          rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x9; label removed x1; label added x11; term declared x3;
+- header: dcterms:title \"Topic Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                       "It is a simplified version of the ontology http://ontologydesignpatterns.org/ont/dul/ontopic.owl" ;
                                                           owl:versionInfo """1.1
 - Updated by Aldo Gangemi with proper references, annotations, etc. (Feb 2010)
 1.0
@@ -29,28 +40,44 @@ In order to represent more sophisticated relations between topics, concepts, ter
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasAuthor rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has author"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -69,133 +96,139 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart
-<http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart> rdf:type owl:ObjectProperty .
+partof:hasPart rdf:type owl:ObjectProperty ;
+               rdfs:label "has part"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf
-<http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf> rdf:type owl:ObjectProperty .
+partof:isPartOf rdf:type owl:ObjectProperty ;
+                rdfs:label "is part of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#farTopicFrom
-:farTopicFrom rdf:type owl:ObjectProperty ;
-              owl:inverseOf :farTopicFrom ;
-              rdf:type owl:SymmetricProperty ;
-              rdfs:domain :Topic ;
-              rdfs:range :Topic ;
-              rdfs:comment """The opposite to vicinity relation between two topics, e.g. 'star system' (as a Topic) is farTopicFrom 'geology' (as a Topic).
+topic:farTopicFrom rdf:type owl:ObjectProperty ;
+                   owl:inverseOf topic:farTopicFrom ;
+                   rdf:type owl:SymmetricProperty ;
+                   rdfs:domain topic:Topic ;
+                   rdfs:range topic:Topic ;
+                   rdfs:comment """The opposite to vicinity relation between two topics, e.g. 'star system' (as a Topic) is farTopicFrom 'geology' (as a Topic).
 Distance is typically established with reference to a threshold on the number of concepts or entities that are common between the two topics. Alternatively, it can be established with reference to the a geometrical semantics applied to the spaces (super-topics) of which topics are part (cf. ontopic.owl ontology).""" ;
-              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-              rdfs:label "far topic from"@en ,
-                         "è un argomento lontano da"@it .
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                   rdfs:label "far topic from"@en ;
+                   skos:prefLabel "è un argomento lontano da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#hasCoreConcept
-:hasCoreConcept rdf:type owl:ObjectProperty ;
-                owl:inverseOf :isCoreConceptFor ;
-                rdfs:domain :Topic ;
-                rdfs:range :Concept ;
-                rdfs:comment """A Concept is a core concept for a Topic when it can classify many entities that have that Topic.
+topic:hasCoreConcept rdf:type owl:ObjectProperty ;
+                     owl:inverseOf topic:isCoreConceptFor ;
+                     rdfs:domain topic:Topic ;
+                     rdfs:range topic:Concept ;
+                     rdfs:comment """A Concept is a core concept for a Topic when it can classify many entities that have that Topic.
 For example, Saxophone (as a Concept) isCoreConceptFor Saxophones (as a Topic).""" ;
-                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-                rdfs:label "has core concept"@en .
+                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                     rdfs:label "has core concept"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#hasSubTopic
-:hasSubTopic rdf:type owl:ObjectProperty ;
-             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart> ;
-             owl:inverseOf :isSubTopicOf ;
-             rdf:type owl:TransitiveProperty ;
-             rdfs:domain :Topic ;
-             rdfs:range :Topic ;
-             rdfs:comment """The relation between two instances of a Topic, in terms of their cultural coverage. For example, Sport hasSubTopic Football. 
+topic:hasSubTopic rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf partof:hasPart ;
+                  owl:inverseOf topic:isSubTopicOf ;
+                  rdf:type owl:TransitiveProperty ;
+                  rdfs:domain topic:Topic ;
+                  rdfs:range topic:Topic ;
+                  rdfs:comment """The relation between two instances of a Topic, in terms of their cultural coverage. For example, Sport hasSubTopic Football. 
 It can be used widely to talk about document annotations, subject directories, etc.""" ;
-             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-             rdfs:label "ha argomento più specifico {it}" ,
-                        "has subtopic"@en .
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                  rdfs:label "has subtopic"@en ;
+                  skos:prefLabel "ha argomento più specifico"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#hasTopic
-:hasTopic rdf:type owl:ObjectProperty ;
-          owl:inverseOf :isTopicOf ;
-          rdfs:domain owl:Thing ;
-          rdfs:range :Topic ;
-          rdfs:comment """The relation between something and its Topic (subject, argument, domain, theme, subject area, etc.). It can be used widely to talk about document annotations, subject directories, etc.
+topic:hasTopic rdf:type owl:ObjectProperty ;
+               owl:inverseOf topic:isTopicOf ;
+               rdfs:domain owl:Thing ;
+               rdfs:range topic:Topic ;
+               rdfs:comment """The relation between something and its Topic (subject, argument, domain, theme, subject area, etc.). It can be used widely to talk about document annotations, subject directories, etc.
 hasTopic is very general. For example, consider the following cases:
 (1) A biography of Brigitte Bardot hasTopic 'star system'
 (2) The concept of 'starlet' hasTopic 'cinema'
 (3) A biography of Claude Chabrol hasTopic 'Nouvelle Vague'.""" ;
-          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-          rdfs:label "ha argomento"@it ,
-                     "ha argomento {it}"^^xsd:string ,
-                     "has topic"@en .
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+               rdfs:label "has topic"@en ;
+               skos:prefLabel "ha argomento"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#isCoreConceptFor
-:isCoreConceptFor rdf:type owl:ObjectProperty ;
-                  rdfs:domain :Concept ;
-                  rdfs:range :Topic ;
-                  rdfs:comment """A Concept is a core concept for a Topic when it can classify many entities that have that Topic.
+topic:isCoreConceptFor rdf:type owl:ObjectProperty ;
+                       rdfs:domain topic:Concept ;
+                       rdfs:range topic:Topic ;
+                       rdfs:comment """A Concept is a core concept for a Topic when it can classify many entities that have that Topic.
 For example, Saxophone (as a Concept) isCoreConceptFor Saxophones (as a Topic).""" ;
-                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-                  rdfs:label "is core concept for"@en ,
-                             "è concetto centrale di {it}"^^xsd:string .
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                       rdfs:label "is core concept for"@en ;
+                       skos:prefLabel "è concetto centrale di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#isSubTopicOf
-:isSubTopicOf rdf:type owl:ObjectProperty ;
-              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf> ;
-              rdf:type owl:TransitiveProperty ;
-              rdfs:domain :Topic ;
-              rdfs:range :Topic ;
-              rdfs:comment """The relation between two Topic(s), in terms of their cultural coverage. For example, Football isSubTopicOf Sport. 
+topic:isSubTopicOf rdf:type owl:ObjectProperty ;
+                   rdfs:subPropertyOf partof:isPartOf ;
+                   rdf:type owl:TransitiveProperty ;
+                   rdfs:domain topic:Topic ;
+                   rdfs:range topic:Topic ;
+                   rdfs:comment """The relation between two Topic(s), in terms of their cultural coverage. For example, Football isSubTopicOf Sport. 
 It can be used widely to talk about document annotations, subject directories, etc.""" ;
-              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-              rdfs:label "is sub topic of"@en ,
-                         "è argomento più specifico di {it}" .
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                   rdfs:label "is sub topic of"@en ;
+                   skos:prefLabel "è argomento più specifico di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#isTopicOf
-:isTopicOf rdf:type owl:ObjectProperty ;
-           rdfs:domain :Topic ;
-           rdfs:range owl:Thing ;
-           rdfs:comment """The relation between something and its Topic (subject, argument, domain, theme, subject area, etc.). It can be used widely to talk about document annotations, subject directories, etc.
+topic:isTopicOf rdf:type owl:ObjectProperty ;
+                rdfs:domain topic:Topic ;
+                rdfs:range owl:Thing ;
+                rdfs:comment """The relation between something and its Topic (subject, argument, domain, theme, subject area, etc.). It can be used widely to talk about document annotations, subject directories, etc.
 hasTopic is very general. For example, consider the following cases:
 (1) A biography of Brigitte Bardot hasTopic 'star system'
 (2) The concept of 'starlet' hasTopic 'cinema'
 (3) A biography of Claude Chabrol hasTopic 'Nouvelle Vague'.""" ;
-           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-           rdfs:label "is topic of"@en ,
-                      "è argomento di"@it .
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                rdfs:label "is topic of"@en ;
+                skos:prefLabel "è argomento di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#nearTopicTo
-:nearTopicTo rdf:type owl:ObjectProperty ;
-             owl:inverseOf :nearTopicTo ;
-             rdf:type owl:SymmetricProperty ;
-             rdfs:domain :Topic ;
-             rdfs:range :Topic ;
-             rdfs:comment """The vicinity relation between two topics, e.g. 'star system' (as a Topic) is nearTopicTo 'cinema' (as a Topic).
+topic:nearTopicTo rdf:type owl:ObjectProperty ;
+                  owl:inverseOf topic:nearTopicTo ;
+                  rdf:type owl:SymmetricProperty ;
+                  rdfs:domain topic:Topic ;
+                  rdfs:range topic:Topic ;
+                  rdfs:comment """The vicinity relation between two topics, e.g. 'star system' (as a Topic) is nearTopicTo 'cinema' (as a Topic).
 Vicinity is typically established with reference to a threshold on the number of concepts or entities that are common to the two Topic(s), or based on a geometrical semantics applied to the spaces common between two topics (cf. ontopic.owl ontology).""" ;
-             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-             rdfs:label "near topic to"@en ,
-                        "è un argomento vicino a"@it .
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                  rdfs:label "near topic to"@en ;
+                  skos:prefLabel "è un argomento vicino a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#overlappingTopic
-:overlappingTopic rdf:type owl:ObjectProperty ;
-                  owl:inverseOf :overlappingTopic ;
-                  rdf:type owl:SymmetricProperty ;
-                  rdfs:domain :Topic ;
-                  rdfs:range :Topic ;
-                  rdfs:comment """The relation between two topics, e.g. 'star system' (as a Topic) is overlappingTopic with 'Bollywood movies' (as a Topic).
+topic:overlappingTopic rdf:type owl:ObjectProperty ;
+                       owl:inverseOf topic:overlappingTopic ;
+                       rdf:type owl:SymmetricProperty ;
+                       rdfs:domain topic:Topic ;
+                       rdfs:range topic:Topic ;
+                       rdfs:comment """The relation between two topics, e.g. 'star system' (as a Topic) is overlappingTopic with 'Bollywood movies' (as a Topic).
 Overlap is typically established with reference to a threshold on the number of concepts or entities that are common between the two topics. Alternatively, it can be established with reference to the a geometrical semantics applied to the spaces (super-topics) of which topics are part (cf. ontopic.owl ontology).""" ;
-                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-                  rdfs:label "overlapping topic"@en .
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+                       rdfs:label "overlapping topic"@en .
 
 
 #################################################################
@@ -203,34 +236,34 @@ Overlap is typically established with reference to a threshold on the number of 
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#Concept
-:Concept rdf:type owl:Class ;
-         owl:disjointWith :Topic ;
-         rdfs:comment """A Concept is a social object, which is used to classify entities. Differently from a Topic
+topic:Concept rdf:type owl:Class ;
+              owl:disjointWith topic:Topic ;
+              rdfs:comment """A Concept is a social object, which is used to classify entities. Differently from a Topic
 Both concepts and topics are used to classify entities, but concepts typically have an \"is a\" relation to the entities; e.g. 
 (1) A biography of Brigitte Bardot hasTopic 'star system' (Topic)
 (2) A biography of Brigitte Bardot is a Biography (Concept)
 (3) A biography of Claude Chabrol hasTopic 'Nouvelle Vague' (Topic)
 (4) The Nouvelle Vague is a CulturalMovement (Concept)"""^^xsd:string ;
-         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-         rdfs:label "Concept"@en ,
-                    "Concetto"@it .
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+              rdfs:label "Concept"@en ;
+              skos:prefLabel "Concetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/topic.owl#Topic
-:Topic rdf:type owl:Class ;
-       owl:equivalentClass [ rdf:type owl:Restriction ;
-                             owl:onProperty :isTopicOf ;
-                             owl:minCardinality "1"^^xsd:nonNegativeInteger
-                           ] ;
-       rdfs:subClassOf [ rdf:type owl:Restriction ;
-                         owl:onProperty :hasSubTopic ;
-                         owl:allValuesFrom :Topic
-                       ] ,
-                       [ rdf:type owl:Restriction ;
-                         owl:onProperty :isSubTopicOf ;
-                         owl:allValuesFrom :Topic
-                       ] ;
-       rdfs:comment """A topic, or subject, argument, domain, theme, subject area, etc.
+topic:Topic rdf:type owl:Class ;
+            owl:equivalentClass [ rdf:type owl:Restriction ;
+                                  owl:onProperty topic:isTopicOf ;
+                                  owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                ] ;
+            rdfs:subClassOf [ rdf:type owl:Restriction ;
+                              owl:onProperty topic:hasSubTopic ;
+                              owl:allValuesFrom topic:Topic
+                            ] ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty topic:isSubTopicOf ;
+                              owl:allValuesFrom topic:Topic
+                            ] ;
+            rdfs:comment """A topic, or subject, argument, domain, theme, subject area, etc.
 Topics have a controversial intuition across common sense, document management systems, knowledge organization systems, etc.
 
 There is an interesting duality of topics: they are commonly interpreted as areas of shared knowledge within a Community (therefore as collections of social objects). On the other hand, existing directories and thesauri use 'topic' (or 'subject') more restrictively, as a relation between a document and a concept. 
@@ -239,9 +272,9 @@ For example, thesauri do not usually distinguish when their 'concepts' (cf. skos
 While the first is perfectly acceptable, the second is counterintuitive and even possibly wrong. This effect is due to the fact that concepts are 'intensional' notions and are not intended as areas of knowledge, document spaces, etc., which are 'extensional' notions.
 
 Accordingly to these basic observations, in this pattern Concept and Topic result to be disjoint, and an appropriate representation should be in place in order to model thesauri. E.g. skos:Concept should be mapped to the union of Concept and Topic.""" ;
-       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
-       rdfs:label "Argomento"@it ,
-                  "Topic"@en .
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/topic.owl> ;
+            rdfs:label "Topic"@en ;
+            skos:prefLabel "Argomento"@it .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

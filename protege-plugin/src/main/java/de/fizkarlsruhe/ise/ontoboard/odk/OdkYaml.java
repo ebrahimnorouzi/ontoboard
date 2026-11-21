@@ -541,7 +541,37 @@ public final class OdkYaml {
      * {@code - yes} in an ODK YAML is the boolean true and not the string "yes" - and so is a
      * value carrying a character that would change the structure.
      */
+    /** The mark of a value written as YAML as it is: {@link #raw}. */
+    private static final String RAW = "\u0001";
+
+    /**
+     * A value written as the YAML it is - a boolean, a list - not quoted as text: ODK reads its
+     * configuration with types, and a quoted {@code "true"} is no boolean to it (1.155.0).
+     */
+    public static String raw(String yaml) {
+        return RAW + yaml;
+    }
+
+    /** A list of texts, each quoted, as one line: {@code ["rdfs:label", "IAO:0000115"]}. */
+    public static String flowList(java.util.List<String> items) {
+        StringBuilder list = new StringBuilder("[");
+        for (int i = 0; i < items.size(); i++) {
+            list.append(i == 0 ? "" : ", ").append('"')
+                    .append(items.get(i).replace("\\", "\\\\").replace("\"", "\\\""))
+                    .append('"');
+        }
+        return raw(list.append(']').toString());
+    }
+
+    /** A value as a person reads it: without the mark of {@link #raw}. */
+    public static String shown(String value) {
+        return value != null && value.startsWith(RAW) ? value.substring(RAW.length()) : value;
+    }
+
     static String scalarFor(String value) {
+        if (value != null && value.startsWith(RAW)) {
+            return value.substring(RAW.length());
+        }
         String text = value == null ? "" : value.trim();
         if (text.isEmpty()) {
             return "''";

@@ -1,38 +1,32 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY situation "http://www.ontologydesignpatterns.org/cp/owl/situation.owl#" >
-    <!ENTITY countingas "http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#" >
-    <!ENTITY timeinterval "http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#" >
-    <!ENTITY classification "http://www.ontologydesignpatterns.org/cp/owl/classification.owl#" >
-    <!ENTITY timeindexedsituation "http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#" >
-    <!ENTITY timeindexedclassification "http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl"
-     xmlns:timeindexedsituation="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#"
-     xmlns:timeinterval="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:countingas="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#"
-     xmlns:classification="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
-     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:timeindexedclassification="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:situation="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#">
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:situation="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#"
+     xmlns:countingas="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#"
+     xmlns:timeinterval="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#"
+     xmlns:classification="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
+     xmlns:timeindexedsituation="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#"
+     xmlns:timeindexedclassification="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">0.1: Created by Aldo Gangemi
-0.2: Revised with specialization from timeindexedsituation.owl</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Diagram (this article has no graphical representation)</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Timeindexedclassification Pattern</dcterms:title>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x11; term declared x2;
+- header: dcterms:title &quot;Timeindexedclassification Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.1: Created by Aldo Gangemi
+0.2: Revised with specialization from timeindexedsituation.owl</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -45,10 +39,46 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
     
 
 
@@ -65,25 +95,33 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy -->
 
-    <owl:ObjectProperty rdf:about="&classification;isClassifiedBy"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">isClassifiedBy</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor -->
 
-    <owl:ObjectProperty rdf:about="&situation;isSettingFor"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">isSettingFor</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime -->
 
-    <owl:ObjectProperty rdf:about="&timeindexedsituation;atTime"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime">
+        <rdfs:label xml:lang="en">at time</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity -->
 
-    <owl:ObjectProperty rdf:about="&timeindexedsituation;forEntity"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity">
+        <rdfs:label xml:lang="en">for entity</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -100,83 +138,91 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept -->
 
-    <owl:Class rdf:about="&classification;Concept">
-        <owl:disjointWith rdf:resource="&situation;Situation"/>
-        <owl:disjointWith rdf:resource="&timeinterval;TimeInterval"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept">
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval"/>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Concept</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs -->
 
-    <owl:Class rdf:about="&countingas;CountingAs"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs">
+        <rdfs:label xml:lang="en">Counting as</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation -->
 
-    <owl:Class rdf:about="&situation;Situation">
-        <owl:disjointWith rdf:resource="&timeinterval;TimeInterval"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation">
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval"/>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Situation</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#TimeIndexedClassification -->
 
-    <owl:Class rdf:about="&timeindexedclassification;TimeIndexedClassification">
-        <rdfs:label xml:lang="en">Time indexed classification</rdfs:label>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#TimeIndexedClassification">
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="&countingas;CountingAs"/>
+                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs"/>
                     <owl:Restriction>
-                        <owl:onProperty rdf:resource="&timeindexedsituation;atTime"/>
-                        <owl:someValuesFrom rdf:resource="&timeinterval;TimeInterval"/>
+                        <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime"/>
+                        <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval"/>
                     </owl:Restriction>
                     <owl:Restriction>
-                        <owl:onProperty rdf:resource="&timeindexedsituation;forEntity"/>
+                        <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity"/>
                         <owl:someValuesFrom>
                             <owl:Restriction>
-                                <owl:onProperty rdf:resource="&classification;isClassifiedBy"/>
-                                <owl:someValuesFrom rdf:resource="&classification;Concept"/>
+                                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy"/>
+                                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept"/>
                             </owl:Restriction>
                         </owl:someValuesFrom>
                     </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
-        <rdfs:subClassOf rdf:resource="&countingas;CountingAs"/>
-        <rdfs:subClassOf rdf:resource="&timeindexedsituation;TimeIndexedSituation"/>
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs"/>
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&situation;isSettingFor"/>
-                <owl:minCardinality rdf:datatype="&xsd;nonNegativeInteger">3</owl:minCardinality>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">3</owl:minCardinality>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:comment>A Situation to represent classification (&#39;counting as&#39;) of an entity at some time.</rdfs:comment>
+        <rdfs:comment>A Situation to represent classification (&apos;counting as&apos;) of an entity at some time.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl"/>
+        <rdfs:label xml:lang="en">Time indexed classification</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation -->
 
-    <owl:Class rdf:about="&timeindexedsituation;TimeIndexedSituation"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation">
+        <rdfs:label xml:lang="en">Time indexed situation</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval -->
 
-    <owl:Class rdf:about="&timeinterval;TimeInterval"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval">
+        <rdfs:label xml:lang="en">Time interval</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.w3.org/2002/07/owl#Thing -->
 
-    <owl:Class rdf:about="&owl;Thing"/>
+    <owl:Class rdf:about="http://www.w3.org/2002/07/owl#Thing"/>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

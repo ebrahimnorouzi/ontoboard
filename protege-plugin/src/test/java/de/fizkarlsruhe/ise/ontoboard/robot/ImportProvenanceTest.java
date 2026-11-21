@@ -54,6 +54,42 @@ class ImportProvenanceTest {
 
     // ---------- what is recorded ----------
 
+    /**
+     * A module says what its source is published under, and that OntoBoard curated a library
+     * pattern it was cut from (1.155.0): a project that imports a pattern sees both in the
+     * module's header, which ROBOT's extraction would otherwise leave behind. No other comment.
+     */
+    @Test
+    void aModuleCarriesItsSourcesLicenceAndItsCuration() throws Exception {
+        OWLOntology source = ontology(CHEBI, null);
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        IRI ccBy = IRI.create("https://creativecommons.org/licenses/by/4.0/");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(source,
+                factory.getOWLAnnotation(factory.getOWLAnnotationProperty(ImportProvenance.LICENSE), ccBy)));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(source,
+                factory.getOWLAnnotation(factory.getRDFSComment(),
+                        factory.getOWLLiteral("Curated by OntoBoard 1.155.0, so that the pattern passes.", "en"))));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(source,
+                factory.getOWLAnnotation(factory.getRDFSComment(), factory.getOWLLiteral("What it is for."))));
+
+        OWLOntology module = moduleCutFrom(source, "2026-11-19");
+
+        java.util.List<String> header = new java.util.ArrayList<String>();
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : module.getAnnotations()) {
+            header.add(annotation.getProperty().getIRI().getShortForm() + " " + (annotation.getValue()
+                    instanceof org.semanticweb.owlapi.model.OWLLiteral
+                    ? ((org.semanticweb.owlapi.model.OWLLiteral) annotation.getValue()).getLiteral()
+                    : annotation.getValue().toString()));
+        }
+        assertTrue(header.contains("license " + ccBy), header.toString());
+        assertTrue(header.contains("rdf-schema#comment Curated by OntoBoard 1.155.0, so that the pattern passes.")
+                || header.contains("comment Curated by OntoBoard 1.155.0, so that the pattern passes."),
+                header.toString());
+        for (String said : header) {
+            assertFalse(said.endsWith("What it is for."), "only the curation is carried: " + header);
+        }
+    }
+
     /** Both, and they are not interchangeable - see the class comment on ImportProvenance. */
     @Test
     void aModuleRecordsTheUpstreamAndTheRelease() throws Exception {

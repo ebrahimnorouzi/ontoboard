@@ -65,6 +65,27 @@ public final class ReleaseRun {
      */
     public static List<String> makeArguments(String version, VersionIriShape shape,
             String ontbase, boolean refreshImports) {
+        return makeArguments(version, shape, ontbase, refreshImports, null);
+    }
+
+    /**
+     * As {@link #makeArguments(String, VersionIriShape, String, boolean)}, with the reasoner the
+     * person chose for the release as {@code REASONER=} - ODK's Makefile variable, which every
+     * route hands to make (1.155.0: "for release the user define the reasoner").
+     *
+     * @param reasoner the reasoner's name as ROBOT takes it, or null for the project's own
+     */
+    public static List<String> makeArguments(String version, VersionIriShape shape,
+            String ontbase, boolean refreshImports, String reasoner) {
+        List<String> arguments = plainMakeArguments(version, shape, ontbase, refreshImports);
+        if (reasoner != null && !reasoner.trim().isEmpty()) {
+            arguments.add("REASONER=" + reasoner.trim());
+        }
+        return arguments;
+    }
+
+    private static List<String> plainMakeArguments(String version, VersionIriShape shape,
+            String ontbase, boolean refreshImports) {
         if (version == null || OntologyVersion.parseOrNull(version) == null) {
             throw new IllegalArgumentException("'" + version + "' is not a version: a date such "
                     + "as 2026-11-11, or numbers such as 1.0.0.");
@@ -125,11 +146,32 @@ public final class ReleaseRun {
         }
 
         /**
-         * A shell inside the container reads the script: with Windows line endings it reports
-         * "not found" for every command, which names the wrong thing.
+         * Whether the script has Windows line endings, as Git for Windows checks nfdicore and
+         * MWO out. The shell in ODK's container, dash, takes each carriage return for part of
+         * the line's last word - the version, the target - so it is not given the file as it is
+         * ({@link #shellWords()}).
          */
         public boolean hasWindowsLineEndings() {
             return text.contains("\r\n");
+        }
+
+        /**
+         * The words a shell in ODK's container is given to run the script: {@code sh
+         * release.sh}; or, for a script with Windows line endings, a copy in the container read
+         * with the carriage returns taken off, run under the script's own name - {@code $0} is
+         * the same, and the file is not changed (1.155.0: before, such a release was refused).
+         *
+         * <p>No word has a double quote in it: Java on Windows does not escape one inside an
+         * argument it hands to a program, and docker would read the words apart.
+         */
+        public List<String> shellWords() {
+            String name = file.getName();
+            if (!hasWindowsLineEndings()) {
+                return Arrays.asList("sh", name);
+            }
+            String copy = "/tmp/" + name;
+            return Arrays.asList("sh", "-c", "sed 's/\\r$//' " + name + " > " + copy
+                    + " && exec sh -c '. " + copy + "' " + name);
         }
 
         /**
@@ -265,9 +307,18 @@ public final class ReleaseRun {
                         + "the next release gets the next number.";
             }
         }
-        return there == null ? null : "Version " + version + " has been released: " + there
-                + ". A version IRI cannot be taken back once somebody has imported it, so the "
-                + "next release gets the next number.";
+        if (there == null) {
+            return null;
+        }
+        // A dated version names its day: the next number is tomorrow's, or another scheme's
+        // (the hand check of 1.155.0 - the egg project had a release dated today).
+        OntologyVersion asked = OntologyVersion.parseOrNull(version);
+        return "Version " + version + " has been released: " + there + ". A version IRI cannot "
+                + "be taken back once somebody has imported it, " + (asked != null
+                        && asked.getScheme() == OntologyVersion.Scheme.DATE
+                        ? "and a dated version names its day: release tomorrow, or now under a "
+                                + "semantic version such as 1.0.0."
+                        : "so the next release gets the next number.");
     }
 
     /**
@@ -381,19 +432,44 @@ public final class ReleaseRun {
         private final List<String> leftOut;
         private final String head;
         private final List<String> committedFirst;
+        private final List<String> savedMeanwhile;
 
         Staging(List<List<String>> commands, List<String> leftOut, String head,
                 List<String> committedFirst) {
+            this(commands, leftOut, head, committedFirst, Collections.<String>emptyList());
+        }
+
+        private Staging(List<List<String>> commands, List<String> leftOut, String head,
+                List<String> committedFirst, List<String> savedMeanwhile) {
             this.commands = Collections.unmodifiableList(commands);
             this.leftOut = Collections.unmodifiableList(leftOut);
             this.head = head == null ? "" : head.trim();
             this.committedFirst = Collections.unmodifiableList(
                     new ArrayList<String>(committedFirst));
+            this.savedMeanwhile = Collections.unmodifiableList(
+                    new ArrayList<String>(savedMeanwhile));
         }
 
         /** The project's new files, committed before the release in a commit of their own. */
         public List<String> committedFirst() {
             return committedFirst;
+        }
+
+        /**
+         * The same, knowing what was saved in the project while the release ran - kept behind,
+         * Keep working - as the project names the files (the 1.155.0 review's I3).
+         */
+        public Staging withSavedMeanwhile(List<String> saved) {
+            return new Staging(commands, leftOut, head, committedFirst,
+                    saved == null ? Collections.<String>emptyList() : saved);
+        }
+
+        /**
+         * What was saved in the project while the release ran: the release may hold some of it
+         * or none, and {@code git add -u} takes it in as it is now. Empty when nothing was.
+         */
+        public List<String> savedMeanwhile() {
+            return savedMeanwhile;
         }
 
         /** The commands, in the order they are run, each from the project's root. */
@@ -617,6 +693,20 @@ public final class ReleaseRun {
     public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
             String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
             List<String> named) {
+        return staging(projectRoot, repositoryRoot, ontologyId, version, assets, gitStatus,
+                commitNewFirst, named, null);
+    }
+
+    /**
+     * As {@link #staging(File, File, String, String, List, List, boolean, List)}, the tag's
+     * message read from a file of the release - its record (1.155.0) - when one is given.
+     *
+     * @param tagMessageFile from the project's top, as git in it reads it; null for
+     *                       "{@code <id> <version>}"
+     */
+    public static Staging staging(File projectRoot, File repositoryRoot, String ontologyId,
+            String version, List<File> assets, List<String> gitStatus, boolean commitNewFirst,
+            List<String> named, String tagMessageFile) {
         List<String> names = new ArrayList<String>();
         for (File asset : assets) {
             names.add(relative(projectRoot, asset));
@@ -658,8 +748,13 @@ public final class ReleaseRun {
             commands.add(Arrays.asList("git", "add", "--", kept));
         }
         commands.add(Arrays.asList("git", "commit", "-m", "release(" + version + ")"));
-        commands.add(Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
-                ontologyId + " " + version));
+        commands.add(tagMessageFile == null
+                ? Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
+                        ontologyId + " " + version)
+                // Verbatim: git's own cleanup takes every line starting "#" for a comment,
+                // and the record's headings are such lines (1.155.0).
+                : Arrays.asList("git", "tag", "-a", GitTags.tagFor(version),
+                        "--cleanup=verbatim", "-F", tagMessageFile));
 
         GitRepo.Status status = GitRepo.parseStatus(gitStatus);
         List<String> leftOut = new ArrayList<String>();

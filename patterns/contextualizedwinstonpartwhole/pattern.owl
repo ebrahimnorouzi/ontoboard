@@ -1,12 +1,48 @@
 <?xml version="1.0"?>
 <rdf:RDF xmlns="http://daselab.org/ContextualizedWinstonPartWhole#"
      xml:base="http://daselab.org/ContextualizedWinstonPartWhole"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:xml="http://www.w3.org/XML/1998/namespace"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
-    <owl:Ontology rdf:about="http://daselab.org/ContextualizedWinstonPartWhole"/>
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/">
+    <owl:Ontology rdf:about="http://daselab.org/ContextualizedWinstonPartWhole">
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Ontology design pattern for modeling contextualizedwinstonpartwhole relationships and concepts.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Contextualizedwinstonpartwhole Pattern</dcterms:title>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x15; term declared x2;
+- header: dcterms:title &quot;Contextualizedwinstonpartwhole Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -23,25 +59,33 @@
 
     <!-- http://daselab.org/ContextualizedWinstonPartWhole#IsPartOf -->
 
-    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#IsPartOf"/>
+    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#IsPartOf">
+        <rdfs:label xml:lang="en">is part of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://daselab.org/ContextualizedWinstonPartWhole#hasWhole -->
 
-    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#hasWhole"/>
+    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#hasWhole">
+        <rdfs:label xml:lang="en">has whole</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://daselab.org/ContextualizedWinstonPartWhole#part-of -->
 
-    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#part-of"/>
+    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#part-of">
+        <rdfs:label xml:lang="en">part of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://daselab.org/ContextualizedWinstonPartWhole#spatially-located-in -->
 
-    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#spatially-located-in"/>
+    <owl:ObjectProperty rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#spatially-located-in">
+        <rdfs:label xml:lang="en">spatially located in</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -60,6 +104,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Component-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO component type</rdfs:label>
     </owl:Class>
     
 
@@ -68,6 +113,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Feature-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO feature type</rdfs:label>
     </owl:Class>
     
 
@@ -76,6 +122,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Member-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO member type</rdfs:label>
     </owl:Class>
     
 
@@ -84,6 +131,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Part-Of_Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO part of type</rdfs:label>
     </owl:Class>
     
 
@@ -92,6 +140,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Place-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO place type</rdfs:label>
     </owl:Class>
     
 
@@ -100,6 +149,7 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Portion-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO portion type</rdfs:label>
     </owl:Class>
     
 
@@ -108,13 +158,16 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#PO-Stuff-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">PO stuff type</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance -->
 
-    <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+    <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance">
+        <rdfs:label xml:lang="en">relation instance</rdfs:label>
+    </owl:Class>
     
 
 
@@ -122,10 +175,11 @@
 
     <owl:Class rdf:about="http://daselab.org/ContextualizedWinstonPartWhole#Spatially-Located-In-Type">
         <rdfs:subClassOf rdf:resource="http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance"/>
+        <rdfs:label xml:lang="en">spatially located in type</rdfs:label>
     </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 4.2.5.20160517-0735) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

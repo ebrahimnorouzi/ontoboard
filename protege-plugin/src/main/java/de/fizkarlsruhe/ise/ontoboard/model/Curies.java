@@ -135,6 +135,10 @@ public final class Curies {
         if (text.isEmpty() || sameTerm(curie, text)) {
             return curie;
         }
+        int colon = curie.indexOf(':');
+        if (sameWords(colon < 0 ? curie : curie.substring(colon + 1), unmarked(text))) {
+            return text;
+        }
         // The label first: it says what the term is. Asked for, because an identifier such as
         // obo:BFO_0000004 says nothing to whoever has to decide whether this is the class they want.
         return text + "\n" + curie;
@@ -150,11 +154,25 @@ public final class Curies {
             int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
             String local = iri.substring(cut + 1);
             if (!local.isEmpty() && label != null && !label.trim().isEmpty()
-                    && !local.equals(unmarked(label.trim()))) {
+                    && !local.equals(unmarked(label.trim()))
+                    && !sameWords(local, unmarked(label.trim()))) {
                 return label.trim() + "\n" + local;
             }
         }
         return displayLabel(curie, label);
+    }
+
+    /**
+     * Whether the label is the name in words - "has pitch class" for hasPitchClass, "Homogeneous
+     * fragment" for HomogeneousFragment - so the name under it would say nothing more (1.155.0).
+     */
+    private static boolean sameWords(String name, String label) {
+        String squeezed = squeezed(name);
+        return !squeezed.isEmpty() && squeezed.equals(squeezed(label));
+    }
+
+    private static String squeezed(String text) {
+        return text.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]", "");
     }
 
     /** Whether the label is just the identifier's local part, so printing both would repeat it. */

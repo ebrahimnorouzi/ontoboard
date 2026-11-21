@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
@@ -106,6 +107,8 @@ class ReleaseByItselfTest {
             expected.add(product);
             expected.add("releases/1.0.0/" + product);
         }
+        // 1.155.0: what the release records of itself, beside its copy.
+        expected.add("releases/1.0.0/RELEASE.md");
         assertEquals(expected, written, "the files ODK's Makefile names as the release, at the "
                 + "project's top - and, since OntoBoard made this project, their copy under "
                 + "releases/1.0.0, where ODK's version IRIs point");
@@ -117,8 +120,8 @@ class ReleaseByItselfTest {
                 "the tests ran as part of it: " + log);
         assertTrue(outcome.isCommitted());
         assertEquals("v1.0.0", outcome.getTag());
-        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0", "-m",
-                "eggboil 1.0.0")), gitRan.toString());
+        assertTrue(gitRan.contains(Arrays.asList("git", "tag", "-a", "v1.0.0",
+                "--cleanup=verbatim", "-F", "releases/1.0.0/RELEASE.md")), gitRan.toString());
     }
 
     /**
@@ -245,9 +248,45 @@ class ReleaseByItselfTest {
                 versionIriOf(new File(root, "eggboil-base.owl")));
     }
 
-    /** A release that does not build is not recorded, and the reason is ROBOT's own word. */
+    /**
+     * A release that does not build is not recorded, and the reason is ROBOT's own word.
+     *
+     * <p>Two classes each the other's subclass: consistent, and every class can have members, so
+     * the release check lets it through (1.155.0) - but ODK reasons with
+     * {@code --equivalent-classes-allowed asserted-only}, and the equivalence is inferred.
+     */
     @Test
     void aReleaseThatDoesNotBuildIsNotRecordedAndSaysWhy() throws Exception {
+        String text = new String(Files.readAllBytes(edit.toPath()), StandardCharsets.UTF_8);
+        int end = text.lastIndexOf(')');
+        Files.write(edit.toPath(), (text.substring(0, end)
+                + "Declaration(Class(<https://example.org/eggboil/EGGBOIL_9999998>))\n"
+                + "Declaration(Class(<https://example.org/eggboil/EGGBOIL_9999999>))\n"
+                + "SubClassOf(<https://example.org/eggboil/EGGBOIL_9999999> "
+                + "<https://example.org/eggboil/EGGBOIL_9999998>)\n"
+                + "SubClassOf(<https://example.org/eggboil/EGGBOIL_9999998> "
+                + "<https://example.org/eggboil/EGGBOIL_9999999>)\n" + text.substring(end))
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind(),
+                "the check found nothing; the build did");
+        assertTrue(outcome.getFailure().contains("Nothing was copied, committed or tagged"),
+                outcome.getFailure());
+        assertTrue(String.join("\n", outcome.getTranscript()).contains("EGGBOIL_9999999"),
+                "which classes are inferred equivalent is in the log: " + outcome.getTranscript());
+        assertFalse(new File(root, "eggboil.owl").exists());
+        assertEquals(new ArrayList<List<String>>(), gitRan);
+    }
+
+    /**
+     * A class that can have no members stops the release before anything is built (D1), with the
+     * axioms that cause it - on OntoBoard's own engine, the route nothing is installed for.
+     */
+    @Test
+    void aClassWithNoMembersStopsTheReleaseBeforeTheBuild() throws Exception {
         String text = new String(Files.readAllBytes(edit.toPath()), StandardCharsets.UTF_8);
         int end = text.lastIndexOf(')');
         Files.write(edit.toPath(), (text.substring(0, end)
@@ -264,10 +303,11 @@ class ReleaseByItselfTest {
         OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
 
         assertFalse(outcome.isOk());
-        assertTrue(outcome.getFailure().contains("Nothing was copied, committed or tagged"),
+        assertEquals(ReleaseVerdict.Kind.UNSATISFIABLE, outcome.getVerdict().kind());
+        assertTrue(outcome.getFailure().contains("Nothing was built, copied, committed or tagged"),
                 outcome.getFailure());
-        assertTrue(String.join("\n", outcome.getTranscript()).contains("EGGBOIL_9999999"),
-                "which class cannot have members is in the log: " + outcome.getTranscript());
+        assertTrue(outcome.getFailure().contains("EGGBOIL_9999999"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("DisjointWith"), outcome.getFailure());
         assertFalse(new File(root, "eggboil.owl").exists());
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
@@ -324,16 +364,22 @@ class ReleaseByItselfTest {
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
 
-    /** A project's own release script is a shell script: it is not a target of make. */
+    /**
+     * A project's own release script is read and run as a script, line by line - not handed to
+     * make as a target (1.155.0: before, OntoBoard's engine refused every script).
+     */
     @Test
-    void aScriptOfTheProjectsOwnIsNotRunThisWay() throws Exception {
+    void aScriptOfTheProjectsOwnIsRunAsAScriptNotAsATarget() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(),
+                "VERSION=1.0.0\nsh run.sh make clean\n".getBytes(StandardCharsets.UTF_8));
+
         ProcessRunner.Outcome ran = OdkRelease.byOntoBoardItself(edit, null)
                 .run(Arrays.asList("sh", "release.sh"), true);
 
-        assertFalse(ran.isSuccess());
         String said = String.join("\n", ran.getOutput());
-        assertTrue(said.contains("'sh release.sh' is no target of make"), "it is not handed to "
-                + "make as if it were one of its targets: " + said);
+        assertTrue(ran.isSuccess(), said);
+        assertTrue(said.contains("line 2: make clean"), said);
+        assertFalse(said.contains("no target of make"), said);
     }
 
     /**
@@ -342,7 +388,7 @@ class ReleaseByItselfTest {
      * nothing was run that could have said anything.
      */
     @Test
-    void whatOntoBoardItselfDoesNotBuildIsSaidWithItsReason() throws Exception {
+    void anEditedMakefileIsReleasedAsItIsAndTheLogSaysSo() throws Exception {
         File makefile = new File(edit.getParentFile(), "Makefile");
         Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
                 StandardCharsets.UTF_8) + "\n# a line of their own\n")
@@ -350,11 +396,134 @@ class ReleaseByItselfTest {
 
         OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
 
-        assertFalse(outcome.isOk());
+        // 1.155.0: as make in ODK's container runs it - the difference said before the run,
+        // once in the release, not again for each call of make (clean, the build, the files).
+        assertTrue(outcome.isOk(), outcome.getFailure());
         String log = String.join("\n", outcome.getTranscript());
-        assertTrue(log.contains("This project's Makefile is not the one ODK"),
-                "why nothing was run is in the log: " + log);
-        assertFalse(new File(root, "eggboil.owl").exists());
-        assertEquals(new ArrayList<List<String>>(), gitRan);
+        String notice = "This project's Makefile is not the one ODK";
+        assertTrue(log.contains(notice), "how the Makefile differs is in the log: " + log);
+        assertEquals(log.indexOf(notice), log.lastIndexOf(notice), "said once: " + log);
+        assertTrue(new File(root, "eggboil.owl").exists());
+    }
+
+    /**
+     * A script calls make line after line. How the Makefile differs from ODK's is said once,
+     * before the script's first call of make - not before each (1.155.0: nfdicore's release
+     * said it four times, and MWO's three).
+     */
+    @Test
+    void howTheMakefileDiffersIsSaidOnceInAScriptsRun() throws Exception {
+        File makefile = new File(edit.getParentFile(), "Makefile");
+        Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
+                StandardCharsets.UTF_8) + "\n# a line of their own\n")
+                .getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make clean\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String log = String.join("\n", outcome.getTranscript());
+        String notice = "This project's Makefile is not the one ODK";
+        int first = log.indexOf(notice);
+        assertTrue(first >= 0, log);
+        assertEquals(first, log.lastIndexOf(notice), "said once: " + log);
+        assertTrue(log.contains("line 3: make VERSION=1.0.0 prepare_release_fast"), log);
+    }
+
+    /**
+     * The reasoner the person chose reaches ROBOT on OntoBoard's own engine too: make takes
+     * {@code REASONER=} from its command line over the Makefile's line, and so must the engine
+     * (1.155.0).
+     */
+    @Test
+    void theEngineReasonsWithTheReasonerGiven() throws Exception {
+        OdkRelease.Outcome outcome = OdkRelease.run(
+                new OdkRelease.Request(edit, "1.0.0", null, false, true)
+                        .withReasoner("HermiT", ReleaseVerdict.DEFAULT_LIMIT_MILLIS),
+                OdkRelease.byOntoBoardItself(edit, null), git(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        return true;
+                    }
+                });
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String transcript = String.join("\n", outcome.getTranscript());
+        assertTrue(transcript.contains("--reasoner HermiT"), transcript);
+        assertFalse(transcript.contains("--reasoner ELK"), transcript);
+    }
+
+    /**
+     * A project's own release script, run by OntoBoard itself: its variables, its call of make
+     * through run.sh, and a copy - each line said as it starts (1.155.0; nfdicore and MWO are
+     * released by such scripts).
+     */
+    @Test
+    void aProjectsOwnScriptIsRunByOntoBoardItself() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("set -e\r\n"
+                + "VERSION=1.0.0\r\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\r\n"
+                + "cp ../../eggboil.owl ../../eggboil-as-released.owl\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String log = String.join("\n", outcome.getTranscript());
+        assertTrue(log.contains("line 3: make VERSION=1.0.0 prepare_release_fast"), log);
+        assertTrue(log.contains("line 4: cp ../../eggboil.owl ../../eggboil-as-released.owl"),
+                log);
+        assertTrue(new File(root, "eggboil-as-released.owl").isFile());
+        assertTrue(versionIriOf(new File(root, "eggboil.owl")).contains("1.0.0"));
+    }
+
+    @Test
+    void aScriptLineOntoBoardCannotRunStopsTheReleaseBeforeAnythingRuns() throws Exception {
+        Files.write(new File(edit.getParentFile(), "release.sh").toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n"
+                + "git push origin main\n").getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().contains("Line 3"), outcome.getFailure());
+        assertFalse(new File(root, "eggboil.owl").exists(), "nothing was built");
+    }
+
+    @Test
+    void whetherOntoBoardCanRunAScriptIsAskedBeforeTheRelease() throws Exception {
+        File script = new File(edit.getParentFile(), "release.sh");
+        Files.write(script.toPath(), ("VERSION=1.0.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release_fast\n")
+                .getBytes(StandardCharsets.UTF_8));
+        assertNull(ProjectScript.whyNotOnTheEngine(edit, script));
+
+        Files.write(script.toPath(), ("VERSION=1.0.0\nsh run.sh make no_such_target\n")
+                .getBytes(StandardCharsets.UTF_8));
+        String why = ProjectScript.whyNotOnTheEngine(edit, script);
+        assertTrue(why != null && why.contains("Line 2"), why);
+    }
+
+    /**
+     * A make line the engine reads otherwise is named before anything runs: the check read every
+     * target of a line and skipped its options, while the engine takes one target, -s and -B -
+     * so "make clean all" stopped the script after its earlier lines had written (the final
+     * review of 1.155.0).
+     */
+    @Test
+    void aMakeLineTheEngineWouldRefuseIsNamedBeforeAnythingRuns() throws Exception {
+        File script = new File(edit.getParentFile(), "release.sh");
+        for (String line : new String[] {"sh run.sh make clean prepare_release_fast",
+            "sh run.sh make -j4 prepare_release_fast"}) {
+            Files.write(script.toPath(), ("VERSION=1.0.0\n" + line + "\n")
+                    .getBytes(StandardCharsets.UTF_8));
+
+            String why = ProjectScript.whyNotOnTheEngine(edit, script);
+
+            assertTrue(why != null && why.contains("Line 2"), line + ": " + why);
+        }
     }
 }

@@ -1,31 +1,66 @@
-@prefix : <https://ontoboard.org/patterns/pmdco-process-temporal-dimensions.owl#> .
+@prefix : <https://w3id.org/pmd/co/> .
+@prefix ns1: <http://purl.obolibrary.org/obo/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <https://ontoboard.org/patterns/pmdco-process-temporal-dimensions.owl> .
 
-<https://ontoboard.org/patterns/pmdco-process-temporal-dimensions.owl> rdf:type owl:Ontology .
+<https://ontoboard.org/patterns/pmdco-process-temporal-dimensions.owl> rdf:type owl:Ontology ;
+                                                                        dcterms:description "Specifies the temporal extent and the temporal boundaries of a process on the time axis. The annealing example gives the process an occupied temporal interval with explicit first and last instants, and names the participants (furnace, ingot)."^^xsd:string ;
+                                                                        dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+                                                                        dcterms:title "Temporal dimensions of a process"^^xsd:string ;
+                                                                        rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x1; label added x8; term declared x4;
+- header: dcterms:title \"Temporal dimensions of a process\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- header: dcterms:license <https://creativecommons.org/licenses/by/4.0/> - https://github.com/materialdigital/core-ontology
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/IAO_0000112
-<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000112 rdf:type owl:AnnotationProperty ;
+                rdfs:label "example of usage"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000115
-<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000115 rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000116
-<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+ns1:IAO_0000116 rdf:type owl:AnnotationProperty ;
+                rdfs:label "editor note"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/license
+dcterms:license rdf:type owl:AnnotationProperty ;
+                rdfs:label "License"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
 
 ###  http://www.w3.org/2004/02/skos/core#definition
-<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+skos:definition rdf:type owl:AnnotationProperty ;
+                rdfs:label "definition (SKOS)"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
 
 
 #################################################################
@@ -33,45 +68,46 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000108
-<http://purl.obolibrary.org/obo/BFO_0000108> rdf:type owl:ObjectProperty ;
-                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             rdfs:label "exists at"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) exists at is a relation between a particular and some temporal region at which the particular exists"@en .
+ns1:BFO_0000108 rdf:type owl:ObjectProperty ;
+                rdfs:range ns1:BFO_0000008 ;
+                rdfs:label "exists at"@en ;
+                skos:definition "(Elucidation) exists at is a relation between a particular and some temporal region at which the particular exists"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000199
-<http://purl.obolibrary.org/obo/BFO_0000199> rdf:type owl:ObjectProperty ,
-                                                      owl:FunctionalProperty ;
-                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             rdfs:label "occupies temporal region"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
+ns1:BFO_0000199 rdf:type owl:ObjectProperty ,
+                         owl:FunctionalProperty ;
+                rdfs:range ns1:BFO_0000008 ;
+                rdfs:label "occupies temporal region"@en ;
+                skos:definition "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000222
-<http://purl.obolibrary.org/obo/BFO_0000222> rdf:type owl:ObjectProperty ,
-                                                      owl:FunctionalProperty ;
-                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
-                                             rdfs:label "has first instant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "t has first instant t' =Def t' first instant of t"@en .
+ns1:BFO_0000222 rdf:type owl:ObjectProperty ,
+                         owl:FunctionalProperty ;
+                rdfs:domain ns1:BFO_0000008 ;
+                rdfs:range ns1:BFO_0000203 ;
+                rdfs:label "has first instant"@en ;
+                skos:definition "t has first instant t' =Def t' first instant of t"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000224
-<http://purl.obolibrary.org/obo/BFO_0000224> rdf:type owl:ObjectProperty ,
-                                                      owl:FunctionalProperty ;
-                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
-                                             rdfs:label "has last instant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "t has last instant t' =Def t' last instant of t"@en .
+ns1:BFO_0000224 rdf:type owl:ObjectProperty ,
+                         owl:FunctionalProperty ;
+                rdfs:domain ns1:BFO_0000008 ;
+                rdfs:range ns1:BFO_0000203 ;
+                rdfs:label "has last instant"@en ;
+                skos:definition "t has last instant t' =Def t' last instant of t"@en .
 
 
 ###  http://purl.obolibrary.org/obo/RO_0000056
-<http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
-                                                                                         "this input material (or this output material) participates in this process"@en ,
-                                                                                         "this investigator participates in this investigation"@en ;
-                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
-                                            rdfs:label "participates in"@en .
+ns1:RO_0000056 rdf:type owl:ObjectProperty ;
+               rdfs:range ns1:BFO_0000003 ;
+               ns1:IAO_0000112 "this blood clot participates in this blood coagulation"@en ,
+                               "this input material (or this output material) participates in this process"@en ,
+                               "this investigator participates in this investigation"@en ;
+               ns1:IAO_0000115 "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
+               rdfs:label "participates in"@en .
 
 
 #################################################################
@@ -79,87 +115,76 @@
 #################################################################
 
 ###  http://purl.obolibrary.org/obo/BFO_0000003
-<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
-                                             rdfs:label "occurrent"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+ns1:BFO_0000003 rdf:type owl:Class ;
+                rdfs:label "occurrent"@en ;
+                skos:definition "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000008
-<http://purl.obolibrary.org/obo/BFO_0000008> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
-                                             rdfs:label "temporal region"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
+ns1:BFO_0000008 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000003 ;
+                rdfs:label "temporal region"@en ;
+                skos:definition "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000015
-<http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
-                                             rdfs:label "process"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+ns1:BFO_0000015 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000003 ;
+                rdfs:label "process"@en ;
+                skos:definition "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000030
-<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
-                                             rdfs:label "object"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+ns1:BFO_0000030 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000040 ;
+                rdfs:label "object"@en ;
+                skos:definition "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000038
-<http://purl.obolibrary.org/obo/BFO_0000038> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000148> ;
-                                             rdfs:label "one-dimensional temporal region"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
+ns1:BFO_0000038 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000008 ;
+                owl:disjointWith ns1:BFO_0000148 ;
+                rdfs:label "one-dimensional temporal region"@en ;
+                skos:definition "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000040
-<http://purl.obolibrary.org/obo/BFO_0000040> rdf:type owl:Class ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
-                                             rdfs:label "material entity"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
+ns1:BFO_0000040 rdf:type owl:Class ;
+                ns1:IAO_0000115 "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                ns1:IAO_0000116 "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                rdfs:label "material entity"@en ;
+                skos:definition "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000148
-<http://purl.obolibrary.org/obo/BFO_0000148> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
-                                             rdfs:label "zero-dimensional temporal region"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
+ns1:BFO_0000148 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000008 ;
+                rdfs:label "zero-dimensional temporal region"@en ;
+                skos:definition "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000202
-<http://purl.obolibrary.org/obo/BFO_0000202> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000038> ;
-                                             rdfs:label "temporal interval"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal interval is a one-dimensional temporal region that is continuous, thus without gaps or breaks"@en .
+ns1:BFO_0000202 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000038 ;
+                rdfs:label "temporal interval"@en ;
+                skos:definition "(Elucidation) A temporal interval is a one-dimensional temporal region that is continuous, thus without gaps or breaks"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000203
-<http://purl.obolibrary.org/obo/BFO_0000203> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000148> ;
-                                             rdfs:label "temporal instant"@en ;
-                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal instant is a zero-dimensional temporal region that has no proper temporal part"@en .
+ns1:BFO_0000203 rdf:type owl:Class ;
+                rdfs:subClassOf ns1:BFO_0000148 ;
+                rdfs:label "temporal instant"@en ;
+                skos:definition "(Elucidation) A temporal instant is a zero-dimensional temporal region that has no proper temporal part"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020170
-<https://w3id.org/pmd/co/PMD_0020170> rdf:type owl:Class ;
-                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000030> ;
-                                      rdfs:comment "The ingot may be hot rolled after casting..."@en ;
-                                      rdfs:label "Bramme"@de ,
-                                                 "ingot"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "An ingot is an object that has a thick section and may bear a semi finished product role and that is the specified output of a casting process. At the same time it is a material."@en .
-
-
-#################################################################
-#    Axioms restored from PMDco 3.1.2
-#################################################################
-# The extraction dropped these although each mentions only terms declared above; no term is added.
-#   S stated by PMDco 3.1.2.   E follows from one PMDco 3.1.2 axiom (a conjunct, or an inverse property's domain/range).
-#   T follows from PMDco 3.1.2 subclass axioms through classes outside the pattern.   O stated by the real OBO file only.
-
-# S: stated by PMDco 3.1.2
-<http://purl.obolibrary.org/obo/RO_0000056> rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> .
+:PMD_0020170 rdf:type owl:Class ;
+             rdfs:subClassOf ns1:BFO_0000030 ;
+             rdfs:comment "The ingot may be hot rolled after casting..."@en ;
+             rdfs:label "ingot"@en ;
+             skos:definition "An ingot is an object that has a thick section and may bear a semi finished product role and that is the specified output of a casting process. At the same time it is a material."@en ;
+             skos:prefLabel "Bramme"@de .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

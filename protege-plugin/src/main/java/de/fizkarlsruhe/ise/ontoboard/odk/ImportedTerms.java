@@ -499,10 +499,22 @@ public final class ImportedTerms {
      * The terms an imported ontology brings: its own signature, with OWL's built-ins and the
      * OWL, RDF, RDFS and XSD vocabularies left out - a module that records the date it was cut
      * declares {@code xsd:date}, which is not a term anybody imported.
+     *
+     * <p>Asked kind by kind, as the board asks (OntologyProjection.termIdentifiers): once an
+     * ontology's signature with its imports was asked for, OWL API 4.5.x answers the signature
+     * without them with the imports' terms too. nfdicore's components/imports-edit.owl, 4 axioms
+     * and 7 terms, was listed with 196 (Phase 7, 2026-11-20).
      */
     public static List<OWLEntity> termsOf(OWLOntology part) {
+        java.util.Set<OWLEntity> own = new java.util.LinkedHashSet<OWLEntity>();
+        own.addAll(part.getClassesInSignature(Imports.EXCLUDED));
+        own.addAll(part.getObjectPropertiesInSignature(Imports.EXCLUDED));
+        own.addAll(part.getDataPropertiesInSignature(Imports.EXCLUDED));
+        own.addAll(part.getAnnotationPropertiesInSignature(Imports.EXCLUDED));
+        own.addAll(part.getIndividualsInSignature(Imports.EXCLUDED));
+        own.addAll(part.getDatatypesInSignature(Imports.EXCLUDED));
         List<OWLEntity> terms = new ArrayList<OWLEntity>();
-        for (OWLEntity entity : part.getSignature(Imports.EXCLUDED)) {
+        for (OWLEntity entity : own) {
             if (entity.isBuiltIn() || isStandardVocabulary(entity.getIRI())) {
                 continue;
             }

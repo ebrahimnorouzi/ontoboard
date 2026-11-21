@@ -11,5 +11,18 @@
   "publisher": "basic-formal-ontology.org",
   "extracted_from": "bfo",
   "class_count": 8,
-  "property_count": 4
+  "property_count": 4,
+  "curated": [
+    "header: dcterms:title \"Process Site And History\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "header: dcterms:license <https://creativecommons.org/licenses/by/4.0/> - https://github.com/BFO-ontology/BFO-2020",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/license> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.w3.org/2004/02/skos/core#definition> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/license> \"License\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.w3.org/2004/02/skos/core#definition> \"definition (SKOS)\"@en - from http://www.w3.org/2004/02/skos/core, with its source in brackets: in the library it shares \"definition\" with another term"
+  ]
 }

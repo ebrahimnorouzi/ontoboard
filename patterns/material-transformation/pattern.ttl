@@ -1,37 +1,87 @@
 @prefix : <http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern#> .
+@prefix cpa: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
+@prefix mtp: <http://www.descartes-core.org/patterns/owl/MaterialTransformationPattern#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern> .
 
 <http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern> rdf:type owl:Ontology ;
                                                                              owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
                                                                                          <http://www.w3.org/2006/time> ;
-                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """What material resources were required to produce a product?
+                                                                             dcterms:description "To contextualize the transformation process from raw components and the required equipment to a final manufactured artifact."^^xsd:string ;
+                                                                             dcterms:title "Material Transformation Pattern"^^xsd:string ;
+                                                                             cpa:coversRequirements """What material resources were required to produce a product?
 Where did the transformation take place?
 What was the time necessary for the transformation?
 What other materials or conditions were necessary for the transformation process to occur?
 What materials change during the transformation?
 How much energy is required for the transformation to take place?""" ;
-                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This is not a very generic pattern describing a change of states. It may not be applicable to broader types of transformation, like change of money, or change of political affiliations, etc." ;
-                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To contextualize the transformation process from raw components and the required equipment to a final manufactured artifact." ;
-                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "This pattern can be chained with the Semantic Trajectory ODP to  facilitate understanding of a complete manufacturing process from raw material extraction to assembly of all components needed for that product. More info about Semantic Trajectory ODP can be obtained from the following reference: Hu, Y., Janowicz, K., Carral, D., Scheider, S., Kuhn, W., Berg-Cross, G., Hitzler, P., Dean, M., Kolas, D.: A geo-ontology design pattern for semantic trajectories. In:Spatial Information Theory, pp. 438-456. Springer (2013)"^^xsd:string ;
-                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """A pile of wood is transformed into ash by burning. 
+                                                                             cpa:hasConsequences "This is not a very generic pattern describing a change of states. It may not be applicable to broader types of transformation, like change of money, or change of political affiliations, etc." ;
+                                                                             cpa:hasIntent "To contextualize the transformation process from raw components and the required equipment to a final manufactured artifact."^^xsd:string ;
+                                                                             cpa:relatedCPs "This pattern can be chained with the Semantic Trajectory ODP to  facilitate understanding of a complete manufacturing process from raw material extraction to assembly of all components needed for that product. More info about Semantic Trajectory ODP can be obtained from the following reference: Hu, Y., Janowicz, K., Carral, D., Scheider, S., Kuhn, W., Berg-Cross, G., Hitzler, P., Dean, M., Kolas, D.: A geo-ontology design pattern for semantic trajectories. In:Spatial Information Theory, pp. 438-456. Springer (2013)"^^xsd:string ;
+                                                                             cpa:scenarios """A pile of wood is transformed into ash by burning. 
 Emboddied energy involved in the process of mixing aggregate, water, cement and other binders to create concrete. 
 Materials required to construct a manufactured artifact such as a window (glass, wood, aluminum).""" ;
-                                                                             rdfs:comment """There are two axioms that we need in this pattern but not expressible in OWL. 
+                                                                             rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x10; term declared x8;
+- header: dcterms:title \"Material Transformation Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                                          """There are two axioms that we need in this pattern but not expressible in OWL. 
 The first says that there is at least one of the input that is not in the output of the transformation, which cannot be expressed in FOL as the formula:
 ALL x.( MaterialTransformation(x) IMPLIES Exists y.(hasInput(x,y) AND NOT hasOutput(x,y) ) )
 The second states that there is at least one of the output that is not part of the input of the transformation:
 ALL x.( MaterialTransformation(x) IMPLIES Exists y.(hasOutput(x,y) AND NOT hasInput(x,y) ) )
 Thus, this OWL encoding does not contain any axiom expressing the above two.""" ;
-                                                                             rdfs:label "Material Transformation Pattern" ;
+                                                                             rdfs:label "Material Transformation Pattern"^^xsd:string ;
                                                                              owl:priorVersion <http://descartes-core.org/ontologies/mt/1.0/MaterialTransformationPattern> ;
                                                                              owl:versionInfo "1.1"^^xsd:string ,
                                                                                              "Contributions are also provided by Michelle Cheatham, Krzysztof Janowicz, Holly Ferguson, Pascal Hitzler, Aimee Bucellato, Krishnaprasad Thirunarayan, Gary Berg-Cross" ,
                                                                                              "Created by Adila Krisnadhi and Charles Vardeman" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpa:coversRequirements rdf:type owl:AnnotationProperty ;
+                       rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+cpa:hasConsequences rdf:type owl:AnnotationProperty ;
+                    rdfs:label "has consequences"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpa:hasIntent rdf:type owl:AnnotationProperty ;
+              rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+cpa:relatedCPs rdf:type owl:AnnotationProperty ;
+               rdfs:label "related c ps"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+cpa:scenarios rdf:type owl:AnnotationProperty ;
+              rdfs:label "scenarios"@en .
+
 
 #################################################################
 #    Object Properties
@@ -67,11 +117,13 @@ Thus, this OWL encoding does not contain any axiom expressing the above two.""" 
 #################################################################
 
 ###  http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern#asLiteral
-:asLiteral rdf:type owl:DatatypeProperty .
+:asLiteral rdf:type owl:DatatypeProperty ;
+           rdfs:label "as literal"@en .
 
 
 ###  http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern#asNumeric
-:asNumeric rdf:type owl:DatatypeProperty .
+:asNumeric rdf:type owl:DatatypeProperty ;
+           rdfs:label "as numeric"@en .
 
 
 #################################################################
@@ -111,7 +163,7 @@ Thus, this OWL encoding does not contain any axiom expressing the above two.""" 
                                         ] ,
                                         [ rdf:type owl:Restriction ;
                                           owl:onProperty :occursDuring ;
-                                          owl:someValuesFrom <http://www.w3.org/2006/time#Interval>
+                                          owl:someValuesFrom time:Interval
                                         ] ,
                                         [ rdf:type owl:Restriction ;
                                           owl:onProperty :occursInNeighborhood ;
@@ -131,7 +183,7 @@ Thus, this OWL encoding does not contain any axiom expressing the above two.""" 
                                         ] ,
                                         [ rdf:type owl:Restriction ;
                                           owl:onProperty :occursDuring ;
-                                          owl:allValuesFrom <http://www.w3.org/2006/time#Interval>
+                                          owl:allValuesFrom time:Interval
                                         ] ,
                                         [ rdf:type owl:Restriction ;
                                           owl:onProperty :occursInNeighborhood ;
@@ -149,6 +201,11 @@ Thus, this OWL encoding does not contain any axiom expressing the above two.""" 
 :Output rdf:type owl:Class ;
         rdfs:subClassOf :MaterialObject ;
         rdfs:label "Output" .
+
+
+###  http://www.w3.org/2006/time#Interval
+time:Interval rdf:type owl:Class ;
+              rdfs:label "Time interval"@en .
 
 
 #################################################################
@@ -178,7 +235,7 @@ Thus, this OWL encoding does not contain any axiom expressing the above two.""" 
 
 [ rdf:type owl:Restriction ;
   owl:onProperty :occursDuring ;
-  owl:someValuesFrom <http://www.w3.org/2006/time#Interval> ;
+  owl:someValuesFrom time:Interval ;
   rdfs:subClassOf :MaterialTransformation
 ] .
 

@@ -46,8 +46,10 @@ What OntoBoard does not do today, and the constraints of what it does.
   *Release* and *Refresh imports* by OntoBoard itself
   ([details](measurements.md#what-ontoboards-own-engine-runs-of-odks-79-sample-configurations)).
   [Who runs ODK's targets](odk-workflow.md#who-runs-odks-targets) has the order.
-- **What still needs ODK's container** (or ODK's own tools, on Linux and macOS): a project's own
-  `release.sh`, ODK's SSSOM targets, the `db` export, `update_patterns` and `public_release`.
+- **What still needs ODK's container** (or ODK's own tools, on Linux and macOS): ODK's SSSOM
+  targets, the `db` export, `update_patterns` and `public_release`. A project's own `release.sh`
+  runs by OntoBoard itself when every line of it can; a line it cannot run is named before
+  anything runs.
 - **Build passes ODK's four switches and no other variable:** `IMP`, `MIR`, `PAT` and `COMP`.
 - **ODK's `test` fetches the imports again on every run.** Use *Check quickly (keeps the imports
   as they are) - make test_fast*, or untick *Build the import modules again*.
@@ -60,12 +62,18 @@ What OntoBoard does not do today, and the constraints of what it does.
 - **Run by OntoBoard itself, ROBOT has Protégé's memory.** For a large import raise Protégé's
   heap: `max_heap_size` in `conf/jvm.conf` for Protégé 5.6; the `-Xmx` line of
   `Protege.l4j.ini` (or `run.bat`) for Protégé 5.5.0.
-- **Build and Release check consistency with ELK**, as ODK does. HermiT is asked as well, for ten
-  seconds, on ontologies of up to 20,000 logical axioms; for larger ones run
-  *OntoBoard > Check and test > Explain...* before releasing.
+- **Build checks consistency with ELK**, as ODK does; HermiT is asked as well, for ten seconds,
+  on ontologies of up to 20,000 logical axioms. **Release asks the reasoner you choose** (the
+  project's own, else HermiT) before anything is built, within a time limit; one that does not
+  finish in it is said, and you decide.
 
 **Releases**
 
+- **A Build or Release kept running behind** - *Keep working* - builds from the files as they are
+  on disk; changes saved meanwhile may or may not be in it. A release names what Protégé and the
+  sheet editor saved while it ran before it commits; a file saved by another program is not
+  known. Anything else that writes the project waits, and quitting Protégé stops the run midway.
+  A release of an ontology outside an ODK project reads the open ontology, and keeps its window.
 - **A release commits the project's new files under `src/` first**, in a commit of their own; new
   files elsewhere are named but not committed.
 - **ODK's `.gitignore` leaves the release files out of git**; *Release...* adds them by name.
@@ -88,20 +96,36 @@ What OntoBoard does not do today, and the constraints of what it does.
 
 **ID ranges**
 
-- **Protégé 5.6 asks for your ID range until the board has claimed one.** Its own "No Id Range
-  Found For Current User" comes up when a project whose ranges are ODK's placeholders is opened or
-  read again; the board claims your range at your first new term, and then Protégé stops asking.
-  Choose or cancel before that.
+- **Protégé 5.6 asks for your ID range until you have one.** Its own "No Id Range Found For
+  Current User" comes up when the project's ranges name nobody of your name. A project made by
+  *New ODK project...* has the first range in your name; *Open existing ODK project...* asks
+  which is yours where the ranges are ODK's placeholders; *File → Open...* of such a project
+  still meets Protégé's question first. Where they name other editors (nfdicore, MWO), the range
+  chosen in Protégé's question is not one the board numbers from: *Project → ID ranges...*
+  allocates yours, and then Protégé stops asking.
+- **With readable names, Protégé's own *Add subclass...* still numbers a term from your range**:
+  Protégé reads the ranges file of every project that has one, and the switch that stops it is
+  one for all of Protégé. Make terms on the board; *Rename IRIs... → Readable names from labels*
+  names those no release has carried - and nothing while a release's file is on GitHub only, until
+  History has fetched it.
+- **Sheets keep their own choice of identifiers**, per sheet, in a project with readable names.
 - **The board creates terms only from your own identifier block.** Without one, *No identifiers
   for you yet* until *Project → ID ranges...* allocates one.
 
+**History and Compare**
+
+- **A working copy is compared as ODK's full release would hold it** - its imports folded in,
+  reasoned with ELK, relaxed and reduced. A project whose primary release is the base or the
+  simple one, or one released with HermiT, may read moves its release does not hold.
+- **History names a property or an individual by its identifier**; *Compare releases* names both.
+
 **Spreadsheets and the knowledge graph**
 
-- **No round trip.** *Spreadsheets → Template...* adds what a sheet produces and never removes or
+- **No round trip.** *Knowledge graph → Build from sheets...* adds what a sheet produces and never removes or
   updates it; rebuild into a fresh copy instead - [how](knowledge-graph.md#4-build-the-graph).
 - **The identifiers' prefix must be declared in the graph file**
   (*Active ontology → Ontology Prefixes*), exactly, final slash included.
-- ***Template...* types a value only when the cell says so**
+- ***Build from sheets...* types a value only when the cell says so**
   (`2026-11-01T18:00:00^^xsd:dateTime`).
 - **The sheet editor looks for templates in four places**; others are opened with *Open folder...*.
 
@@ -129,7 +153,9 @@ What OntoBoard does not do today, and the constraints of what it does.
 - **The board:** layout is kept in a sidecar file, so it is not interoperable with CoModIDE; a
   crash while writing it can lose layout, never the ontology; a punned IRI resolves either way for
   selection; a board shows up to 1,500 terms, and on one with more than 150 relations they are
-  drawn straight; literals and annotations are not drawn. See [what the board draws](canvas.md).
+  drawn straight; literals and annotations are not drawn; a board's settings for the project, kept
+  in its board file, are dropped when OntoBoard 1.154.0 saves that board. See
+  [what the board draws](canvas.md).
 - **The bundle is about 64 MB**, because ROBOT runs inside it.
 
 ### Not covered by tests

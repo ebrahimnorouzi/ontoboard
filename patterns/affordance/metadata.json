@@ -10,5 +10,25 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Affordance",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Affordance",
   "class_count": 2,
-  "property_count": 8
+  "property_count": 8,
+  "curated": [
+    "term declared: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> as a class",
+    "term declared: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Goal> as a class",
+    "term declared: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation> as a class",
+    "term declared: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task> as a class",
+    "term declared: <https://w3id.org/MON/action.owl#Task> as a class",
+    "label added: <http://purl.org/dc/elements/1.1/description> \"Description (Dublin Core)\"@en - from http://purl.org/dc/elements/1.1/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/elements/1.1/title> \"Title\"@en - from http://purl.org/dc/elements/1.1/",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> \"Description\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Goal> \"Goal\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation> \"Relation\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> \"Situation\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task> \"Task\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith> \"associatedWith\" - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue> \"has data value\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies> \"satisfies\"@en - from the library's pattern eep",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <https://w3id.org/MON/action.owl#Task> \"Task (action)\"@en - from https://w3id.org/MON/action.owl, with its source in brackets: in the library it shares \"Task\" with another term"
+  ]
 }

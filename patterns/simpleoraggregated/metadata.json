@@ -10,5 +10,29 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:SimpleOrAggregated",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:SimpleOrAggregated",
   "class_count": 4,
-  "property_count": 4
+  "property_count": 4,
+  "curated": [
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#AggregatedObject> \"Objeto agregado\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#Object> \"Objeto\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#ObjectByCardinality> \"Objeto por cardinalidad\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#SimpleObject> \"Objeto simple\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#hasAggregatedMember> \"tiene miembro agregado\"@es",
+    "label trimmed: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#hasDirectAggregatedMember> \"has direct aggregated member \"@en",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#hasDirectAggregatedMember> \"tiene miembro agregado directamente\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#isAggregatedMemberOf> \"es miembro agregado de\"@es",
+    "label moved to skos:prefLabel: <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#isDirectAggregatedMemberOf> \"es miembro agregado directamente de\"@es",
+    "header: dcterms:title \"Simpleoraggregated Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.w3.org/2004/02/skos/core#prefLabel> as an annotation property",
+    "label added: <http://purl.org/dc/elements/1.1/creator> \"Creator\"@en - from http://purl.org/dc/elements/1.1/",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> \"has consequences\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf> \"is clone of\"@en - from its name",
+    "label added: <http://www.w3.org/2004/02/skos/core#prefLabel> \"preferred label\"@en - from http://www.w3.org/2004/02/skos/core"
+  ]
 }

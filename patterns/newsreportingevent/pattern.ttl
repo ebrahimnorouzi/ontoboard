@@ -4,13 +4,25 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl2xml: <http://www.w3.org/2006/12/owl2-xml#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl> .
 
 <http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl> rdf:type owl:Ontology ;
                                                                       owl:imports <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl> ,
                                                                                   <http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl> ,
                                                                                   <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl> ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """
+                                                                      dcterms:description """The pattern can be used for modelling situations
+in which we are not certain that a particular actual event has the properties
+which were described in a news message. We want to define the properties
+of an actual event which were reported (time, place, actors, subevents,
+cause, effect etc.), but not to treat them as universal, verified knowledge.
+The pattern also allows to define who is responsible for a particular
+description of an event and how this description is dealt with."""^^xsd:string ;
+                                                                      dcterms:title "Newsreportingevent Pattern"^^xsd:string ;
+                                                                      cpannotationschema:coversRequirements """
 In addition to the competency questions defined for pattern
 ReportingEvent (http:/ontologydesignpatterns.org/wiki/Submissions:ReportingEvent)
 the pattern allows to answer the following questions:
@@ -20,16 +32,16 @@ the pattern allows to answer the following questions:
 - What actual events are presented in a certain medium/by media of a certain news provider?
 - How was an actual event presented?
 		"""@en ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://ontologydesignpatterns.org/wiki/Submissions:ActingFor" ,
-                                                                                                                                                          "http://ontologydesignpatterns.org/wiki/Submissions:IntensionExtension" ,
-                                                                                                                                                          "http://ontologydesignpatterns.org/wiki/Submissions:ReportingEvent" ,
-                                                                                                                                                          "http://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedSituation" ,
-                                                                                                                                                          "http://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities" ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """
+                                                                      cpannotationschema:hasComponent "http://ontologydesignpatterns.org/wiki/Submissions:ActingFor" ,
+                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:IntensionExtension" ,
+                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:ReportingEvent" ,
+                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedSituation" ,
+                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities" ;
+                                                                      cpannotationschema:hasConsequences """
 The pattern is rather complex and should only be used if the circumstances of the events presented in a media
 are expected to be uncertain (to differ in different news event reports of different news providers).
 		"""@en ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> """
+                                                                      cpannotationschema:hasIntent """
 The pattern can be used for modelling situations
 in which we are not certain that a particular actual event has the properties
 which were described in a news message. We want to define the properties
@@ -38,7 +50,7 @@ cause, effect etc.), but not to treat them as universal, verified knowledge.
 The pattern also allows to define who is responsible for a particular
 description of an event and how this description is dealt with.
 		"""@en ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> """
+                                                                      cpannotationschema:relatedCPs """
 Pattern NewsReportingEvent is an extension of ReportingEvent pattern.
 
 Pattern ActingFor (http:/ontologydesignpatterns.org/wiki/Submissions:ActingFor) is a component of this pattern.
@@ -46,7 +58,7 @@ It allows to model the fact that NewsEventReporter (Agent) acts for NewsProvider
 
 TODO describe time indexed situation
 		"""@en ;
-                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """
+                                                                      cpannotationschema:scenarios """
 A single actual event, bus drivers protest, is presented in to different media: a TV news station
 and a news website. John Doe prepared the material for the station Channel 55, owned by Media Corp.
 This material was presented as first material in a news programme on 16/07/2016, started at 19:30 and ended at 19:35.
@@ -58,9 +70,63 @@ other cause of protest: planned reduction of social benefits. It did not mention
 but it did mention destruction of public property. The article seems not important for the website authors,
 it was presented at the page bottom.
 		"""@en ;
-                                                                      rdfs:comment "Pattern description is available at: http://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent"@en ,
+                                                                      rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x28; term declared x13;
+- header: dcterms:title \"Newsreportingevent Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- file: pattern.owl declares <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#EventReporter> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ReportingEvent> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#reports> as an object property, as pattern.ttl did
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                                   "Pattern description is available at: http://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent"@en ,
                                                                                    "Pattern description is included in: E. Kowalczuk, A. Ławrynowicz, \"The Reporting Event Ontology Design Pattern and Its Extension to Report News Events\" (2016)."@en ,
                                                                                    "This ontology is a formalisation of the News Reporting Event ontology design pattern."@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+cpannotationschema:hasComponent rdf:type owl:AnnotationProperty ;
+                                rdfs:label "has component"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
+
 
 #################################################################
 #    Object Properties
@@ -70,28 +136,43 @@ it was presented at the page bottom.
 :hasPresentationContext rdf:type owl:ObjectProperty ;
                         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
                         rdfs:range :PresentationContext ;
-                        rdfs:comment "This property can be used to link NewsReportingEvent to a NewsPresentationContext."@en .
+                        rdfs:comment "This property can be used to link NewsReportingEvent to a NewsPresentationContext."@en ;
+                        rdfs:label "has presentation context"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#owns
 :owns rdf:type owl:ObjectProperty ;
       rdfs:comment """This property can be used to link a certain NewsProvider with a Media that the NewsProvider ows, e.g. Fox News Channel is owned by Fox Entertainment Group, which also owns other Media (FXX Channel, etc.).
-This is an universal property, it can be also used in different context (e.g. Ruslana owns a Persian cat)."""@en .
+This is an universal property, it can be also used in different context (e.g. Ruslana owns a Persian cat)."""@en ;
+      rdfs:label "owns"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#presentedAt
 :presentedAt rdf:type owl:ObjectProperty ;
              rdfs:comment """This property can be used to link a NewsReportingEvent to a Media (TV station, radio station, newspaper, webpage) at which a certain ActualEventView was presented. 
-This is an universal property and can be used in different contexts."""@en .
+This is an universal property and can be used in different contexts."""@en ;
+             rdfs:label "presented at"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor
-<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor> rdf:type owl:ObjectProperty .
+<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor> rdf:type owl:ObjectProperty ;
+                                                                           rdfs:label "has author"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#reports
 <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#reports> rdf:type owl:ObjectProperty ;
-                                                                         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> .
+                                                                         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> ;
+                                                                         rdfs:label "reports"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> rdf:type owl:ObjectProperty ;
+                                                                          rdfs:label "isSettingFor"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> rdf:type owl:ObjectProperty ;
+                                                                                  rdfs:label "for entity"@en .
 
 
 #################################################################
@@ -107,7 +188,8 @@ This is an universal property and can be used in different contexts."""@en .
                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
                          owl:onClass :NewsProvider
                        ] ;
-       rdfs:comment "An entity that allows a communication of news messages, for example a TV station, radio station, newspaper, website, etc."@en .
+       rdfs:comment "An entity that allows a communication of news messages, for example a TV station, radio station, newspaper, website, etc."@en ;
+       rdfs:label "media"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#NewsEventReporter
@@ -120,7 +202,8 @@ This is an universal property and can be used in different contexts."""@en .
                                      owl:someValuesFrom :NewsReportingEvent
                                    ] ;
                    rdfs:comment """An Actor (usually a Person) that is an author of a certain ActualEventView.
-NewsEventReporter is not linked to an ActualEventView directly, it is connected to NewsReportingEvent, which is designed to document the act of reporting."""@en .
+NewsEventReporter is not linked to an ActualEventView directly, it is connected to NewsReportingEvent, which is designed to document the act of reporting."""@en ;
+                   rdfs:label "news event reporter"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#NewsPresentationContext
@@ -132,7 +215,8 @@ NewsEventReporter is not linked to an ActualEventView directly, it is connected 
                                            owl:someValuesFrom :NewsReportingEvent
                                          ] ;
                          rdfs:comment """Class for denoting circumstances of an actual event presentation. For example if an event was presented at the end of website, then end of website is its NewsPresentationContext.
-NewsPresentationContext is not directly attached to an ActualEventView, it is attached to NewsReportingEvent, which designates the act of an event reporting."""@en .
+NewsPresentationContext is not directly attached to an ActualEventView, it is attached to NewsReportingEvent, which designates the act of an event reporting."""@en ;
+                         rdfs:label "news presentation context"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#NewsProvider
@@ -142,7 +226,8 @@ NewsPresentationContext is not directly attached to an ActualEventView, it is at
                                 owl:onProperty :owns ;
                                 owl:someValuesFrom :Media
                               ] ;
-              rdfs:comment "An entity, usually a company, that ows a certain Media. For example Fox Entertainment Group owns the Fox News Channel. Fox Entertainment Group is a NewsProvider."@en .
+              rdfs:comment "An entity, usually a company, that ows a certain Media. For example Fox Entertainment Group owns the Fox News Channel. Fox Entertainment Group is a NewsProvider."@en ;
+              rdfs:label "news provider"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#NewsReportingEvent
@@ -157,29 +242,50 @@ NewsPresentationContext is not directly attached to an ActualEventView, it is at
                                       owl:onProperty <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor> ;
                                       owl:someValuesFrom :NewsEventReporter
                                     ] ;
-                    rdfs:comment "This is a subclass of ReportingEvent, designed to represent an act of reporting a certain actual event during a news programme or via other news media."@en .
+                    rdfs:comment "This is a subclass of ReportingEvent, designed to represent an act of reporting a certain actual event during a news programme or via other news media."@en ;
+                    rdfs:label "news reporting event"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl#PresentationContext
 :PresentationContext rdf:type owl:Class ;
                      rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> ;
-                     rdfs:comment "Class for denoting circumstances of an entity presentation. If a waiter presented a dish with an apologetic smile, then the apologetic smile is a PresentationContext."@en .
+                     rdfs:comment "Class for denoting circumstances of an entity presentation. If a waiter presented a dish with an apologetic smile, then the apologetic smile is a PresentationContext."@en ;
+                     rdfs:label "presentation context"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#EventReporter
-<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#EventReporter> rdf:type owl:Class .
+<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#EventReporter> rdf:type owl:Class ;
+                                                                               rdfs:label "event reporter"@en .
 
 
 ###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ReportingEvent
-<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ReportingEvent> rdf:type owl:Class .
+<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ReportingEvent> rdf:type owl:Class ;
+                                                                                rdfs:label "reporting event"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent
+<http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent> rdf:type owl:Class ;
+                                                                   rdfs:label "Agent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent
+<http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent> rdf:type owl:Class ;
+                                                                         rdfs:label "Social agent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation> rdf:type owl:Class ;
+                                                                                             rdfs:label "Time indexed situation"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity
-<http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> rdf:type owl:Class .
+<http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> rdf:type owl:Class ;
+                                                                          rdfs:label "Entity"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object
-<http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object> rdf:type owl:Class .
+<http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object> rdf:type owl:Class ;
+                                                                          rdfs:label "Object"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

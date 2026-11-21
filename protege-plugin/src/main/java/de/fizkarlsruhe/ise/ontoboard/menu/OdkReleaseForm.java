@@ -36,6 +36,8 @@ final class OdkReleaseForm {
     static final String UNCOMPARED = "uncompared";
     static final String PRIOR = "prior";
     static final String COMMIT_NEW = "commitnew";
+    /** The reasoner the release uses: asked before the build, and ODK's REASONER= (1.155.0). */
+    static final String REASONER = "reasoner";
 
     /** The choice that makes the pattern field count. */
     static final String OWN_PATTERN = "The pattern typed below";
@@ -305,6 +307,8 @@ final class OdkReleaseForm {
             values.put(PRIOR, before == null ? start.script.priorVersion().trim()
                     : before.getText());
         }
+        values.put(REASONER, de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.preselected(
+                start.editFile));
         values.put(REFUSE, "true");
         values.put(UNCOMPARED, "false");
         if (!newFilesOfTheProject(start).isEmpty()) {
@@ -337,9 +341,16 @@ final class OdkReleaseForm {
                 + "when you agree. Nothing is pushed.";
         if (start.script != null) {
             String annotate = start.script.annotate();
+            // Where it runs, as the route has it: with no container OntoBoard runs the script
+            // itself, and the form said "in ODK's container" (Phase 7, nfdicore, 2026-11-20).
+            String where = start.isBuiltBy(ReleaseRoute.Kind.ITSELF)
+                    ? ". " + start.route.noContainer() + ", so OntoBoard runs it itself, inside "
+                            + "Protege, and each make it calls with ODK's own Makefile."
+                    : start.isBuiltBy(ReleaseRoute.Kind.NATIVE)
+                            ? ", in the native ODK environment." : ", in ODK's container.";
             return "This project is released by its own script, src/ontology/"
-                    + start.script.file().getName() + ", so that is what runs, in ODK's "
-                    + "container. OntoBoard sets its line VERSION="
+                    + start.script.file().getName() + ", so that is what runs" + where
+                    + " OntoBoard sets its line VERSION="
                     + (start.script.priorVersion() == null ? "" : " and its line PRIOR_VERSION=")
                     + " first and changes nothing else in it. The version IRI is the script's: "
                     + (annotate == null ? "it sets none of its own, so ODK's is written."
@@ -414,6 +425,7 @@ final class OdkReleaseForm {
                             + "follows. Normally the last release.")
                     .build());
         }
+        parameters.add(reasonerParameter(start, values));
         parameters.add(Parameter.of(REFUSE, OdkRelease.REFUSE_LABEL, Parameter.Kind.FLAG)
                 .defaultValue(values.get(REFUSE))
                 .help("When the release is built it is held against the last one. A term that "
@@ -504,11 +516,18 @@ final class OdkReleaseForm {
             OntologyVersion newest = newest(start, releasing.getScheme());
             if (there != null) {
                 problems.add(there);
+            } else if (releasing.getScheme() == OntologyVersion.Scheme.DATE
+                    && OntologyVersion.parseOrNull(start.today) != null
+                    && releasing.compareTo(OntologyVersion.parseOrNull(start.today)) > 0) {
+                // A dated version says when it was released (1.155.0).
+                problems.add("A dated version says when it was released; " + typed
+                        + " is after today, " + start.today + ".");
             } else if (newest != null && releasing.compareTo(newest) < 0) {
                 problems.add(newest.getText() + " has been released, and " + typed + " would be "
                         + "published below it. "
                         + (releasing.getScheme() == OntologyVersion.Scheme.DATE
-                                ? "Release with today's date, or a later one."
+                                ? "Release with today's date - or, when today has its release "
+                                        + "already, under a semantic version."
                                 : "Type a version above it: " + newest.nextPatch().getText()
                                         + " if nothing moved, " + newest.nextMinor().getText()
                                         + " if terms were added."));
@@ -544,6 +563,36 @@ final class OdkReleaseForm {
         return VersionIriShape.of(VersionIriShape.Kind.ODK);
     }
 
+    /**
+     * The reasoner the release uses - the person's choice (1.155.0: "for release the user define
+     * the reasoner"), offered first as the project's own, else HermiT.
+     */
+    static Parameter reasonerParameter(Start start, Map<String, String> values) {
+        String own = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.ofProject(start.editFile);
+        String help = "The reasoner this release reasons with. Before anything is built, "
+                + "OntoBoard asks it whether the ontology, with its imports, is consistent and "
+                + "every class can have members; either problem stops the release, with the "
+                + "axioms that cause it. "
+                + (start.script == null
+                        ? "ODK then reasons with it for the release files (REASONER=). "
+                        : "The project's " + start.script.file().getName() + " chooses its own "
+                                + "reasoner for the release files; this one is asked before it "
+                                + "runs. ")
+                + "ELK and Whelk reason in OWL 2 EL: they ignore inverse properties, universal "
+                + "restrictions, cardinalities, unions and negation, so a contradiction that "
+                + "needs one of them goes unseen. HermiT and JFact read all of OWL 2 DL; on a "
+                + "large ontology they take longer. "
+                + (own == null ? "This project's configuration names no reasoner, so ODK's "
+                        + "own targets use its default, ELK."
+                        : "This project's configuration says reasoner: " + own + ".");
+        return Parameter.of(REASONER, "Reasoner", Parameter.Kind.CHOICE)
+                .choices(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names()
+                        .toArray(new String[0]))
+                .defaultValue(values.get(REASONER))
+                .help(help)
+                .build();
+    }
+
     /** The release as chosen. For what {@link #problems} lets through. */
     static OdkRelease.Request request(Start start, Map<String, String> chosen) {
         return new OdkRelease.Request(start.editFile, versionIn(chosen, VERSION),
@@ -554,7 +603,9 @@ final class OdkReleaseForm {
                 !newFilesOfTheProject(start).isEmpty()
                         && !"false".equalsIgnoreCase(chosen.get(COMMIT_NEW)),
                 // The files the box named, and only those, are committed first (M1).
-                newFilesOfTheProject(start));
+                newFilesOfTheProject(start))
+                .withReasoner(chosen.get(REASONER),
+                        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.DEFAULT_LIMIT_MILLIS);
     }
 
     /**
@@ -574,13 +625,18 @@ final class OdkReleaseForm {
         String target = fresh ? "prepare_release" : "prepare_release_fast";
         String version = versionIn(chosen, VERSION);
         List<String> make;
+        String reasoner = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.canonical(
+                chosen.get(REASONER));
         try {
             make = ReleaseRun.makeArguments(version, shape(start, chosen), start.facts.ontbase(),
-                    fresh);
+                    fresh, reasoner);
         } catch (IllegalArgumentException notYet) {
             // Not a version, or a pattern that cannot be one, yet: what was typed. The form
             // says what is wrong with it when it is sent.
-            make = Arrays.asList("make", target, "VERSION=" + version);
+            make = new ArrayList<String>(Arrays.asList("make", target, "VERSION=" + version));
+            if (reasoner != null) {
+                make.add("REASONER=" + reasoner);
+            }
         }
         // Here the box "Refresh the imports first" is what chooses the target, so a release
         // that fetches them can say so.
@@ -646,6 +702,17 @@ final class OdkReleaseForm {
             }
             text.append(".\n");
         }
+        List<String> saved = staging.savedMeanwhile();
+        if (!saved.isEmpty()) {
+            // Kept behind - Keep working - the release ran while these were saved (I3).
+            text.append("Saved while the release ran: ").append(String.join(", ", saved))
+                    .append(". The release may hold some of what was saved, or none of it - "
+                            + "make reads the sources more than once - and git add -u would "
+                            + "commit ").append(saved.size() == 1 ? "it" : "them")
+                    .append(" as ").append(saved.size() == 1 ? "it is" : "they are")
+                    .append(" now. Not now leaves everything as it is, to check and commit by "
+                            + "hand.\n");
+        }
         return text.append("Nothing is pushed.").toString();
     }
 
@@ -707,6 +774,19 @@ final class OdkReleaseForm {
         OdkRelease.Outcome outcome = OdkRelease.run(request, odk, git, asks);
         for (String line : outcome.getTranscript()) {
             result.note(line);
+        }
+        // Its lines were set before the reasoner was asked: a release that did not happen
+        // leaves the script as it was (the final review of 1.155.0).
+        if (start.script != null && !outcome.isOk()) {
+            try {
+                start.script.write(start.script.text());
+                result.note(start.script.file().getName() + " is as it was: the release did "
+                        + "not happen.");
+            } catch (IOException cannotWrite) {
+                result.warn(start.script.file().getName() + " could not be put back as it was: "
+                        + cannotWrite.getMessage() + " Its VERSION= names a version that was "
+                        + "not released.");
+            }
         }
         for (File file : outcome.getWritten()) {
             result.wrote(file);

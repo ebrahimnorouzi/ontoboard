@@ -1,27 +1,26 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY price "http://www.ontologydesignpatterns.org/cp/owl/price.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/price.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/price.owl"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:price="http://www.ontologydesignpatterns.org/cp/owl/price.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:price="http://www.ontologydesignpatterns.org/cp/owl/price.owl#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">Created by Valentina Presutti</owl:versionInfo>
-        <rdfs:comment rdf:datatype="&rdf;PlainLiteral">The price content ontology design pattern. This CP represents the price of an entity in a certain currency.</rdfs:comment>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The price content ontology design pattern. This CP represents the price of an entity in a certain currency.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Price Pattern</dcterms:title>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x2; term declared x2;
+- header: dcterms:title &quot;Price Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The price content ontology design pattern. This CP represents the price of an entity in a certain currency.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Valentina Presutti</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -34,10 +33,46 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
     
 
 
@@ -54,34 +89,34 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasCurrency -->
 
-    <owl:ObjectProperty rdf:about="&price;hasCurrency">
-        <rdfs:label xml:lang="en">has currency</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasCurrency">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Currency"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
-        <rdfs:range rdf:resource="&price;Currency"/>
-        <rdfs:domain rdf:resource="&price;Price"/>
+        <rdfs:label xml:lang="en">has currency</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasPrice -->
 
-    <owl:ObjectProperty rdf:about="&price;hasPrice">
-        <rdfs:label xml:lang="en">has price</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasPrice">
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#isPriceOf"/>
+        <rdfs:domain rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
-        <rdfs:range rdf:resource="&price;Price"/>
-        <rdfs:domain rdf:resource="&owl;Thing"/>
+        <rdfs:label xml:lang="en">has price</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#isPriceOf -->
 
-    <owl:ObjectProperty rdf:about="&price;isPriceOf">
-        <rdfs:label xml:lang="en">is price of</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#isPriceOf">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
-        <rdfs:domain rdf:resource="&price;Price"/>
-        <owl:inverseOf rdf:resource="&price;hasPrice"/>
-        <rdfs:range rdf:resource="&owl;Thing"/>
+        <rdfs:label xml:lang="en">is price of</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -99,11 +134,11 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasValue -->
 
-    <owl:DatatypeProperty rdf:about="&price;hasValue">
-        <rdfs:label xml:lang="en">has value</rdfs:label>
+    <owl:DatatypeProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasValue">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
-        <rdfs:domain rdf:resource="&price;Price"/>
-        <rdfs:range rdf:resource="&xsd;float"/>
+        <rdfs:label xml:lang="en">has value</rdfs:label>
     </owl:DatatypeProperty>
     
 
@@ -121,43 +156,43 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#Currency -->
 
-    <owl:Class rdf:about="&price;Currency">
-        <rdfs:label xml:lang="en">Currency</rdfs:label>
-        <owl:disjointWith rdf:resource="&price;Price"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Currency">
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price"/>
         <rdfs:comment>A system of money in general use in a particular country.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
+        <rdfs:label xml:lang="en">Currency</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price -->
 
-    <owl:Class rdf:about="&price;Price">
-        <rdfs:label xml:lang="en">Price</rdfs:label>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/price.owl#Price">
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&price;hasValue"/>
-                <owl:minCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:minCardinality>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasCurrency"/>
+                <owl:cardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:cardinality>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&price;hasCurrency"/>
-                <owl:cardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:cardinality>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl#hasValue"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:comment>The amount of money expected, required, or given in payment for something.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/price.owl"/>
+        <rdfs:label xml:lang="en">Price</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.w3.org/2002/07/owl#Thing -->
 
-    <owl:Class rdf:about="&owl;Thing"/>
+    <owl:Class rdf:about="http://www.w3.org/2002/07/owl#Thing"/>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

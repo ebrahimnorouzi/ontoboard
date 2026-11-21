@@ -9,6 +9,7 @@ import de.fizkarlsruhe.ise.ontoboard.axiom.HierarchyAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
+import de.fizkarlsruhe.ise.ontoboard.canvas.BoardLook;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasGesture;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons;
@@ -157,6 +158,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     static final String SHOW_RULES = "ontoboard.canvas.show.rules";
     static final String FOCUS_PREFERENCE = "ontoboard.canvas.focus";
 
+    /**
+     * Where a person's own board look is kept (1.155.0): what it changes of the defaults, a key
+     * and its value to a line - see {@link BoardLook#format}. A project's is in the board's
+     * sidecar, over it; whether properties are rows or boxes is one of its settings.
+     */
+    static final String LOOK_PREFERENCE = "ontoboard.board.look";
+
+    /** Whether a UML-like board draws, as boxes, the open ontology's own properties it shows nowhere else. */
+    static final String SHOW_UNUSED_PROPERTIES = "ontoboard.canvas.show.unusedProperties";
+
     /** Whether selecting a term brings it and its neighbours forward and fades the rest. */
     private boolean focusOnSelection = true;
 
@@ -243,6 +254,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** The overview, floating above the zoom controls. */
     private JPanel minimapPanel;
+
+    /**
+     * The ontology's properties in their hierarchy (1.155.0), floating at the board's right edge
+     * while the toolbar's Properties button is down: on a board drawn UML-like no property is a
+     * box of its own.
+     */
+    private de.fizkarlsruhe.ise.ontoboard.canvas.PropertiesPanel propertiesPanel;
+
+    /** The toolbar's button that opens and closes {@link #propertiesPanel}. */
+    private javax.swing.JToggleButton propertiesButton;
+
+    /** Whether the overview was showing when the properties opened, to show it again after. */
+    private boolean overviewBeforeProperties = true;
 
     /** The outline inside it, kept so the open/closed state can be restored. */
     private mxGraphOutline minimapOutline;
@@ -392,6 +416,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Card deck so an empty board shows guidance instead of a blank grid.
         zoomCluster = buildZoomCluster();
         minimapPanel = buildMinimap();
+        propertiesPanel = new de.fizkarlsruhe.ise.ontoboard.canvas.PropertiesPanel(
+                this::pushSelectionToProtege, () -> setPropertiesOpen(false));
+        propertiesPanel.setVisible(false);
 
         cards = new CardLayout();
         centre = new JPanel(cards);
@@ -574,6 +601,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         };
         getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                 .addListener(selectionListener);
+        // A term Protege has selected when the board is first built - a report's row clicked on
+        // another tab, a class picked in Entities - is shown on it, as Protege's own views show
+        // the selection they open with (the hand check of 1.155.0). Protege builds a view the
+        // first time it is shown, before it is laid out: the term is brought into view once the
+        // board has its size.
+        onceSized(graphComponent.getViewport(), () -> {
+            OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
+                    .getOWLSelectionModel().getSelectedEntity();
+            if (selected != null && selectionBridge != null) {
+                selectionBridge.selectOnCanvas(selected.getIRI().toString());
+            }
+        });
 
         changeListener = changes -> {
             // Publishing from here rather than from the canvas is deliberate: this listener sees
@@ -874,7 +913,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * was "Individual" - and the obvious reading was wrong.
      */
     private void showLegend() {
-        JOptionPane.showMessageDialog(this, new LegendPanel(layout.prefixColors),
+        JOptionPane.showMessageDialog(this, new LegendPanel(layout.prefixColors, effectiveLook()),
                 "What the diagram means", JOptionPane.PLAIN_MESSAGE);
     }
 
@@ -1762,6 +1801,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         zoom.width, zoom.height);
                 minimapPanel.setBounds(right - map.width, bottom - zoom.height - 8 - map.height,
                         map.width, map.height);
+                // The properties down the right edge, above the zoom: the overview steps aside
+                // while they are open (1.155.0) - beside it they were 200px tall at 1024x768.
+                int panelBottom = bottom - zoom.height - 8
+                        - (minimapPanel.isVisible() ? map.height + 8 : 0);
+                propertiesPanel.setBounds(right - propertiesPanel.getPreferredSize().width, margin,
+                        propertiesPanel.getPreferredSize().width,
+                        Math.max(120, panelBottom - margin));
             }
 
             @Override
@@ -1772,7 +1818,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         layers.add(graphComponent, javax.swing.JLayeredPane.DEFAULT_LAYER);
         layers.add(minimapPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
         layers.add(zoomCluster, javax.swing.JLayeredPane.PALETTE_LAYER);
+        layers.add(propertiesPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
         return layers;
+    }
+
+    /**
+     * Opens or closes the properties panel, filled from the ontology as it is now, and hands the
+     * keyboard back to the board.
+     */
+    private void setPropertiesOpen(boolean open) {
+        if (open) {
+            propertiesPanel.show(de.fizkarlsruhe.ise.ontoboard.model.PropertyOutline.of(
+                    getOWLModelManager().getActiveOntology()));
+            if (!propertiesPanel.isVisible()) {
+                overviewBeforeProperties = minimapPanel.isVisible();
+                minimapPanel.setVisible(false);
+            }
+        } else if (propertiesPanel.isVisible()) {
+            minimapPanel.setVisible(overviewBeforeProperties);
+        }
+        propertiesPanel.setVisible(open);
+        if (propertiesButton != null) {
+            propertiesButton.setSelected(open);
+        }
+        java.awt.Container layers = propertiesPanel.getParent();
+        if (layers != null) {
+            layers.doLayout();
+            layers.repaint();
+        }
+        graphComponent.requestFocusInWindow();
     }
 
     /**
@@ -3297,11 +3371,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void explainNoRange(String why) {
         Object[] options = {"Open ID ranges...", "Close"};
-        int choice = JOptionPane.showOptionDialog(this, why + "\n\nAn ID range is a block of term"
-                        + " numbers kept for one editor, so two people never give two terms the"
-                        + " same identifier. Add one for yourself under"
+        // Wrapped at a readable width: as two long lines it opened 1507px wide in a 1024px
+        // Protégé, its sentence running off the screen (Phase 7, probe host, 2026-11-20).
+        int choice = JOptionPane.showOptionDialog(this,
+                de.fizkarlsruhe.ise.ontoboard.ImportLinksOnOpen.wrapped(why + "\n\nAn ID range is"
+                        + " a block of term numbers kept for one editor, so two people never give"
+                        + " two terms the same identifier. Add one for yourself under"
                         + " OntoBoard > Project > ID ranges...; in a shared project a maintainer"
-                        + " usually approves it in the pull request.",
+                        + " usually approves it in the pull request."),
                 "No identifiers for you yet", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) {
@@ -3634,7 +3711,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             java.util.Set<String> framed = new java.util.HashSet<String>(allOfThem);
             framed.addAll(staying);
             beside = CanvasLayouts.besideTheirClass(
-                    OntologyProjection.project(ontology, drawn, showExpressions), graph, framed);
+                    drawBoard(ontology, drawn, showExpressions, Drawing.from(effectiveLook())), graph,
+                    framed);
             for (java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item> items
                     : beside.values()) {
                 for (de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item item : items) {
@@ -4521,6 +4599,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         framesButton.setToolTipText("Jump to a frame - a pattern, the properties, or one you drew");
         framesButton.addActionListener(a -> showFramesMenu(framesButton));
         bar.add(framesButton);
+        // On a board drawn UML-like no property is a box of its own (1.155.0): their hierarchy,
+        // characteristics and domains and ranges are here, on demand.
+        propertiesButton = new javax.swing.JToggleButton("Properties");
+        propertiesButton.setToolTipText("<html><b>Properties</b><br>This ontology's properties "
+                + "and its imports', in their hierarchy,<br>with their characteristics and domain "
+                + "and range.<br>A click selects one in Protégé and shows its arrows."
+                + "</html>");
+        propertiesButton.addActionListener(a -> setPropertiesOpen(propertiesButton.isSelected()));
+        bar.add(propertiesButton);
         bar.add(inferencesButton);
         bar.add(javax.swing.Box.createHorizontalGlue());
         // HELP IN SIGHT. The legend lived only in the menu behind the three dots, whose tooltip
@@ -4591,6 +4678,53 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                                 + "not drawn.");
             });
             menu.add(expressions);
+            // How properties are drawn (1.155.0): UML-like unless asked for as boxes.
+            final java.util.prefs.Preferences boardPreferences =
+                    java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+            final Drawing drawing = Drawing.from(effectiveLook());
+            final javax.swing.JCheckBoxMenuItem unused =
+                    new javax.swing.JCheckBoxMenuItem("Show unused properties", drawing.showUnused);
+            unused.setToolTipText("Draw, as boxes, this ontology's own properties that no row and "
+                    + "no arrow on the board shows.");
+            unused.setEnabled(!drawing.asBoxes);
+            unused.addActionListener(b -> {
+                boardPreferences.putBoolean(SHOW_UNUSED_PROPERTIES, unused.isSelected());
+                refresh();
+                setStatus(unused.isSelected()
+                        ? "This ontology's properties that no row and no arrow shows are drawn "
+                                + "as boxes."
+                        : "Only the properties a row or an arrow shows are on the board.");
+            });
+            final javax.swing.JCheckBoxMenuItem boxes =
+                    new javax.swing.JCheckBoxMenuItem("Properties as boxes", drawing.asBoxes);
+            boxes.setToolTipText("Draw every property as a box of its own, as before 1.155.0. "
+                    + "Off, the board is drawn UML-like: a data property is a row in its class's "
+                    + "box, an object property is its arrows.");
+            boxes.addActionListener(b -> {
+                java.util.Map<String, String> person = personLook();
+                person.put(BoardLook.PROPERTIES, boxes.isSelected() ? "boxes" : "rows");
+                boardPreferences.put(LOOK_PREFERENCE,
+                        BoardLook.format(BoardLook.defaults().withChanges(person).changes()));
+                refresh();
+                setStatus(boxes.isSelected()
+                        ? "Every property is drawn as a box of its own. Arrange puts them in "
+                                + "their frames."
+                        : "The board is drawn UML-like: a data property is a row in its class's "
+                                + "box, an object property is its arrows.");
+            });
+            if (layout.look != null && layout.look.containsKey(BoardLook.PROPERTIES)) {
+                // The project's setting is over the person's: switching here would change nothing.
+                boxes.setEnabled(false);
+                boxes.setToolTipText("This project sets how its properties are drawn - More > "
+                        + "Board settings..., This project.");
+            }
+            menu.add(boxes);
+            menu.add(unused);
+            JMenuItem boardSettings = new JMenuItem("Board settings...");
+            boardSettings.setToolTipText("Each kind's colour, shape and line, and the arrangement - "
+                    + "for all your ontologies, or for this project");
+            boardSettings.addActionListener(b -> showBoardSettings());
+            menu.add(boardSettings);
             javax.swing.JMenu layers = new javax.swing.JMenu("Show on the board");
             layers.add(layerSwitch("Object properties", SHOW_OBJECT_PROPERTIES));
             layers.add(layerSwitch("Data properties", SHOW_DATA_PROPERTIES));
@@ -4822,10 +4956,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         rememberBoard("arranging the board");
         // The outline is the arrangement the board keeps by itself; anything else is a choice it
         // must not undo the next time a class arrives.
-        layout.arrangedByHand = algorithm == CanvasLayouts.Algorithm.SECTIONS
-                ? Boolean.FALSE : Boolean.TRUE;
+        BoardLook look = effectiveLook();
+        layout.arrangedByHand = algorithm == arrangementOf(look) ? Boolean.FALSE : Boolean.TRUE;
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
-        if (algorithm == CanvasLayouts.Algorithm.SECTIONS
+        if (algorithm == arrangementOf(look)
                 && Boolean.TRUE.equals(layout.showsEverything) && ontology != null) {
             // The outline the board opened with, patterns found again: a board saved before a
             // pattern could be recognised by its terms gets its frame here.
@@ -4838,7 +4972,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (algorithm == CanvasLayouts.Algorithm.SECTIONS) {
                     sections = CanvasLayouts.applySections(graph);
                 } else {
-                    keptInFrames = CanvasLayouts.apply(graph, algorithm);
+                    keptInFrames = CanvasLayouts.apply(graph, algorithm, look);
                 }
             } finally {
                 movingProgrammatically = false;
@@ -4946,7 +5080,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // The same two lists the Legend dialog is built from, so the picture and the dialog
         // cannot disagree about what the board's colours mean.
         java.util.List<de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.Entry> entries =
-                withKey ? de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.entries() : null;
+                withKey ? de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.entries(effectiveLook()) : null;
         java.util.List<de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.Namespace> namespaces =
                 withKey ? de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.namespaces(
                         layout == null ? null : layout.prefixColors,
@@ -5406,9 +5540,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             saveLayoutTo(layoutFile);
         }
 
-        Projection projection = OntologyProjection.project(
-                getOWLModelManager().getActiveOntology(),
-                drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions);
+        Drawing drawing = Drawing.from(effectiveLook());
+        Projection projection = drawBoard(getOWLModelManager().getActiveOntology(),
+                drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions, drawing);
+        if (!drawing.asBoxes) {
+            dropEmptyPropertyFrames(layout.frames, projection);
+        }
         projection = withInferences(projection);
         if (!java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
                 .getBoolean(SHOW_RULES, true)) {
@@ -5427,7 +5564,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Kept because the DOT export needs the model rather than the rendered picture, and
         // recomputing it at export time could disagree with what is on screen.
         lastProjection = projection;
+        boolean restyled = applyLook();
         graph.render(projection, layout);
+        if (restyled) {
+            // Every cell's style read again from the stylesheet the look just built.
+            graph.refresh();
+        }
+        // An edit that adds, renames or moves a property shows in the open properties panel too.
+        if (propertiesPanel != null && propertiesPanel.isVisible()) {
+            propertiesPanel.show(de.fizkarlsruhe.ise.ontoboard.model.PropertyOutline.of(
+                    getOWLModelManager().getActiveOntology()));
+        }
         // A pin on a cell the rebuild dropped would be a card floating where that term used to
         // be, saying something true about something no longer on the board.
         ((CollaborativeGraphComponent) graphComponent).getPins()
@@ -5600,7 +5747,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         movingProgrammatically = true;
         try {
             refresh();
-            sections = CanvasLayouts.applySections(graph, staying, false);
+            BoardLook look = effectiveLook();
+            if (arrangementOf(look) == CanvasLayouts.Algorithm.SECTIONS) {
+                sections = CanvasLayouts.applySections(graph, staying, false);
+            } else {
+                // The arrangement the board's look lays it out in (1.155.0): a pattern's frame
+                // keeps its terms, and the rest is arranged under the frames.
+                CanvasLayouts.apply(graph, arrangementOf(look), look);
+                sections = java.util.Collections
+                        .<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section>emptyList();
+            }
             CanvasLayouts.dropBendsOfLinesMovedSince(graph, before);
         } finally {
             movingProgrammatically = false;
@@ -5624,12 +5780,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (ontology == null || classes.isEmpty()) {
             return;
         }
-        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : OntologyProjection.project(
-                ontology, new java.util.HashSet<String>(classes), false).getNodes()) {
+        Projection classesDrawn = OntologyProjection.project(ontology,
+                new java.util.HashSet<String>(classes), false);
+        // With the rows a UML-like board draws in them: a pattern's frame is planned round boxes
+        // as tall as they will be.
+        Drawing drawing = Drawing.from(effectiveLook());
+        if (!drawing.asBoxes && drawing.dataLayer) {
+            classesDrawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withRows(classesDrawn,
+                    ontology);
+        }
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : classesDrawn.getNodes()) {
             String drawn = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(node.getCurie(),
                     node.getLabel(), node.getId());
             sizes.put(node.getId(), graph.fittedSize(drawn,
-                    de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS));
+                    de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS, node.getRows()));
             names.put(node.getId(), drawn);
         }
     }
@@ -5766,6 +5930,149 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return !Boolean.TRUE.equals(layout.arrangedByHand)
                 && Boolean.TRUE.equals(layout.showsEverything)
                 && membership.size() <= MOST_ARRANGED_BY_ITSELF;
+    }
+
+    /**
+     * How a board draws its properties (1.155.0): UML-like - a data property a row in its
+     * classes' boxes, an object property its arrows - or every property a box of its own, as
+     * before; on a UML-like board, whether the open ontology's own properties nothing on it shows
+     * are drawn as boxes too; and the two property layer switches.
+     */
+    static final class Drawing {
+        final boolean asBoxes;
+        final boolean showUnused;
+        final boolean dataLayer;
+        final boolean objectLayer;
+
+        Drawing(boolean asBoxes, boolean showUnused, boolean dataLayer, boolean objectLayer) {
+            this.asBoxes = asBoxes;
+            this.showUnused = showUnused;
+            this.dataLayer = dataLayer;
+            this.objectLayer = objectLayer;
+        }
+
+        /** As the board's look and the user's layer switches say. */
+        static Drawing from(BoardLook look) {
+            java.util.prefs.Preferences preferences =
+                    java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+            return new Drawing("boxes".equals(look.get(BoardLook.PROPERTIES)),
+                    preferences.getBoolean(SHOW_UNUSED_PROPERTIES, false),
+                    preferences.getBoolean(SHOW_DATA_PROPERTIES, true),
+                    preferences.getBoolean(SHOW_OBJECT_PROPERTIES, true));
+        }
+    }
+
+    /** A person's own board look: what it changes of the defaults, from Protégé's preferences. */
+    static java.util.Map<String, String> personLook() {
+        return BoardLook.parse(java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                .get(LOOK_PREFERENCE, ""));
+    }
+
+    /**
+     * The look this board is drawn in (1.155.0): the defaults, the person's own over them, and the
+     * project's - in the board's sidecar - over both.
+     */
+    private BoardLook effectiveLook() {
+        return BoardLook.effective(personLook(), layout == null ? null : layout.look);
+    }
+
+    /** The look the stylesheet was last built from. */
+    private BoardLook appliedLook;
+
+    /**
+     * Builds the stylesheet from the board's look when it is not the one drawn - after Board
+     * settings..., an Undo that took a project's look back, another ontology's board. Whether it
+     * was rebuilt.
+     */
+    private boolean applyLook() {
+        BoardLook look = effectiveLook();
+        if (look.equals(appliedLook)) {
+            return false;
+        }
+        de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.install(graph, look);
+        appliedLook = look;
+        return true;
+    }
+
+    /** The arrangement the board's look lays it out in; the Outline for one it does not know. */
+    private static CanvasLayouts.Algorithm arrangementOf(BoardLook look) {
+        try {
+            return CanvasLayouts.Algorithm.valueOf(look.get(BoardLook.ARRANGEMENT));
+        } catch (RuntimeException unknown) {
+            return CanvasLayouts.Algorithm.SECTIONS;
+        }
+    }
+
+    /**
+     * More > Board settings...: each kind's colour, shape and line and the arrangement, for all a
+     * person's ontologies - kept in the preferences - or for this project, kept in the sidecar and
+     * shared through git (1.155.0).
+     */
+    private void showBoardSettings() {
+        java.util.Map<String, String> project = layout.look == null
+                ? java.util.Collections.<String, String>emptyMap() : layout.look;
+        de.fizkarlsruhe.ise.ontoboard.canvas.BoardSettingsPanel panel =
+                new de.fizkarlsruhe.ise.ontoboard.canvas.BoardSettingsPanel(personLook(), project,
+                        layoutFile != null);
+        if (JOptionPane.showConfirmDialog(this, panel, "Board settings", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
+            return;
+        }
+        java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class).put(LOOK_PREFERENCE,
+                BoardLook.format(panel.personChanges()));
+        java.util.Map<String, String> changed = panel.projectChanges();
+        if (!changed.equals(project)) {
+            rememberBoard("changing this project's board settings");
+            layout.look = changed.isEmpty() ? null : new java.util.LinkedHashMap<String, String>(changed);
+            saveLayoutTo(layoutFile);
+        }
+        refresh();
+        setStatus(changed.isEmpty() ? "The board's settings are saved for all your ontologies."
+                : "The board's settings are saved - this project's in its sidecar, committed with it.");
+    }
+
+    /**
+     * The board's projection of these members, drawn as {@code drawing} says. As boxes it is
+     * 1.154.0's board - the layer switches have taken their properties' boxes out of the members
+     * already. UML-like, they take the rows and the object properties' arrows as well.
+     */
+    static Projection drawBoard(OWLOntology ontology, java.util.Set<String> members,
+            boolean showExpressions, Drawing drawing) {
+        if (drawing.asBoxes) {
+            return OntologyProjection.project(ontology, members, showExpressions);
+        }
+        Projection drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.draw(ontology, members,
+                showExpressions, drawing.showUnused);
+        if (!drawing.dataLayer) {
+            drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withoutRows(drawn);
+        }
+        if (!drawing.objectLayer) {
+            drawn = de.fizkarlsruhe.ise.ontoboard.model.UmlBoard.withoutObjectProperties(drawn,
+                    ontology);
+        }
+        return drawn;
+    }
+
+    /**
+     * Takes the property sections' frames a UML-like board has nothing for (1.155.0): "Object
+     * properties" when no object property is a box on it, "Data properties" when no data property
+     * is. A board arranged by 1.154.0 kept its property boxes in them, and drawn UML-like they
+     * would stand empty. Returns whether one went.
+     */
+    static boolean dropEmptyPropertyFrames(java.util.List<CanvasLayout.FrameLayout> frames,
+            Projection drawn) {
+        boolean objectBoxes = false;
+        boolean dataBoxes = false;
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : drawn.getNodes()) {
+            objectBoxes |= node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.OBJECT_PROPERTY;
+            dataBoxes |= node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.DATA_PROPERTY;
+        }
+        final String objects = CanvasLayouts.SECTION_PREFIX + "object-properties";
+        final String data = CanvasLayouts.SECTION_PREFIX + "data-properties";
+        final boolean keepObjects = objectBoxes;
+        final boolean keepData = dataBoxes;
+        return frames.removeIf(frame -> frame != null && frame.id != null
+                && (frame.id.equals(objects) && !keepObjects || frame.id.equals(data) && !keepData));
     }
 
     /** The members the layer switches and folded classes let through. */
@@ -6745,7 +7052,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         IRI iri;
         try {
-            iri = minter.mintFor(ontology, name);
+            iri = minter.mintFor(ontology, name, kind);
         } catch (IllegalArgumentException invalid) {
             JOptionPane.showMessageDialog(this, invalid.getMessage(),
                     "Cannot use that name", JOptionPane.WARNING_MESSAGE);
@@ -6778,7 +7085,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 }
             }
         }
-        changes.addAll(provenanceFor(ontology, iri, minter.isNumeric()));
+        changes.addAll(provenanceFor(ontology, iri, minter.isOdkProject()));
         if (!changes.isEmpty()) {
             getOWLModelManager().applyChanges(changes);
         }
@@ -7104,7 +7411,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
             IRI propertyIri;
             try {
-                propertyIri = minter.mintFor(ontology, choice.getNewPropertyName());
+                propertyIri = minter.mintFor(ontology, choice.getNewPropertyName(),
+                        EntityFactory.Kind.OBJECT_PROPERTY);
             } catch (IllegalArgumentException invalid) {
                 JOptionPane.showMessageDialog(this, invalid.getMessage(),
                         "Cannot use that name", JOptionPane.WARNING_MESSAGE);
@@ -7117,7 +7425,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // rdfs:label, which is the only thing that makes MWO_0001000 readable afterwards.
             changes.addAll(minter.declare(ontology, propertyIri,
                     EntityFactory.Kind.OBJECT_PROPERTY, choice.getNewPropertyName()));
-            changes.addAll(provenanceFor(ontology, propertyIri, minter.isNumeric()));
+            changes.addAll(provenanceFor(ontology, propertyIri, minter.isOdkProject()));
             property = factory.getOWLObjectProperty(propertyIri);
         }
 
@@ -7775,8 +8083,29 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         // The outline since 1.131.0: the arrangement a board of the whole ontology is drawn in.
-        CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.SECTIONS);
+        BoardLook look = effectiveLook();
+        CanvasLayouts.apply(graph, arrangementOf(look), look);
         capturePositions();
+    }
+
+    /**
+     * Runs {@code then} once {@code port} has a size: at once when it has one, else at its first
+     * resize to one.
+     */
+    static void onceSized(final java.awt.Component port, final Runnable then) {
+        if (port.getWidth() > 0 && port.getHeight() > 0) {
+            then.run();
+            return;
+        }
+        port.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent resized) {
+                if (port.getWidth() > 0 && port.getHeight() > 0) {
+                    port.removeComponentListener(this);
+                    then.run();
+                }
+            }
+        });
     }
 
     /**

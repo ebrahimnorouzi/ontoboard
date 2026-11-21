@@ -3,6 +3,53 @@
 The defects fixed in each release, newest first. Each release's notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases) say more.
 
+## 1.155.0
+
+- An inconsistent ontology was released: ODK checks with ELK, which does not read inverse properties.
+- A release file opened in Protégé could be edited as if it were the edit file.
+- Measure counted nfdicore without the modules Protégé had left out.
+- Protégé left out an import whose file calls itself by another name, and nothing said so.
+- History stopped at a release whose `owl:deprecated` is no boolean, and found 7 of nfdicore's 13 releases.
+- A new project had ODK's placeholder root node.
+- A release script with Windows line endings was refused in ODK's container.
+- Files ROBOT wrote on OntoBoard's engine ended with another OWL API line than ODK's image writes.
+- How a Makefile differs from ODK's was said before each call of make.
+- A dated release could be given a date after today.
+- A release tag lost its record's headings.
+- A line on a board could be left unrouted, and a label in words took two lines.
+- *Show unused properties* drew OWL's top data property.
+- The board's panels did not fit Protégé's window at 1024×768.
+- A term imported into nfdicore went into its BFO module.
+- The refusal for an editor without an ID range opened wider than the window.
+- The quality report said "Finished (0 ms)" after seconds of work.
+- After a build rebuilt nfdicore's modules, 8 of its 10 imports were left out until the project was opened again.
+- *Imported terms* listed 196 terms for a component that holds 7, and the board drew what its modules bring along.
+- Opening a project that was open said "Project opened".
+- History said 27 of nfdicore's classes had moved that nobody moved, and 2 definitions had changed that differ in line endings only.
+- *Compare releases* said 356 terms were removed from what was open.
+- The Release form said a project's own script runs in ODK's container with the container switched off.
+- A form's field names were cut at their last letter.
+- After a release, the notice of the imports put in named one of eight.
+- A property of a release's header read as a term added.
+- A release refused for an import's terms said to deprecate them.
+- An ODK project's release was refused, without a question, when the reasoner did not finish.
+- An ontology in no project was released as consistent with its imports while an import had not loaded.
+- A release that did not happen left the project's release script naming a version nobody released.
+- The record of a release made by the project's own script did not say that the script chose its reasoner.
+- A make line the engine cannot run passed the release script's check, and the script stopped after its earlier lines had written.
+- Of two projects whose imports were put in within one wait, one was not told of.
+- Two properties, each the other's sub-property, were missing from the board's Properties panel.
+- The curated *Eventprocessing* pattern lost its alignment to SSN.
+- A second release on a day that had its dated release was refused without saying how to release.
+- Why the reasoner stopped a release was shown with markdown's asterisks around it.
+- A quality report's row, clicked on a tab without the board, changed nothing to be seen.
+- Each window closed logged three errors naming OntoBoard.
+- Protégé asked which ID range was yours after every pattern imported into a new project.
+- Protégé froze when a sheet's heading was committed, or a column added.
+- Every new sheet got the same three example identifiers.
+- A number that a release made by ODK alone had carried could be given to a new term: ODK v1.6.1 keeps the release's files on GitHub, out of git.
+- A line could run through the arrowhead of a subclass line joining two frames.
+
 ## 1.154.0
 
 - A carried-over 1.135 project's releases said two versions.

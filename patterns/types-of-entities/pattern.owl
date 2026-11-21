@@ -1,32 +1,29 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY typesofentities "http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#" >
-    <!ENTITY cpannotationschema "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
-     xmlns:typesofentities="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
      xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:typesofentities="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">Created by Valentina Presutti</owl:versionInfo>
-        <rdfs:comment rdf:datatype="&rdf;PlainLiteral">The types of entities pattern.
-It is extracted from DOLCE-UltraLite by partial clone of elements.</rdfs:comment>
-        <cpannotationschema:hasIntent rdf:datatype="&rdf;PlainLiteral">To identify and categorize the most general possible types of things in the domain of discourse.</cpannotationschema:hasIntent>
-        <cpannotationschema:coversRequirements rdf:datatype="&rdf;PlainLiteral">What kind of entity is that?</cpannotationschema:coversRequirements>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To identify and categorize the most general possible types of things in the domain of discourse.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Types Of Entities Pattern</dcterms:title>
+        <cpannotationschema:coversRequirements>What kind of entity is that?</cpannotationschema:coversRequirements>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To identify and categorize the most general possible types of things in the domain of discourse.</cpannotationschema:hasIntent>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x5; label added x5; term declared x3;
+- header: dcterms:title &quot;Types Of Entities Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:comment>The types of entities pattern.
+It is extracted from DOLCE-UltraLite by partial clone of elements.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Valentina Presutti</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -39,12 +36,70 @@ It is extracted from DOLCE-UltraLite by partial clone of elements.</rdfs:comment
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;coversRequirements"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;hasIntent"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
+    
+
+
+    <!-- http://www.w3.org/2004/02/skos/core#prefLabel -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#prefLabel">
+        <rdfs:label xml:lang="en">preferred label</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -61,85 +116,85 @@ It is extracted from DOLCE-UltraLite by partial clone of elements.</rdfs:comment
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Abstract -->
 
-    <owl:Class rdf:about="&typesofentities;Abstract">
-        <rdfs:label xml:lang="en">Abstract</rdfs:label>
-        <rdfs:label xml:lang="it">Astratto</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&typesofentities;Entity"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Event"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Object"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Quality"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Abstract">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality"/>
         <rdfs:comment>Any Entity that cannot be located in space-time. E.g. mathematical entities: formal semantics elements, regions within dimensional spaces, etc.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"/>
+        <rdfs:label xml:lang="en">Abstract</rdfs:label>
+        <skos:prefLabel xml:lang="it">Astratto</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity -->
 
-    <owl:Class rdf:about="&typesofentities;Entity">
-        <rdfs:label xml:lang="en">Entity</rdfs:label>
-        <rdfs:label xml:lang="it">Entità</rdfs:label>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity">
         <owl:equivalentClass>
             <owl:Class>
                 <owl:unionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="&typesofentities;Abstract"/>
-                    <rdf:Description rdf:about="&typesofentities;Event"/>
-                    <rdf:Description rdf:about="&typesofentities;Object"/>
-                    <rdf:Description rdf:about="&typesofentities;Quality"/>
+                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Abstract"/>
+                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event"/>
+                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object"/>
+                    <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality"/>
                 </owl:unionOf>
             </owl:Class>
         </owl:equivalentClass>
-        <rdfs:comment rdf:datatype="&xsd;string">Anything: real, possible, or imaginary, which some modeller wants to talk about for some purpose.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Anything: real, possible, or imaginary, which some modeller wants to talk about for some purpose.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"/>
+        <rdfs:label xml:lang="en">Entity</rdfs:label>
+        <skos:prefLabel xml:lang="it">Entità</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event -->
 
-    <owl:Class rdf:about="&typesofentities;Event">
-        <rdfs:label xml:lang="en">Event</rdfs:label>
-        <rdfs:label xml:lang="it">Evento</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&typesofentities;Entity"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Object"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Quality"/>
-        <rdfs:comment rdf:datatype="&xsd;string">Any physical, social, or mental process, event, or state.
-More theoretically, events can be classified in different ways, possibly based on &#39;aspect&#39; (e.g. stative, continuous, achievements, etc.), or on agentivity, typical participants (e.g. human, physical, abstract, food, etc.).
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Any physical, social, or mental process, event, or state.
+More theoretically, events can be classified in different ways, possibly based on &apos;aspect&apos; (e.g. stative, continuous, achievements, etc.), or on agentivity, typical participants (e.g. human, physical, abstract, food, etc.).
 Here no special direction is taken, and the following explains why: events are related to situations, and they can be seen from different perspectives at a same time:
 
-consider a same event &#39;rock erosion in the Sinni valley&#39;: it can be conceptualized as an accomplishment (what has brought a certain state to occur), as an achievement (the state resulting from a previous accomplishment), as a punctual event (if we collapse the time interval of the erosion into a time point), or as a transition (something that has changed our focus from a state to another). 
+consider a same event &apos;rock erosion in the Sinni valley&apos;: it can be conceptualized as an accomplishment (what has brought a certain state to occur), as an achievement (the state resulting from a previous accomplishment), as a punctual event (if we collapse the time interval of the erosion into a time point), or as a transition (something that has changed our focus from a state to another). 
 In the erosion case, we could have good motivations to shift from one aspect to another: a) causation focus, b) effectual focus, c) condensation d) transition (causality).
 If we want to consider all the aspects of a process together, we need to postulate a unifying Situation that encompasses them.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"/>
+        <rdfs:label xml:lang="en">Event</rdfs:label>
+        <skos:prefLabel xml:lang="it">Evento</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object -->
 
-    <owl:Class rdf:about="&typesofentities;Object">
-        <rdfs:label xml:lang="en">Object</rdfs:label>
-        <rdfs:label xml:lang="it">Oggetto</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&typesofentities;Entity"/>
-        <owl:disjointWith rdf:resource="&typesofentities;Quality"/>
-        <rdfs:comment rdf:datatype="&xsd;string">Any physical, social, or mental object, or a substance</rdfs:comment>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity"/>
+        <owl:disjointWith rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Any physical, social, or mental object, or a substance</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"/>
+        <rdfs:label xml:lang="en">Object</rdfs:label>
+        <skos:prefLabel xml:lang="it">Oggetto</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality -->
 
-    <owl:Class rdf:about="&typesofentities;Quality">
-        <rdfs:label xml:lang="en">Quality</rdfs:label>
-        <rdfs:label xml:lang="it">Qualità</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&typesofentities;Entity"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity"/>
         <rdfs:comment>Any aspect of an Entity (but not a part of it), which cannot exist without that Entity. For example, the way the surface of a specific PhysicalObject looks like is a Quality, while the encoding of that quality into e.g. a PhysicalAttribute is a Region</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl"/>
+        <rdfs:label xml:lang="en">Quality</rdfs:label>
+        <skos:prefLabel xml:lang="it">Qualità</skos:prefLabel>
     </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

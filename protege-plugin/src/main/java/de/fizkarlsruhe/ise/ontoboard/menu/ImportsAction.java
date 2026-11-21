@@ -33,6 +33,12 @@ public class ImportsAction extends OntoBoardAction {
 
     private static final long serialVersionUID = 1L;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Imports";
@@ -124,6 +130,25 @@ public class ImportsAction extends OntoBoardAction {
 
         for (String note : provenanceNotes) {
             result.warn(note);
+        }
+
+        // Files that call themselves by another name than the one they are imported by - put
+        // in by OntoBoard when the ontology was opened, as ROBOT reads them (1.155.0: nfdicore's
+        // and MWO's modules, which Protégé on its own leaves out).
+        List<String> otherwise = de.fizkarlsruhe.ise.ontoboard.odk.ImportLinks
+                .namedOtherwise(ontology, catalog);
+        if (!otherwise.isEmpty()) {
+            boolean one = otherwise.size() == 1;
+            result.warn((one ? "One file calls itself" : otherwise.size()
+                    + " files call themselves") + " by another name than the one "
+                    + (one ? "it is" : "they are") + " imported by. Protégé on its own leaves "
+                    + "such a file out of the ontology; OntoBoard puts it in when the ontology "
+                    + "is opened, as ROBOT and ODK's make read it. "
+                    + "OntoBoard > Reuse > Refresh imports... builds the modules again under the "
+                    + "names they are imported by, as ODK names them.");
+            for (String line : otherwise) {
+                result.note(line);
+            }
         }
         if (untraceable > 0) {
             result.note(untraceable + " import" + (untraceable == 1 ? " records" : "s record")

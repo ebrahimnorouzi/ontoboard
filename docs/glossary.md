@@ -31,6 +31,10 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 :   A block of term numbers kept for one editor, so two people never mint the same identifier.
     *Project → ID ranges...*.
 
+**Readable names**
+:   A project's choice to name new terms from what is typed - "boiled egg" a class `BoiledEgg` -
+    rather than numbering them. *Project → ID ranges...*.
+
 **Project configuration (`<id>-odk.yaml`)**
 :   The project's settings file, in ODK's format. *Project → Project configuration...* edits it.
 
@@ -51,6 +55,14 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 **Version IRI**
 :   The permanent address of one release, such as
     `https://w3id.org/myont/releases/1.4.0/myont.owl`.
+
+**Release file**
+:   A file a release writes - `<id>.owl` and the others at the top of an ODK project. It is made
+    from the edit file, never edited by hand.
+
+**Release record**
+:   What a release records of itself: what built it, its measures, the reasoner and what it said,
+    the quality report, what changed. `releases/<version>/RELEASE.md` and the tag's message.
 
 **Obsolete (deprecated)**
 :   A retired term that is kept and marked, with what to use instead. Removing a term breaks whoever
@@ -121,7 +133,7 @@ The words OntoBoard's menus, dialogs and docs use, in plain terms.
 **ROBOT template**
 :   A spreadsheet whose second row says what each column is (`ID`, `TYPE`,
     `AL rdfs:label@en`); every row after it becomes a term or an individual.
-    *Spreadsheets → Template...*.
+    *Knowledge graph → Build from sheets...*.
 
 **Sheet editor**
-:   *Spreadsheets → Sheet editor*: a folder's templates, edited inside Protégé.
+:   *Knowledge graph → Edit sheets*: a folder's templates, edited inside Protégé.

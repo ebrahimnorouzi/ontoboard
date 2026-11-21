@@ -58,6 +58,11 @@ public class HistoryAction extends ProtegeOWLAction {
     private ChangesModel changes;
     private JComboBox<String> against;
     private JButton open;
+    private JButton record;
+    /** Opens the selected release on GitHub, where the project's origin is there (1.155.0). */
+    private JButton onGitHub;
+    /** The project's repository on GitHub, {@code owner/name}; null where its origin is not. */
+    private String repository;
     private JLabel status;
     private OWLOntology workingCopy;
 
@@ -84,11 +89,11 @@ public class HistoryAction extends ProtegeOWLAction {
         File projectRoot = ReleaseAction.projectRootOf(editFile);
         String id = Release.ontologyIdFrom(editFile);
         List<ReleaseHistory.Entry> kept = ReleaseHistory.releasesOf(projectRoot, id);
-        show(id, kept, editFile);
+        show(id, kept, editFile, projectRoot);
     }
 
     private void show(final String id, final List<ReleaseHistory.Entry> kept,
-            final File editFile) {
+            final File editFile, final File projectRoot) {
         final JDialog dialog = new JDialog(
                 javax.swing.SwingUtilities.getWindowAncestor(getOWLWorkspace()),
                 "History of " + id, java.awt.Dialog.ModalityType.MODELESS);
@@ -98,6 +103,29 @@ public class HistoryAction extends ProtegeOWLAction {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setRowHeight(24);
         table.getColumnModel().getColumn(1).setCellRenderer(new TermsBar());
+        // A release's version leads to it on GitHub (1.155.0, asked by the user).
+        table.getColumnModel().getColumn(0).setCellRenderer(new VersionLink());
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent click) {
+                if (click.getButton() == java.awt.event.MouseEvent.BUTTON1
+                        && table.columnAtPoint(click.getPoint()) == 0) {
+                    String link = linkOf(table.rowAtPoint(click.getPoint()));
+                    if (link != null) {
+                        browse(link);
+                    }
+                }
+            }
+        });
+        table.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent moved) {
+                boolean onALink = table.columnAtPoint(moved.getPoint()) == 0
+                        && linkOf(table.rowAtPoint(moved.getPoint())) != null;
+                table.setCursor(java.awt.Cursor.getPredefinedCursor(onALink
+                        ? java.awt.Cursor.HAND_CURSOR : java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        });
         table.getColumnModel().getColumn(0).setPreferredWidth(110);
         table.getColumnModel().getColumn(1).setPreferredWidth(170);
         table.getColumnModel().getColumn(7).setPreferredWidth(380);
@@ -131,14 +159,47 @@ public class HistoryAction extends ProtegeOWLAction {
         open.setToolTipText("Opens the selected version in a Protege window of its own");
         open.setEnabled(false);
         open.addActionListener(e -> openSelected());
+        record = new JButton("Release record...");
+        record.setToolTipText("What the selected release recorded of itself: what built it, its "
+                + "reasoner's verdict, its checks, its measures, what changed");
+        record.setEnabled(false);
+        record.addActionListener(e -> showRecord(dialog));
+        onGitHub = new JButton("Open on GitHub");
+        onGitHub.setToolTipText("Opens the selected release on GitHub: the files as its tag "
+                + "holds them");
+        onGitHub.setEnabled(false);
+        onGitHub.addActionListener(e -> {
+            String link = linkOf(table.getSelectedRow());
+            if (link != null) {
+                browse(link);
+            }
+        });
         JButton close = new JButton("Close");
         close.addActionListener(e -> dialog.dispose());
         DialogKeys.escapePresses(dialog.getRootPane(), close);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(open);
+        buttons.add(record);
+        buttons.add(onGitHub);
         buttons.add(new JLabel("   Compare with:"));
         buttons.add(against);
+        // Releases kept on GitHub only (ODK v1.6.1 keeps release files out of git): fetched when
+        // the person asks, never on opening (1.155.0).
+        final String repository = de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases
+                .repositoryOf(projectRoot);
+        this.repository = repository;
+        onGitHub.setVisible(repository != null);
+        if (repository != null) {
+            final JButton fetch = new JButton("Fetch the whole history from GitHub...");
+            fetch.setToolTipText("Asks github.com which releases of " + repository
+                    + " there are, and - once you say so - downloads the ones History does not "
+                    + "have");
+            fetch.addActionListener(e -> fetchFromGitHub(dialog, fetch, repository, id,
+                    editFile, projectRoot));
+            buttons.add(new JLabel("   "));
+            buttons.add(fetch);
+        }
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.add(buttons, BorderLayout.WEST);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -158,7 +219,14 @@ public class HistoryAction extends ProtegeOWLAction {
         dialog.setSize(1100, 720);
         dialog.setLocationRelativeTo(getOWLWorkspace());
         dialog.setVisible(true);
+        read(id, kept, editFile);
+    }
 
+    /** Reads the releases and the working copy, and shows them. */
+    private void read(final String id, final List<ReleaseHistory.Entry> kept,
+            final File editFile) {
+        status.setText("Reading " + kept.size() + " release" + (kept.size() == 1 ? "" : "s")
+                + "...");
         new SwingWorker<List<ReleaseHistory.Version>, String>() {
             @Override
             protected List<ReleaseHistory.Version> doInBackground() throws Exception {
@@ -206,6 +274,206 @@ public class HistoryAction extends ProtegeOWLAction {
 
     private static final String THE_ONE_BEFORE = "the version before";
 
+    /**
+     * Shows what the selected release recorded of itself (1.155.0): its RELEASE.md, or its
+     * tag's message - read off the Swing thread, since a tag's is git's to say.
+     */
+    private void showRecord(final JDialog dialog) {
+        final ReleaseHistory.Version version = selectedVersion();
+        if (version == null || version.getRelease() == null) {
+            return;
+        }
+        record.setEnabled(false);
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() {
+                return version.getRelease().record();
+            }
+
+            @Override
+            protected void done() {
+                record.setEnabled(true);
+                String text;
+                try {
+                    text = get();
+                } catch (Exception failed) {
+                    text = null;
+                }
+                if (text == null) {
+                    status.setText(version.getName() + " recorded nothing of itself: it was "
+                            + "released before 1.155.0, or not by OntoBoard.");
+                    return;
+                }
+                javax.swing.JTextArea area = new javax.swing.JTextArea(text);
+                area.setEditable(false);
+                area.setCaretPosition(0);
+                area.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+                JScrollPane scroll = new JScrollPane(area);
+                scroll.setPreferredSize(new Dimension(760, 480));
+                JOptionPane.showMessageDialog(dialog, scroll, "Release record of "
+                        + version.getName(), JOptionPane.PLAIN_MESSAGE);
+            }
+        }.execute();
+    }
+
+    /**
+     * "Fetch the whole history from GitHub": asks github.com which releases there are, says how
+     * many History does not have, from where and how much, and downloads them only on the
+     * person's word - each time, never remembered - with its progress and a Stop; then reads the
+     * history again (1.155.0, asked by the user).
+     */
+    private void fetchFromGitHub(final JDialog dialog, final JButton fetch,
+            final String repository, final String id, final File editFile,
+            final File projectRoot) {
+        fetch.setEnabled(false);
+        status.setText("Asking github.com which releases of " + repository + " there are...");
+        new SwingWorker<List<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset>, Void>() {
+            @Override
+            protected List<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset>
+                    doInBackground() throws Exception {
+                return de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.list(repository, id,
+                        de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener.real());
+            }
+
+            @Override
+            protected void done() {
+                List<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset> listed;
+                try {
+                    listed = get();
+                } catch (Exception failed) {
+                    Throwable cause = failed.getCause() != null ? failed.getCause() : failed;
+                    status.setText("Could not ask github.com: " + cause.getMessage()
+                            + ". Nothing was downloaded.");
+                    fetch.setEnabled(true);
+                    return;
+                }
+                java.util.Set<String> have = new java.util.HashSet<String>();
+                for (ReleaseHistory.Version version : versions) {
+                    have.add(version.getName());
+                }
+                List<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset> missing =
+                        new ArrayList<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset>();
+                long bytes = 0;
+                StringBuilder named = new StringBuilder();
+                for (de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset asset : listed) {
+                    if (!have.contains(asset.version())) {
+                        missing.add(asset);
+                        bytes += Math.max(0, asset.size());
+                        named.append(named.length() == 0 ? "" : ", ").append(asset.tag());
+                    }
+                }
+                if (missing.isEmpty()) {
+                    status.setText("github.com/" + repository + " has " + listed.size()
+                            + " release" + (listed.size() == 1 ? "" : "s") + " with " + id
+                            + "'s file, and History shows every one. Nothing was downloaded.");
+                    fetch.setEnabled(true);
+                    return;
+                }
+                String question = "github.com/" + repository + " has " + missing.size()
+                        + (missing.size() == 1 ? " release" : " releases") + " whose " + id
+                        + " file History does not have: " + named + " - "
+                        + String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1e6)
+                        + " in all.\n\nDownload " + (missing.size() == 1 ? "it" : "them")
+                        + " into " + de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases
+                                .cacheFolder().getAbsolutePath()
+                        + "? They are read for History only - nothing in the project changes. "
+                        + "OntoBoard asks again the next time.";
+                int answer = JOptionPane.showConfirmDialog(dialog, ReleaseAction.wrapped(question),
+                        "Fetch the history from GitHub", JOptionPane.OK_CANCEL_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                if (answer != JOptionPane.OK_OPTION) {
+                    status.setText("Nothing was downloaded.");
+                    fetch.setEnabled(true);
+                    return;
+                }
+                download(fetch, repository, id, missing, editFile, projectRoot);
+            }
+        }.execute();
+    }
+
+    /** Downloads what the person agreed to, with its progress, and Stop on the same button. */
+    private void download(final JButton fetch, final String repository, final String id,
+            final List<de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset> missing,
+            final File editFile, final File projectRoot) {
+        final java.util.concurrent.atomic.AtomicBoolean stopped =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        final String label = fetch.getText();
+        final java.awt.event.ActionListener[] listeners = fetch.getActionListeners();
+        for (java.awt.event.ActionListener listener : listeners) {
+            fetch.removeActionListener(listener);
+        }
+        final java.awt.event.ActionListener stop = e -> {
+            stopped.set(true);
+            fetch.setEnabled(false);
+        };
+        fetch.setText("Stop");
+        fetch.addActionListener(stop);
+        fetch.setEnabled(true);
+        new SwingWorker<Integer, String>() {
+            @Override
+            protected Integer doInBackground() throws Exception {
+                int done = 0;
+                for (int at = 0; at < missing.size() && !stopped.get(); at++) {
+                    final de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.Asset asset =
+                            missing.get(at);
+                    final String which = asset.tag() + " (" + (at + 1) + " of "
+                            + missing.size() + ")";
+                    publish("Downloading " + which + "...");
+                    de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.fetch(asset,
+                            de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases.cached(
+                                    de.fizkarlsruhe.ise.ontoboard.odk.GitHubReleases
+                                            .cacheFolder(), repository, asset),
+                            de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener.real(),
+                            new de.fizkarlsruhe.ise.ontoboard.tools.Download.Progress() {
+                                @Override
+                                public void bytes(long so, long total) {
+                                    publish("Downloading " + which + ": "
+                                            + String.format(java.util.Locale.ROOT,
+                                                    "%.1f of %.1f MB", so / 1e6,
+                                                    Math.max(so, total) / 1e6));
+                                }
+
+                                @Override
+                                public boolean isCancelled() {
+                                    return stopped.get();
+                                }
+                            });
+                    done++;
+                }
+                return done;
+            }
+
+            @Override
+            protected void process(List<String> said) {
+                status.setText(said.get(said.size() - 1));
+            }
+
+            @Override
+            protected void done() {
+                fetch.removeActionListener(stop);
+                for (java.awt.event.ActionListener listener : listeners) {
+                    fetch.addActionListener(listener);
+                }
+                fetch.setText(label);
+                fetch.setEnabled(true);
+                int fetched;
+                try {
+                    fetched = get();
+                } catch (Exception failed) {
+                    Throwable cause = failed.getCause() != null ? failed.getCause() : failed;
+                    fetched = -1;
+                    status.setText((stopped.get() ? "Stopped" : "Could not download all of "
+                            + "them: " + cause.getMessage()) + ". What was downloaded is read.");
+                }
+                if (fetched >= 0 && stopped.get()) {
+                    status.setText("Stopped after " + fetched + " of " + missing.size()
+                            + ". What was downloaded is read.");
+                }
+                read(id, ReleaseHistory.releasesOf(projectRoot, id), editFile);
+            }
+        }.execute();
+    }
+
     private ReleaseHistory.Version selectedVersion() {
         int row = table.getSelectedRow();
         return row < 0 || row >= versions.size() ? null : versions.get(row);
@@ -215,6 +483,8 @@ public class HistoryAction extends ProtegeOWLAction {
     private void selected() {
         ReleaseHistory.Version version = selectedVersion();
         open.setEnabled(version != null && !version.isWorkingCopy());
+        record.setEnabled(version != null && version.getRelease() != null);
+        onGitHub.setEnabled(version != null && linkOf(table.getSelectedRow()) != null);
         if (version == null) {
             return;
         }
@@ -222,8 +492,20 @@ public class HistoryAction extends ProtegeOWLAction {
             against.setSelectedItem(THE_ONE_BEFORE);
             return;
         }
+        if (!version.isReadable()) {
+            // Shown as such, not as a release of nothing (1.155.0).
+            details.setText(html("<p><b>" + escape(version.getName()) + "</b> &middot; "
+                    + escape(version.describeChange()) + "</p><p>The releases before and after "
+                    + "it are compared with each other.</p>"));
+            changes.show(new ArrayList<String[]>());
+            return;
+        }
         int row = versions.indexOf(version);
         ReleaseHistory.Version before = row + 1 < versions.size() ? versions.get(row + 1) : null;
+        while (before != null && !before.isReadable()) {
+            int at = versions.indexOf(before);
+            before = at + 1 < versions.size() ? versions.get(at + 1) : null;
+        }
         showChange(before, version, version.getSincePrevious(), version.getPropertiesAdded(),
                 version.getPropertiesRemoved(), version.getIndividualsAdded(),
                 version.getIndividualsRemoved());
@@ -396,6 +678,82 @@ public class HistoryAction extends ProtegeOWLAction {
         } catch (Exception cannotOpen) {
             status.setText("Could not open " + version.getName() + ": "
                     + cannotOpen.getMessage());
+        }
+    }
+
+    /**
+     * Where a release is on GitHub: the files as its tag holds them, or its folder under
+     * {@code releases/} where the release is a folder only; null without a repository there, or
+     * for what is open, which no release is.
+     *
+     * @param repository {@code owner/name}
+     */
+    static String gitHubLink(String repository, String tag, String folderName) {
+        if (repository == null || (tag == null && folderName == null)) {
+            return null;
+        }
+        String base = "https://github.com/" + repository + "/tree/";
+        return tag != null ? base + pathSegment(tag)
+                : base + "HEAD/releases/" + pathSegment(folderName);
+    }
+
+    /** A tag or a folder's name as one segment of a link's path. */
+    private static String pathSegment(String text) {
+        StringBuilder written = new StringBuilder();
+        for (byte b : text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            char c = (char) (b & 0xff);
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '.' || c == '-' || c == '_' || c == '~') {
+                written.append(c);
+            } else {
+                written.append('%').append(String.format("%02X", b & 0xff));
+            }
+        }
+        return written.toString();
+    }
+
+    /** The link of the release in this row, or null. */
+    private String linkOf(int row) {
+        if (row < 0 || row >= versions.size()) {
+            return null;
+        }
+        ReleaseHistory.Entry release = versions.get(row).getRelease();
+        return release == null ? null : gitHubLink(repository, release.tag(),
+                release.folder() == null ? null : release.folder().getName());
+    }
+
+    private void browse(String link) {
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(link));
+            status.setText("Opened " + link);
+        } catch (Exception cannotOpen) {
+            status.setText("Could not open the browser for " + link + ": "
+                    + cannotOpen.getMessage());
+        }
+    }
+
+    /** The version, as a link where the release is on GitHub. */
+    private final class VersionLink extends javax.swing.table.DefaultTableCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Component getTableCellRendererComponent(JTable owner, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            // DefaultTableCellRenderer keeps a colour set on it for every cell after: the
+            // table's own is put back first, so only a link is blue.
+            setForeground(null);
+            super.getTableCellRendererComponent(owner, value, isSelected, hasFocus, row, column);
+            String link = linkOf(owner.convertRowIndexToModel(row));
+            if (link == null) {
+                setToolTipText(null);
+                return this;
+            }
+            setText("<html><u>" + escape(String.valueOf(value)) + "</u></html>");
+            if (!isSelected) {
+                setForeground(new java.awt.Color(0x0B, 0x57, 0xD0));
+            }
+            setToolTipText("Open it on GitHub: " + link);
+            return this;
         }
     }
 

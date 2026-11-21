@@ -1,36 +1,21 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY region "http://www.ontologydesignpatterns.org/cp/owl/region.owl#" >
-    <!ENTITY agentrole "http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#" >
-    <!ENTITY situation "http://www.ontologydesignpatterns.org/cp/owl/situation.owl#" >
-    <!ENTITY objectrole "http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#" >
-    <!ENTITY participation "http://www.ontologydesignpatterns.org/cp/owl/participation.owl#" >
-    <!ENTITY basicplanexecution "http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"
-     xmlns:region="http://www.ontologydesignpatterns.org/cp/owl/region.owl#"
-     xmlns:agentrole="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:participation="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
-     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:objectrole="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:region="http://www.ontologydesignpatterns.org/cp/owl/region.owl#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:agentrole="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#"
      xmlns:situation="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#"
-     xmlns:basicplanexecution="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#">
+     xmlns:objectrole="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#"
+     xmlns:participation="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#"
+     xmlns:basicplanexecution="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
-        <owl:versionInfo rdf:datatype="&xsd;string">Created by Valentina Presutti</owl:versionInfo>
-        <rdfs:comment rdf:datatype="&rdf;PlainLiteral">The basic plans execution content ontology design pattern represents the execution of a plan and the entity that participate in such an execution. This CP is the composition of other CPs: situation and region. Furthermore, it expands such CPs with ontology elements that are partial clones of elements from the DOCLE Ultra Lite and the Plans Lite ontologies.</rdfs:comment>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/classification.owl"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl"/>
@@ -38,6 +23,15 @@
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/region.owl"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl"/>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The basic plans execution content ontology design pattern represents the execution of a plan and the entity that participate in such an execution. This CP is the composition of other CPs: situation and region. Furthermore, it expands such CPs with ontology elements that are partial clones of elements from the DOCLE Ultra Lite and the Plans Lite ontologies.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Basicplanexecution Pattern</dcterms:title>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x11; label added x13; term declared x3;
+- header: dcterms:title &quot;Basicplanexecution Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">The basic plans execution content ontology design pattern represents the execution of a plan and the entity that participate in such an execution. This CP is the composition of other CPs: situation and region. Furthermore, it expands such CPs with ontology elements that are partial clones of elements from the DOCLE Ultra Lite and the Plans Lite ontologies.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdfs:isDefinedBy for all named entities</owl:versionInfo>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Created by Valentina Presutti</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -50,10 +44,54 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
+    
+
+
+    <!-- http://www.w3.org/2004/02/skos/core#prefLabel -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#prefLabel">
+        <rdfs:label xml:lang="en">preferred label</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -70,164 +108,172 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#actionHasParticipant -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;actionHasParticipant">
-        <rdfs:label xml:lang="en">action has participant</rdfs:label>
-        <rdfs:label xml:lang="it">ha come partecipante</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A relation between a Process and an Object, e.g. &#39;the avalanche hasParticipant a mass of snow&#39;, or &#39;the cooking of a cake hasParticipant an agent, some sugar, flour, etc.&#39;.</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#actionHasParticipant">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#hasParticipant"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A relation between a Process and an Object, e.g. &apos;the avalanche hasParticipant a mass of snow&apos;, or &apos;the cooking of a cake hasParticipant an agent, some sugar, flour, etc.&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:domain rdf:resource="&basicplanexecution;Action"/>
-        <owl:inverseOf rdf:resource="&basicplanexecution;isParticipantInAction"/>
-        <rdfs:range rdf:resource="&objectrole;Object"/>
-        <rdfs:subPropertyOf rdf:resource="&participation;hasParticipant"/>
+        <rdfs:label xml:lang="en">action has participant</rdfs:label>
+        <skos:prefLabel xml:lang="it">ha come partecipante</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAction -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;includesAction">
-        <rdfs:label xml:lang="en">includes action</rdfs:label>
-        <rdfs:label xml:lang="it">include azione</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A relation between situations and persons, e.g. &#39;this morning I&#39;ve prepared my coffee and had my fingers burnt&#39; (i.e.: the preparation of my coffee this morning included a burning of my fingers).</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAction">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isActionIncludedIn"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A relation between situations and persons, e.g. &apos;this morning I&apos;ve prepared my coffee and had my fingers burnt&apos; (i.e.: the preparation of my coffee this morning included a burning of my fingers).</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:range rdf:resource="&basicplanexecution;Action"/>
-        <owl:inverseOf rdf:resource="&basicplanexecution;isActionIncludedIn"/>
-        <rdfs:domain rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;isSettingFor"/>
+        <rdfs:label xml:lang="en">includes action</rdfs:label>
+        <skos:prefLabel xml:lang="it">include azione</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAgent -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;includesAgent">
-        <rdfs:label xml:lang="en">includes agent</rdfs:label>
-        <rdfs:label xml:lang="it">include l&#39;agente</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A relation between situations and persons, e.g. &#39;this morning I&#39;ve prepared my coffee and had my fingers burnt&#39; (i.e.: the preparation of my coffee this morning included me).</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAgent">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isAgentIncludedIn"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A relation between situations and persons, e.g. &apos;this morning I&apos;ve prepared my coffee and had my fingers burnt&apos; (i.e.: the preparation of my coffee this morning included me).</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:range rdf:resource="&agentrole;Agent"/>
-        <owl:inverseOf rdf:resource="&basicplanexecution;isAgentIncludedIn"/>
-        <rdfs:domain rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;isSettingFor"/>
+        <rdfs:label xml:lang="en">includes agent</rdfs:label>
+        <skos:prefLabel xml:lang="it">include l&apos;agente</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesObject -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;includesObject">
-        <rdfs:label xml:lang="en">includes object</rdfs:label>
-        <rdfs:label xml:lang="it">include l&#39;oggetto</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A relation between situations and persons, e.g. &#39;this morning I&#39;ve prepared my coffee and had my fingers burnt&#39; (i.e.: the preparation of my coffee this morning included me).</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesObject">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isObjectIncludedIn"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A relation between situations and persons, e.g. &apos;this morning I&apos;ve prepared my coffee and had my fingers burnt&apos; (i.e.: the preparation of my coffee this morning included me).</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <owl:inverseOf rdf:resource="&basicplanexecution;isObjectIncludedIn"/>
-        <rdfs:range rdf:resource="&objectrole;Object"/>
-        <rdfs:domain rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;isSettingFor"/>
+        <rdfs:label xml:lang="en">includes object</rdfs:label>
+        <skos:prefLabel xml:lang="it">include l&apos;oggetto</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesRegion -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;includesRegion">
-        <rdfs:label xml:lang="en">includes region</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesRegion">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor"/>
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isRegionIncludedIn"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <owl:inverseOf rdf:resource="&basicplanexecution;isRegionIncludedIn"/>
-        <rdfs:range rdf:resource="&region;Region"/>
-        <rdfs:domain rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;isSettingFor"/>
+        <rdfs:label xml:lang="en">includes region</rdfs:label>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isActionIncludedIn -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;isActionIncludedIn">
-        <rdfs:label xml:lang="en">is action included in</rdfs:label>
-        <rdfs:label xml:lang="it">è un&#39;azione inclusa in</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isActionIncludedIn">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:domain rdf:resource="&basicplanexecution;Action"/>
-        <rdfs:range rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;hasSetting"/>
+        <rdfs:label xml:lang="en">is action included in</rdfs:label>
+        <skos:prefLabel xml:lang="it">è un&apos;azione inclusa in</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isAgentIncludedIn -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;isAgentIncludedIn">
-        <rdfs:label xml:lang="en">is agent included in</rdfs:label>
-        <rdfs:label xml:lang="it">è un agente nel contesto di</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isAgentIncludedIn">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:domain rdf:resource="&agentrole;Agent"/>
-        <rdfs:range rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;hasSetting"/>
+        <rdfs:label xml:lang="en">is agent included in</rdfs:label>
+        <skos:prefLabel xml:lang="it">è un agente nel contesto di</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isObjectIncludedIn -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;isObjectIncludedIn">
-        <rdfs:label xml:lang="en">is an object included in</rdfs:label>
-        <rdfs:label xml:lang="it">è un oggetto nel contesto di</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isObjectIncludedIn">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:domain rdf:resource="&objectrole;Object"/>
-        <rdfs:range rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;hasSetting"/>
+        <rdfs:label xml:lang="en">is an object included in</rdfs:label>
+        <skos:prefLabel xml:lang="it">è un oggetto nel contesto di</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;isParticipantInAction">
-        <rdfs:label xml:lang="en">is participant in action</rdfs:label>
-        <rdfs:label xml:lang="it">è un partecipante a</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">A relation between an object and a process, e.g. &#39;a mass of snow is partipant in the avalanche&#39;, or &#39;an agent, some sugar, flour, etc. are participant in the cooking of a cake&#39;.</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#isParticipantIn"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A relation between an object and a process, e.g. &apos;a mass of snow is partipant in the avalanche&apos;, or &apos;an agent, some sugar, flour, etc. are participant in the cooking of a cake&apos;.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:range rdf:resource="&basicplanexecution;Action"/>
-        <rdfs:domain rdf:resource="&objectrole;Object"/>
-        <rdfs:subPropertyOf rdf:resource="&participation;isParticipantIn"/>
+        <rdfs:label xml:lang="en">is participant in action</rdfs:label>
+        <skos:prefLabel xml:lang="it">è un partecipante a</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isRegionIncludedIn -->
 
-    <owl:ObjectProperty rdf:about="&basicplanexecution;isRegionIncludedIn">
-        <rdfs:label xml:lang="en">is region included in</rdfs:label>
-        <rdfs:label xml:lang="it">è una regione inclusa in</rdfs:label>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isRegionIncludedIn">
+        <rdfs:subPropertyOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
-        <rdfs:domain rdf:resource="&region;Region"/>
-        <rdfs:range rdf:resource="&situation;Situation"/>
-        <rdfs:subPropertyOf rdf:resource="&situation;hasSetting"/>
+        <rdfs:label xml:lang="en">is region included in</rdfs:label>
+        <skos:prefLabel xml:lang="it">è una regione inclusa in</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/participation.owl#hasParticipant -->
 
-    <owl:ObjectProperty rdf:about="&participation;hasParticipant"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#hasParticipant">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">hasParticipant</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/participation.owl#isParticipantIn -->
 
-    <owl:ObjectProperty rdf:about="&participation;isParticipantIn"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#isParticipantIn">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">isParticipantIn</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting -->
 
-    <owl:ObjectProperty rdf:about="&situation;hasSetting"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">hasSetting</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor -->
 
-    <owl:ObjectProperty rdf:about="&situation;isSettingFor"/>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">isSettingFor</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -244,109 +290,119 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent -->
 
-    <owl:Class rdf:about="&agentrole;Agent">
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent">
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;isAgentIncludedIn"/>
-                <owl:allValuesFrom rdf:resource="&situation;Situation"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isAgentIncludedIn"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
             </owl:Restriction>
         </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">Agent</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action -->
 
-    <owl:Class rdf:about="&basicplanexecution;Action">
-        <rdfs:label xml:lang="en">Action</rdfs:label>
-        <rdfs:label xml:lang="it">Azione</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&participation;Event"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;isActionIncludedIn"/>
-                <owl:allValuesFrom rdf:resource="&basicplanexecution;PlanExecution"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isActionIncludedIn"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution"/>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <rdfs:comment rdf:datatype="&xsd;string">An Event with at least one Agent that isParticipantIn, and that executes a Task that typically isDefinedIn a Plan, Workflow, Project, etc.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">An Event with at least one Agent that isParticipantIn, and that executes a Task that typically isDefinedIn a Plan, Workflow, Project, etc.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
+        <rdfs:label xml:lang="en">Action</rdfs:label>
+        <skos:prefLabel xml:lang="it">Azione</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution -->
 
-    <owl:Class rdf:about="&basicplanexecution;PlanExecution">
-        <rdfs:label xml:lang="en">Plan execution</rdfs:label>
-        <rdfs:label xml:lang="it">Esecuzione di piano</rdfs:label>
-        <rdfs:subClassOf rdf:resource="&situation;Situation"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution">
+        <rdfs:subClassOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;includesRegion"/>
-                <owl:allValuesFrom rdf:resource="&region;Region"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAction"/>
+                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;includesAction"/>
-                <owl:someValuesFrom rdf:resource="&basicplanexecution;Action"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesAction"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;includesAction"/>
-                <owl:allValuesFrom rdf:resource="&basicplanexecution;Action"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#includesRegion"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:comment>Plan executions are situations that proactively satisfy a plan. Subplan executions are proper parts of the whole plan execution.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl"/>
+        <rdfs:label xml:lang="en">Plan execution</rdfs:label>
+        <skos:prefLabel xml:lang="it">Esecuzione di piano</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object -->
 
-    <owl:Class rdf:about="&objectrole;Object">
-        <owl:equivalentClass rdf:resource="&participation;Object"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl#Object">
+        <owl:equivalentClass rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;isParticipantInAction"/>
-                <owl:someValuesFrom rdf:resource="&basicplanexecution;Action"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction"/>
+                <owl:someValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="&basicplanexecution;isParticipantInAction"/>
-                <owl:allValuesFrom rdf:resource="&basicplanexecution;Action"/>
+                <owl:onProperty rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#isParticipantInAction"/>
+                <owl:allValuesFrom rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#Action"/>
             </owl:Restriction>
         </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">Object</rdfs:label>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event -->
 
-    <owl:Class rdf:about="&participation;Event"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Event</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object -->
 
-    <owl:Class rdf:about="&participation;Object"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Object</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region -->
 
-    <owl:Class rdf:about="&region;Region"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/region.owl#Region">
+        <rdfs:label xml:lang="en">Region</rdfs:label>
+    </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation -->
 
-    <owl:Class rdf:about="&situation;Situation"/>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation">
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Situation</rdfs:label>
+    </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

@@ -72,6 +72,14 @@ class OdkReleaseTest {
         return text.append(")\n").toString();
     }
 
+    private static String text(File file) {
+        try {
+            return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        } catch (IOException unreadable) {
+            throw new java.io.UncheckedIOException(unreadable);
+        }
+    }
+
     private static void write(File file, String text) throws IOException {
         Files.createDirectories(file.getParentFile().toPath());
         Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
@@ -169,13 +177,56 @@ class OdkReleaseTest {
 
                     @Override
                     public boolean stopped() {
-                        return stoppedAfterTheBuild;
+                        return stoppedAfterTheBuild && !odkRan.isEmpty();
                     }
                 });
     }
 
     private OdkRelease.Outcome release(String version) {
         return release(version, VersionIriShape.of(VersionIriShape.Kind.ODK), true);
+    }
+
+    /**
+     * What the person saved while the release ran - kept behind, Keep working - is named in the
+     * question to commit: the release may hold some of it or none, and the commit would take it
+     * as it is now (the 1.155.0 review's I3). A file saved before the release began is not.
+     */
+    @Test
+    void whatWasSavedWhileTheReleaseRanIsNamedBeforeItIsCommitted() throws Exception {
+        SavedMeanwhile.saved(new File(ontology, "eggboil-idranges.owl"),
+                System.currentTimeMillis() - 60000L);
+        final java.util.concurrent.atomic.AtomicBoolean saved =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        final OdkRelease.Odk building = odk();
+        OdkRelease.Odk savedMeanwhile = new OdkRelease.Odk() {
+            @Override
+            public ProcessRunner.Outcome run(List<String> inContainer, boolean passThroughRunSh)
+                    throws IOException {
+                if (saved.compareAndSet(false, true)) {
+                    SavedMeanwhile.saved(edit);
+                }
+                return building.run(inContainer, passThroughRunSh);
+            }
+
+            @Override
+            public String shown(List<String> inContainer, boolean passThroughRunSh) {
+                return building.shown(inContainer, passThroughRunSh);
+            }
+        };
+
+        OdkRelease.run(new OdkRelease.Request(edit, "1.0.0",
+                VersionIriShape.of(VersionIriShape.Kind.ODK), true, true), savedMeanwhile, git(),
+                new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return false;
+                    }
+                });
+
+        assertEquals(1, asked.size());
+        assertEquals(Arrays.asList("src/ontology/eggboil-edit.owl"),
+                asked.get(0).savedMeanwhile());
     }
 
     // ------------------------------------------------------------------ the whole of it
@@ -255,9 +306,16 @@ class OdkReleaseTest {
                         "eggboil-base.owl"),
                 Arrays.asList("git", "add", "--", "releases/1.0.0"),
                 Arrays.asList("git", "commit", "-m", "release(1.0.0)"),
-                Arrays.asList("git", "tag", "-a", "v1.0.0", "-m", "eggboil 1.0.0")), gitRan);
+                Arrays.asList("git", "tag", "-a", "v1.0.0", "--cleanup=verbatim", "-F",
+                        "releases/1.0.0/RELEASE.md")),
+                gitRan);
         assertTrue(outcome.isCommitted());
         assertEquals("v1.0.0", outcome.getTag());
+        // 1.155.0: what the release records of itself, kept with it and the tag's message.
+        String record = text(new File(root, "releases/1.0.0/RELEASE.md"));
+        assertTrue(record.startsWith("# eggboil 1.0.0\n"), record);
+        assertTrue(record.contains("- **Reasoner:** HermiT"), record);
+        assertTrue(record.contains("## How it was checked"), record);
         assertEquals(1, asked.size(), "the commands were shown once, before they ran");
         assertEquals(Collections.singletonList("notes.txt"), asked.get(0).leftOut());
         assertTrue(outcome.getSummary().contains("1.0.0") && outcome.getSummary().contains("v1.0.0"),
@@ -479,7 +537,7 @@ class OdkReleaseTest {
                 + ":", "git add -u -- .",
                 "git add -f -- eggboil.obo eggboil.owl eggboil-base.owl",
                 "git add -- releases/1.0.0", "git commit -m \"release(1.0.0)\"",
-                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 outcome.getLater());
         assertFalse(outcome.getSummary().contains("git add"), outcome.getSummary());
         assertFalse(outcome.getSummary().contains("\n"), outcome.getSummary());
@@ -534,7 +592,7 @@ class OdkReleaseTest {
         assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile(), "the release itself "
                 + "is there");
         assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
-                "git commit -m \"release(1.0.0)\"", "git tag -a v1.0.0 -m \"eggboil 1.0.0\"",
+                "git commit -m \"release(1.0.0)\"", "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md",
                 "git push --follow-tags"), outcome.getLater());
     }
 
@@ -568,6 +626,11 @@ class OdkReleaseTest {
         assertTrue(outcome.isOk(), outcome.getFailure());
         assertFalse(new File(root, "releases").exists());
         assertFalse(gitRan.toString().contains("releases"), gitRan.toString());
+        // 1.155.0: its record is in the release's log; its repository gets no file of it.
+        String log = String.join("\n", outcome.getTranscript());
+        assertTrue(log.contains("# eggboil 1.0.0"), log);
+        assertTrue(log.contains("## How it was checked"), log);
+        assertTrue(gitRan.toString().contains("-m, eggboil 1.0.0"), gitRan.toString());
     }
 
     /**
@@ -612,20 +675,25 @@ class OdkReleaseTest {
     }
 
     /**
-     * A shell in the container reads the script. With Windows line endings every line ends in
-     * a character that shell takes for part of the last word: the version, the target. It is
-     * refused with that reason, since the failure it would cause names the wrong thing.
+     * A shell in the container reads the script. A script with Windows line endings - how Git
+     * for Windows checks nfdicore and MWO out - is run with the carriage returns taken off and
+     * the file left as it is, and the log says so (1.155.0: before, the release was refused).
      */
     @Test
-    void aScriptWithWindowsLineEndingsIsNotRun() throws IOException {
-        write(new File(ontology, "release.sh"), "VERSION=1.0.0\r\n"
-                + "sh run.sh make VERSION=$VERSION prepare_release\r\n");
+    void aScriptWithWindowsLineEndingsRunsWithoutTheCarriageReturns() throws IOException {
+        File file = new File(ontology, "release.sh");
+        write(file, "VERSION=1.0.0\r\nsh run.sh make VERSION=$VERSION prepare_release\r\n");
 
         OdkRelease.Outcome outcome = release("1.0.0");
 
-        assertFalse(outcome.isOk());
-        assertTrue(outcome.getFailure().contains("Windows line endings"), outcome.getFailure());
-        assertEquals(Collections.<List<String>>emptyList(), odkRan);
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("sh", "-c", "sed 's/\\r$//' release.sh > /tmp/release.sh"
+                + " && exec sh -c '. /tmp/release.sh' release.sh"), odkRan.get(0));
+        assertEquals(Boolean.TRUE, withPassThrough.get(0));
+        assertTrue(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)
+                .contains("VERSION=1.0.0\r\n"), "the file keeps its line endings");
+        String transcript = String.join("\n", outcome.getTranscript());
+        assertTrue(transcript.contains("release.sh has Windows line endings"), transcript);
     }
 
     // ------------------------------------------------------------------ what else stops it
@@ -859,7 +927,7 @@ class OdkReleaseTest {
         assertTrue(outcome.getFailure().contains("no tag message"), "git's own reason: "
                 + outcome.getFailure());
         assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
-                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 outcome.getLater());
         assertTrue(outcome.getFailure().contains("end of the log"), outcome.getFailure());
     }
@@ -1140,5 +1208,141 @@ class OdkReleaseTest {
         write(own, text + "\nONTBASE?=https://w3id.org/kitchen/eggboil\n");
         assertEquals("https://example.org/eggboil/eggboil", OdkRelease.Facts.of(edit).ontbase(),
                 "?= gives a value only to what has none");
+    }
+
+    // ------------------------------------------------------------------ the reasoner (1.155.0)
+
+    /** The egg project's contradiction in one file: only a reasoner reading inverses sees it. */
+    private void anInconsistentEditFile() throws IOException {
+        write(edit, "Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                + "Ontology(<https://example.org/eggboil/eggboil.owl>\n"
+                + "SubClassOf(obo:BFO_0000019 obo:BFO_0000020)\n"
+                + "DisjointClasses(obo:BFO_0000020 obo:BFO_0000031)\n"
+                + "SubClassOf(obo:IAO_0000003 obo:BFO_0000031)\n"
+                + "InverseObjectProperties(obo:IAO_0000039 obo:IAO_0000040)\n"
+                + "ObjectPropertyRange(obo:IAO_0000039 obo:IAO_0000003)\n"
+                + "SubClassOf(obo:EGG_0000001 obo:BFO_0000019)\n"
+                + "SubClassOf(obo:EGG_0000001 ObjectSomeValuesFrom(obo:IAO_0000040 "
+                + "obo:EGG_0000000))\n"
+                + "ClassAssertion(obo:EGG_0000001 obo:EGG_0000002)\n)\n");
+    }
+
+    private boolean goOn;
+    private final List<ReleaseVerdict> verdictsAsked = new ArrayList<ReleaseVerdict>();
+
+    private OdkRelease.Outcome releaseWith(String reasoner, long limitMillis) {
+        return OdkRelease.run(new OdkRelease.Request(edit, "1.0.0", null, true, true)
+                .withReasoner(reasoner, limitMillis), odk(), git(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        asked.add(staging);
+                        return sayYes;
+                    }
+
+                    @Override
+                    public boolean goOnWithoutVerdict(ReleaseVerdict verdict) {
+                        verdictsAsked.add(verdict);
+                        return goOn;
+                    }
+                });
+    }
+
+    /** D1: inconsistent by the reasoner the person chose - nothing is built, nothing is run. */
+    @Test
+    void anInconsistentOntologyIsNotBuilt() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().contains("inconsistent"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("Nothing was built"), outcome.getFailure());
+        assertEquals(new ArrayList<List<String>>(), odkRan, "ODK was asked to run nothing");
+        assertEquals(ReleaseVerdict.Kind.INCONSISTENT, outcome.getVerdict().kind());
+    }
+
+    /** The person chose ELK: ELK is asked - it sees nothing here - and ODK reasons with it. */
+    @Test
+    void theChosenReasonerReachesOdk() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = releaseWith("ELK", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("make", "clean"), odkRan.get(0));
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0", "REASONER=ELK"),
+                odkRan.get(1));
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains("OWL 2 EL"),
+                outcome.getWarnings().toString());
+    }
+
+    /** A project's own release.sh chooses its own reasoner; the check runs all the same. */
+    @Test
+    void aReleaseScriptKeepsItsReasoner() throws IOException {
+        write(new File(ontology, "release.sh"), "VERSION=1.0.0\nPRIOR_VERSION=0.9.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release\n");
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertEquals(Arrays.asList("sh", "release.sh"), odkRan.get(0));
+        assertEquals(ReleaseVerdict.Kind.CLEAN, outcome.getVerdict().kind());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains(
+                "release.sh reasons with the reasoner it chooses"),
+                outcome.getWarnings().toString());
+    }
+
+    /**
+     * The record of a script's release says that the script reasoned with its own reasoner: it
+     * said only what the reasoner asked before said (the final review of 1.155.0).
+     */
+    @Test
+    void aScriptsReleaseRecordsThatTheScriptChoseItsReasoner() throws IOException {
+        write(new File(ontology, "release.sh"), "VERSION=1.0.0\nPRIOR_VERSION=0.9.0\n"
+                + "sh run.sh make VERSION=$VERSION prepare_release\n");
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 60_000);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        String record = text(new File(root, "releases/1.0.0/RELEASE.md"));
+        assertTrue(record.contains("release.sh reasons with the reasoner it chooses"), record);
+    }
+
+    /** Not finished is not a finding: the person is asked, and no means no. */
+    @Test
+    void notFinishedAsksAndStopsWhenTheAnswerIsNo() throws IOException {
+        goOn = false;
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 1);
+
+        assertFalse(outcome.isOk());
+        assertEquals(1, verdictsAsked.size());
+        assertEquals(ReleaseVerdict.Kind.TIMED_OUT, verdictsAsked.get(0).kind());
+        assertTrue(outcome.getFailure().contains("not checked"), outcome.getFailure());
+        assertEquals(new ArrayList<List<String>>(), odkRan);
+    }
+
+    @Test
+    void notFinishedGoesOnWhenThePersonSaysSo() throws IOException {
+        goOn = true;
+
+        OdkRelease.Outcome outcome = releaseWith("HermiT", 1);
+
+        assertTrue(outcome.isOk(), outcome.getFailure());
+        assertTrue(String.join("\n", outcome.getWarnings()).contains("not checked"),
+                outcome.getWarnings().toString());
+    }
+
+    /** No reasoner named (an older caller): checked with what the form offers first. */
+    @Test
+    void aRequestThatNamesNoReasonerIsStillChecked() throws IOException {
+        anInconsistentEditFile();
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+
+        assertFalse(outcome.isOk());
+        assertEquals("HermiT", outcome.getVerdict().reasoner());
+        assertEquals(new ArrayList<List<String>>(), odkRan);
     }
 }

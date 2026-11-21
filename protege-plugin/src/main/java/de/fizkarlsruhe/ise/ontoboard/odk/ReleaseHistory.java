@@ -117,7 +117,12 @@ public final class ReleaseHistory {
         /** A folder {@code releases/<version>/}: the copy OntoBoard keeps. */
         FOLDER,
         /** A tag and a folder for one version: one release. */
-        BOTH
+        BOTH,
+        /**
+         * The ontology file of a GitHub release, fetched when the person asked and kept outside
+         * the project (GitHubReleases): ODK v1.6.1 keeps release files out of git.
+         */
+        GITHUB
     }
 
     /**
@@ -131,15 +136,25 @@ public final class ReleaseHistory {
         private final File folder;
         private final String tag;
         private final String blob;
+        /** What the tag holds the ontology as: {@code <id>.owl}, {@code <id>.ttl}, ... */
+        private final String path;
+        /** The ontology file fetched from the GitHub release, or null. */
+        private File fetched;
 
         Entry(OntologyVersion version, String id, File projectRoot, File folder, String tag,
                 String blob) {
+            this(version, id, projectRoot, folder, tag, blob, id + ".owl");
+        }
+
+        Entry(OntologyVersion version, String id, File projectRoot, File folder, String tag,
+                String blob, String path) {
             this.version = version;
             this.id = id;
             this.projectRoot = projectRoot;
             this.folder = folder;
             this.tag = tag;
             this.blob = blob;
+            this.path = path == null ? id + ".owl" : path;
         }
 
         /** The version - {@code 1.2.0}, {@code 2026-10-31} - without a tag's {@code v}. */
@@ -148,6 +163,9 @@ public final class ReleaseHistory {
         }
 
         public Source source() {
+            if (fetched != null && tag == null && folder == null) {
+                return Source.GITHUB;
+            }
             return tag == null ? Source.FOLDER : folder == null ? Source.TAG : Source.BOTH;
         }
 
@@ -177,7 +195,10 @@ public final class ReleaseHistory {
          */
         public File file() {
             File file = folder == null ? null : new File(folder, id + ".owl");
-            return file != null && file.isFile() ? file : null;
+            if (file != null && file.isFile()) {
+                return file;
+            }
+            return fetched != null && fetched.isFile() ? fetched : null;
         }
 
         /**
@@ -190,15 +211,37 @@ public final class ReleaseHistory {
                 return Files.readAllBytes(file.toPath());
             }
             if (tag != null) {
-                byte[] held = GitTags.fileAt(projectRoot, tag, id + ".owl");
+                byte[] held = GitTags.fileAt(projectRoot, tag, path);
                 if (held != null) {
                     return held;
                 }
-                throw new IOException("Could not read " + id + ".owl from the git tag " + tag
+                throw new IOException("Could not read " + path + " from the git tag " + tag
                         + ".");
             }
             throw new IOException("There is no " + id + ".owl in " + folder.getAbsolutePath()
                     + ".");
+        }
+
+        /**
+         * What the release recorded of itself (1.155.0): its RELEASE.md beside the kept copy,
+         * else its tag's message when that is a record - it starts "# &lt;id&gt; &lt;version&gt;";
+         * null when it has none.
+         */
+        public String record() {
+            File kept = folder == null ? null : new File(folder, "RELEASE.md");
+            if (kept != null && kept.isFile()) {
+                try {
+                    return new String(Files.readAllBytes(kept.toPath()),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IOException unreadable) {
+                    return null;
+                }
+            }
+            if (tag == null) {
+                return null;
+            }
+            String message = GitTags.messageOf(projectRoot, tag);
+            return message != null && message.startsWith("# " + id + " ") ? message : null;
         }
 
         /** The released ontology, in a manager of its own: it declares the edit file's IRI. */
@@ -234,7 +277,8 @@ public final class ReleaseHistory {
             byte[] held = bytes();
             File copies = new File(System.getProperty("java.io.tmpdir"), COPIES);
             Files.createDirectories(copies.toPath());
-            File copy = new File(copies, id + "-" + version() + "-copy-of-tag-" + tag + ".owl");
+            File copy = new File(copies, id + "-" + version() + "-copy-of-tag-" + tag
+                    + path.substring(path.lastIndexOf('.')));
             if (copy.exists() && !copy.setWritable(true)) {
                 throw new IOException("Could not replace the earlier copy "
                         + copy.getAbsolutePath() + ".");
@@ -280,6 +324,15 @@ public final class ReleaseHistory {
     /** {@link #releasesOf(File, String)}, with the tags listed by {@code git}. */
     public static List<Entry> releasesOf(File projectRoot, String id,
             ProcessRunner.Runner git) {
+        return releasesOf(projectRoot, id, git, GitHubReleases.cacheFolder());
+    }
+
+    /**
+     * {@link #releasesOf(File, String, ProcessRunner.Runner)}, and the GitHub releases fetched
+     * earlier into {@code cache} for a version neither git nor releases/ has (1.155.0).
+     */
+    public static List<Entry> releasesOf(File projectRoot, String id,
+            ProcessRunner.Runner git, File cache) {
         List<Entry> releases = new ArrayList<Entry>();
         if (projectRoot == null || id == null) {
             return releases;
@@ -302,14 +355,23 @@ public final class ReleaseHistory {
             }
         }
         Map<String, String> tags = new HashMap<String, String>();
-        Map<String, String> blobs = new HashMap<String, String>();
-        for (Map.Entry<String, String> held
+        Map<String, ReleaseTags.Held> held = new HashMap<String, ReleaseTags.Held>();
+        for (Map.Entry<String, ReleaseTags.Held> one
                 : ReleaseTags.holding(projectRoot, id, git).entrySet()) {
-            OntologyVersion version = OntologyVersion.of(GitTags.versionOf(held.getKey()));
+            OntologyVersion version = OntologyVersion.of(GitTags.versionOf(one.getKey()));
             if (!tags.containsKey(version.getText())
-                    || held.getKey().equals(GitTags.tagFor(version.getText()))) {
-                tags.put(version.getText(), held.getKey());
-                blobs.put(version.getText(), held.getValue());
+                    || one.getKey().equals(GitTags.tagFor(version.getText()))) {
+                tags.put(version.getText(), one.getKey());
+                held.put(version.getText(), one.getValue());
+                versions.put(version.getText(), version);
+            }
+        }
+        Map<String, File> fetched = new HashMap<String, File>();
+        for (GitHubReleases.Cached cached : GitHubReleases.cachedAssets(cache,
+                GitHubReleases.repositoryOf(projectRoot), id)) {
+            OntologyVersion version = OntologyVersion.parseOrNull(cached.version());
+            if (version != null && !versions.containsKey(version.getText())) {
+                fetched.put(version.getText(), cached.file());
                 versions.put(version.getText(), version);
             }
         }
@@ -317,8 +379,11 @@ public final class ReleaseHistory {
         Collections.sort(newestFirst, NEWEST_FIRST);
         for (OntologyVersion version : newestFirst) {
             String text = version.getText();
-            releases.add(new Entry(version, id, projectRoot, folders.get(text), tags.get(text),
-                    blobs.get(text)));
+            ReleaseTags.Held tagged = held.get(text);
+            Entry entry = new Entry(version, id, projectRoot, folders.get(text), tags.get(text),
+                    tagged == null ? null : tagged.blob, tagged == null ? null : tagged.path);
+            entry.fetched = fetched.get(text);
+            releases.add(entry);
         }
         return releases;
     }
@@ -345,6 +410,22 @@ public final class ReleaseHistory {
         private final List<String> propertiesRemoved;
         private final List<String> individualsAdded;
         private final List<String> individualsRemoved;
+        /** Why it could not be read, or null when it was. */
+        private String whyUnreadable;
+
+        /** A release that could not be read: shown, with why, and compared with nothing. */
+        static Version unreadable(String name, File file, Entry release, String why) {
+            List<String> none = Collections.<String>emptyList();
+            Version version = new Version(name, file, release, "", new Counts(0, 0, 0, 0, 0, 0),
+                    null, none, none, none, none);
+            version.whyUnreadable = why;
+            return version;
+        }
+
+        /** Whether it could be read; when not, {@link #describeChange} says why. */
+        public boolean isReadable() {
+            return whyUnreadable == null;
+        }
 
         Version(String name, File file, Entry release, String versionInfo, Counts counts,
                 ReleaseDiff sincePrevious, List<String> propertiesAdded,
@@ -419,6 +500,9 @@ public final class ReleaseHistory {
          * +3 properties". "First release" for the first, "No change" when nothing did.
          */
         public String describeChange() {
+            if (whyUnreadable != null) {
+                return "Could not be read: " + whyUnreadable;
+            }
             if (sincePrevious == null) {
                 return "First release";
             }
@@ -497,8 +581,17 @@ public final class ReleaseHistory {
             if (progress != null) {
                 progress.reading(entry.version(), at + 1, total);
             }
-            OWLOntology release = entry.load();
-            versions.add(versionOf(entry.version(), entry.file(), entry, release, previous));
+            // One that cannot be read is shown as such, and the next is compared with the last
+            // one that could (1.155.0: History stopped at the first it could not read).
+            OWLOntology release;
+            try {
+                release = entry.load();
+                versions.add(versionOf(entry.version(), entry.file(), entry, release, previous));
+            } catch (OWLOntologyCreationException | RuntimeException unreadable) {
+                versions.add(Version.unreadable(entry.version(), entry.file(), entry,
+                        firstLineOf(unreadable)));
+                continue;
+            }
             previous = release;
         }
         if (workingCopy != null) {
@@ -510,6 +603,18 @@ public final class ReleaseHistory {
         }
         Collections.reverse(versions);
         return versions;
+    }
+
+    /** What went wrong, in its first line - a parser's message runs on for a page. */
+    private static String firstLineOf(Exception unreadable) {
+        String said = unreadable.getMessage();
+        if (said == null || said.trim().isEmpty()) {
+            said = unreadable.getClass().getSimpleName();
+        }
+        said = said.trim();
+        int end = said.indexOf('\n');
+        said = end < 0 ? said : said.substring(0, end).trim();
+        return said.length() > 240 ? said.substring(0, 240) + "..." : said;
     }
 
     /**
@@ -576,7 +681,8 @@ public final class ReleaseHistory {
                         Imports.INCLUDED)) {
             if (OWLRDFVocabulary.OWL_DEPRECATED.getIRI().equals(axiom.getProperty().getIRI())
                     && axiom.getValue() instanceof OWLLiteral
-                    && ((OWLLiteral) axiom.getValue()).parseBoolean()) {
+                    && de.fizkarlsruhe.ise.ontoboard.robot.DeprecatedValue.isTrue(
+                            (OWLLiteral) axiom.getValue())) {
                 obsolete++;
             }
         }
@@ -586,25 +692,35 @@ public final class ReleaseHistory {
     }
 
     /**
-     * The working copy as a release would hold it: its imports folded in, and reasoned the way
-     * Release reasons, with ELK.
+     * The working copy as a release would hold it: its imports folded in, then reasoned with
+     * ELK, relaxed and reduced - what ODK's full release, the one {@code <id>.owl} is, does.
      *
-     * <p>Because a release is both and the edit file is neither. Compared as they are, every term
-     * an import brings in was reported as removed since the last release, and every parent the
-     * reasoner had added to it as a term moved: the pizza walkthrough's working copy, identical to
-     * its 1.0.0 release, came back "7 moved". Unreasoned, if the reasoner cannot finish - which
-     * is still right about everything but inferred parents.
+     * <p>Because a release is all of these and the edit file is none. Compared as they are, every
+     * term an import brings in was reported as removed since the last release, and every parent
+     * the reasoner had added to it as a term moved: the pizza walkthrough's working copy,
+     * identical to its 1.0.0 release, came back "7 moved". Reasoned only, a class under an
+     * intersection gained a named parent the release does not hold, and nfdicore's sources as they
+     * were at 3.0.5 came back "27 moved" against 3.0.5 (Phase 7, 2026-11-20); reasoned, relaxed
+     * and reduced, they match it. As far as it got, if the reasoner cannot finish - which is still
+     * right about everything but inferred parents.
      */
-    static OWLOntology asReleased(OWLOntology workingCopy) throws OWLOntologyCreationException {
+    public static OWLOntology asReleased(OWLOntology workingCopy)
+            throws OWLOntologyCreationException {
         OWLOntology copy = merged(workingCopy);
         try {
-            de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Diff inferred =
-                    de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.preview(copy,
-                            de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REASON,
-                            de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.DEFAULT.newFactory());
-            copy.getOWLOntologyManager().applyChanges(inferred.getChanges());
+            for (de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind step
+                    : new de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind[] {
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REASON,
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.RELAX,
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Kind.REDUCE}) {
+                de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.Diff made =
+                        de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform.preview(copy, step,
+                                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.DEFAULT
+                                        .newFactory());
+                copy.getOWLOntologyManager().applyChanges(made.getChanges());
+            }
         } catch (RuntimeException cannotReason) {
-            // Compared unreasoned.
+            // Compared as far as it got.
         }
         return copy;
     }

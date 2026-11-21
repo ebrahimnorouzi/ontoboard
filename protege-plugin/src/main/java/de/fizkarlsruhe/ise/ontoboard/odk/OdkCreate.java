@@ -163,6 +163,10 @@ public final class OdkCreate {
                 throw new UncheckedIOException(adoptedFileOrNull + " could not be read: "
                         + unreadable.getMessage(), unreadable);
             }
+        } else {
+            // ODK's edit file without its placeholder class, <ID>_0000000 "root node" - the
+            // seed given it as its source, in the container as by the templates (1.155.0).
+            source = OdkInstaller.editFileWithoutRootNode(configText);
         }
         File root = config.getProjectRoot().getAbsoluteFile();
         List<String> notes = new ArrayList<String>();
@@ -179,6 +183,10 @@ public final class OdkCreate {
             written.addAll(seeded);
             stopIfAsked(stopped);
             addExtras(root, OdkExtras.files(config), written);
+            String unclaimed = claimForCreator(config, root);
+            if (unclaimed != null) {
+                notes.add(unclaimed);
+            }
             stopIfAsked(stopped);
         } catch (IOException failed) {
             takeBack(root, written);
@@ -218,6 +226,38 @@ public final class OdkCreate {
             throw new CancellationException(STOPPED);
         }
         return new Created(written, route, committed, notRecorded, notes);
+    }
+
+    /**
+     * Writes the creator's name into ODK's first range, allocated to ONTOLOGY-CREATOR, before
+     * the first commit. Protege 5.6 reads the ranges each time the edit file is read again - after
+     * every pattern imported into a new project - and asked "No Id Range Found For Current User"
+     * every time while they named nobody (1.155.0). Only that one name is changed in the file.
+     *
+     * @return what to say when the name could not be written; null when it was, or when nobody
+     *         is named
+     */
+    static String claimForCreator(OdkProjectConfig config, File root) {
+        File ranges = new File(root, "src/ontology/" + config.getOntologyId() + "-idranges.owl");
+        if (!ranges.isFile()) {
+            return null;
+        }
+        String creator = config.creatorOf(new File(ranges.getParentFile(),
+                config.getOntologyId() + "-edit.owl"));
+        if (creator == null) {
+            return null;
+        }
+        try {
+            String before = new String(Files.readAllBytes(ranges.toPath()),
+                    StandardCharsets.UTF_8);
+            Files.write(ranges.toPath(), IdRanges.claim(before,
+                    IdRanges.ODK_PLACEHOLDERS.get(0), creator).getBytes(StandardCharsets.UTF_8));
+            return null;
+        } catch (IOException | RuntimeException notClaimed) {
+            return "Your ID range was not claimed in " + ranges.getName() + ": "
+                    + notClaimed.getMessage() + " Protege asks which range is yours when it "
+                    + "opens the project, and the board before your first term.";
+        }
     }
 
     /**

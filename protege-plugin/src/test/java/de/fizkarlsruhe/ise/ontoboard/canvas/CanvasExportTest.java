@@ -35,6 +35,33 @@ class CanvasExportTest {
         assertTrue(png.length() > 0, "PNG should not be empty");
     }
 
+    /**
+     * A class drawn UML-like (1.155.0) holds its rows in the SVG too, as text a reader can select
+     * and search, under a rule, inside its box.
+     */
+    @Test
+    void anSvgCarriesAClassBoxsRowsAsText(@TempDir Path dir) throws Exception {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(new Projection(
+                Collections.singletonList(new CanvasNode("http://example.org/tiny#Person", NodeKind.CLASS,
+                        "Person").withRows(java.util.Arrays.asList("age : integer [0..1]", "key: id"))),
+                Collections.emptyList()), new CanvasLayout());
+        File svg = dir.resolve("rows.svg").toFile();
+
+        CanvasExport.writeSvg(graph, svg);
+
+        org.w3c.dom.Document document = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder().parse(svg);
+        java.util.List<String> texts = new java.util.ArrayList<String>();
+        org.w3c.dom.NodeList elements = document.getElementsByTagName("text");
+        for (int i = 0; i < elements.getLength(); i++) {
+            texts.add(elements.item(i).getTextContent());
+        }
+        assertTrue(texts.contains("age : integer [0..1]") && texts.contains("key: id"), texts.toString());
+        assertTrue(new String(Files.readAllBytes(svg.toPath()), StandardCharsets.UTF_8)
+                .contains("class=\"" + RowsSvgCanvas.RULE + "\""), "a rule under the name");
+    }
+
     @Test
     void writesSvgContainingTheNodeLabel(@TempDir Path dir) throws Exception {
         File svg = dir.resolve("diagram.svg").toFile();

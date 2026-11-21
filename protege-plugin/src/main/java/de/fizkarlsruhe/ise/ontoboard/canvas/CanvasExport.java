@@ -145,8 +145,20 @@ public final class CanvasExport {
             throws IOException {
         // Every line shown, routed, and the bounds framed round them: see the class comment.
         graph.routeWaitingLinesNow();
-        Document document = mxCellRenderer.createSvgDocument(
-                graph, null, SCALE, BACKGROUND, framed(graph, SCALE));
+        // mxCellRenderer.createSvgDocument with JGraphX's canvas, which knows nothing of a class
+        // box's rows; this one draws them (1.155.0).
+        com.mxgraph.canvas.mxSvgCanvas canvas = (com.mxgraph.canvas.mxSvgCanvas)
+                mxCellRenderer.drawCells(graph, null, SCALE, framed(graph, SCALE),
+                        new mxCellRenderer.CanvasFactory() {
+                            @Override
+                            public com.mxgraph.canvas.mxICanvas createCanvas(int width,
+                                    int height) {
+                                return new RowsSvgCanvas(
+                                        com.mxgraph.util.mxDomUtils.createSvgDocument(width,
+                                                height));
+                            }
+                        });
+        Document document = canvas == null ? null : canvas.getDocument();
         if (document == null) {
             Files.write(target.toPath(),
                     "<svg xmlns=\"http://www.w3.org/2000/svg\"/>".getBytes(

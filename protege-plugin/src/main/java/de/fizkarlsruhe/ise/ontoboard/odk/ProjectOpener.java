@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import java.awt.Component;
+import java.io.File;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import org.protege.editor.owl.OWLEditorKit;
@@ -21,6 +22,77 @@ import org.protege.editor.owl.OWLEditorKit;
 public final class ProjectOpener {
 
     private ProjectOpener() {
+    }
+
+    /**
+     * Before a project opens: when its ID ranges are still ODK's placeholders and none is this
+     * person's, asks which is theirs - the board's question - and writes their name into it.
+     * Protege reads the ranges as it opens the project and asked "No Id Range Found For Current
+     * User", and again each time the edit file was read again: after every pattern imported
+     * (1.155.0).
+     *
+     * @param choose given the choices, the one chosen; null when none was
+     * @return the placeholder claimed; null when nothing was asked, or nothing chosen
+     * @throws java.io.IOException when the ranges file cannot be read as UTF-8, or written
+     * @throws IllegalArgumentException when the name cannot be written into it
+     */
+    static String claimBeforeOpening(File editFile, String editor,
+            java.util.function.Function<String[], String> choose) throws java.io.IOException {
+        TermMinter minter = TermMinter.forOntologyFile(editFile, editor);
+        if (!minter.rangesNameNobodyYet()) {
+            return null;
+        }
+        java.util.List<String> placeholders = TermMinter.claimable(minter.getRanges());
+        String[] choices = new String[placeholders.size()];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = TermMinter.claimChoice(minter.getRanges(), placeholders.get(i));
+        }
+        String chosen = choose.apply(choices);
+        int at = chosen == null ? -1 : java.util.Arrays.asList(choices).indexOf(chosen);
+        if (at < 0) {
+            return null;
+        }
+        minter.claim(placeholders.get(at));
+        return placeholders.get(at);
+    }
+
+    /** The question before the project opens, in words; what goes wrong is said, and it opens. */
+    private static void claimARangeFirst(Component parent, File editFile) {
+        final String editor = de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(editFile);
+        final File rangesFile = TermMinter.findRangesFile(editFile);
+        if (rangesFile == null) {
+            return;
+        }
+        try {
+            claimBeforeOpening(editFile, editor, choices ->
+                    de.fizkarlsruhe.ise.ontoboard.views.RangeChoice.ask(parent,
+                            TermMinter.onLines(openingQuestion(editor, rangesFile.getName(),
+                                    TermMinter.readableNamespaceOf(rangesFile) != null), 90),
+                            choices));
+        } catch (java.io.IOException | RuntimeException notClaimed) {
+            JOptionPane.showMessageDialog(parent, ProjectWizard.wrapped("Your name was not "
+                    + "written into " + rangesFile.getName() + ": " + notClaimed.getMessage()
+                    + "\n\nThe project opens, and Protege asks which range is yours."),
+                    "Range not claimed", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    /**
+     * What is asked before a project opens whose ID ranges name nobody: in a project that chose
+     * readable names, not that its new terms are numbered from the range - the board names them
+     * from what is typed, and the range is for Protege's own Add subclass... (the 1.155.0
+     * review's M11).
+     */
+    static String openingQuestion(String editor, String rangesFileName, boolean readable) {
+        return "This project's ID ranges are still the two placeholders ODK seeds a project with,"
+                + " allocated to nobody yet. Which range is yours?\n\n"
+                + "OntoBoard writes \"" + editor + "\" into the one you choose, in "
+                + rangesFileName + ", before the project opens, so that Protege finds your range "
+                + (readable ? "- its own Add subclass... numbers new terms from it; the board "
+                        + "names them from what you type, as this project chose. "
+                        : "and new terms are numbered from it. ")
+                + "Commit " + rangesFileName + " so that nobody else claims the same range.\n\n"
+                + "Cancel writes nothing; the project opens, and Protege asks which range is yours.";
     }
 
     /**
@@ -49,6 +121,19 @@ public final class ProjectOpener {
                     "Not an ODK project", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        org.semanticweb.owlapi.model.OWLOntology already = openFrom(
+                editorKit.getModelManager().getOWLOntologyManager(), project.getEditFile());
+        if (already != null) {
+            if (!already.equals(editorKit.getModelManager().getActiveOntology())) {
+                editorKit.getModelManager().setActiveOntology(already);
+            }
+            ProjectWizard.showTheBoard(parent);
+            JOptionPane.showMessageDialog(parent, ProjectWizard.wrapped(alreadyOpen(
+                    project.getTitle(), project.getEditFile())), "Already open",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        claimARangeFirst(parent, project.getEditFile());
         try {
             // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
             // ontology into the OWLOntologyManager and stops there: Protege's OWLModelManager
@@ -83,11 +168,8 @@ public final class ProjectOpener {
             // it - and Active ontology was the tab in front after opening.
             ProjectWizard.showTheBoard(parent);
             JOptionPane.showMessageDialog(parent,
-                    ProjectWizard.wrapped("Opened " + project.getTitle() + "\n\n"
-                            + project.getEditFile().getAbsolutePath()
-                            + "\n\nTo add a class of your own, right-click its superclass on the "
-                            + "board and choose New subclass..., or double-click empty board: it "
-                            + "is numbered from your ID range."),
+                    ProjectWizard.wrapped(opened(project.getTitle(), project.getEditFile(),
+                            TermMinter.readableNamespaceOf(project.getEditFile()) != null)),
                     "Project opened", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotLoad) {
             JOptionPane.showMessageDialog(parent,
@@ -95,6 +177,36 @@ public final class ProjectOpener {
                             + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
                     "Could not open", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * The ontology this window has open from the project's edit file, or null. Opened again,
+     * Protégé listed the eleven ontologies of nfdicore it had ("They have not been
+     * replaced/overwritten") and this then said "Project opened" for nothing opened (Phase 7,
+     * 2026-11-20).
+     */
+    static org.semanticweb.owlapi.model.OWLOntology openFrom(
+            org.semanticweb.owlapi.model.OWLOntologyManager manager, java.io.File editFile) {
+        return ImportLinks.readFrom(manager, editFile);
+    }
+
+    /**
+     * What the person reads once the project is open: in a project that chose readable names,
+     * that a class made on the board is named from what is typed, not numbered (seen in the hand
+     * check of 1.155.0).
+     */
+    static String opened(String title, java.io.File editFile, boolean readable) {
+        return "Opened " + title + "\n\n" + editFile.getAbsolutePath()
+                + "\n\nTo add a class of your own, right-click its superclass on the "
+                + "board and choose New subclass..., or double-click empty board: it "
+                + (readable ? "is named from what you type, as this project chose."
+                        : "is numbered from your ID range.");
+    }
+
+    /** What the person reads when the project is open in this window already. */
+    static String alreadyOpen(String title, java.io.File editFile) {
+        return title + " is already open in this window, from\n" + editFile.getAbsolutePath()
+                + "\n\nNothing was read again. File > Reload reads it again from its file.";
     }
 
     /** The file the active ontology was loaded from, or null. */

@@ -11,6 +11,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Curies;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.model.UmlBoard;
 import de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary;
 import java.io.File;
@@ -136,9 +137,14 @@ class PatternBoardsTest {
             Set<String> members = new HashSet<String>(classes);
             Map<String, double[]> sizes = new HashMap<String, double[]>();
             Map<String, String> names = new HashMap<String, String>();
-            for (CanvasNode node : OntologyProjection.project(ontology, members, false).getNodes()) {
+            // Drawn UML-like, as the board draws a pattern Add put on it (1.155.0): its classes'
+            // data properties rows in their boxes, the frame planned round boxes that tall.
+            Projection projection = UmlBoard.withRows(
+                    OntologyProjection.project(ontology, members, false), ontology);
+            for (CanvasNode node : projection.getNodes()) {
                 String label = Curies.displayLabel(node.getCurie(), node.getLabel(), node.getId());
-                sizes.put(node.getId(), drawn.graph.fittedSize(label, SchemaStyles.CLASS));
+                sizes.put(node.getId(), drawn.graph.fittedSize(label, SchemaStyles.CLASS,
+                        node.getRows()));
                 names.put(node.getId(), label);
             }
             CanvasLayout layout = new CanvasLayout();
@@ -147,7 +153,6 @@ class PatternBoardsTest {
             FramedGroup.withId(placement.getFrame(), SchemaGraph.FRAME_ID_PREFIX + "pattern");
             layout.frames.add(placement.getFrame());
             layout.nodes.putAll(placement.getNodes());
-            Projection projection = OntologyProjection.project(ontology, members, false);
             BOARDS.add(drawn.routed(projection, layout));
         }
     }
@@ -458,7 +463,8 @@ class PatternBoardsTest {
     private static String details(BoardMeasures measured) {
         StringBuilder text = new StringBuilder(measured.summary());
         for (List<String> wrong : Arrays.asList(measured.sharing, measured.beside, measured.onBoxes,
-                measured.onLabels, measured.onLines, measured.offTheirLine, measured.through)) {
+                measured.onLabels, measured.onLines, measured.offTheirLine, measured.through,
+                measured.throughArrowheads)) {
             for (int i = 0; i < Math.min(6, wrong.size()); i++) {
                 text.append("\n  ").append(wrong.get(i));
             }
@@ -484,10 +490,12 @@ class PatternBoardsTest {
         Set<String> members = new HashSet<String>(classes);
         Map<String, double[]> sizes = new HashMap<String, double[]>();
         Map<String, String> names = new HashMap<String, String>();
-        Projection projection = OntologyProjection.project(together, members, false);
+        Projection projection = UmlBoard.withRows(
+                OntologyProjection.project(together, members, false), together);
         for (CanvasNode node : projection.getNodes()) {
             String label = Curies.displayLabel(node.getCurie(), node.getLabel(), node.getId());
-            sizes.put(node.getId(), drawn.graph.fittedSize(label, SchemaStyles.CLASS));
+            sizes.put(node.getId(), drawn.graph.fittedSize(label, SchemaStyles.CLASS,
+                    node.getRows()));
             names.put(node.getId(), label);
         }
         Map<String, String> parents = OntologyProjection.superclassesAmong(together, classes);

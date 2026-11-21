@@ -44,7 +44,21 @@ def endings_of(path):
     return "\r\n" if b"\r\n" in io.open(path, "rb").read() else "\n"
 
 
-def counts_of(graph):
+def declared_by_curation(meta):
+    """The terms OntoBoard's curation (1.155.0) declared only because the pattern uses them.
+
+    A pattern that uses a term of another ontology without declaring it is misread by the OWL API
+    when its imports are not there, so curation declares each such term - "term declared: <iri>"
+    in the pattern's "curated" list. Those terms are the other ontology's: counting them would
+    make affordance, which has 2 classes of its own, 7 classes on its page.
+    """
+    import re
+
+    return {m.group(1) for m in (re.match(r"^term declared: <([^>]+)>", line)
+                                 for line in meta.get("curated", [])) if m}
+
+
+def counts_of(graph, borrowed=frozenset()):
     """Named classes and named properties, counted the way the harvester counts them.
 
     ANNOTATION PROPERTIES ARE NOT COUNTED. tools/harvest-patterns.py collects only
@@ -56,10 +70,12 @@ def counts_of(graph):
     import rdflib
     from rdflib import OWL, RDF
 
-    classes = {c for c in graph.subjects(RDF.type, OWL.Class) if isinstance(c, rdflib.URIRef)}
+    classes = {c for c in graph.subjects(RDF.type, OWL.Class)
+               if isinstance(c, rdflib.URIRef) and str(c) not in borrowed}
     properties = set()
     for kind in (OWL.ObjectProperty, OWL.DatatypeProperty):
-        properties |= {p for p in graph.subjects(RDF.type, kind) if isinstance(p, rdflib.URIRef)}
+        properties |= {p for p in graph.subjects(RDF.type, kind)
+                       if isinstance(p, rdflib.URIRef) and str(p) not in borrowed}
     return len(classes), len(properties)
 
 
@@ -151,8 +167,13 @@ def drifted(pattern_id):
         return None
     ttl = rdflib.Graph()
     owl = rdflib.Graph()
+    # LINE ENDINGS AS LF. A Windows checkout (core.autocrlf) gives the .ttl CRLF line endings, and
+    # a Turtle literal over two lines keeps the CR; an XML parser drops it. So every pattern with
+    # a multi-line comment "drifted", and the rewrite below copied the CRs into the .owl.
+    ttl_text = io.open(ttl_path, "rb").read().replace(b"\r\n", b"\n")
+    owl_text = io.open(owl_path, "rb").read().replace(b"\r\n", b"\n")
     try:
-        ttl.parse(ttl_path, format="turtle")
+        ttl.parse(data=ttl_text, format="turtle")
     except Exception as broken:                      # noqa: BLE001 - the reason is the report
         return (None, None, "the .ttl does not parse: " + type(broken).__name__ + ": "
                 + str(broken)[:90])
@@ -161,11 +182,11 @@ def drifted(pattern_id):
         # with @prefix - and has been since it was harvested. The OWL API sniffs content, so the
         # plugin reads it and its terms are in index.tsv; only a parser that infers RDF/XML from
         # the name fails, which is what this did and what made it look like a broken pattern.
-        owl.parse(owl_path)
+        owl.parse(data=owl_text, format="xml")
     except Exception:                                # noqa: BLE001
         try:
             owl = rdflib.Graph()
-            owl.parse(owl_path, format="turtle")
+            owl.parse(data=owl_text, format="turtle")
         except Exception as broken:                  # noqa: BLE001
             return (None, None, "the .owl parses as neither RDF/XML nor Turtle: "
                     + type(broken).__name__ + ": " + str(broken)[:80])
@@ -226,7 +247,7 @@ def main():
         if not os.path.isfile(meta_path):
             continue
         meta = json.load(io.open(meta_path, encoding="utf-8"))
-        classes, properties = counts_of(ttl)
+        classes, properties = counts_of(ttl, declared_by_curation(meta))
         if meta.get("class_count") == classes and meta.get("property_count") == properties:
             continue
         counted += 1

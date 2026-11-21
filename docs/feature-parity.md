@@ -68,7 +68,7 @@ requests.
 | Feature | Web app | Plugin | Note |
 |---|---|---|---|
 | Pattern library | ✅ 13 | ✅ 162, plus your own | |
-| CSV/TSV → ROBOT template | ✅ | ✅ | *Spreadsheets → Template…* |
+| CSV/TSV → ROBOT template | ✅ | ✅ | *Knowledge graph → Build from sheets…* |
 | Terms from another ontology, by label | ❓ | ✅ | Every label and synonym |
 | Which terms came from where | ❌ | ✅ | *Imported terms…* |
 | A competency question as a test | ❌ | ✅ | *Check and test → Write a test from a question…* |

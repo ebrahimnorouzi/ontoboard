@@ -104,13 +104,18 @@ files people use, `<id>.owl` among them; OntoBoard shows the git commands - the 
 files first, then the release's commit and the tag `v1.0.0` - and runs them when you agree.
 Nothing is pushed.
 
+The release first asks the reasoner you choose - the project's own, else HermiT - and stops on a
+contradiction; it records itself, which *History → Release record...* shows.
+
 **Done when** the project has a release tag such as `v1.0.0`.
 
 ### 9. See how it evolved
 
 *OntoBoard → Build and release → History...* lists every release with what changed since the one
 before - "+3 classes, 1 obsoleted" - term by term; **Compare with** compares any two, and
-**Open in a new window** opens one.
+**Open in a new window** opens one. The working copy is compared as a release would hold it.
+Where the project is on GitHub, a release's version leads to its tag there, and **Open on GitHub**
+opens the one selected.
 
 **Done when** the project has two releases or more.
 

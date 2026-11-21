@@ -1,14 +1,44 @@
 @prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix ns: <http://creativecommons.org/ns#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix terms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl> .
 
 <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl> rdf:type owl:Ontology ;
                                                                                owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the properties of a physical object in a smart home?"^^xsd:string .
+                                                                               terms:description "Diagram (this article has no graphical representation)"^^xsd:string ;
+                                                                               terms:title "Smarthome Property Pattern"^^xsd:string ;
+                                                                               cpannotationschema:coversRequirements "What are the properties of a physical object in a smart home?"^^xsd:string ;
+                                                                               rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x8; term declared x3;
+- header: dcterms:title \"Smarthome Property Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+terms:description rdf:type owl:AnnotationProperty ;
+                  rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+terms:title rdf:type owl:AnnotationProperty ;
+            rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
 
 #################################################################
 #    Object Properties
@@ -17,13 +47,15 @@
 ###  http://purl.oclc.org/NET/ssnx/ssn#hasProperty
 <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> rdf:type owl:ObjectProperty ;
                                                 rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> ;
-                                                rdfs:range :SmartHomeProperty .
+                                                rdfs:range :SmartHomeProperty ;
+                                                rdfs:label "has property"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf
 <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> rdf:type owl:ObjectProperty ;
                                                  rdfs:domain :SmartHomeProperty ;
-                                                 rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> .
+                                                 rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> ;
+                                                 rdfs:label "is property of"@en .
 
 
 #################################################################
@@ -36,15 +68,18 @@
                                    [ rdf:type owl:Restriction ;
                                      owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> ;
                                      owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject>
-                                   ] .
+                                   ] ;
+                   rdfs:label "smart home property"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Property
-<http://purl.oclc.org/NET/ssnx/ssn#Property> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#Property> rdf:type owl:Class ;
+                                             rdfs:label "property"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> rdf:type owl:Class .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> rdf:type owl:Class ;
+                                                                       rdfs:label "Physical object"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

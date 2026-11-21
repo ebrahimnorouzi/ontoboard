@@ -11,5 +11,20 @@
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Communities",
   "class_count": 3,
   "property_count": 1,
-  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none",
+  "curated": [
+    "label rewritten: <http://www.ontologydesignpatterns.org/cp/owl/communities.owl#Community> \"Community {@en}\" is now \"Community\"@en",
+    "label moved to skos:prefLabel: <http://www.ontologydesignpatterns.org/cp/owl/communities.owl#Community> \"Comunità {@it}\" as \"Comunità\"@it",
+    "header: dcterms:title \"Communities Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.w3.org/2004/02/skos/core#prefLabel> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> \"Agent\"@en - from the library's pattern agentrole",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection> \"Collection\"@en - from the library's pattern collection",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember> \"has member\"@en - from the library's pattern collection",
+    "label added: <http://www.w3.org/2004/02/skos/core#prefLabel> \"preferred label\"@en - from http://www.w3.org/2004/02/skos/core"
+  ]
 }

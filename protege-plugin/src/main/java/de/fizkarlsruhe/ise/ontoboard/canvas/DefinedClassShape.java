@@ -25,7 +25,7 @@ import java.awt.geom.Line2D;
  * badge is in a PNG too. It sits inside the box, in the padding the label is centred in - every box
  * keeps at least 21 px either side of its text - so it never covers a word.
  */
-final class DefinedClassShape extends mxRectangleShape {
+class DefinedClassShape extends mxRectangleShape {
 
     /** The name a style gives the shape by. */
     static final String NAME = "obDefinedClass";
@@ -46,7 +46,7 @@ final class DefinedClassShape extends mxRectangleShape {
         double scale = canvas.getScale();
         double size = SIZE * scale;
         double x = state.getX() + INSET * scale;
-        double y = state.getY() + (state.getHeight() - size) / 2;
+        double y = badgeCentre(state) - size / 2;
         Color disc = mxUtils.getColor(state.getStyle(), mxConstants.STYLE_STROKECOLOR,
                 new Color(0x2D, 0x6F, 0xBF));
         Graphics2D badge = (Graphics2D) graphics.create();
@@ -65,5 +65,14 @@ final class DefinedClassShape extends mxRectangleShape {
         } finally {
             badge.dispose();
         }
+    }
+
+    /**
+     * The height the badge is centred at: the box's middle, beside a name centred in it. A box
+     * with rows has its name at the top, and the badge goes beside it there - see
+     * {@link RowsShape.Defined}.
+     */
+    double badgeCentre(mxCellState state) {
+        return state.getY() + state.getHeight() / 2;
     }
 }

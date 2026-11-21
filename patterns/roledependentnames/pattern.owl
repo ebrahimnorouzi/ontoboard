@@ -1,182 +1,327 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rdf:RDF
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:ns1="http://ontologydesignpatterns.org/opla-core#"
-   xmlns:ns2="http://ontologydesignpatterns.org/opla-cp#"
-   xmlns:ns3="http://ontologydesignpatterns.org/opla-sd#"
-   xmlns:owl="http://www.w3.org/2002/07/owl#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
->
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b1">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/Agent">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b4"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b5"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b6"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b8"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b10"/>
-    <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
-    <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b9">
-    <owl:inverseOf rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
-    <ns1:hasPatternName>Role Module Pattern</ns1:hasPatternName>
-    <ns2:addressesScenario rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Use Case&#13;&#13;
+<?xml version="1.0"?>
+<rdf:RDF xmlns="https://kastle-labl.org/lod/ontology/"
+     xml:base="https://kastle-labl.org/lod/ontology/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns1="http://ontologydesignpatterns.org/opla-core#"
+     xmlns:ns2="http://ontologydesignpatterns.org/opla-cp#"
+     xmlns:ns3="http://ontologydesignpatterns.org/opla-sd#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/">
+    <owl:Ontology rdf:about="https://kastle-labl.org/lod/ontology/">
+        <ns1:hasPatternName>Role Module Pattern</ns1:hasPatternName>
+        <ns2:addressesScenario rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Use Case
                                                                 Use Case Description</ns2:addressesScenario>
-    <ns2:hasCompetencyQuestion rdf:datatype="http://www.w3.org/2001/XMLSchema#string">cq1</ns2:hasCompetencyQuestion>
-    <ns2:hasCompetencyQuestion rdf:datatype="http://www.w3.org/2001/XMLSchema#string">cq2</ns2:hasCompetencyQuestion>
-    <ns3:hasConnections rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Thing providesAgentRole AgentRole r&#13;&#13;
-AgentRole hasRoleUnderName Name r st&#13;&#13;
-Agent assumesAgentRole AgentRole st sd iqsf sr&#13;&#13;
-Agent hasName Name r e iqsf&#13;&#13;
+        <ns2:hasCompetencyQuestion rdf:datatype="http://www.w3.org/2001/XMLSchema#string">cq1</ns2:hasCompetencyQuestion>
+        <ns2:hasCompetencyQuestion rdf:datatype="http://www.w3.org/2001/XMLSchema#string">cq2</ns2:hasCompetencyQuestion>
+        <ns3:hasConnections rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Thing providesAgentRole AgentRole r
+AgentRole hasRoleUnderName Name r st
+Agent assumesAgentRole AgentRole st sd iqsf sr
+Agent hasName Name r e iqsf
 Name hasNameAsString xsd:string e</ns3:hasConnections>
-    <ns3:hasSchemaDiagramFileName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">M_Role.png</ns3:hasSchemaDiagramFileName>
-    <dc:contributor>Cogan Shimizu</dc:contributor>
-    <dc:contributor>Pascal Hitzler</dc:contributor>
-    <dc:contributor>Rushrukh Rayan</dc:contributor>
-    <dc:creator>Cogan Shimizu</dc:creator>
-    <dc:creator>Pascal Hitzler</dc:creator>
-    <dc:creator>Rushrukh Rayan</dc:creator>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.w3.org/2002/07/owl#Thing">
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b1"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b2"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b3"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b14">
-    <rdf:first rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
-    <rdf:rest rdf:nodeID="na159186503bf489698cf7b3f58654f73b15"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/AgentRole">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-    <skos:editorialNote xml:lang="en">Axioms were lost when this pattern was harvested: the OWL API could not read part of the source and substituted placeholder classes in http://org.semanticweb.owlapi/error#, which asserted this class to be a subclass of Error1, Error2 and so on. The placeholders are removed here because they carry no information. What they stood for is still in the source: https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames.</skos:editorialNote>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b11">
-    <rdf:first rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
-    <rdf:rest rdf:nodeID="na159186503bf489698cf7b3f58654f73b12"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b18">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <rdfs:subClassOf rdf:resource="https://kastle-labl.org/lod/ontology/Agent"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
-    <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Agent"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b8">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
-    <owl:onClass rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-    <owl:onProperty rdf:nodeID="na159186503bf489698cf7b3f58654f73b9"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b17">
-    <owl:minQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:minQualifiedCardinality>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://purl.org/dc/elements/1.1/creator">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b13">
-    <owl:inverseOf rdf:resource="https://kastle-labl.org/lod/ontology/hasRoleUnderName"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://ontologydesignpatterns.org/opla-sd#hasSchemaDiagramFileName">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/Name">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-    <rdfs:subClassOf rdf:nodeID="na159186503bf489698cf7b3f58654f73b16"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b2">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasRoleUnderName"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b16">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasNameAsString"/>
-    <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/xsd:string"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b5">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:minQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:minQualifiedCardinality>
-    <owl:onClass rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b4">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b3">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/providesAgentRole"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b15">
-    <rdf:first rdf:nodeID="na159186503bf489698cf7b3f58654f73b13"/>
-    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://ontologydesignpatterns.org/opla-cp#hasCompetencyQuestion">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/providesAgentRole">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b6">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
-    <owl:onClass rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
-    <owl:onProperty rdf:nodeID="na159186503bf489698cf7b3f58654f73b7"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b12">
-    <rdf:first rdf:resource="https://kastle-labl.org/lod/ontology/hasRoleUnderName"/>
-    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://ontologydesignpatterns.org/opla-core#hasPatternName">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/assumesAgentRole">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-    <owl:propertyChainAxiom rdf:nodeID="na159186503bf489698cf7b3f58654f73b14"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://ontologydesignpatterns.org/opla-cp#addressesScenario">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://purl.org/dc/elements/1.1/contributor">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://www.w3.org/2002/07/owl#minQualifiedCardinality">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b7">
-    <owl:inverseOf rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/hasName">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-    <owl:propertyChainAxiom rdf:nodeID="na159186503bf489698cf7b3f58654f73b11"/>
-  </rdf:Description>
-  <rdf:Description rdf:nodeID="na159186503bf489698cf7b3f58654f73b10">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
-    <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
-    <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/xsd:string">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/hasRoleUnderName">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="http://ontologydesignpatterns.org/opla-sd#hasConnections">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
-  </rdf:Description>
-  <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/hasNameAsString">
-    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
-  </rdf:Description>
+        <ns3:hasSchemaDiagramFileName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">M_Role.png</ns3:hasSchemaDiagramFileName>
+        <dc:contributor>Cogan Shimizu</dc:contributor>
+        <dc:contributor>Pascal Hitzler</dc:contributor>
+        <dc:contributor>Rushrukh Rayan</dc:contributor>
+        <dc:creator>Cogan Shimizu</dc:creator>
+        <dc:creator>Pascal Hitzler</dc:creator>
+        <dc:creator>Rushrukh Rayan</dc:creator>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Diagram | Intent: | An ontology design pattern for modeling Names as part of Roles, to capture scenarios where an Agent performs different Roles using different Names associated with the different Roles. Examples of an Agent performing a Role using different Names are rather ubiq- uitous, e.g., authors...</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Roledependentnames Pattern</dcterms:title>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x20; term declared x3;
+- header: dcterms:title &quot;Roledependentnames Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+- axiom removed: SubObjectPropertyOf(ObjectPropertyChain(&lt;https://kastle-labl.org/lod/ontology/hasName&gt; ObjectInverseOf(&lt;https://kastle-labl.org/lod/ontology/hasRoleUnderName&gt;)) &lt;https://kastle-labl.org/lod/ontology/assumesAgentRole&gt;) - with the chain assumesAgentRole o hasRoleUnderName -&gt; hasName it made a cycle of property chains, outside OWL 2 DL (no reasoner could answer); broken at the inverse that closes it - an agent who acts in a role still carries the role&apos;s name
+- axiom removed: SubClassOf(&lt;https://kastle-labl.org/lod/ontology/Agent&gt; ObjectMaxCardinality(1 ObjectInverseOf(&lt;https://kastle-labl.org/lod/ontology/hasName&gt;) &lt;https://kastle-labl.org/lod/ontology/Name&gt;)) - the chain assumesAgentRole o hasRoleUnderName -&gt; hasName makes hasName a non-simple property, and OWL 2 DL allows no cardinality restriction on one, so no reasoner could answer; this one - on the inverse of hasName - goes, the chain stays (keeping this and dropping that chain instead leaves assumesAgentRole in two cardinality restrictions)
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://ontologydesignpatterns.org/opla-core#hasPatternName -->
+
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla-core#hasPatternName">
+        <rdfs:label xml:lang="en">has pattern name</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://ontologydesignpatterns.org/opla-cp#addressesScenario -->
+
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla-cp#addressesScenario">
+        <rdfs:label xml:lang="en">addresses scenario</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://ontologydesignpatterns.org/opla-cp#hasCompetencyQuestion -->
+
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla-cp#hasCompetencyQuestion">
+        <rdfs:label xml:lang="en">has competency question</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://ontologydesignpatterns.org/opla-sd#hasConnections -->
+
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla-sd#hasConnections">
+        <rdfs:label xml:lang="en">has connections</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://ontologydesignpatterns.org/opla-sd#hasSchemaDiagramFileName -->
+
+    <owl:AnnotationProperty rdf:about="http://ontologydesignpatterns.org/opla-sd#hasSchemaDiagramFileName">
+        <rdfs:label xml:lang="en">has schema diagram file name</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/elements/1.1/contributor -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/contributor">
+        <rdfs:label xml:lang="en">Contributor</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/elements/1.1/creator -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator">
+        <rdfs:label xml:lang="en">Creator</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#minQualifiedCardinality -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#minQualifiedCardinality"/>
+    
+
+
+    <!-- http://www.w3.org/2004/02/skos/core#editorialNote -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#editorialNote">
+        <rdfs:label xml:lang="en">editorial note</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/assumesAgentRole -->
+
+    <owl:ObjectProperty rdf:about="https://kastle-labl.org/lod/ontology/assumesAgentRole">
+        <rdfs:label xml:lang="en">assumes agent role</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/hasName -->
+
+    <owl:ObjectProperty rdf:about="https://kastle-labl.org/lod/ontology/hasName">
+        <owl:propertyChainAxiom rdf:parseType="Collection">
+            <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
+            <rdf:Description rdf:about="https://kastle-labl.org/lod/ontology/hasRoleUnderName"/>
+        </owl:propertyChainAxiom>
+        <rdfs:label xml:lang="en">has name</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/hasNameAsString -->
+
+    <owl:ObjectProperty rdf:about="https://kastle-labl.org/lod/ontology/hasNameAsString">
+        <rdfs:label xml:lang="en">has name as string</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/hasRoleUnderName -->
+
+    <owl:ObjectProperty rdf:about="https://kastle-labl.org/lod/ontology/hasRoleUnderName">
+        <rdfs:label xml:lang="en">has role under name</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/providesAgentRole -->
+
+    <owl:ObjectProperty rdf:about="https://kastle-labl.org/lod/ontology/providesAgentRole">
+        <rdfs:label xml:lang="en">provides agent role</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#Thing -->
+
+    <rdf:Description rdf:about="http://www.w3.org/2002/07/owl#Thing">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
+                <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasRoleUnderName"/>
+                <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/providesAgentRole"/>
+                <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Thing</rdfs:label>
+    </rdf:Description>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/Agent -->
+
+    <owl:Class rdf:about="https://kastle-labl.org/lod/ontology/Agent">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasName"/>
+                <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
+                <owl:allValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
+                <owl:minQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:minQualifiedCardinality>
+                <owl:onClass rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty>
+                    <rdf:Description>
+                        <owl:inverseOf rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
+                    </rdf:Description>
+                </owl:onProperty>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
+                <owl:onClass rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/AgentRole"/>
+        <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
+        <rdfs:label xml:lang="en">agent</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/AgentRole -->
+
+    <owl:Class rdf:about="https://kastle-labl.org/lod/ontology/AgentRole">
+        <owl:disjointWith rdf:resource="https://kastle-labl.org/lod/ontology/Name"/>
+        <rdfs:label xml:lang="en">agent role</rdfs:label>
+        <skos:editorialNote xml:lang="en">Axioms were lost when this pattern was harvested: the OWL API could not read part of the source and substituted placeholder classes in http://org.semanticweb.owlapi/error#, which asserted this class to be a subclass of Error1, Error2 and so on. The placeholders are removed here because they carry no information. What they stood for is still in the source: https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames.</skos:editorialNote>
+    </owl:Class>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/Name -->
+
+    <owl:Class rdf:about="https://kastle-labl.org/lod/ontology/Name">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/hasNameAsString"/>
+                <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/xsd:string"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:label xml:lang="en">name</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://kastle-labl.org/lod/ontology/xsd:string -->
+
+    <owl:Class rdf:about="https://kastle-labl.org/lod/ontology/xsd:string">
+        <rdfs:label xml:lang="en">xsd:string</rdfs:label>
+    </owl:Class>
+    <rdf:Description>
+        <owl:minQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:minQualifiedCardinality>
+    </rdf:Description>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <owl:Restriction>
+        <owl:onProperty rdf:resource="https://kastle-labl.org/lod/ontology/assumesAgentRole"/>
+        <owl:someValuesFrom rdf:resource="https://kastle-labl.org/lod/ontology/Agent"/>
+        <rdfs:subClassOf rdf:resource="https://kastle-labl.org/lod/ontology/Agent"/>
+    </owl:Restriction>
 </rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
+

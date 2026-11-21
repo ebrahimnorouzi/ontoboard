@@ -4,49 +4,75 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix taskrole: <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> rdf:type owl:Ontology ;
                                                              owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What roles are this task of?, What tasks do have this role?" ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This pattern allows to put roles in the domain of discourse. It does not allow to model time indexed task assignement." ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent the assignment of tasks to roles" ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "This CP is typically composed with the http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl CP, or http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl CP. It is a component of the http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl CP" ;
-                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "students have the duty of giving exams" ;
-                                                             rdfs:comment """The task role pattern. 
+                                                             dcterms:description "To represent the assignment of tasks to roles"^^xsd:string ;
+                                                             dcterms:title "Role Task Pattern"^^xsd:string ;
+                                                             cpannotationschema:coversRequirements "What roles are this task of?, What tasks do have this role?" ;
+                                                             cpannotationschema:extractedFrom "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                             cpannotationschema:hasConsequences "This pattern allows to put roles in the domain of discourse. It does not allow to model time indexed task assignement." ;
+                                                             cpannotationschema:hasIntent "To represent the assignment of tasks to roles"^^xsd:string ;
+                                                             cpannotationschema:relatedCPs "This CP is typically composed with the http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl CP, or http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl CP. It is a component of the http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl CP" ;
+                                                             cpannotationschema:scenarios "students have the duty of giving exams" ;
+                                                             rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x4; label moved to skos:altLabel x1; label added x10; term declared x4;
+- header: dcterms:title \"Role Task Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                          """The task role pattern. 
 This pattern is extracted from DOLCE-UltraLite by partial clone of elements.""" ;
-                                                             rdfs:label "role task" ,
-                                                                        "task role" ;
+                                                             rdfs:label "task role" ;
                                                              owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
-                                                                             "Created by Valentina Presutti"^^xsd:string .
+                                                                             "Created by Valentina Presutti"^^xsd:string ;
+                                                             skos:altLabel "role task"^^xsd:string .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -65,29 +91,39 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#altLabel
+skos:altLabel rdf:type owl:AnnotationProperty ;
+              rdfs:label "alternative label"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#hasTask
-:hasTask rdf:type owl:ObjectProperty ;
-         owl:inverseOf :isTaskOf ;
-         rdfs:domain :Role ;
-         rdfs:range :Task ;
-         rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')."^^xsd:string ;
-         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
-         rdfs:label "ha come obiettivo"@it ,
-                    "has target"@en .
+taskrole:hasTask rdf:type owl:ObjectProperty ;
+                 owl:inverseOf taskrole:isTaskOf ;
+                 rdfs:domain taskrole:Role ;
+                 rdfs:range taskrole:Task ;
+                 rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')."^^xsd:string ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
+                 rdfs:label "has target"@en ;
+                 skos:prefLabel "ha come obiettivo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#isTaskOf
-:isTaskOf rdf:type owl:ObjectProperty ;
-          rdfs:domain :Task ;
-          rdfs:range :Role ;
-          rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')." ;
-          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
-          rdfs:label "is a target for"@en ,
-                     "è un obiettivo per"@it .
+taskrole:isTaskOf rdf:type owl:ObjectProperty ;
+                  rdfs:domain taskrole:Task ;
+                  rdfs:range taskrole:Role ;
+                  rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')." ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
+                  rdfs:label "is a target for"@en ;
+                  skos:prefLabel "è un obiettivo per"@it .
 
 
 #################################################################
@@ -95,28 +131,28 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Role
-:Role rdf:type owl:Class ;
-      rdfs:subClassOf [ rdf:type owl:Restriction ;
-                        owl:onProperty :hasTask ;
-                        owl:allValuesFrom :Task
-                      ] ;
-      owl:disjointWith :Task ;
-      rdfs:comment "A concept that classifies an object. For example, the role developer classifies a person, the role server classifies a computer machine.  A hasTask only Tasks."^^xsd:string ;
-      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
-      rdfs:label "Role"@en ,
-                 "Ruolo"@it .
+taskrole:Role rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty taskrole:hasTask ;
+                                owl:allValuesFrom taskrole:Task
+                              ] ;
+              owl:disjointWith taskrole:Task ;
+              rdfs:comment "A concept that classifies an object. For example, the role developer classifies a person, the role server classifies a computer machine.  A hasTask only Tasks."^^xsd:string ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
+              rdfs:label "Role"@en ;
+              skos:prefLabel "Ruolo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task
-:Task rdf:type owl:Class ;
-      rdfs:subClassOf [ rdf:type owl:Restriction ;
-                        owl:onProperty :isTaskOf ;
-                        owl:allValuesFrom :Role
-                      ] ;
-      rdfs:comment "A piece of work to be done or undertaken. A Task is assigned to only Roles through the property isTaskOf."^^xsd:string ;
-      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
-      rdfs:label "Task"@en ,
-                 "Task"@it .
+taskrole:Task rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty taskrole:isTaskOf ;
+                                owl:allValuesFrom taskrole:Role
+                              ] ;
+              rdfs:comment "A piece of work to be done or undertaken. A Task is assigned to only Roles through the property isTaskOf."^^xsd:string ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl> ;
+              rdfs:label "Task"@en ;
+              skos:prefLabel "Task"@it .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

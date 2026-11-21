@@ -183,11 +183,22 @@ public final class SchemaStyles {
         try {
             return resolveFont(new HashSet<String>(Arrays.asList(
                     GraphicsEnvironment.getLocalGraphicsEnvironment()
-                            .getAvailableFontFamilyNames(Locale.ENGLISH))));
+                            .getAvailableFontFamilyNames(Locale.ENGLISH))),
+                    System.getProperty("ontoboard.boardFont"));
         } catch (Throwable noFontsAvailable) {
             // A headless or font-less JRE. The logical family always exists.
             return Font.SANS_SERIF;
         }
+    }
+
+    /**
+     * {@link #resolveFont(Set)}, or {@code forced} where it is installed: so that a check draws the
+     * board as another system does - {@code -Dontoboard.boardFont="DejaVu Sans"}, as GitHub's
+     * Linux runners have it. 1.155.0's Linux build found a line through an arrowhead that boards
+     * drawn in Segoe UI did not have.
+     */
+    static String resolveFont(Set<String> installed, String forced) {
+        return forced != null && installed.contains(forced) ? forced : resolveFont(installed);
     }
 
     /** The first preferred family that is installed; the logical sans-serif family if none is. */
@@ -206,6 +217,9 @@ public final class SchemaStyles {
         mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
         com.mxgraph.canvas.mxGraphics2DCanvas.putShape(DefinedClassShape.NAME,
                 new DefinedClassShape());
+        // A class drawn UML-like, its data properties and keys as rows below its name (1.155.0).
+        com.mxgraph.canvas.mxGraphics2DCanvas.putShape(RowsShape.NAME, new RowsShape());
+        com.mxgraph.canvas.mxGraphics2DCanvas.putShape(RowsShape.DEFINED, new RowsShape.Defined());
         // Every label on the board and in an exported PNG: the family above, with the symbols it
         // has no glyph for drawn from a font that has them - Segoe UI has no ∃ (1.135.1).
         com.mxgraph.canvas.mxGraphics2DCanvas.putTextShape(
@@ -215,7 +229,17 @@ public final class SchemaStyles {
     private SchemaStyles() {
     }
 
+    /** 1.154.0's board: {@link BoardLook#defaults()}. */
     public static void install(mxGraph graph) {
+        install(graph, BoardLook.defaults());
+    }
+
+    /**
+     * The board's styles, built from this look (1.155.0): each kind's fill, outline and shape,
+     * each line's colour and dash, and how faded an imported term is. Everything else about a
+     * kind - its font, its shadow, its arrowheads - is the board's and stays as it is.
+     */
+    public static void install(mxGraph graph, BoardLook look) {
         // JGraphX paints a shadow as a hard offset copy of the same path in one flat colour - there
         // is no blur, spread or gradient anywhere on that path. The default is opaque mid-grey,
         // which reads as a smudge rather than a lift, is 3.72:1 on the canvas (more contrast than
@@ -240,69 +264,71 @@ public final class SchemaStyles {
 
         // A class is the thing users read most, so it gets the strongest treatment:
         // rounded, shadowed, bold, and roomy enough for a two-line rdfs:label.
-        sheet.putCellStyle(CLASS, vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#2D6FBF",
-                true, true, 13, mxConstants.FONT_BOLD));
+        sheet.putCellStyle(CLASS, shaped(vertex(mxConstants.SHAPE_RECTANGLE, fill(look, CLASS),
+                stroke(look, CLASS), true, true, 13, mxConstants.FONT_BOLD), look, CLASS));
         // The same class style with the heavier border, registered so the legend's swatch draws
         // exactly what the canvas draws rather than an approximation of it. The canvas itself
         // appends the width as an override, because the marker applies to every kind of node and
         // a registered style per kind-and-marker combination would be six styles saying one thing.
-        Map<String, Object> noted = vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#2D6FBF",
-                true, true, 13, mxConstants.FONT_BOLD);
+        Map<String, Object> noted = shaped(vertex(mxConstants.SHAPE_RECTANGLE, fill(look, CLASS),
+                stroke(look, CLASS), true, true, 13, mxConstants.FONT_BOLD), look, CLASS);
         noted.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
         sheet.putCellStyle(NOTED, noted);
 
-        Map<String, Object> unsatisfiable = vertex(mxConstants.SHAPE_RECTANGLE, UNSATISFIABLE_FILL,
-                UNSATISFIABLE_STROKE, true, true, 13, mxConstants.FONT_BOLD);
+        Map<String, Object> unsatisfiable = shaped(vertex(mxConstants.SHAPE_RECTANGLE,
+                UNSATISFIABLE_FILL, UNSATISFIABLE_STROKE, true, true, 13, mxConstants.FONT_BOLD),
+                look, CLASS);
         unsatisfiable.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
         sheet.putCellStyle(UNSATISFIABLE, unsatisfiable);
 
         // Registered for the same reason as NOTED: so the legend's swatch draws what the canvas
         // draws rather than an approximation. The canvas appends the opacity as an override, because
-        // the marker applies to every kind of node.
-        Map<String, Object> imported = vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#2D6FBF",
-                true, true, 13, mxConstants.FONT_BOLD);
-        imported.put(mxConstants.STYLE_OPACITY, IMPORTED_OPACITY);
+        // the marker applies to every kind of node - read from here, so the look's fade is the one
+        // the board draws.
+        Map<String, Object> imported = shaped(vertex(mxConstants.SHAPE_RECTANGLE, fill(look, CLASS),
+                stroke(look, CLASS), true, true, 13, mxConstants.FONT_BOLD), look, CLASS);
+        imported.put(mxConstants.STYLE_OPACITY, Integer.valueOf(look.get(BoardLook.IMPORTED_OPACITY)));
         imported.put(mxConstants.STYLE_FONTCOLOR, IMPORTED_INK);
         sheet.putCellStyle(IMPORTED, imported);
 
         // Deliberately unlike every ontology shape: square corners, no shadow, left-aligned text
         // that wraps. A sticky note is not a term, and anything that let somebody mistake one for
         // a class would be worse than not drawing them at all.
-        Map<String, Object> sticky = vertex(mxConstants.SHAPE_RECTANGLE, "#FFF3B0", "#A8871C",
-                false, false, 12, 0);
+        Map<String, Object> sticky = vertex(mxConstants.SHAPE_RECTANGLE, fill(look, STICKY_NOTE),
+                stroke(look, STICKY_NOTE), false, false, 12, 0);
         sticky.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_LEFT);
         sticky.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_TOP);
         sticky.put(mxConstants.STYLE_SPACING, 6);
         sticky.put(mxConstants.STYLE_WHITE_SPACE, "wrap");
-        sheet.putCellStyle(STICKY_NOTE, sticky);
+        sheet.putCellStyle(STICKY_NOTE, shaped(sticky, look, STICKY_NOTE));
 
         // Behind everything, and not fillable enough to hide a node: a frame groups, it does not
         // obscure.
-        Map<String, Object> frame = vertex(mxConstants.SHAPE_RECTANGLE, "none", "#2D6FBF",
-                true, false, 16, mxConstants.FONT_BOLD);
+        Map<String, Object> frame = vertex(mxConstants.SHAPE_RECTANGLE, fill(look, FRAME),
+                stroke(look, FRAME), true, false, 16, mxConstants.FONT_BOLD);
         frame.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_LEFT);
         frame.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_TOP);
         frame.put(mxConstants.STYLE_SPACING, 8);
         frame.put(mxConstants.STYLE_DASHED, true);
         // JGraphX rounds a corner by a share of the box, so a frame's corners swallowed its boxes.
         frame.put(mxConstants.STYLE_ROUNDED, false);
-        frame.put(mxConstants.STYLE_FONTCOLOR, "#2D6FBF");
-        sheet.putCellStyle(FRAME, frame);
+        frame.put(mxConstants.STYLE_FONTCOLOR, stroke(look, FRAME));
+        sheet.putCellStyle(FRAME, shaped(frame, look, FRAME));
 
         // A card with an underlined name, not a rhombus. A 160x60 rhombus offers about 77px of
         // interior where a two-line label needs 128, so every individual with a real ontology label
         // hung out of both slanted edges; padding cannot rescue it, because the padding the geometry
         // demands wraps "Cheesey vegetable topping" onto three lines. The underline is UML's
         // instance-specification convention and is the channel that replaces the shape.
-        Map<String, Object> individual = vertex(mxConstants.SHAPE_RECTANGLE, "#F3EEFB", "#6B4FA0",
-                true, false, 13, mxConstants.FONT_UNDERLINE);
+        Map<String, Object> individual = vertex(mxConstants.SHAPE_RECTANGLE, fill(look, INDIVIDUAL),
+                stroke(look, INDIVIDUAL), true, false, 13, mxConstants.FONT_UNDERLINE);
         individual.put(mxConstants.STYLE_ARCSIZE, 10);
-        sheet.putCellStyle(INDIVIDUAL, individual);
+        sheet.putCellStyle(INDIVIDUAL, shaped(individual, look, INDIVIDUAL));
 
-        sheet.putCellStyle(DATATYPE, vertex(mxConstants.SHAPE_ELLIPSE, "#EAF5EF", "#2F7A4C",
-                false, false, 12, 0));
-        sheet.putCellStyle(LITERAL, vertex(mxConstants.SHAPE_RECTANGLE, "#FFF6DB", "#8A6A00",
-                false, false, 12, 0));
+        sheet.putCellStyle(DATATYPE, shaped(vertex(mxConstants.SHAPE_ELLIPSE, fill(look, DATATYPE),
+                stroke(look, DATATYPE), false, false, 12, 0), look, DATATYPE));
+        sheet.putCellStyle(LITERAL, shaped(vertex(mxConstants.SHAPE_RECTANGLE, fill(look, LITERAL),
+                stroke(look, LITERAL), false, false, 12, 0), look, LITERAL));
 
         // An anonymous class expression, drawn the way Graffoo draws one: small, rounded and
         // grey, so it reads as scaffolding between two terms rather than as a term. Grey is
@@ -310,87 +336,135 @@ public final class SchemaStyles {
         // datatype, orange and teal the two property kinds - and it is the right meaning as
         // well as the only one free: this node is not in the ontology's signature and cannot
         // be clicked through to anything.
-        Map<String, Object> expression = vertex(mxConstants.SHAPE_RECTANGLE, "#F2F2F4",
-                "#6B6B76", false, false, 11, mxConstants.FONT_ITALIC);
+        Map<String, Object> expression = vertex(mxConstants.SHAPE_RECTANGLE, fill(look, EXPRESSION),
+                stroke(look, EXPRESSION), false, false, 11, mxConstants.FONT_ITALIC);
         expression.put(mxConstants.STYLE_ARCSIZE, 40);
-        sheet.putCellStyle(EXPRESSION, expression);
+        sheet.putCellStyle(EXPRESSION, shaped(expression, look, EXPRESSION));
 
         // A hollow triangle pointing at the parent: UML's generalisation head, which is what an
         // ontology reader already expects for is-a. Solid, because that frees the dash to mean "the
         // reasoner derived this" - previously asserted and inferred differed only by dash length and
         // one step of grey, which is a legend lookup rather than a glance, on the one distinction
         // this canvas must never blur.
-        sheet.putCellStyle(SUBCLASS,
-                edge("#3B4756", null, mxConstants.ARROW_BLOCK, 1.6f, 13, false));
-        sheet.putCellStyle(OBJECT_PROPERTY,
-                edge("#2D6FBF", null, mxConstants.ARROW_CLASSIC, 1.4f, 10, true));
+        sheet.putCellStyle(SUBCLASS, edge(colour(look, SUBCLASS), dash(look, SUBCLASS),
+                mxConstants.ARROW_BLOCK, 1.6f, 13, false));
+        sheet.putCellStyle(OBJECT_PROPERTY, edge(colour(look, OBJECT_PROPERTY),
+                dash(look, OBJECT_PROPERTY), mxConstants.ARROW_CLASSIC, 1.4f, 10, true));
         // The restriction kinds a reader has to tell apart at a glance - asked for: "some,
         // exactly, only - existential, universal, everything should be distinguished". Each
         // has its own line as well as its own symbol on the label.
-        sheet.putCellStyle(ONLY,
-                edge("#8E2D6B", "8 4", mxConstants.ARROW_DIAMOND, 1.4f, 10, true));
-        sheet.putCellStyle(COUNT,
-                edge("#1F7A3A", "2 3", mxConstants.ARROW_OVAL, 1.6f, 8, true));
-        sheet.putCellStyle(NOT,
-                edge("#7A7A7A", "3 3", mxConstants.ARROW_CLASSIC, 1.2f, 10, true));
-        sheet.putCellStyle(DATA_PROPERTY,
-                edge("#0E6E78", null, mxConstants.ARROW_OPEN, 1.1f, 10, true));
-        sheet.putCellStyle(TYPE,
-                edge("#6B4FA0", "2 4", mxConstants.ARROW_OPEN, 1.1f, 10, true));
+        sheet.putCellStyle(ONLY, edge(colour(look, ONLY), dash(look, ONLY),
+                mxConstants.ARROW_DIAMOND, 1.4f, 10, true));
+        sheet.putCellStyle(COUNT, edge(colour(look, COUNT), dash(look, COUNT),
+                mxConstants.ARROW_OVAL, 1.6f, 8, true));
+        sheet.putCellStyle(NOT, edge(colour(look, NOT), dash(look, NOT),
+                mxConstants.ARROW_CLASSIC, 1.2f, 10, true));
+        sheet.putCellStyle(DATA_PROPERTY, edge(colour(look, DATA_PROPERTY), dash(look, DATA_PROPERTY),
+                mxConstants.ARROW_OPEN, 1.1f, 10, true));
+        sheet.putCellStyle(TYPE, edge(colour(look, TYPE), dash(look, TYPE),
+                mxConstants.ARROW_OPEN, 1.1f, 10, true));
 
         // A property hierarchy read alongside a class hierarchy needs to be distinguishable from
         // it, so subPropertyOf takes the same hollow head as subClassOf in the property colour.
-        sheet.putCellStyle(SUB_PROPERTY,
-                edge("#B35C00", null, mxConstants.ARROW_BLOCK, 1.6f, 13, false));
+        sheet.putCellStyle(SUB_PROPERTY, edge(colour(look, SUB_PROPERTY), dash(look, SUB_PROPERTY),
+                mxConstants.ARROW_BLOCK, 1.6f, 13, false));
 
         // Disjointness in the one colour nothing else uses, and dashed, because it is the only
         // relation on this canvas that says two terms do NOT meet. No arrowhead at either end:
         // DisjointClasses is symmetric, and an arrow would have a reader looking for a
         // direction. mxGraph needs the start arrow turned off explicitly; the default is none
         // for the start and a classic head for the end, so only the end has to be cleared.
-        Map<String, Object> disjoint =
-                edge("#B3261E", "4 4", mxConstants.ARROW_BLOCK, 1.2f, 11, false);
+        Map<String, Object> disjoint = edge(colour(look, DISJOINT), dash(look, DISJOINT),
+                mxConstants.ARROW_BLOCK, 1.2f, 11, false);
         disjoint.put(mxConstants.STYLE_ENDARROW, mxConstants.NONE);
         disjoint.put(mxConstants.STYLE_STARTARROW, mxConstants.NONE);
         sheet.putCellStyle(DISJOINT, disjoint);
 
         // An inverse pair, in the object-property orange because both ends ARE properties.
-        Map<String, Object> inverse =
-                edge("#B35C00", "6 3", mxConstants.ARROW_OPEN, 1.2f, 11, true);
+        Map<String, Object> inverse = edge(colour(look, INVERSE), dash(look, INVERSE),
+                mxConstants.ARROW_OPEN, 1.2f, 11, true);
         inverse.put(mxConstants.STYLE_STARTARROW, mxConstants.ARROW_OPEN);
         sheet.putCellStyle(INVERSE, inverse);
 
         // A property's domain or range: thin, grey-orange and long-dashed, so it reads as a
         // property's reach rather than a relation between the two things it connects - which is
         // what a restriction arrow is, and why this is not drawn like one.
-        sheet.putCellStyle(DOMAIN_RANGE,
-                edge("#C08A4B", "8 4", mxConstants.ARROW_OPEN, 1.0f, 9, true));
+        sheet.putCellStyle(DOMAIN_RANGE, edge(colour(look, DOMAIN_RANGE), dash(look, DOMAIN_RANGE),
+                mxConstants.ARROW_OPEN, 1.0f, 9, true));
 
         // A term's part in a rule: dotted slate, an open arrowhead from the "if" side to the
         // "then" side. Not the inferred grey - a rule is asserted, and the reasoner overlay's
         // dotted lines mean something else.
-        sheet.putCellStyle(RULE_PART,
-                edge("#5B6B8C", "2 3", mxConstants.ARROW_OPEN, 1.1f, 9, true));
+        sheet.putCellStyle(RULE_PART, edge(colour(look, RULE_PART), dash(look, RULE_PART),
+                mxConstants.ARROW_OPEN, 1.1f, 9, true));
 
         // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
         // something the ontology actually asserts. A reasoner's conclusion drawn identically to an
         // asserted axiom would be the single most misleading thing this canvas could do. The old
         // #8A94A0 was 2.90:1 on the canvas, under WCAG's 3:1 floor for a non-text graphic.
-        Map<String, Object> inferredSubclass =
-                edge("#707B89", "1 5", mxConstants.ARROW_BLOCK, 1.4f, 13, false);
+        Map<String, Object> inferredSubclass = edge(colour(look, INFERRED_SUBCLASS),
+                dash(look, INFERRED_SUBCLASS), mxConstants.ARROW_BLOCK, 1.4f, 13, false);
         derivedTail(inferredSubclass);
         sheet.putCellStyle(INFERRED_SUBCLASS, inferredSubclass);
 
         // The same grey and dots, and the open head an asserted type edge uses - so the colour says
         // "the reasoner concluded this" and the head says "this is a type", which are two
         // independent facts a reader needs at once.
-        Map<String, Object> inferredType =
-                edge("#707B89", "1 5", mxConstants.ARROW_OPEN, 1.4f, 10, true);
+        Map<String, Object> inferredType = edge(colour(look, INFERRED_TYPE),
+                dash(look, INFERRED_TYPE), mxConstants.ARROW_OPEN, 1.4f, 10, true);
         derivedTail(inferredType);
         sheet.putCellStyle(INFERRED_TYPE, inferredType);
 
-        sheet.putCellStyle(OBJECT_PROPERTY_NODE, hexagon("#FFEFDC", "#B35C00"));
-        sheet.putCellStyle(DATA_PROPERTY_NODE, hexagon("#E6F2F4", "#0E6E78"));
+        sheet.putCellStyle(OBJECT_PROPERTY_NODE, shaped(hexagon(fill(look, OBJECT_PROPERTY_NODE),
+                stroke(look, OBJECT_PROPERTY_NODE)), look, OBJECT_PROPERTY_NODE));
+        sheet.putCellStyle(DATA_PROPERTY_NODE, shaped(hexagon(fill(look, DATA_PROPERTY_NODE),
+                stroke(look, DATA_PROPERTY_NODE)), look, DATA_PROPERTY_NODE));
+    }
+
+    private static String fill(BoardLook look, String kind) {
+        return look.get(kind + ".fill");
+    }
+
+    private static String stroke(BoardLook look, String kind) {
+        return look.get(kind + ".stroke");
+    }
+
+    private static String colour(BoardLook look, String kind) {
+        return look.get(kind + ".colour");
+    }
+
+    /** A line's dash pattern, or null for a solid line. */
+    private static String dash(BoardLook look, String kind) {
+        String dash = look.get(kind + ".line");
+        return dash == null || dash.isEmpty() ? null : dash;
+    }
+
+    /**
+     * A box in the shape the look gives its kind: a rectangle with square or rounded corners, an
+     * ellipse, or a hexagon with room for its label inside the taper (see {@link #hexagon}). The
+     * kind's own corner radius stays; a rounded box that had none gets a class's.
+     */
+    private static Map<String, Object> shaped(Map<String, Object> style, BoardLook look, String kind) {
+        String shape = look.get(kind + ".shape");
+        if ("ellipse".equals(shape)) {
+            style.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_ELLIPSE);
+        } else if ("hexagon".equals(shape)) {
+            style.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_HEXAGON);
+            style.put(mxConstants.STYLE_SPACING_LEFT, 22);
+            style.put(mxConstants.STYLE_SPACING_RIGHT, 22);
+        } else if (shape != null) {
+            boolean rounded = "rounded".equals(shape);
+            style.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_RECTANGLE);
+            style.put(mxConstants.STYLE_ROUNDED, rounded);
+            if (rounded && !style.containsKey(mxConstants.STYLE_ARCSIZE)) {
+                style.put(mxConstants.STYLE_ARCSIZE, 12);
+            }
+        }
+        if (!"hexagon".equals(shape)) {
+            style.remove(mxConstants.STYLE_SPACING_LEFT);
+            style.remove(mxConstants.STYLE_SPACING_RIGHT);
+        }
+        return style;
     }
 
     /**

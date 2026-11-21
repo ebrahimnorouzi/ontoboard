@@ -4,16 +4,37 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix situation: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#> .
+@prefix countingas: <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#> .
+@prefix classification: <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl> rdf:type owl:Ontology ;
                                                                owl:imports <http://www.ontologydesignpatterns.org/cp/owl/classification.owl> ,
                                                                            <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ;
+                                                               dcterms:description "Diagram (this article has no graphical representation)"^^xsd:string ;
+                                                               dcterms:title "Countingas Pattern"^^xsd:string ;
+                                                               rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x6; term declared x2;
+- header: dcterms:title \"Countingas Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
                                                                owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
 
 #################################################################
 #    Annotation properties
 #################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
 rdfs:comment rdf:type owl:AnnotationProperty .
@@ -36,11 +57,13 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy
-<http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy> rdf:type owl:ObjectProperty .
+classification:isClassifiedBy rdf:type owl:ObjectProperty ;
+                              rdfs:label "isClassifiedBy"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
-<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> rdf:type owl:ObjectProperty .
+situation:isSettingFor rdf:type owl:ObjectProperty ;
+                       rdfs:label "isSettingFor"^^xsd:string .
 
 
 #################################################################
@@ -48,40 +71,42 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept
-<http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept> rdf:type owl:Class ;
-                                                                          owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> .
+classification:Concept rdf:type owl:Class ;
+                       owl:disjointWith situation:Situation ;
+                       rdfs:label "Concept"^^xsd:string .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs
-:CountingAs rdf:type owl:Class ;
-            owl:equivalentClass [ owl:intersectionOf ( <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation>
-                                                       [ rdf:type owl:Restriction ;
-                                                         owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
-                                                         owl:someValuesFrom [ rdf:type owl:Restriction ;
-                                                                              owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy> ;
-                                                                              owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept>
-                                                                            ]
-                                                       ]
-                                                     ) ;
-                                  rdf:type owl:Class
-                                ] ;
-            rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
-                            [ rdf:type owl:Restriction ;
-                              owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
-                              owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept>
-                            ] ,
-                            [ rdf:type owl:Restriction ;
-                              owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
-                              owl:minCardinality "2"^^xsd:nonNegativeInteger
-                            ] ;
-            rdfs:comment """A Situation that represents the classification of an entity 'as' something (a Concept).
+countingas:CountingAs rdf:type owl:Class ;
+                      owl:equivalentClass [ owl:intersectionOf ( situation:Situation
+                                                                 [ rdf:type owl:Restriction ;
+                                                                   owl:onProperty situation:isSettingFor ;
+                                                                   owl:someValuesFrom [ rdf:type owl:Restriction ;
+                                                                                        owl:onProperty classification:isClassifiedBy ;
+                                                                                        owl:someValuesFrom classification:Concept
+                                                                                      ]
+                                                                 ]
+                                                               ) ;
+                                            rdf:type owl:Class
+                                          ] ;
+                      rdfs:subClassOf situation:Situation ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty situation:isSettingFor ;
+                                        owl:someValuesFrom classification:Concept
+                                      ] ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty situation:isSettingFor ;
+                                        owl:minCardinality "2"^^xsd:nonNegativeInteger
+                                      ] ;
+                      rdfs:comment """A Situation that represents the classification of an entity 'as' something (a Concept).
 Inspired by Searle's 'counts as' relation.""" ;
-            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl> ;
-            rdfs:label "Counting as"@en .
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl> ;
+                      rdfs:label "Counting as"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
-<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class .
+situation:Situation rdf:type owl:Class ;
+                    rdfs:label "Situation"^^xsd:string .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

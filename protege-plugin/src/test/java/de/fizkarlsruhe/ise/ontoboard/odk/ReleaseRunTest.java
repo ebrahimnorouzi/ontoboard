@@ -127,6 +127,30 @@ class ReleaseRunTest {
         assertTrue(script.hasWindowsLineEndings());
     }
 
+    /**
+     * What a shell in ODK's container is given to run the script: the script itself, or - with
+     * Windows line endings, as Git for Windows checks nfdicore and MWO out - a copy read with
+     * the carriage returns taken off, run under the script's own name, the file not changed
+     * (1.155.0: before, such a release was refused). No word has a double quote in it: Java on
+     * Windows does not escape one inside an argument it hands to docker.
+     */
+    @Test
+    void aShellRunsAScriptWithWindowsLineEndingsWithoutTheCarriageReturns(
+            @TempDir File ontology) throws IOException {
+        write(ontology, "release.sh", NFDICORE_SCRIPT);
+        assertEquals(Arrays.asList("sh", "release.sh"),
+                ReleaseRun.scriptIn(ontology).shellWords());
+
+        write(ontology, "release.sh", NFDICORE_SCRIPT.replace("\n", "\r\n"));
+        List<String> words = ReleaseRun.scriptIn(ontology).shellWords();
+
+        assertEquals(Arrays.asList("sh", "-c", "sed 's/\\r$//' release.sh > /tmp/release.sh"
+                + " && exec sh -c '. /tmp/release.sh' release.sh"), words);
+        for (String word : words) {
+            assertFalse(word.contains("\""), word);
+        }
+    }
+
     @Test
     void aScriptWithoutAVersionLineSaysSo(@TempDir File ontology) throws IOException {
         write(ontology, "release.sh", "#!/bin/sh\nsh run.sh make prepare_release\n");
@@ -201,6 +225,26 @@ class ReleaseRunTest {
                 () -> ReleaseRun.copyToReleases(root, "1.0.0", Collections.singletonList(owl)));
         assertArrayEquals("released".getBytes(StandardCharsets.UTF_8),
                 Files.readAllBytes(new File(root, "releases/1.0.0/eggboil.owl").toPath()));
+    }
+
+    /**
+     * A dated version names its day: one released today is not "given the next number" - the
+     * refusal says to release tomorrow, or now under a semantic version. The egg project had a
+     * release dated today, and the form's refusal said "the next release gets the next number"
+     * (the hand check of 1.155.0).
+     */
+    @Test
+    void aDayThatHasItsReleaseIsToldHowToReleaseAgain(@TempDir File root) throws IOException {
+        write(root, "releases/2026-11-20/eggboil.owl", "released");
+
+        String why = ReleaseRun.whyNotThisVersion(root, "2026-11-20",
+                Collections.<String>emptyList());
+
+        assertTrue(why.contains("releases/2026-11-20 is there already"), why);
+        assertTrue(why.contains("names its day"), why);
+        assertTrue(why.contains("tomorrow"), why);
+        assertTrue(why.contains("semantic version"), why);
+        assertFalse(why.contains("next number"), why);
     }
 
     @Test
@@ -537,5 +581,16 @@ class ReleaseRunTest {
         assertTrue(byFolder != null && byFolder.contains("1.0.0"), String.valueOf(byFolder));
         assertTrue(byTag != null && byTag.contains("2.0.0"), String.valueOf(byTag));
         assertNull(ReleaseRun.whyNotThisVersion(root, "1.0.1", Collections.<String>emptyList()));
+    }
+
+    /** The reasoner the person chose for the release: one more variable for make. */
+    @Test
+    void theReasonerChosenIsOneMoreArgument() {
+        assertEquals(Arrays.asList("make", "prepare_release", "VERSION=1.0.0", "REASONER=HermiT"),
+                ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
+                        EGG, true, "HermiT"));
+        assertEquals(Arrays.asList("make", "prepare_release_fast", "VERSION=1.0.0"),
+                ReleaseRun.makeArguments("1.0.0", VersionIriShape.of(VersionIriShape.Kind.ODK),
+                        EGG, false, null));
     }
 }

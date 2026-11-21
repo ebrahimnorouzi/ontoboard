@@ -59,6 +59,29 @@ class ExplanationsTest {
     }
 
     /**
+     * Each explanation of an unsatisfiable class names the class, so its rows open it (1.155.0:
+     * Explain's rows did not, where every other report's row about a term does); an inconsistency
+     * is about no one class, and names none.
+     */
+    @Test
+    void anExplanationNamesTheClassItExplains() throws Exception {
+        Explanations.Result broken = Explanations.run(PizzaOntology.withUnsatisfiableClass(), hermit());
+        Explanations.Result inconsistent = Explanations.run(PizzaOntology.madeInconsistent(), hermit());
+
+        java.util.Set<String> unsatisfiable = new java.util.HashSet<String>();
+        for (Explanations.Justification justification : broken.getJustifications()) {
+            unsatisfiable.add(justification.getSubject());
+        }
+        assertFalse(unsatisfiable.contains(null), "every one names its class");
+        for (String iri : unsatisfiable) {
+            assertTrue(iri.startsWith("http"), iri);
+        }
+        for (Explanations.Justification justification : inconsistent.getJustifications()) {
+            assertTrue(justification.getSubject() == null, justification.getSubject());
+        }
+    }
+
+    /**
      * An inconsistent ontology is explained as such, and its unsatisfiable classes are not listed.
      *
      * <p>In an inconsistent ontology every class is unsatisfiable, so listing them would bury the

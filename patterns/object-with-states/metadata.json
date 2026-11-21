@@ -10,5 +10,29 @@
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Object_with_states",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Object_with_states",
   "class_count": 5,
-  "property_count": 6
+  "property_count": 6,
+  "curated": [
+    "header: dcterms:title \"Object With States Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "file: pattern.owl declares <http://purl.org/dc/terms/creator> as an annotation property, as pattern.ttl did",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> as an annotation property",
+    "term declared: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> as an annotation property",
+    "label added: <http://ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf> \"is member of\"@en - from its name",
+    "label added: <http://purl.org/dc/terms/creator> \"Creator\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/set.owl#Set> \"set\" - from the library's pattern set",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/set.owl#size> \"size\" - from the library's pattern set",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> \"Situation\" - from the library's pattern situation",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> \"hasSetting\" - from the library's pattern situation",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> \"isSettingFor\" - from the library's pattern situation",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> \"covers requirements\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> \"has consequences\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> \"has intent\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> \"scenarios\"@en - from its name"
+  ]
 }

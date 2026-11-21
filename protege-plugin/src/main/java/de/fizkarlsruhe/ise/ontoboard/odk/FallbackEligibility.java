@@ -54,14 +54,29 @@ public final class FallbackEligibility {
     public static final class Verdict {
         private final String why;
         private final List<MakeFile.Step> plan;
+        private final String notice;
 
         private Verdict(String why, List<MakeFile.Step> plan) {
+            this(why, plan, null);
+        }
+
+        private Verdict(String why, List<MakeFile.Step> plan, String notice) {
             this.why = why;
             this.plan = Collections.unmodifiableList(plan);
+            this.notice = notice;
         }
 
         public boolean allowed() {
             return why == null;
+        }
+
+        /**
+         * What the run says before its first line: how the project's Makefile differs from
+         * what ODK v1.6.1 writes for its configuration, which the engine runs as it is (1.155.0)
+         * - or null when the Makefile is ODK's.
+         */
+        public String notice() {
+            return notice;
         }
 
         /** Why not, in a sentence that says what to do; null when it may. */
@@ -101,11 +116,16 @@ public final class FallbackEligibility {
                     + "the Makefile is the one ODK writes for this project, and its own engine "
                     + "does not run it." + OTHER_WAYS);
         }
+        // 1.155.0: a Makefile another ODK wrote, or one the project changed, is run as it is - as
+        // make in ODK's container runs it - and the run says first how it differs. nfdicore's and
+        // MWO's say ODK v1.6, and MWO's misses an import its configuration gained; the user's
+        // goal is their development with OntoBoard alone.
+        String notice = null;
         try {
             String written = read(makefile);
             String odks = rendered(config);
             if (!lf(written).equals(lf(odks))) {
-                return refused(whyNotOdks(written));
+                notice = howItDiffers(lf(written), lf(odks));
             }
         } catch (IOException unreadable) {
             return refused("The project's Makefile or its configuration could not be read: "
@@ -130,7 +150,77 @@ public final class FallbackEligibility {
             return refused("OntoBoard's own engine cannot follow this project's Makefile for '"
                     + goal + "': " + notRead.getMessage() + ". make can." + OTHER_WAYS);
         }
-        return new Verdict(null, plan);
+        return new Verdict(null, plan, notice);
+    }
+
+    /** How many differing lines of each side a notice quotes. */
+    private static final int QUOTED = 3;
+
+    /**
+     * How a project's Makefile differs from ODK's render of its configuration, in words: only
+     * in the version ODK wrote into it, or in which lines.
+     */
+    static String howItDiffers(String written, String odks) {
+        String version = OdkImage.versionOf(written);
+        boolean otherVersion = version != null && !version.equals(OdkPin.VERSION);
+        if (otherVersion && withPinnedVersion(written, version).equals(odks)) {
+            return "This project's Makefile was written by ODK " + version + "; its rules are "
+                    + "the ones ODK " + OdkPin.VERSION + " writes for its configuration, so "
+                    + "OntoBoard runs it as " + OdkPin.VERSION + "'s. "
+                    + "OntoBoard > Project > Update project files... writes " + OdkPin.VERSION
+                    + " into it.";
+        }
+        List<String> theirs = onlyIn(written, odks);
+        List<String> ours = onlyIn(odks, written);
+        StringBuilder said = new StringBuilder("This project's Makefile is not the one ODK "
+                + OdkPin.VERSION + " writes for its configuration"
+                + (otherVersion ? " (ODK " + version + " wrote it)" : "") + ": "
+                + (theirs.size() + ours.size()) + " lines differ");
+        if (!theirs.isEmpty()) {
+            said.append("; it has ").append(quoted(theirs));
+        }
+        if (!ours.isEmpty()) {
+            said.append("; ODK's has ").append(quoted(ours));
+        }
+        said.append(". OntoBoard runs it as it is, as make in ODK's container does; "
+                + "OntoBoard > Project > Update project files... writes ODK's again.");
+        return said.toString();
+    }
+
+    private static String withPinnedVersion(String makefile, String version) {
+        return makefile.replace("# ODK Version: " + version + "\n",
+                "# ODK Version: " + OdkPin.VERSION + "\n").replaceAll(
+                "(?m)^(ODK_VERSION_MAKEFILE =\\s+)" + java.util.regex.Pattern.quote(version) + "$",
+                "$1" + java.util.regex.Matcher.quoteReplacement(OdkPin.VERSION));
+    }
+
+    /** The lines of {@code one}, not blank, that {@code other} does not have, in order. */
+    private static List<String> onlyIn(String one, String other) {
+        Map<String, Integer> left = new java.util.HashMap<String, Integer>();
+        for (String line : other.split("\n", -1)) {
+            left.merge(line, 1, Integer::sum);
+        }
+        List<String> only = new java.util.ArrayList<String>();
+        for (String line : one.split("\n", -1)) {
+            Integer count = left.get(line);
+            if (count != null && count > 0) {
+                left.put(line, count - 1);
+            } else if (!line.trim().isEmpty()) {
+                only.add(line.trim());
+            }
+        }
+        return only;
+    }
+
+    private static String quoted(List<String> lines) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < Math.min(QUOTED, lines.size()); i++) {
+            text.append(i == 0 ? "" : ", ").append('"').append(lines.get(i)).append('"');
+        }
+        if (lines.size() > QUOTED) {
+            text.append(" and ").append(lines.size() - QUOTED).append(" more");
+        }
+        return text.toString();
     }
 
     private static Verdict refused(String why) {
@@ -209,23 +299,6 @@ public final class FallbackEligibility {
                 + "differ from what ODK writes for the configuration, and OntoBoard's own engine "
                 + "would not run it. OntoBoard > Project > Update project files... writes it "
                 + "again.";
-    }
-
-    /** Why a Makefile that is not the bundled render is not run here. */
-    private static String whyNotOdks(String written) {
-        String version = OdkImage.versionOf(written);
-        if (version != null && !version.equals(OdkPin.VERSION)) {
-            return "This project's Makefile was written by ODK " + version + ", and OntoBoard's "
-                    + "own engine runs what ODK " + OdkPin.VERSION + " writes." + OTHER_WAYS
-                    + " To bring the project to ODK "
-                    + OdkPin.VERSION + ", use "
-                    + "OntoBoard > Project > Update project files...";
-        }
-        return "This project's Makefile is not the one ODK " + OdkPin.VERSION + " writes for "
-                + "its configuration: the configuration was changed after the Makefile was "
-                + "written, or the Makefile was edited. Write it again with "
-                + "OntoBoard > Project > Update project files..."
-                + " - until then this target runs in ODK's container only.";
     }
 
     // ------------------------------------------------------------------ the disk make sees

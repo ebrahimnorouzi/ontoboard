@@ -13,6 +13,14 @@ drawn: a board shows the terms somebody chose from another ontology, their super
 your own classes refer to. *Imported terms* lists the rest, and *Find* draws any of them.
 *Hide from board* takes a term off; *More → Show every term* brings them back.
 
+A class's data properties and keys are rows in its box, `name : datatype [n..m]`, and no
+property is a box of its own: *More → Properties as boxes* draws them as 1.154.0 did, and
+*More → Show unused properties* adds the ontology's own properties nothing uses. The toolbar's
+*Properties* lists the ontology's properties in their hierarchy, each with its characteristics and
+domain → range. *More → Board settings...* sets each kind's fill, outline and shape, each line's
+colour and dash, the fade of imported terms, the arrangement, its direction and spacing - for all
+your ontologies, or for this project in its board file.
+
 Every term is named by its label, with its short identifier under it (`measurement datum` above
 `obo:IAO_0000109`); the hover has the full IRI.
 

@@ -4,42 +4,67 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix partof: <http://www.ontologydesignpatterns.org/cp/owl/partof.owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> rdf:type owl:Ontology ;
                                                            owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is this entity part of? What are the parts of this entity?"^^xsd:string ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This CP allows designers to represent entities and their parts i.e., part-whole relations, with transitivity. The temporal aspect of this relation cannot be expressed; in order to solve this issue the time indexed part of CP can be used."^^xsd:string ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represents entities and their parts."^^xsd:string ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "The time indexed part of is used as alternative when the temporal indexing has to be represented. Part of CP is specialized by componency. Sometimes this CP is wrongly used in order to model constituency and membership. These two modeling problems are addressed by constituency, and collection entity CPs, respectively."^^xsd:string ;
-                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "Brain and heart are parts of the human body, substantia nigra is part of brain."^^xsd:string ;
-                                                           rdfs:label "part of" ,
-                                                                      "part-whole" ;
+                                                           dcterms:description "To represents entities and their parts."^^xsd:string ;
+                                                           dcterms:title "Partof Pattern"^^xsd:string ;
+                                                           cpannotationschema:coversRequirements "What is this entity part of? What are the parts of this entity?"^^xsd:string ;
+                                                           cpannotationschema:hasConsequences "This CP allows designers to represent entities and their parts i.e., part-whole relations, with transitivity. The temporal aspect of this relation cannot be expressed; in order to solve this issue the time indexed part of CP can be used."^^xsd:string ;
+                                                           cpannotationschema:hasIntent "To represents entities and their parts."^^xsd:string ;
+                                                           cpannotationschema:relatedCPs "The time indexed part of is used as alternative when the temporal indexing has to be represented. Part of CP is specialized by componency. Sometimes this CP is wrongly used in order to model constituency and membership. These two modeling problems are addressed by constituency, and collection entity CPs, respectively."^^xsd:string ;
+                                                           cpannotationschema:scenarios "Brain and heart are parts of the human body, substantia nigra is part of brain."^^xsd:string ;
+                                                           rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:altLabel x1; label added x8; term declared x3;
+- header: dcterms:title \"Partof Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
+                                                           rdfs:label "part of" ;
                                                            owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
-                                                                           "Created by Valentina Presutti"^^xsd:string .
+                                                                           "Created by Valentina Presutti"^^xsd:string ;
+                                                           skos:altLabel "part-whole"^^xsd:string .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -58,29 +83,34 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#altLabel
+skos:altLabel rdf:type owl:AnnotationProperty ;
+              rdfs:label "alternative label"@en .
+
+
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#hasPart
-:hasPart rdf:type owl:ObjectProperty ;
-         owl:inverseOf :isPartOf ;
-         rdf:type owl:TransitiveProperty ;
-         rdfs:domain owl:Thing ;
-         rdfs:range owl:Thing ;
-         rdfs:comment "A transitive relation expressing parthood between any entities, e.g. 'the human body has a brain as part'. When specializing this pattern, take care of restricting the domain and range appropriately, since it could be counterintuitive to use this relation arbitrarily, e.g. between animals and planets. For an intransitive partof pattern, see 'componency'." ;
-         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ;
-         rdfs:label "has part"@en .
+partof:hasPart rdf:type owl:ObjectProperty ;
+               owl:inverseOf partof:isPartOf ;
+               rdf:type owl:TransitiveProperty ;
+               rdfs:domain owl:Thing ;
+               rdfs:range owl:Thing ;
+               rdfs:comment "A transitive relation expressing parthood between any entities, e.g. 'the human body has a brain as part'. When specializing this pattern, take care of restricting the domain and range appropriately, since it could be counterintuitive to use this relation arbitrarily, e.g. between animals and planets. For an intransitive partof pattern, see 'componency'." ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ;
+               rdfs:label "has part"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/partof.owl#isPartOf
-:isPartOf rdf:type owl:ObjectProperty ,
-                   owl:TransitiveProperty ;
-          rdfs:domain owl:Thing ;
-          rdfs:range owl:Thing ;
-          rdfs:comment "A transitive relation expressing parthood between any entities, e.g. 'brain is a part of the human body'. When specializing this pattern, take care of restricting the domain and range appropriately, since it could be counterintuitive to use this relation arbitrarily, e.g. between animals and planets. For an intransitive partof pattern, see 'componency'." ;
-          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ;
-          rdfs:label "is part of"@en .
+partof:isPartOf rdf:type owl:ObjectProperty ,
+                         owl:TransitiveProperty ;
+                rdfs:domain owl:Thing ;
+                rdfs:range owl:Thing ;
+                rdfs:comment "A transitive relation expressing parthood between any entities, e.g. 'brain is a part of the human body'. When specializing this pattern, take care of restricting the domain and range appropriately, since it could be counterintuitive to use this relation arbitrarily, e.g. between animals and planets. For an intransitive partof pattern, see 'componency'." ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/partof.owl> ;
+                rdfs:label "is part of"@en .
 
 
 #################################################################

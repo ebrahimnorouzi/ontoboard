@@ -85,7 +85,16 @@ public final class TermExtract {
                         + "but without the logical axioms. The result is a readable hierarchy "
                         + "rather than a logically complete module, which is what an OBO project "
                         + "wants when it only needs somewhere sensible to hang its own terms. "
-                        + "Smaller than BOT and easier to read.");
+                        + "Smaller than BOT and easier to read. Upper terms stop the chain where "
+                        + "you say; branches bring a term with everything under it."),
+
+        /**
+         * ROBOT's subset: only the terms asked for, with what holds between them (1.155.0).
+         */
+        SUBSET("subset",
+                "Only the terms you chose, with the 'is a' and other links between them made "
+                        + "direct - a term between two you chose is left out, and the two are "
+                        + "linked. Nothing else of the source comes with them.");
 
         private final String label;
         private final String help;
@@ -100,6 +109,11 @@ public final class TermExtract {
             return label;
         }
 
+        /** Whether it is one of SLME's - BOT, TOP, STAR - which ODK's module_type_slme names. */
+        public boolean isSlme() {
+            return this == BOT || this == TOP || this == STAR;
+        }
+
         /**
          * What a dialog offers it as: what it brings, then ROBOT's name in brackets. The bare
          * names were the whole choice, and their explanation began "the names are misleading".
@@ -112,6 +126,8 @@ public final class TermExtract {
                     return "Terms and everything below them (TOP)";
                 case STAR:
                     return "Smallest piece that keeps their meaning (STAR)";
+                case SUBSET:
+                    return "Only the terms chosen and what links them (subset)";
                 case MIREOT:
                 default:
                     return "Terms and their parents, labels only (MIREOT)";
@@ -126,6 +142,189 @@ public final class TermExtract {
 
     /** What an ODK import module uses, and the right answer for nearly every import. */
     public static final Method DEFAULT_METHOD = Method.BOT;
+
+    /**
+     * ROBOT extract's own options, each for the methods it is for (1.155.0: "each may have some
+     * unique parameters and fields"): {@code --individuals} for BOT, TOP and STAR;
+     * {@code --imports} for those and subset; {@code --intermediates} for those and MIREOT (a
+     * subset never has them); upper terms and branches for MIREOT; {@code --annotate-with-source}
+     * and {@code --copy-ontology-annotations} for every method - the header copied here for
+     * MIREOT and subset, which ROBOT 1.9.8 leaves without it. The defaults are ROBOT's own.
+     */
+    public static final class Options {
+        static final List<String> INDIVIDUALS =
+                Collections.unmodifiableList(java.util.Arrays.asList("include", "minimal",
+                        "definitions", "exclude"));
+        static final List<String> IMPORTS =
+                Collections.unmodifiableList(java.util.Arrays.asList("include", "exclude"));
+        static final List<String> INTERMEDIATES =
+                Collections.unmodifiableList(java.util.Arrays.asList("all", "minimal", "none"));
+
+        private final String individuals;
+        private final String imports;
+        private final String intermediates;
+        private final boolean annotateWithSource;
+        private final boolean copyOntologyAnnotations;
+        private final List<IRI> upperTerms;
+        private final List<IRI> branchTerms;
+
+        private Options(String individuals, String imports, String intermediates,
+                boolean annotateWithSource, boolean copyOntologyAnnotations,
+                List<IRI> upperTerms, List<IRI> branchTerms) {
+            this.individuals = individuals;
+            this.imports = imports;
+            this.intermediates = intermediates;
+            this.annotateWithSource = annotateWithSource;
+            this.copyOntologyAnnotations = copyOntologyAnnotations;
+            this.upperTerms = Collections.unmodifiableList(new ArrayList<IRI>(upperTerms));
+            this.branchTerms = Collections.unmodifiableList(new ArrayList<IRI>(branchTerms));
+        }
+
+        /** ROBOT's own: individuals and imports included, all intermediates, nothing marked. */
+        public static Options defaults() {
+            return new Options("include", "include", "all", false, false,
+                    Collections.<IRI>emptyList(), Collections.<IRI>emptyList());
+        }
+
+        private static String oneOf(String value, List<String> allowed, String option) {
+            String given = value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!allowed.contains(given)) {
+                StringBuilder words = new StringBuilder();
+                for (int i = 0; i < allowed.size(); i++) {
+                    words.append(i == 0 ? "" : i == allowed.size() - 1 ? " or " : ", ")
+                            .append(allowed.get(i));
+                }
+                throw new IllegalArgumentException("'" + value + "' is not what ROBOT's " + option
+                        + " takes: " + words + ".");
+            }
+            return given;
+        }
+
+        /** {@code --individuals}: include, minimal, definitions or exclude (BOT, TOP, STAR). */
+        public Options withIndividuals(String value) {
+            return new Options(oneOf(value, INDIVIDUALS, "--individuals"), imports,
+                    intermediates, annotateWithSource, copyOntologyAnnotations, upperTerms,
+                    branchTerms);
+        }
+
+        /** {@code --imports}: include or exclude the source's own imports (BOT, TOP, STAR). */
+        public Options withImports(String value) {
+            return new Options(individuals, oneOf(value, IMPORTS, "--imports"), intermediates,
+                    annotateWithSource, copyOntologyAnnotations, upperTerms, branchTerms);
+        }
+
+        /** {@code --intermediates}: all, minimal or none (MIREOT). */
+        public Options withIntermediates(String value) {
+            return new Options(individuals, imports,
+                    oneOf(value, INTERMEDIATES, "--intermediates"), annotateWithSource,
+                    copyOntologyAnnotations, upperTerms, branchTerms);
+        }
+
+        /** {@code --annotate-with-source}: each term marked with where it came from. */
+        public Options annotatingWithSource(boolean mark) {
+            return new Options(individuals, imports, intermediates, mark,
+                    copyOntologyAnnotations, upperTerms, branchTerms);
+        }
+
+        /** {@code --copy-ontology-annotations}: the source's own header comes along. */
+        public Options copyingOntologyAnnotations(boolean copy) {
+            return new Options(individuals, imports, intermediates, annotateWithSource, copy,
+                    upperTerms, branchTerms);
+        }
+
+        /** MIREOT's upper terms: the chain of parents stops at them. */
+        public Options withUpperTerms(List<IRI> terms) {
+            return new Options(individuals, imports, intermediates, annotateWithSource,
+                    copyOntologyAnnotations, terms == null ? Collections.<IRI>emptyList() : terms,
+                    branchTerms);
+        }
+
+        /** MIREOT's branches: each of these with everything under it. */
+        public Options withBranchTerms(List<IRI> terms) {
+            return new Options(individuals, imports, intermediates, annotateWithSource,
+                    copyOntologyAnnotations, upperTerms,
+                    terms == null ? Collections.<IRI>emptyList() : terms);
+        }
+
+        public String individuals() {
+            return individuals;
+        }
+
+        public String imports() {
+            return imports;
+        }
+
+        public String intermediates() {
+            return intermediates;
+        }
+
+        public boolean annotatesWithSource() {
+            return annotateWithSource;
+        }
+
+        public boolean copiesOntologyAnnotations() {
+            return copyOntologyAnnotations;
+        }
+
+        public List<IRI> upperTerms() {
+            return upperTerms;
+        }
+
+        public List<IRI> branchTerms() {
+            return branchTerms;
+        }
+
+        /**
+         * As ROBOT's ExtractOperation and MireotOperation take them. MIREOT reads its own
+         * spelling of the mark, {@code annotate-with-sources} (ROBOT 1.9.8): both are given.
+         */
+        java.util.Map<String, String> forRobot() {
+            java.util.Map<String, String> options = new java.util.HashMap<String, String>(
+                    ExtractOperation.getDefaultOptions());
+            options.put("individuals", individuals);
+            options.put("imports", imports);
+            options.put("intermediates", intermediates);
+            options.put("annotate-with-source", String.valueOf(annotateWithSource));
+            options.put("annotate-with-sources", String.valueOf(annotateWithSource));
+            options.put("copy-ontology-annotations", String.valueOf(copyOntologyAnnotations));
+            return options;
+        }
+
+        /**
+         * What differs from ROBOT's own and the method takes, in words for a result; empty when
+         * nothing does. ROBOT 1.9.8 takes the individuals for BOT, TOP and STAR; the source's
+         * imports for those and subset; the terms between for those and MIREOT; upper terms and
+         * branches for MIREOT; the mark and the header for every method (the header copied here
+         * for MIREOT and subset, which ROBOT leaves without it).
+         */
+        public List<String> said(Method method) {
+            boolean slme = method != null && method.isSlme();
+            boolean mireot = method == Method.MIREOT;
+            List<String> said = new ArrayList<String>();
+            if (slme && !"include".equals(individuals)) {
+                said.add("individuals: " + individuals);
+            }
+            if ((slme || method == Method.SUBSET) && !"include".equals(imports)) {
+                said.add("the source's imports: " + imports);
+            }
+            if ((slme || mireot) && !"all".equals(intermediates)) {
+                said.add("intermediates: " + intermediates);
+            }
+            if (annotateWithSource) {
+                said.add("each term marked with its source");
+            }
+            if (copyOntologyAnnotations) {
+                said.add("the source's ontology annotations copied");
+            }
+            if (mireot && !upperTerms.isEmpty()) {
+                said.add("upper terms: " + upperTerms.size());
+            }
+            if (mireot && !branchTerms.isEmpty()) {
+                said.add("branches: " + branchTerms.size());
+            }
+            return said;
+        }
+    }
 
     /** An extracted module, and what could not be extracted. */
     public static final class Result {
@@ -184,6 +383,15 @@ public final class TermExtract {
      *     shape as every other ROBOT operation here so one handler covers them all
      */
     public static Result run(OWLOntology source, List<IRI> terms, Method method, IRI moduleIri) {
+        return run(source, terms, method, moduleIri, Options.defaults());
+    }
+
+    /** The same, with ROBOT extract's own options (1.155.0). */
+    public static Result run(OWLOntology source, List<IRI> terms, Method method, IRI moduleIri,
+            Options options) {
+        if (options == null) {
+            options = Options.defaults();
+        }
         if (source == null) {
             throw new IllegalArgumentException("no source ontology to extract from");
         }
@@ -213,8 +421,19 @@ public final class TermExtract {
         try {
             OWLOntology module;
             if (method == Method.MIREOT) {
-                module = MireotOperation.getAncestors(source, null, present,
-                        MireotOperation.getDefaultAnnotationProperties());
+                java.util.Map<IRI, IRI> sources = new java.util.HashMap<IRI, IRI>();
+                module = MireotOperation.getAncestors(source,
+                        options.upperTerms().isEmpty() ? null
+                                : new LinkedHashSet<IRI>(options.upperTerms()),
+                        present, MireotOperation.getDefaultAnnotationProperties(),
+                        options.forRobot(), sources);
+                if (!options.branchTerms().isEmpty()) {
+                    OWLOntology branches = MireotOperation.getDescendants(source,
+                            new LinkedHashSet<IRI>(options.branchTerms()),
+                            MireotOperation.getDefaultAnnotationProperties(), options.forRobot(),
+                            sources);
+                    module.getOWLOntologyManager().addAxioms(module, branches.getAxioms());
+                }
                 // MireotOperation takes no output IRI, so the module comes back carrying the
                 // SOURCE ontology's identity. Saved and imported under that IRI it claims to be
                 // the whole of the ontology it was cut from - the import IRI the catalog maps
@@ -225,8 +444,23 @@ public final class TermExtract {
                 module.getOWLOntologyManager().applyChange(new SetOntologyID(module,
                         new OWLOntologyID(com.google.common.base.Optional.of(iri),
                                 com.google.common.base.Optional.<IRI>absent())));
+            } else if (method == Method.SUBSET) {
+                module = ExtractOperation.extractSubset(source, present, iri, options.forRobot(),
+                        new java.util.HashMap<IRI, IRI>(),
+                        "exclude".equals(options.imports()) ? Imports.EXCLUDED
+                                : Imports.INCLUDED);
             } else {
-                module = ExtractOperation.extract(source, present, iri, moduleTypeOf(method));
+                module = ExtractOperation.extract(source, present, iri, moduleTypeOf(method),
+                        options.forRobot());
+            }
+            if (options.copiesOntologyAnnotations()
+                    && (method == Method.MIREOT || method == Method.SUBSET)) {
+                // ROBOT 1.9.8 copies the source's header for BOT, TOP and STAR alone; asked for,
+                // a MIREOT or subset module came without it (the 1.155.0 review's I6).
+                for (org.semanticweb.owlapi.model.OWLAnnotation header : source.getAnnotations()) {
+                    module.getOWLOntologyManager().applyChange(
+                            new org.semanticweb.owlapi.model.AddOntologyAnnotation(module, header));
+                }
             }
             module.getOWLOntologyManager().applyChanges(annotationPropertyLabels(source, module));
             return new Result(module, missing, terms.size());

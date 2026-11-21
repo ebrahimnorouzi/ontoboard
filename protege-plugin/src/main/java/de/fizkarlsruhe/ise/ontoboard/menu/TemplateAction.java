@@ -63,7 +63,7 @@ public class TemplateAction extends OntoBoardAction {
 
     @Override
     protected String operationName() {
-        return "Template";
+        return "Build from sheets";
     }
 
     /**
@@ -379,7 +379,7 @@ public class TemplateAction extends OntoBoardAction {
                 + " a datatype its column already gives, and ROBOT keeps it as part of the text, "
                 + "so the value written is not a valid one: " + first.where() + " says \""
                 + first.getCell() + "\"; write \"" + first.getSuggestion() + "\". "
-                + "Spreadsheets > Check sheets... lists every one.");
+                + "Knowledge graph > Check sheets... lists every one.");
     }
 
     /**
@@ -403,7 +403,7 @@ public class TemplateAction extends OntoBoardAction {
         if (ambiguous > 0) {
             result.warn(ambiguous + (ambiguous == 1 ? " name means" : " names mean") + " more "
                     + "than one thing across these sheets, and a cell naming one gets whichever "
-                    + "ROBOT picks. Spreadsheets > Check sheets... lists them.");
+                    + "ROBOT picks. Knowledge graph > Check sheets... lists them.");
         }
     }
 
@@ -541,7 +541,8 @@ public class TemplateAction extends OntoBoardAction {
             return result.failed("Could not create " + file.getParentFile().getAbsolutePath())
                     .build();
         }
-        String[] ids = starterIdentifiersFor(ontology, fileOf(ontology));
+        String[] ids = starterIdentifiersFor(ontology, fileOf(ontology),
+                file.getAbsoluteFile().getParentFile());
         try {
             Files.write(file.toPath(),
                     TemplateSheet.starterWithIris(ids[0], ids[1], ids[2])
@@ -594,6 +595,18 @@ public class TemplateAction extends OntoBoardAction {
      * without opening Prot&eacute;g&eacute;.
      */
     public static String[] starterIdentifiersFor(OWLOntology ontology, File ontologyFile) {
+        return starterIdentifiersFor(ontology, ontologyFile, null);
+    }
+
+    /**
+     * The same, continuing after the identifiers the sheets in {@code sheetsFolder} hold: two
+     * sheets made with New sheet... held the same three, NFDI_0030000 to NFDI_0030002 (1.155.0,
+     * the user's nfdicore).
+     *
+     * @param sheetsFolder the folder the new sheet goes into; null to look at none
+     */
+    public static String[] starterIdentifiersFor(OWLOntology ontology, File ontologyFile,
+            File sheetsFolder) {
         String namespace = "";
         int digits = 7;
         long aboveEveryRange = 0;
@@ -636,12 +649,51 @@ public class TemplateAction extends OntoBoardAction {
         // highest upper bound is outside all of them by construction, whatever any single
         // file happens to contain. The signature is still consulted, because a project can
         // have terms above its declared ranges, and the larger of the two wins.
-        long next = Math.max(aboveEveryRange, highestUnder(ontology, namespace)) + 1;
+        long next = Math.max(Math.max(aboveEveryRange, highestUnder(ontology, namespace)),
+                highestInSheets(sheetsFolder, namespace)) + 1;
         String[] ids = new String[3];
         for (int at = 0; at < 3; at++) {
             ids[at] = namespace + pad(next + at, digits);
         }
         return ids;
+    }
+
+    /**
+     * The highest number under this namespace that a sheet in the folder holds, or zero: read as
+     * text, the identifier's own part - {@code NFDI_0030000} - wherever it stands, as a sheet
+     * may write it whole or as a CURIE.
+     */
+    static long highestInSheets(File folder, String namespace) {
+        File[] files = folder == null ? null : folder.listFiles();
+        if (files == null || namespace == null || namespace.isEmpty()) {
+            return 0;
+        }
+        int cut = Math.max(namespace.lastIndexOf('/'), namespace.lastIndexOf('#')) + 1;
+        String local = namespace.substring(cut);
+        java.util.regex.Pattern identifier = java.util.regex.Pattern.compile(local.isEmpty()
+                ? java.util.regex.Pattern.quote(namespace) + "([0-9]+)"
+                : "(?<![A-Za-z0-9])" + java.util.regex.Pattern.quote(local) + "([0-9]+)");
+        long highest = 0;
+        for (File file : files) {
+            String name = file.getName().toLowerCase(java.util.Locale.ROOT);
+            if (!file.isFile() || !(name.endsWith(".tsv") || name.endsWith(".csv"))) {
+                continue;
+            }
+            try {
+                java.util.regex.Matcher found = identifier.matcher(new String(
+                        Files.readAllBytes(file.toPath()), Charset.forName("UTF-8")));
+                while (found.find()) {
+                    try {
+                        highest = Math.max(highest, Long.parseLong(found.group(1)));
+                    } catch (NumberFormatException tooLong) {
+                        // Digits beyond a long are no identifier this numbering hands out.
+                    }
+                }
+            } catch (IOException unreadable) {
+                // A sheet that cannot be read holds nothing to continue after.
+            }
+        }
+        return highest;
     }
 
     /** The highest number already used under this namespace, or zero. */

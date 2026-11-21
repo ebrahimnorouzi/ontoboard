@@ -69,6 +69,46 @@ public final class OdkProjectConfig {
         githubOrg = owner == null ? "" : owner.trim();
     }
 
+    /**
+     * Who creates the project, asked of its edit file once the project's folder is there - as
+     * Protege asks git's name of the repository the file is in; nobody by default.
+     */
+    private java.util.function.Function<File, String> creator = file -> null;
+
+    /**
+     * The name ODK's first range is claimed for when the project is made ({@link OdkCreate}),
+     * so that Protege finds the creator's range and does not ask; null when nobody is named.
+     */
+    public String creatorOf(File editFile) {
+        String name = creator.apply(editFile);
+        return name == null || name.trim().isEmpty() ? null : name.trim();
+    }
+
+    /** The creator, by name; blank or null names nobody, and nothing is claimed. */
+    public void setCreator(final String name) {
+        creator = file -> name;
+    }
+
+    /** Whether the project names its new terms readably, from what is typed (1.155.0). */
+    private boolean readableNames;
+
+    /** Readable names, {@code ontoboard_term_names: readable}; numbered from the ranges if not. */
+    public void setReadableNames(boolean readable) {
+        readableNames = readable;
+    }
+
+    public boolean isReadableNames() {
+        return readableNames;
+    }
+
+    /**
+     * The creator is whoever runs Protege, by the name its ID ranges know them by
+     * ({@link ProtegeUserName#here}) - New ODK project... and the conversion.
+     */
+    public void setCreatorAsProtegeKnowsThem() {
+        creator = ProtegeUserName::here;
+    }
+
     public void validate() {
         if (ontologyId.isEmpty()) {
             throw new IllegalArgumentException("Ontology ID is required, e.g. 'myont'.");

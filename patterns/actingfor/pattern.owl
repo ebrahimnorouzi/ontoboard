@@ -1,32 +1,29 @@
 <?xml version="1.0"?>
-
-
-<!DOCTYPE rdf:RDF [
-    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
-    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
-    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
-    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
-    <!ENTITY actingfor "http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#" >
-    <!ENTITY cpannotationschema "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#" >
-]>
-
-
 <rdf:RDF xmlns="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#"
      xml:base="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
      xmlns:owl="http://www.w3.org/2002/07/owl#"
-     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:actingfor="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#">
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:actingfor="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#"
+     xmlns:cpannotationschema="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#">
     <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl">
-        <owl:versionInfo rdf:datatype="&xsd;string">1.1 added rdsf:isDefinedBy for all named entities</owl:versionInfo>
-        <cpannotationschema:hasConsequences rdf:datatype="&rdf;PlainLiteral">An ontology designer is able to express relations like delegation, working for, etc. It is not possible to express either time indexing (the situation pattern should be specialized to that purpose), nor the role or task, under which the social action is carried out by the physical agent (the descriptionandsituation pattern should be used instead).</cpannotationschema:hasConsequences>
-        <cpannotationschema:scenarios rdf:datatype="&rdf;PlainLiteral">Matteo Sanvitale is working as an officer for CEMA s.r.l.</cpannotationschema:scenarios>
-        <cpannotationschema:hasIntent rdf:datatype="&rdf;PlainLiteral">To represent that some agent is acting in order to forward the action of a social (non-physical) agent.</cpannotationschema:hasIntent>
-        <cpannotationschema:coversRequirements rdf:datatype="&rdf;PlainLiteral">Who is working for which organization? Who is representing the company?</cpannotationschema:coversRequirements>
-        <cpannotationschema:reengineeredFrom rdf:datatype="&rdf;PlainLiteral">http://www.ontologydesignpatterns.org/ont/dul/DUL.owl</cpannotationschema:reengineeredFrom>
         <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
+        <dcterms:description rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent that some agent is acting in order to forward the action of a social (non-physical) agent.</dcterms:description>
+        <dcterms:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Actingfor Pattern</dcterms:title>
+        <cpannotationschema:coversRequirements>Who is working for which organization? Who is representing the company?</cpannotationschema:coversRequirements>
+        <cpannotationschema:hasConsequences>An ontology designer is able to express relations like delegation, working for, etc. It is not possible to express either time indexing (the situation pattern should be specialized to that purpose), nor the role or task, under which the social action is carried out by the physical agent (the descriptionandsituation pattern should be used instead).</cpannotationschema:hasConsequences>
+        <cpannotationschema:hasIntent rdf:datatype="http://www.w3.org/2001/XMLSchema#string">To represent that some agent is acting in order to forward the action of a social (non-physical) agent.</cpannotationschema:hasIntent>
+        <cpannotationschema:reengineeredFrom>http://www.ontologydesignpatterns.org/ont/dul/DUL.owl</cpannotationschema:reengineeredFrom>
+        <cpannotationschema:scenarios>Matteo Sanvitale is working as an officer for CEMA s.r.l.</cpannotationschema:scenarios>
+        <rdfs:comment xml:lang="en">Curated by OntoBoard 1.155.0, so that the pattern passes ODK&apos;s quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x4; label added x8; term declared x3;
+- header: dcterms:title &quot;Actingfor Pattern&quot; - the library&apos;s name for the pattern
+- header: dcterms:description - the library&apos;s description of the pattern
+Each change is listed under &quot;curated&quot; in the pattern&apos;s metadata.json in OntoBoard&apos;s pattern library.</rdfs:comment>
+        <owl:versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#string">1.1 added rdsf:isDefinedBy for all named entities</owl:versionInfo>
     </owl:Ontology>
     
 
@@ -39,15 +36,94 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-    <owl:AnnotationProperty rdf:about="&owl;versionInfo"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;hasConsequences"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;scenarios"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;isDefinedBy"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;coversRequirements"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;hasIntent"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;label"/>
-    <owl:AnnotationProperty rdf:about="&rdfs;comment"/>
-    <owl:AnnotationProperty rdf:about="&cpannotationschema;reengineeredFrom"/>
+    
+
+
+    <!-- http://purl.org/dc/terms/description -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/description">
+        <rdfs:label xml:lang="en">Description (DC terms)</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://purl.org/dc/terms/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/terms/title">
+        <rdfs:label xml:lang="en">Title</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements">
+        <rdfs:label xml:lang="en">covers requirements</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences">
+        <rdfs:label xml:lang="en">has consequences</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent">
+        <rdfs:label xml:lang="en">has intent</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom">
+        <rdfs:label xml:lang="en">reengineered from</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios -->
+
+    <owl:AnnotationProperty rdf:about="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios">
+        <rdfs:label xml:lang="en">scenarios</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#isDefinedBy -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#isDefinedBy"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2002/07/owl#versionInfo -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2002/07/owl#versionInfo"/>
+    
+
+
+    <!-- http://www.w3.org/2004/02/skos/core#prefLabel -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#prefLabel">
+        <rdfs:label xml:lang="en">preferred label</rdfs:label>
+    </owl:AnnotationProperty>
     
 
 
@@ -64,27 +140,27 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsFor -->
 
-    <owl:ObjectProperty rdf:about="&actingfor;actsFor">
-        <rdfs:label xml:lang="en">acts for</rdfs:label>
-        <rdfs:label xml:lang="it">agisce per</rdfs:label>
-        <rdfs:comment>The relation holding between any Agent, and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be &#39;delegated&#39;; e.g. a university can be acted for by a department, which on its turm is acted for by physical agents.</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsFor">
+        <owl:inverseOf rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsThrough"/>
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent"/>
+        <rdfs:comment>The relation holding between any Agent, and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be &apos;delegated&apos;; e.g. a university can be acted for by a department, which on its turm is acted for by physical agents.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl"/>
-        <rdfs:domain rdf:resource="&actingfor;Agent"/>
-        <rdfs:range rdf:resource="&actingfor;SocialAgent"/>
+        <rdfs:label xml:lang="en">acts for</rdfs:label>
+        <skos:prefLabel xml:lang="it">agisce per</skos:prefLabel>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsThrough -->
 
-    <owl:ObjectProperty rdf:about="&actingfor;actsThrough">
-        <rdfs:label xml:lang="en">acts through</rdfs:label>
-        <rdfs:label xml:lang="it">agisce mediante</rdfs:label>
-        <rdfs:comment>The relation holding between a PhysicalAgent and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be &#39;delegated&#39;, e.g. a university can be acted for by a department, which is acted for by physical agents.</rdfs:comment>
+    <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#actsThrough">
+        <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent"/>
+        <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent"/>
+        <rdfs:comment>The relation holding between a PhysicalAgent and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be &apos;delegated&apos;, e.g. a university can be acted for by a department, which is acted for by physical agents.</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl"/>
-        <rdfs:range rdf:resource="&actingfor;Agent"/>
-        <rdfs:domain rdf:resource="&actingfor;SocialAgent"/>
-        <owl:inverseOf rdf:resource="&actingfor;actsFor"/>
+        <rdfs:label xml:lang="en">acts through</rdfs:label>
+        <skos:prefLabel xml:lang="it">agisce mediante</skos:prefLabel>
     </owl:ObjectProperty>
     
 
@@ -102,27 +178,27 @@
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent -->
 
-    <owl:Class rdf:about="&actingfor;Agent">
-        <rdfs:label xml:lang="en">Agent</rdfs:label>
-        <rdfs:label xml:lang="it">Agente</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">Any agentive Object , either physical (e.g. a whale, a robot, an oak), or social (e.g. a corporation, an institution, a community).</rdfs:comment>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#Agent">
         <rdfs:comment>Additional comment: a computational agent can be considered as a PhysicalAgent that realizes a certain class of algorithms (that can be considered as instances of InformationObject) that allow to obtain some behaviors that are considered typical of agents in general. For an ontology of computational objects based on DOLCE see e.g. and http://www.loa-cnr.it/COS/COS.owl, and http://www.loa-cnr.it/KCO/KCO.owl.</rdfs:comment>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Any agentive Object , either physical (e.g. a whale, a robot, an oak), or social (e.g. a corporation, an institution, a community).</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl"/>
+        <rdfs:label xml:lang="en">Agent</rdfs:label>
+        <skos:prefLabel xml:lang="it">Agente</skos:prefLabel>
     </owl:Class>
     
 
 
     <!-- http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent -->
 
-    <owl:Class rdf:about="&actingfor;SocialAgent">
-        <rdfs:label xml:lang="en">Social agent</rdfs:label>
-        <rdfs:label xml:lang="it">Agente sociale</rdfs:label>
-        <rdfs:comment rdf:datatype="&xsd;string">Any individual whose existence is granted simply by its social communicability and capability of action (through some PhysicalAgent).</rdfs:comment>
+    <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#SocialAgent">
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Any individual whose existence is granted simply by its social communicability and capability of action (through some PhysicalAgent).</rdfs:comment>
         <rdfs:isDefinedBy rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl"/>
+        <rdfs:label xml:lang="en">Social agent</rdfs:label>
+        <skos:prefLabel xml:lang="it">Agente sociale</skos:prefLabel>
     </owl:Class>
 </rdf:RDF>
 
 
 
-<!-- Generated by the OWL API (version 3.1.0.1602) http://owlapi.sourceforge.net -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

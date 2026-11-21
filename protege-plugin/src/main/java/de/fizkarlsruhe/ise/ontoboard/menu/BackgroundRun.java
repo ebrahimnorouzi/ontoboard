@@ -83,6 +83,71 @@ public final class BackgroundRun {
     private BackgroundRun() {
     }
 
+    /** The runs going on behind now, while the person works: their names (1.155.0). */
+    private static final java.util.Set<String> BEHIND =
+            java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<String>());
+
+    /**
+     * What tells the desktop that a run kept behind is done - a sound, and a notice beside the
+     * clock where the desktop has one; the result opens in Protege as well. A test puts its own.
+     */
+    static Consumer<String> whenDoneBehind = BackgroundRun::tellTheDesktop;
+
+    /**
+     * What tells the desktop that a run kept behind asks a question - the sound and the notice;
+     * the question itself is open in Protege. A test puts its own (the 1.155.0 review's I4).
+     */
+    static Consumer<String> whenAskingBehind = BackgroundRun::tellTheDesktop;
+
+    /** On the worker thread: the run's name, and whether it has been kept behind. */
+    private static final ThreadLocal<String> NAME = new ThreadLocal<String>();
+    private static final ThreadLocal<AtomicBoolean> KEPT_BEHIND = new ThreadLocal<AtomicBoolean>();
+
+    /** How to stop each run kept behind, by name: the window that held Stop is gone (I5). */
+    private static final java.util.Map<String, Runnable> STOPS =
+            new java.util.concurrent.ConcurrentHashMap<String, Runnable>();
+
+    /**
+     * Called by the work on its own thread just before it asks a question: whether its run has
+     * been kept behind - the question then comes up while the person works on, or is away from
+     * Protege, so its safe answer is to be the default - and if it has, the desktop is told that
+     * a question waits (the 1.155.0 review's I4). False off a run's thread.
+     */
+    public static boolean questionWaits() {
+        AtomicBoolean behind = KEPT_BEHIND.get();
+        if (behind == null || !behind.get()) {
+            return false;
+        }
+        try {
+            whenAskingBehind.accept(NAME.get() + " has a question for you, in Protege.");
+        } catch (RuntimeException notTold) {
+            // The question opens all the same.
+        }
+        return true;
+    }
+
+    /**
+     * Stops a run kept behind, as Stop on its window would have: an external command is killed,
+     * the result is given as stopped, and nothing it produces afterwards is applied or shown.
+     *
+     * @return whether a run of that name was going on behind
+     */
+    public static boolean stopBehind(String what) {
+        Runnable stop = what == null ? null : STOPS.get(what);
+        if (stop == null) {
+            return false;
+        }
+        stop.run();
+        return true;
+    }
+
+    /** The runs going on behind now, by name; empty when none is. */
+    public static java.util.Set<String> runningBehind() {
+        synchronized (BEHIND) {
+            return java.util.Collections.unmodifiableSet(new java.util.LinkedHashSet<String>(BEHIND));
+        }
+    }
+
     /** The open-question count of the run on this thread; null when no run is on it. */
     static java.util.concurrent.atomic.AtomicInteger asking() {
         return ASKING.get();
@@ -112,7 +177,19 @@ public final class BackgroundRun {
      */
     public static void execute(final Component parent, final String what,
             final Callable<OperationResult> work, final Consumer<OperationResult> onFinished) {
-        final JDialog dialog = createDialog(parent, what);
+        execute(parent, what, work, onFinished, false);
+    }
+
+    /**
+     * The same; with {@code canGoBehind}, the progress window offers Keep working: it closes,
+     * the run goes on, and when it is done the result is given as before and the desktop says so
+     * - Build and Release can take a while (1.155.0, asked by the user).
+     */
+    public static void execute(final Component parent, final String what,
+            final Callable<OperationResult> work, final Consumer<OperationResult> onFinished,
+            final boolean canGoBehind) {
+        final JDialog dialog = createDialog(parent, what, canGoBehind);
+        final AtomicBoolean behind = new AtomicBoolean(false);
         final long started = System.currentTimeMillis();
         final AtomicBoolean abandoned = new AtomicBoolean(false);
         final java.util.concurrent.atomic.AtomicInteger asking =
@@ -132,12 +209,16 @@ public final class BackgroundRun {
             protected OperationResult doInBackground() throws Exception {
                 ABANDONED.set(abandoned);
                 ASKING.set(asking);
+                NAME.set(what);
+                KEPT_BEHIND.set(behind);
                 de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.cancelWith(cancellation);
                 try {
                     return work.call();
                 } finally {
                     ABANDONED.remove();
                     ASKING.remove();
+                    NAME.remove();
+                    KEPT_BEHIND.remove();
                     de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.stopCancelling();
                 }
             }
@@ -150,21 +231,47 @@ public final class BackgroundRun {
                     // produced is discarded rather than appearing minutes later over their work.
                     return;
                 }
-                onFinished.accept(resultOf(this, what));
+                OperationResult result = resultOf(this, what);
+                if (behind.get()) {
+                    BEHIND.remove(what);
+                    STOPS.remove(what);
+                    try {
+                        whenDoneBehind.accept(what + (result != null && !result.isSuccess()
+                                ? " did not finish" : " is done") + ". Its result is open in "
+                                + "Protege.");
+                    } catch (RuntimeException notTold) {
+                        // The result is given all the same.
+                    }
+                }
+                onFinished.accept(result);
             }
         };
-
-        abandonButton(dialog).addActionListener(a -> {
+        final Runnable stop = () -> {
             abandoned.set(true);
             // Kills the external command if there is one. An in-process ROBOT operation keeps
             // going - it has no cancellation hook - but a build, a script or a git command stops
             // here rather than holding a container for the rest of its run.
             cancellation.cancel();
             dialog.dispose();
+            if (behind.get()) {
+                BEHIND.remove(what);
+                STOPS.remove(what);
+            }
             if (delivered.compareAndSet(false, true)) {
                 onFinished.accept(cancelled(what, started));
             }
-        });
+        };
+        JButton keep = (JButton) dialog.getRootPane().getClientProperty("ontoboard.behind");
+        if (keep != null) {
+            keep.addActionListener(a -> {
+                behind.set(true);
+                STOPS.put(what, stop);
+                BEHIND.add(what);
+                dialog.dispose();
+            });
+        }
+
+        abandonButton(dialog).addActionListener(a -> stop.run());
 
         worker.execute();
 
@@ -173,7 +280,7 @@ public final class BackgroundRun {
         // free in the meantime, which is the whole point.
         final javax.swing.Timer reveal = new javax.swing.Timer(SHOW_AFTER_MILLIS, null);
         reveal.addActionListener(e -> {
-            if (worker.isDone() || abandoned.get()) {
+            if (worker.isDone() || abandoned.get() || behind.get()) {
                 return;
             }
             if (asking.get() > 0) {
@@ -229,7 +336,39 @@ public final class BackgroundRun {
         return (JButton) dialog.getRootPane().getClientProperty("ontoboard.abandon");
     }
 
-    private static JDialog createDialog(Component parent, String what) {
+    /**
+     * The sound and the notice of a run kept behind that is done. The notice is the desktop's
+     * own - beside the clock on Windows - where Java can show one; nothing is lost where it
+     * cannot, as the result opens in Protege.
+     */
+    private static void tellTheDesktop(String sentence) {
+        java.awt.Toolkit.getDefaultToolkit().beep();
+        try {
+            if (!java.awt.SystemTray.isSupported()) {
+                return;
+            }
+            final java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
+            java.awt.image.BufferedImage icon = new java.awt.image.BufferedImage(16, 16,
+                    java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            java.awt.Graphics2D pen = icon.createGraphics();
+            pen.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            pen.setColor(new java.awt.Color(0x0B, 0x57, 0xD0));
+            pen.fillOval(1, 1, 14, 14);
+            pen.dispose();
+            final java.awt.TrayIcon notice = new java.awt.TrayIcon(icon, "OntoBoard");
+            notice.setImageAutoSize(true);
+            tray.add(notice);
+            notice.displayMessage("OntoBoard", sentence, java.awt.TrayIcon.MessageType.INFO);
+            javax.swing.Timer gone = new javax.swing.Timer(20000, e -> tray.remove(notice));
+            gone.setRepeats(false);
+            gone.start();
+        } catch (Exception | LinkageError notTold) {
+            // The result opens in Protege all the same.
+        }
+    }
+
+    private static JDialog createDialog(Component parent, String what, boolean canGoBehind) {
         Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
         JDialog dialog = new JDialog(owner, "OntoBoard", JDialog.ModalityType.APPLICATION_MODAL);
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -258,6 +397,15 @@ public final class BackgroundRun {
                 + "command - outright.<br>An in-process ROBOT operation cannot be interrupted "
                 + "and may keep running,<br>but nothing it produces will be applied.</html>");
         JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
+        if (canGoBehind) {
+            JButton keep = new JButton("Keep working");
+            keep.setToolTipText("<html>Closes this window; " + what + " goes on, and Protege is "
+                    + "yours meanwhile.<br>When it is done its result opens, and the desktop "
+                    + "says so.<br>Changes saved while it runs may or may not be in it.</html>");
+            buttons.add(keep);
+            buttons.add(javax.swing.Box.createHorizontalStrut(8));
+            dialog.getRootPane().putClientProperty("ontoboard.behind", keep);
+        }
         buttons.add(abandon);
         content.add(buttons, BorderLayout.SOUTH);
         dialog.getRootPane().putClientProperty("ontoboard.abandon", abandon);

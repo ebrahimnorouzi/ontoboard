@@ -34,7 +34,7 @@ Every capability asked of OntoBoard, with where it is. **Yes** is implemented an
 | measure, report, validate-profile, explain, query | Yes | **Check and test → Measure…**, **Quality report…**, **Profile…**, **Explain…**, **SPARQL…** |
 | relax, reduce, materialize | Yes | **Terms → Transform…** |
 | export, rename | Yes | **Terms → Export terms…**, **Terms → Rename IRIs…** |
-| extract, template, diff | Yes | **Reuse → Import terms from a list…**, **Spreadsheets → Template…**, **Build and release → Compare releases…** |
+| extract, template, diff | Yes | **Reuse → Import terms from a list…**, **Knowledge graph → Build from sheets…**, **Build and release → Compare releases…** |
 | reason, merge, annotate | Partly | Inside Build and Release; not menu items of their own |
 
 ## 4. Releases
@@ -50,8 +50,8 @@ Every capability asked of OntoBoard, with where it is. **Yes** is implemented an
 
 | Asked for | Status | Where |
 |---|---|---|
-| A graph from ROBOT templates | Yes | **Spreadsheets → Template…** |
-| Edit sheets inside Protégé | Yes | **Spreadsheets → Sheet editor**: cells, fill-down, undo, completion, findings marked in the cell |
+| A graph from ROBOT templates | Yes | **Knowledge graph → Build from sheets…** |
+| Edit sheets inside Protégé | Yes | **Knowledge graph → Edit sheets**: cells, fill-down, undo, completion, findings marked in the cell |
 | Identifiers generated | Yes | *Generate IRIs...* - ID range, numbering, timestamp, UUID, slug |
 | Edit the template rows | Yes | Checked against ROBOT's own validation as you type |
 | An Excel workbook | Partly | *Import Excel…* reads `.xlsx` into `.tsv`; it does not write `.xlsx` |

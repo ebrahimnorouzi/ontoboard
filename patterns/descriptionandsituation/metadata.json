@@ -11,5 +11,26 @@
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:DescriptionAndSituation",
   "class_count": 5,
   "property_count": 5,
-  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none",
+  "curated": [
+    "label moved to skos:prefLabel: <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#describes> \"descrive\"@it",
+    "label moved to skos:prefLabel: <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#isDescribedBy> \"è descritto da\"@it",
+    "label moved to skos:prefLabel: <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#isSatisfiedBy> \"è soddisfatta da\"@it",
+    "label moved to skos:prefLabel: <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#satisfies> \"soddisfa\"@it",
+    "header: dcterms:title \"Descriptionandsituation Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "term declared: <http://www.w3.org/2004/02/skos/core#prefLabel> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept> \"Concept (classification)\" - from the library's pattern classification, with its source in brackets: another term of the pattern is called \"Concept\"",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept> \"Concept (description)\" - from the library's pattern description, with its source in brackets: another term of the pattern is called \"Concept\"",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> \"Description\" - from the library's pattern description",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/description.owl#isDefinedIn> \"is defined in\"@en - from http://www.ontologydesignpatterns.org/cp/owl/description.owl",
+    "label added: <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> \"Situation\" - from the library's pattern situation",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> \"extracted from\"@en - from its name",
+    "label added: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> \"has component\"@en - from its name",
+    "label added: <http://www.w3.org/2004/02/skos/core#prefLabel> \"preferred label\"@en - from http://www.w3.org/2004/02/skos/core"
+  ]
 }

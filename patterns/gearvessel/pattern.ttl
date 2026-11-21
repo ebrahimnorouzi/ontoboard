@@ -4,16 +4,59 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl> rdf:type owl:Ontology ;
                                                                      owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what vessel type can equip what gear type?" ;
-                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This is a straightforward pattern that describes vessel types in terms of the fishing gear they can be equipped with. The original usesGearType object property has been reworked, in that subclass restrictions for affected classes have been replacd with domain and range axiom. This also allows the definition of inverse property usedByVesselType." ;
-                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to represent types of fishing gear with regard to the types of vessel they can be mounted on" ;
-                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the vesseltypes that use 'trawls'" ;
-                                                                     owl:versionInfo "1.0"^^xsd:string ,
+                                                                     dcterms:description "to represent types of fishing gear with regard to the types of vessel they can be mounted on"^^xsd:string ;
+                                                                     dcterms:title "Gearvessel Pattern"^^xsd:string ;
+                                                                     cpannotationschema:coversRequirements "what vessel type can equip what gear type?" ;
+                                                                     cpannotationschema:hasConsequences "This is a straightforward pattern that describes vessel types in terms of the fishing gear they can be equipped with. The original usesGearType object property has been reworked, in that subclass restrictions for affected classes have been replacd with domain and range axiom. This also allows the definition of inverse property usedByVesselType." ;
+                                                                     cpannotationschema:hasIntent "to represent types of fishing gear with regard to the types of vessel they can be mounted on"^^xsd:string ;
+                                                                     cpannotationschema:scenarios "give me the vesseltypes that use 'trawls'" ;
+                                                                     rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x6; term declared x6;
+- header: dcterms:title \"Gearvessel Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
+                                                                     owl:versionInfo "1.0" ,
                                                                                      "Created by Alessandro Adamou"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
+
 
 #################################################################
 #    Object Properties

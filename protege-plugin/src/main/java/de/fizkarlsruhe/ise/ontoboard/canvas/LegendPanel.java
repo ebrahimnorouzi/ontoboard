@@ -41,6 +41,11 @@ public final class LegendPanel extends JPanel {
      *     showing another board's is worse than one showing none.
      */
     public LegendPanel(java.util.Map<String, String> prefixColours) {
+        this(prefixColours, BoardLook.defaults());
+    }
+
+    /** The key of a board drawn in this look (1.155.0), with its namespaces' colours. */
+    public LegendPanel(java.util.Map<String, String> prefixColours, BoardLook look) {
         super(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
 
@@ -50,7 +55,7 @@ public final class LegendPanel extends JPanel {
         at.gridy = 0;
 
         CanvasLegend.Form section = null;
-        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+        for (CanvasLegend.Entry entry : CanvasLegend.entries(look)) {
             if (entry.getForm() != section) {
                 section = entry.getForm();
                 at.gridx = 0;
@@ -229,8 +234,8 @@ public final class LegendPanel extends JPanel {
             int h = SWATCH_HEIGHT - 4;
 
             g.setStroke(new BasicStroke(1.6f));
-            if (SchemaStyles.OBJECT_PROPERTY_NODE.equals(entry.getStyleName())
-                    || SchemaStyles.DATA_PROPERTY_NODE.equals(entry.getStyleName())) {
+            String shape = entry.getShape();
+            if ("hexagon".equals(shape)) {
                 // A hexagon, as the canvas draws a property node. Drawn as a rectangle here until
                 // 1.65.0, which is the same fault the individual's rhombus had in reverse: a key
                 // that shows a shape the board does not draw has to be unlearned the first time
@@ -243,7 +248,7 @@ public final class LegendPanel extends JPanel {
                 g.drawPolygon(xs, ys, 6);
                 return;
             }
-            if (SchemaStyles.DATATYPE.equals(entry.getStyleName())) {
+            if ("ellipse".equals(shape)) {
                 g.setColor(fill);
                 g.fillOval(x, y, w, h);
                 g.setColor(stroke);
@@ -252,8 +257,8 @@ public final class LegendPanel extends JPanel {
             }
             // Both are rounded cards on the canvas now: the individual stopped being a rhombus
             // when it turned out a rhombus cannot hold an ontology label.
-            boolean rounded = SchemaStyles.CLASS.equals(entry.getStyleName())
-                    || SchemaStyles.INDIVIDUAL.equals(entry.getStyleName());
+            // The shape the look gives the kind (1.155.0); a marker's is the class's.
+            boolean rounded = "rounded".equals(shape);
             int arc = rounded ? 8 : 0;
             g.setColor(fill);
             g.fillRoundRect(x, y, w, h, arc, arc);

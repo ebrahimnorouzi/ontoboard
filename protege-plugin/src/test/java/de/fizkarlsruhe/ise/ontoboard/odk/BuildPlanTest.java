@@ -214,16 +214,17 @@ class BuildPlanTest {
     void whenNothingCanRunHereThePlanSaysWhy() throws IOException {
         project("eggboil", "eggboil");
         File makefile = new File(ontology, "Makefile");
-        String text = new String(Files.readAllBytes(makefile.toPath()), StandardCharsets.UTF_8);
-        Files.write(makefile.toPath(), text.replace("ODK_VERSION_MAKEFILE =      v1.6.1",
-                "ODK_VERSION_MAKEFILE =      v1.5.4").getBytes(StandardCharsets.UTF_8));
+        assertTrue(makefile.isFile());
+        // As above: since 1.155.0 another ODK's Makefile is run as it is; a project without its
+        // configuration is what nothing can be run of here.
+        Files.delete(new File(ontology, "eggboil-odk.yaml").toPath());
 
         BuildPlan plan = BuildPlan.inProcess(edit, tools(), "Docker is not running");
 
         assertEquals(Collections.<String>emptyList(), plan.targets());
         assertNull(plan.defaultTarget());
         assertTrue(plan.whyNothing().contains("Docker is not running"), plan.whyNothing());
-        assertTrue(plan.whyNothing().contains("ODK v1.5.4"), plan.whyNothing());
+        assertTrue(plan.whyNothing().contains("configuration"), plan.whyNothing());
     }
 
     /** A target of the engine's list that this Makefile does not have is not offered. */
@@ -298,10 +299,9 @@ class BuildPlanTest {
     @Test
     void whenTheEngineRunsNothingOfTheProjectThatIsTheRefusal() throws IOException {
         project("eggboil", "eggboil");
-        File makefile = new File(ontology, "Makefile");
-        Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
-                StandardCharsets.UTF_8) + "\n# a line of their own\n")
-                .getBytes(StandardCharsets.UTF_8));
+        // Without its configuration nobody can tell what ODK writes for the project; since
+        // 1.155.0 an edited Makefile is run as it is, so this is what the engine still refuses.
+        Files.delete(new File(ontology, "eggboil-odk.yaml").toPath());
         sameAge(temp);
 
         BuildPlan.WithoutContainer left = BuildPlan.withoutContainer(edit,

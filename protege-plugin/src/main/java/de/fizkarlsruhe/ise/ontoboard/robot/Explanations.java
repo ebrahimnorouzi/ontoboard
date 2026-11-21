@@ -58,10 +58,16 @@ public final class Explanations {
     public static final class Justification {
         private final String entailment;
         private final List<String> axioms;
+        private final String subject;
 
         Justification(String entailment, List<String> axioms) {
+            this(entailment, axioms, null);
+        }
+
+        Justification(String entailment, List<String> axioms, String subject) {
             this.entailment = entailment;
             this.axioms = Collections.unmodifiableList(axioms);
+            this.subject = subject;
         }
 
         public String getEntailment() {
@@ -70,6 +76,14 @@ public final class Explanations {
 
         public List<String> getAxioms() {
             return axioms;
+        }
+
+        /**
+         * The IRI of the class it explains - an unsatisfiable class's - or null for an
+         * inconsistency, which is about no one class (1.155.0: a row of Explain opens it).
+         */
+        public String getSubject() {
+            return subject;
         }
     }
 
@@ -269,6 +283,22 @@ public final class Explanations {
     // ===================================================================================== rendering
 
     /**
+     * The class an entailment says is unsatisfiable - C in C SubClassOf owl:Nothing - or null:
+     * owl:Thing's is the inconsistency, about no one class.
+     */
+    private static String subjectOf(OWLAxiom entailment) {
+        if (entailment instanceof org.semanticweb.owlapi.model.OWLSubClassOfAxiom) {
+            org.semanticweb.owlapi.model.OWLSubClassOfAxiom axiom =
+                    (org.semanticweb.owlapi.model.OWLSubClassOfAxiom) entailment;
+            if (!axiom.getSubClass().isAnonymous() && !axiom.getSubClass().isOWLThing()
+                    && axiom.getSuperClass().isOWLNothing()) {
+                return axiom.getSubClass().asOWLClass().getIRI().toString();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Each explanation as its entailment and the axioms that force it, in Manchester syntax.
      *
      * <p>Sorted, because a {@code Set} of explanations has no order and a table that reshuffles
@@ -288,7 +318,7 @@ public final class Explanations {
             }
             Collections.sort(axioms);
             justifications.add(new Justification(writer.apply(explanation.getEntailment()),
-                    axioms));
+                    axioms, subjectOf(explanation.getEntailment())));
         }
         Collections.sort(justifications, new Comparator<Justification>() {
             @Override

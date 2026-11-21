@@ -4,11 +4,33 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> rdf:type owl:Ontology ;
-                                                              rdfs:comment "Represents a relational context (situation) that includes entities playing roles. A situation is a unified view of a state of affairs." ;
-                                                              rdfs:label "Situation Pattern" .
+                                                              dcterms:description "Represents a relational context (situation) that includes entities playing roles. A situation is a unified view of a state of affairs."^^xsd:string ;
+                                                              dcterms:title "Situation Pattern"^^xsd:string ;
+                                                              rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x2; term declared x2;
+- header: dcterms:title \"Situation Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                           "Represents a relational context (situation) that includes entities playing roles. A situation is a unified view of a state of affairs."^^xsd:string ;
+                                                              rdfs:label "Situation Pattern"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 #################################################################
 #    Object Properties

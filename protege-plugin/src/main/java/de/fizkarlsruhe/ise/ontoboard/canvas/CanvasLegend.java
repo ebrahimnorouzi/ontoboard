@@ -55,6 +55,8 @@ public final class CanvasLegend {
         private final String stroke;
         private final String dashPattern;
         private final int opacity;
+        /** The box's shape in a look, or null for the default look's. */
+        private final String shape;
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern) {
@@ -63,6 +65,11 @@ public final class CanvasLegend {
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern, int opacity) {
+            this(form, styleName, label, meaning, fill, stroke, dashPattern, opacity, null);
+        }
+
+        private Entry(Form form, String styleName, String label, String meaning, String fill,
+                String stroke, String dashPattern, int opacity, String shape) {
             this.form = form;
             this.styleName = styleName;
             this.label = label;
@@ -71,6 +78,34 @@ public final class CanvasLegend {
             this.stroke = stroke;
             this.dashPattern = dashPattern;
             this.opacity = opacity;
+            this.shape = shape;
+        }
+
+        /**
+         * This row as a board drawn in this look shows it (1.155.0): a box's fill, outline and
+         * shape its kind's - a marker's the class's, which is what it marks - a line's colour and
+         * dash its kind's, the imported fade the look's. An unsatisfiable class keeps its red.
+         */
+        Entry in(BoardLook look) {
+            if (form == Form.EDGE) {
+                String colour = look.get(styleName + ".colour");
+                if (colour == null) {
+                    return this;
+                }
+                String dash = look.get(styleName + ".line");
+                return new Entry(form, styleName, label, meaning, fill, colour,
+                        dash == null || dash.isEmpty() ? null : dash, opacity, null);
+            }
+            String box = form == Form.NODE ? styleName : SchemaStyles.CLASS;
+            if (look.get(box + ".fill") == null) {
+                return this;
+            }
+            boolean red = SchemaStyles.UNSATISFIABLE.equals(styleName);
+            int fade = SchemaStyles.IMPORTED.equals(styleName)
+                    ? Integer.parseInt(look.get(BoardLook.IMPORTED_OPACITY)) : opacity;
+            return new Entry(form, styleName, label, meaning, red ? fill : look.get(box + ".fill"),
+                    red ? stroke : look.get(box + ".stroke"), dashPattern, fade,
+                    look.get(box + ".shape"));
         }
 
         /**
@@ -117,10 +152,31 @@ public final class CanvasLegend {
             return dashPattern;
         }
 
+        /**
+         * The box's shape - rectangle, rounded, ellipse or hexagon - as the board draws it; a
+         * marker's is the class's. Null for a line.
+         */
+        public String getShape() {
+            if (shape != null || form == Form.EDGE) {
+                return shape;
+            }
+            return BoardLook.defaults().get((form == Form.NODE ? styleName : SchemaStyles.CLASS)
+                    + ".shape");
+        }
+
         @Override
         public String toString() {
             return label;
         }
+    }
+
+    /** The key of a board drawn in this look: {@link #entries()}, each row in the look. */
+    public static List<Entry> entries(BoardLook look) {
+        List<Entry> drawn = new ArrayList<Entry>();
+        for (Entry entry : entries()) {
+            drawn.add(look == null ? entry : entry.in(look));
+        }
+        return drawn;
     }
 
     /**
@@ -236,13 +292,16 @@ public final class CanvasLegend {
                 "#FFF6DB", "#8A6A00", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.OBJECT_PROPERTY_NODE, "Object property",
-                "An owl:ObjectProperty as a node rather than an arrow label. Properties are only "
-                        + "nodes when you add them, because a diagram that boxed every property "
-                        + "would be unreadable - but a property hierarchy needs them.",
+                "An owl:ObjectProperty as a box of its own rather than its arrows: drawn so when "
+                        + "properties are drawn as boxes (More > Properties as boxes), which a "
+                        + "property hierarchy needs, or when it is one of this ontology's own that "
+                        + "no arrow shows (More > Show unused properties).",
                 "#FFEFDC", "#B35C00", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.DATA_PROPERTY_NODE, "Data property",
-                "An owl:DatatypeProperty as a node, for the same reason as an object property "
-                        + "node.",
+                "An owl:DatatypeProperty as a box of its own rather than a row in its class's "
+                        + "box: drawn so when properties are drawn as boxes (More > Properties as "
+                        + "boxes), or when it is one of this ontology's own that no row shows "
+                        + "(More > Show unused properties).",
                 "#E6F2F4", "#0E6E78", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.EXPRESSION, "Class expression",
@@ -330,6 +389,15 @@ public final class CanvasLegend {
                         + "conditions are sufficient as well as necessary - anything meeting them "
                         + "is one. The badge on the box's left shows three bars, as Prot\u00e9g\u00e9's class "
                         + "tree marks one. Without the mark, a class's arrows are necessary only.",
+                "#FFFFFF", "#2D6FBF", null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.CLASS,
+                "name : datatype [n..m] under a rule: a data property",
+                "A row in a class's box, as UML draws a class's attributes: a data property whose "
+                        + "domain is the class, or that an axiom about the class restricts, with "
+                        + "the datatype of its values and how many there are - [1] exactly one, "
+                        + "[0..1] at most one, [1..*] at least one. \"name = value\" is a value "
+                        + "every member has; \"key: a, b\" is the class's key. More > Properties "
+                        + "as boxes draws each property as a box of its own instead.",
                 "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "

@@ -65,7 +65,7 @@ class LooseCheckTest {
             assertTrue(line.passed(), line.check() + ": " + line.verdict());
         }
         assertTrue(result.passed());
-        assertTrue(result.lines().get(0).verdict().contains("ELK"),
+        assertTrue(result.lines().get(0).verdict().contains("HermiT"),
                 result.lines().get(0).verdict());
         assertTrue(result.lines().get(1).verdict().contains("ODK's default profile"),
                 result.lines().get(1).verdict());
@@ -169,5 +169,66 @@ class LooseCheckTest {
         assertTrue(inItsProject.passed(), inItsProject.verdict());
         assertTrue(inItsProject.verdict().contains("profile.txt")
                 && inItsProject.verdict().contains("own terms"), inItsProject.verdict());
+    }
+
+    // ------------------------------------------------------------------ the reasoner (1.155.0)
+
+    /** The egg project's contradiction in one file: only a reasoner reading inverses sees it. */
+    private static OWLOntology inconsistentEgg() throws Exception {
+        return org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(new org.semanticweb.owlapi.io.StringDocumentSource(
+                        "Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                        + "Ontology(<http://purl.obolibrary.org/obo/egg.owl>\n"
+                        + "SubClassOf(obo:BFO_0000019 obo:BFO_0000020)\n"
+                        + "DisjointClasses(obo:BFO_0000020 obo:BFO_0000031)\n"
+                        + "SubClassOf(obo:IAO_0000003 obo:BFO_0000031)\n"
+                        + "InverseObjectProperties(obo:IAO_0000039 obo:IAO_0000040)\n"
+                        + "ObjectPropertyRange(obo:IAO_0000039 obo:IAO_0000003)\n"
+                        + "SubClassOf(obo:EGG_0000001 obo:BFO_0000019)\n"
+                        + "SubClassOf(obo:EGG_0000001 ObjectSomeValuesFrom(obo:IAO_0000040 "
+                        + "obo:EGG_0000000))\n"
+                        + "ClassAssertion(obo:EGG_0000001 obo:EGG_0000002)\n)\n"));
+    }
+
+    /** The user, 2026-11-19: "check this ontology, is not offering the choice for reasoner". */
+    @Test
+    void theReasonerIsTheOneChosen() throws Exception {
+        LooseCheck.Result result = LooseCheck.run(egg(),
+                LooseCheck.Options.defaults().withReasoner("JFact"));
+
+        assertTrue(result.lines().get(0).verdict().startsWith("JFact"),
+                result.lines().get(0).verdict());
+        assertEquals("JFact", LooseCheck.Options.defaults().withReasoner("JFact").reasoner());
+    }
+
+    @Test
+    void aContradictionOnlyHermiTSeesFailsWithHermiT() throws Exception {
+        LooseCheck.Line hermit = LooseCheck.run(inconsistentEgg(),
+                LooseCheck.Options.defaults().withReasoner("HermiT")).lines().get(0);
+
+        assertFalse(hermit.passed(), hermit.verdict());
+        assertTrue(hermit.verdict().contains("inconsistent"), hermit.verdict());
+        assertTrue(String.join("\n", hermit.details()).contains("InverseOf"),
+                hermit.details().toString());
+    }
+
+    @Test
+    void elkPassesItAndHermiTsSecondOpinionSaysWhatElkMissed() throws Exception {
+        LooseCheck.Line elk = LooseCheck.run(inconsistentEgg(),
+                LooseCheck.Options.defaults().withReasoner("ELK")).lines().get(0);
+
+        assertTrue(elk.passed(), elk.verdict());
+        assertTrue(elk.verdict().startsWith("ELK"), elk.verdict());
+        assertTrue(elk.verdict().contains("HermiT"), elk.verdict());
+    }
+
+    @Test
+    void aFileInNoProjectPreselectsHermiT(@org.junit.jupiter.api.io.TempDir java.io.File top)
+            throws Exception {
+        java.io.File alone = new java.io.File(top, "pizza.owl");
+        java.nio.file.Files.write(alone.toPath(), "Ontology()\n".getBytes("UTF-8"));
+
+        assertEquals("HermiT", LooseCheck.Options.forFile(alone).reasoner());
+        assertEquals("HermiT", LooseCheck.Options.forFile(null).reasoner());
     }
 }

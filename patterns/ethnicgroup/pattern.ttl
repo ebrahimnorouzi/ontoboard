@@ -1,32 +1,105 @@
 @prefix : <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#> .
+@prefix mq: <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#> .
+@prefix cpa: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
+@prefix ekp: <http://www.ontologydesignpatterns.org/cp/ekp#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl> .
 
 <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl> rdf:type owl:Ontology ;
-                                                                                                                                             owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
-                                                                                                                                                         <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl> ;
-                                                                                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> <http://dbpedia.org/> ,
-                                                                                                                                                                                                                                  <http://en.wikipedia.org/> ;
-                                                                                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Andrea Giovanni Nuzzolese" ,
-                                                                                                                                                                                                                              "Valentina Presutti" ;
-                                                                                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model the core knowledge needed to describe a EthnicGroup" ;
-                                                                                                                                             rdfs:comment "An encyclopedic knowledge pattern (EKP) identifying the core knowledge that describes a EthnicGroup" .
+                                                                 owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
+                                                                             <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl> ;
+                                                                 dcterms:description "To model the core knowledge needed to describe a EthnicGroup"^^xsd:string ;
+                                                                 dcterms:title "Ethnicgroup Pattern"^^xsd:string ;
+                                                                 cpa:extractedFrom <http://dbpedia.org/> ,
+                                                                                   <http://en.wikipedia.org/> ;
+                                                                 cpa:hasAuthor "Andrea Giovanni Nuzzolese" ,
+                                                                               "Valentina Presutti" ;
+                                                                 cpa:hasIntent "To model the core knowledge needed to describe a EthnicGroup"^^xsd:string ;
+                                                                 rdfs:comment "An encyclopedic knowledge pattern (EKP) identifying the core knowledge that describes a EthnicGroup" ,
+                                                                              """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x27; label added x20; term declared x6;
+- header: dcterms:title \"Ethnicgroup Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> as an annotation property, as pattern.ttl did
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
 
 #################################################################
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+cpa:extractedFrom rdf:type owl:AnnotationProperty ;
+                  rdfs:label "extracted from"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+cpa:hasAuthor rdf:type owl:AnnotationProperty ;
+              rdfs:label "has author"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpa:hasIntent rdf:type owl:AnnotationProperty ;
+              rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight
+mq:dbpediaInfoboxMatchingWeight rdf:type owl:AnnotationProperty ;
+                                rdfs:label "DBpedia infobox matching weight"^^xsd:string .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
 
 
 #################################################################
 #    Object Properties
 #################################################################
+
+###  http://dbpedia.org/ontology/EthnicGroup
+<http://dbpedia.org/ontology/EthnicGroup> rdf:type owl:ObjectProperty .
+
+
+###  http://dbpedia.org/ontology/Event
+<http://dbpedia.org/ontology/Event> rdf:type owl:ObjectProperty ;
+                                    rdfs:label "event"@en ;
+                                    skos:prefLabel "évènement"@fr .
+
+
+###  http://dbpedia.org/ontology/Language
+<http://dbpedia.org/ontology/Language> rdf:type owl:ObjectProperty .
+
+
+###  http://dbpedia.org/ontology/Person
+<http://dbpedia.org/ontology/Person> rdf:type owl:ObjectProperty ;
+                                     rdfs:label "person"@en ;
+                                     skos:prefLabel "Person"@de ,
+                                                    "personne"@fr ,
+                                                    "pessoa"@pt .
+
+
+###  http://dbpedia.org/ontology/Place
+<http://dbpedia.org/ontology/Place> rdf:type owl:ObjectProperty ;
+                                    rdfs:label "place"@en ;
+                                    skos:prefLabel "lieu"@fr ,
+                                                   "lugar"@pt ,
+                                                   "περιοχή"@el .
+
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToAdministrativeRegion
 :linksToAdministrativeRegion rdf:type owl:ObjectProperty ;
@@ -141,38 +214,9 @@
                rdfs:range <http://dbpedia.org/ontology/Writer> .
 
 
-###  http://dbpedia.org/ontology/EthnicGroup
-<http://dbpedia.org/ontology/EthnicGroup> rdf:type owl:ObjectProperty .
-
-
-###  http://dbpedia.org/ontology/Event
-<http://dbpedia.org/ontology/Event> rdf:type owl:ObjectProperty ;
-                                    rdfs:label "event"@en ,
-                                               "évènement"@fr .
-
-
-###  http://dbpedia.org/ontology/Language
-<http://dbpedia.org/ontology/Language> rdf:type owl:ObjectProperty .
-
-
-###  http://dbpedia.org/ontology/Person
-<http://dbpedia.org/ontology/Person> rdf:type owl:ObjectProperty ;
-                                     rdfs:label "Person"@de ,
-                                                "person"@en ,
-                                                "personne"@fr ,
-                                                "pessoa"@pt .
-
-
-###  http://dbpedia.org/ontology/Place
-<http://dbpedia.org/ontology/Place> rdf:type owl:ObjectProperty ;
-                                    rdfs:label "lieu"@fr ,
-                                               "lugar"@pt ,
-                                               "place"@en ,
-                                               "περιοχή"@el .
-
-
 ###  http://www.w3.org/2004/02/skos/core#relatedMatch
-<http://www.w3.org/2004/02/skos/core#relatedMatch> rdf:type owl:ObjectProperty .
+skos:relatedMatch rdf:type owl:ObjectProperty ;
+                  rdfs:label "has related match"@en .
 
 
 #################################################################
@@ -181,30 +225,30 @@
 
 ###  http://dbpedia.org/ontology/AdministrativeRegion
 <http://dbpedia.org/ontology/AdministrativeRegion> rdf:type owl:Class ;
-                                                   rdfs:label "administrative region"@en ,
-                                                              "région administrative"@fr .
+                                                   rdfs:label "administrative region"@en ;
+                                                   skos:prefLabel "région administrative"@fr .
 
 
 ###  http://dbpedia.org/ontology/City
 <http://dbpedia.org/ontology/City> rdf:type owl:Class ;
                                    rdfs:comment "a relatively large and permanent settlement, particularly a large urban settlement" ;
-                                   rdfs:label "city"@en ,
-                                              "cité"@fr .
+                                   rdfs:label "city"@en ;
+                                   skos:prefLabel "cité"@fr .
 
 
 ###  http://dbpedia.org/ontology/Continent
 <http://dbpedia.org/ontology/Continent> rdf:type owl:Class ;
-                                        rdfs:label "continent"@en ,
-                                                   "continent"@fr ,
-                                                   "ήπειρος"@el .
+                                        rdfs:label "continent"@en ;
+                                        skos:prefLabel "continent"@fr ,
+                                                       "ήπειρος"@el .
 
 
 ###  http://dbpedia.org/ontology/Country
 <http://dbpedia.org/ontology/Country> rdf:type owl:Class ;
-                                      rdfs:label "Staat"@de ,
-                                                 "country"@en ,
-                                                 "pays"@fr ,
-                                                 "χώρα"@el .
+                                      rdfs:label "country"@en ;
+                                      skos:prefLabel "Staat"@de ,
+                                                     "pays"@fr ,
+                                                     "χώρα"@el .
 
 
 ###  http://dbpedia.org/ontology/EthnicGroup
@@ -233,9 +277,9 @@
 
 ###  http://dbpedia.org/ontology/Island
 <http://dbpedia.org/ontology/Island> rdf:type owl:Class ;
-                                     rdfs:label "island"@en ,
-                                                "île"@fr ,
-                                                "νησί"@el .
+                                     rdfs:label "island"@en ;
+                                     skos:prefLabel "île"@fr ,
+                                                    "νησί"@el .
 
 
 ###  http://dbpedia.org/ontology/Language
@@ -244,325 +288,345 @@
 
 ###  http://dbpedia.org/ontology/MilitaryConflict
 <http://dbpedia.org/ontology/MilitaryConflict> rdf:type owl:Class ;
-                                               rdfs:label "conflit militaire"@fr ,
-                                                          "military conflict"@en .
+                                               rdfs:label "military conflict"@en ;
+                                               skos:prefLabel "conflit militaire"@fr .
 
 
 ###  http://dbpedia.org/ontology/MusicalArtist
 <http://dbpedia.org/ontology/MusicalArtist> rdf:type owl:Class ;
-                                            rdfs:label "artista musical"@pt ,
-                                                       "musical artist"@en ,
-                                                       "musicien"@fr .
+                                            rdfs:label "musical artist"@en ;
+                                            skos:prefLabel "artista musical"@pt ,
+                                                           "musicien"@fr .
 
 
 ###  http://dbpedia.org/ontology/OfficeHolder
 <http://dbpedia.org/ontology/OfficeHolder> rdf:type owl:Class ;
-                                           rdfs:label "Amtsinhaber"@de ,
-                                                      "office holder"@en ,
-                                                      "titulaire"@fr .
+                                           rdfs:label "office holder"@en ;
+                                           skos:prefLabel "Amtsinhaber"@de ,
+                                                          "titulaire"@fr .
 
 
 ###  http://dbpedia.org/ontology/President
 <http://dbpedia.org/ontology/President> rdf:type owl:Class ;
-                                        rdfs:label "president"@en ,
-                                                   "président"@fr .
+                                        rdfs:label "president"@en ;
+                                        skos:prefLabel "président"@fr .
 
 
 ###  http://dbpedia.org/ontology/River
 <http://dbpedia.org/ontology/River> rdf:type owl:Class ;
                                     rdfs:comment "a large natural stream" ;
-                                    rdfs:label "river"@en ,
-                                               "rivière"@fr .
+                                    rdfs:label "river"@en ;
+                                    skos:prefLabel "rivière"@fr .
 
 
 ###  http://dbpedia.org/ontology/Town
 <http://dbpedia.org/ontology/Town> rdf:type owl:Class ;
                                    rdfs:comment "a settlement ranging from a few hundred to several thousand (occasionally hundreds of thousands). The precise meaning varies between countries and is not always a matter of legal definition. Usually, a town is thought of as larger than a village but smaller than a city, though there are exceptions to this rule." ;
-                                   rdfs:label "town"@en ,
-                                              "ville"@fr .
+                                   rdfs:label "town"@en ;
+                                   skos:prefLabel "ville"@fr .
 
 
 ###  http://dbpedia.org/ontology/Writer
 <http://dbpedia.org/ontology/Writer> rdf:type owl:Class ;
-                                     rdfs:label "writer"@en ,
-                                                "écrivain"@fr .
+                                     rdfs:label "writer"@en ;
+                                     skos:prefLabel "écrivain"@fr .
 
 
 #################################################################
 #    Individuals
 #################################################################
 
+###  http://dbpedia.org/property/before
+<http://dbpedia.org/property/before> rdf:type owl:NamedIndividual ;
+                                     rdfs:label "before"@en .
+
+
+###  http://dbpedia.org/property/caption
+<http://dbpedia.org/property/caption> rdf:type owl:NamedIndividual ;
+                                      rdfs:label "caption"@en .
+
+
+###  http://dbpedia.org/property/col
+<http://dbpedia.org/property/col> rdf:type owl:NamedIndividual ;
+                                  rdfs:label "col"@en .
+
+
+###  http://dbpedia.org/property/imageCaption
+<http://dbpedia.org/property/imageCaption> rdf:type owl:NamedIndividual ;
+                                           rdfs:label "image caption"@en .
+
+
+###  http://dbpedia.org/property/langs
+<http://dbpedia.org/property/langs> rdf:type owl:NamedIndividual ;
+                                    rdfs:label "langs"@en .
+
+
+###  http://dbpedia.org/property/languages
+<http://dbpedia.org/property/languages> rdf:type owl:NamedIndividual ;
+                                        rdfs:label "languages"@en .
+
+
+###  http://dbpedia.org/property/popplace
+<http://dbpedia.org/property/popplace> rdf:type owl:NamedIndividual ;
+                                       rdfs:label "popplace"@en .
+
+
+###  http://dbpedia.org/property/regions
+<http://dbpedia.org/property/regions> rdf:type owl:NamedIndividual ;
+                                      rdfs:label "regions"@en .
+
+
+###  http://dbpedia.org/property/related
+<http://dbpedia.org/property/related> rdf:type owl:NamedIndividual ;
+                                      rdfs:label "related"@en .
+
+
+###  http://dbpedia.org/property/relatedC
+<http://dbpedia.org/property/relatedC> rdf:type owl:NamedIndividual ;
+                                       rdfs:label "related c"@en .
+
+
+###  http://dbpedia.org/property/rels
+<http://dbpedia.org/property/rels> rdf:type owl:NamedIndividual ;
+                                   rdfs:label "rels"@en .
+
+
+###  http://dbpedia.org/property/text
+<http://dbpedia.org/property/text> rdf:type owl:NamedIndividual ;
+                                   rdfs:label "text"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToAdministrativeRegion
 :linksToAdministrativeRegion rdf:type owl:NamedIndividual ;
-                             <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/popplace> .
+                             skos:relatedMatch <http://dbpedia.org/property/popplace> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToAdministrativeRegion ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/popplace> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 100.0
+   mq:dbpediaInfoboxMatchingWeight 100.0
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCity
 :linksToCity rdf:type owl:NamedIndividual ;
-             <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/popplace> ,
-                                                                <http://dbpedia.org/property/regions> ,
-                                                                <http://dbpedia.org/property/text> .
+             skos:relatedMatch <http://dbpedia.org/property/popplace> ,
+                               <http://dbpedia.org/property/regions> ,
+                               <http://dbpedia.org/property/text> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCity ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/popplace> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 36.84
+   mq:dbpediaInfoboxMatchingWeight 36.84
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCity ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/regions> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 5.26
+   mq:dbpediaInfoboxMatchingWeight 5.26
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCity ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/text> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 57.89
+   mq:dbpediaInfoboxMatchingWeight 57.89
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCountry
 :linksToCountry rdf:type owl:NamedIndividual ;
-                <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/before> ,
-                                                                   <http://dbpedia.org/property/popplace> ,
-                                                                   <http://dbpedia.org/property/regions> ,
-                                                                   <http://dbpedia.org/property/relatedC> ,
-                                                                   <http://dbpedia.org/property/text> .
+                skos:relatedMatch <http://dbpedia.org/property/before> ,
+                                  <http://dbpedia.org/property/popplace> ,
+                                  <http://dbpedia.org/property/regions> ,
+                                  <http://dbpedia.org/property/relatedC> ,
+                                  <http://dbpedia.org/property/text> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCountry ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/before> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 8.33
+   mq:dbpediaInfoboxMatchingWeight 8.33
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCountry ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/popplace> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 50.0
+   mq:dbpediaInfoboxMatchingWeight 50.0
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCountry ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/regions> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 16.67
+   mq:dbpediaInfoboxMatchingWeight 16.67
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCountry ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/relatedC> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 8.33
+   mq:dbpediaInfoboxMatchingWeight 8.33
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToCountry ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/text> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 16.67
+   mq:dbpediaInfoboxMatchingWeight 16.67
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToEthnicGroup
 :linksToEthnicGroup rdf:type owl:NamedIndividual ;
-                    <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
-                                                                       <http://dbpedia.org/property/col> ,
-                                                                       <http://dbpedia.org/property/related> ,
-                                                                       <http://dbpedia.org/property/relatedC> ,
-                                                                       <http://dbpedia.org/property/rels> .
+                    skos:relatedMatch <http://dbpedia.org/property/caption> ,
+                                      <http://dbpedia.org/property/col> ,
+                                      <http://dbpedia.org/property/related> ,
+                                      <http://dbpedia.org/property/relatedC> ,
+                                      <http://dbpedia.org/property/rels> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToEthnicGroup ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/caption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 0.53
+   mq:dbpediaInfoboxMatchingWeight 0.53
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToEthnicGroup ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/col> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 1.05
+   mq:dbpediaInfoboxMatchingWeight 1.05
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToEthnicGroup ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/related> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 87.89
+   mq:dbpediaInfoboxMatchingWeight 87.89
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToEthnicGroup ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/relatedC> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 10.0
+   mq:dbpediaInfoboxMatchingWeight 10.0
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToEthnicGroup ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/rels> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 0.53
+   mq:dbpediaInfoboxMatchingWeight 0.53
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToLanguage
 :linksToLanguage rdf:type owl:NamedIndividual ;
-                 <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/langs> ,
-                                                                    <http://dbpedia.org/property/languages> .
+                 skos:relatedMatch <http://dbpedia.org/property/langs> ,
+                                   <http://dbpedia.org/property/languages> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToLanguage ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/langs> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 59.68
+   mq:dbpediaInfoboxMatchingWeight 59.68
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToLanguage ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/languages> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 40.32
+   mq:dbpediaInfoboxMatchingWeight 40.32
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToMusicalArtist
 :linksToMusicalArtist rdf:type owl:NamedIndividual ;
-                      <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
-                                                                         <http://dbpedia.org/property/imageCaption> .
+                      skos:relatedMatch <http://dbpedia.org/property/caption> ,
+                                        <http://dbpedia.org/property/imageCaption> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToMusicalArtist ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/caption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 91.67
+   mq:dbpediaInfoboxMatchingWeight 91.67
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToMusicalArtist ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/imageCaption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 8.33
+   mq:dbpediaInfoboxMatchingWeight 8.33
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToOfficeHolder
 :linksToOfficeHolder rdf:type owl:NamedIndividual ;
-                     <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
-                                                                        <http://dbpedia.org/property/imageCaption> .
+                     skos:relatedMatch <http://dbpedia.org/property/caption> ,
+                                       <http://dbpedia.org/property/imageCaption> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToOfficeHolder ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/caption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 90.0
+   mq:dbpediaInfoboxMatchingWeight 90.0
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToOfficeHolder ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/imageCaption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 10.0
+   mq:dbpediaInfoboxMatchingWeight 10.0
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToPresident
 :linksToPresident rdf:type owl:NamedIndividual ;
-                  <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> .
+                  skos:relatedMatch <http://dbpedia.org/property/caption> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToPresident ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/caption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 100.0
+   mq:dbpediaInfoboxMatchingWeight 100.0
  ] .
 
 
 ###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToWriter
 :linksToWriter rdf:type owl:NamedIndividual ;
-               <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
-                                                                  <http://dbpedia.org/property/imageCaption> .
+               skos:relatedMatch <http://dbpedia.org/property/caption> ,
+                                 <http://dbpedia.org/property/imageCaption> .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToWriter ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/caption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 71.43
+   mq:dbpediaInfoboxMatchingWeight 71.43
  ] .
 
 [ rdf:type owl:Axiom ;
    owl:annotatedSource :linksToWriter ;
-   owl:annotatedProperty <http://www.w3.org/2004/02/skos/core#relatedMatch> ;
+   owl:annotatedProperty skos:relatedMatch ;
    owl:annotatedTarget <http://dbpedia.org/property/imageCaption> ;
-   <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#dbpediaInfoboxMatchingWeight> 28.57
+   mq:dbpediaInfoboxMatchingWeight 28.57
  ] .
-
-
-###  http://dbpedia.org/property/before
-<http://dbpedia.org/property/before> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/caption
-<http://dbpedia.org/property/caption> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/col
-<http://dbpedia.org/property/col> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/imageCaption
-<http://dbpedia.org/property/imageCaption> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/langs
-<http://dbpedia.org/property/langs> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/languages
-<http://dbpedia.org/property/languages> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/popplace
-<http://dbpedia.org/property/popplace> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/regions
-<http://dbpedia.org/property/regions> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/related
-<http://dbpedia.org/property/related> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/relatedC
-<http://dbpedia.org/property/relatedC> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/rels
-<http://dbpedia.org/property/rels> rdf:type owl:NamedIndividual .
-
-
-###  http://dbpedia.org/property/text
-<http://dbpedia.org/property/text> rdf:type owl:NamedIndividual .
 
 
 #################################################################
 #    Annotations
 #################################################################
+
+<http://dbpedia.org/ontology/EthnicGroup> skos:prefLabel "groupe ethnique"@fr ;
+                                          rdfs:label "ethnic group"@en .
+
+
+<http://dbpedia.org/ontology/Language> skos:prefLabel "langage"@fr ;
+                                       rdfs:label "language"@en .
+
 
 :linksToAdministrativeRegion rdfs:label "links to Administrative Region"@en ;
                              rdfs:comment "Relazione tra Ethnic Group e Administrative Region"@it ,
@@ -570,51 +634,43 @@
 
 
 :linksToCity rdfs:label "links to City"@en ;
-             rdfs:comment "Relation between Ethnic Group and City"@en ,
-                          "Relazione tra Ethnic Group e City"@it .
+             rdfs:comment "Relazione tra Ethnic Group e City"@it ,
+                          "Relation between Ethnic Group and City"@en .
 
 
-:linksToCountry rdfs:comment "Relazione tra Ethnic Group e Country"@it ,
-                             "Relation between Ethnic Group and Country"@en ;
+:linksToCountry rdfs:comment "Relation between Ethnic Group and Country"@en ,
+                             "Relazione tra Ethnic Group e Country"@it ;
                 rdfs:label "links to Country"@en .
 
 
-:linksToEthnicGroup rdfs:comment "Relation between Ethnic Group and Ethnic Group"@en ;
-                    rdfs:label "links to Ethnic Group"@en ;
-                    rdfs:comment "Relazione tra Ethnic Group e Ethnic Group"@it .
+:linksToEthnicGroup rdfs:comment "Relazione tra Ethnic Group e Ethnic Group"@it ,
+                                 "Relation between Ethnic Group and Ethnic Group"@en ;
+                    rdfs:label "links to Ethnic Group"@en .
 
 
-:linksToLanguage rdfs:comment "Relazione tra Ethnic Group e Language"@it ,
-                              "Relation between Ethnic Group and Language"@en ;
+:linksToLanguage rdfs:comment "Relation between Ethnic Group and Language"@en ,
+                              "Relazione tra Ethnic Group e Language"@it ;
                  rdfs:label "links to Language"@en .
 
 
 :linksToMusicalArtist rdfs:label "links to Musical Artist"@en ;
-                      rdfs:comment "Relation between Ethnic Group and Musical Artist"@en ,
-                                   "Relazione tra Ethnic Group e Musical Artist"@it .
+                      rdfs:comment "Relazione tra Ethnic Group e Musical Artist"@it ,
+                                   "Relation between Ethnic Group and Musical Artist"@en .
 
 
 :linksToOfficeHolder rdfs:label "links to Office Holder"@en ;
-                     rdfs:comment "Relation between Ethnic Group and Office Holder"@en ,
-                                  "Relazione tra Ethnic Group e Office Holder"@it .
+                     rdfs:comment "Relazione tra Ethnic Group e Office Holder"@it ,
+                                  "Relation between Ethnic Group and Office Holder"@en .
 
 
-:linksToPresident rdfs:comment "Relazione tra Ethnic Group e President"@it ,
-                               "Relation between Ethnic Group and President"@en ;
-                  rdfs:label "links to President"@en .
+:linksToPresident rdfs:comment "Relation between Ethnic Group and President"@en ;
+                  rdfs:label "links to President"@en ;
+                  rdfs:comment "Relazione tra Ethnic Group e President"@it .
 
 
-:linksToWriter rdfs:comment "Relation between Ethnic Group and Writer"@en ,
-                            "Relazione tra Ethnic Group e Writer"@it ;
+:linksToWriter rdfs:comment "Relazione tra Ethnic Group e Writer"@it ,
+                            "Relation between Ethnic Group and Writer"@en ;
                rdfs:label "links to Writer"@en .
-
-
-<http://dbpedia.org/ontology/EthnicGroup> rdfs:label "groupe ethnique"@fr ,
-                                                     "ethnic group"@en .
-
-
-<http://dbpedia.org/ontology/Language> rdfs:label "langage"@fr ,
-                                                  "language"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

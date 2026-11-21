@@ -365,6 +365,164 @@ class ReleaseHistoryTest {
                 releases.get(3).file().getAbsolutePath(), "read where it is");
     }
 
+    /** The demo ontology with these classes, as Turtle. */
+    static byte[] demoTurtle(String... classes) throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(
+                new java.io.ByteArrayInputStream(demo(classes)));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        manager.saveOntology(ontology, new org.semanticweb.owlapi.formats.TurtleDocumentFormat(),
+                out);
+        return out.toByteArray();
+    }
+
+    /**
+     * nfdicore's tags v1.0.0 to v2.0.0 hold nfdicore.ttl at the root, not nfdicore.owl, and
+     * History found 7 of its 13 releases (1.155.0). A tag is a release when its root holds the
+     * ontology in a syntax the OWL API reads: .owl, .ttl, .obo, .ofn, .owx - in that order.
+     */
+    @Test
+    void aTagHoldingTheOntologyInAnotherSyntaxIsARelease(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        byte[] turtle = demoTurtle("Egg");
+        Files.write(new File(root, "demo.ttl").toPath(), turtle);
+        git(root, "add", "-f", "demo.ttl");
+        git(root, "commit", "-q", "-m", "release(1.0.0) as Turtle");
+        git(root, "tag", "-a", "v1.0.0", "-m", "demo 1.0.0");
+        tagged(root, "2.0.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[2.0.0, 1.0.0]", versionsOf(releases));
+        assertArrayEquals(turtle, releases.get(1).bytes(), "the Turtle the tag holds");
+        assertEquals(set("Egg"), classesOf(releases.get(1).load()));
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(releases, null, null, null);
+        assertEquals("+1 class", history.get(0).describeChange());
+    }
+
+    /**
+     * nfdicore's tag v1.0.0 holds its release as nfdico.ttl - a name of its own. A tag that holds
+     * none of the usual names is a release when its root holds an ontology file whose ontology IRI
+     * is the edit file's; a tag whose root holds another ontology is not (1.155.0).
+     */
+    @Test
+    void aReleaseUnderANameOfItsOwnIsFoundByItsOntologyIri(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        assertTrue(edit.getParentFile().mkdirs());
+        Files.write(edit.toPath(), demo("Egg"));
+        byte[] early = demoTurtle("Egg");
+        Files.write(new File(root, "demo-early.ttl").toPath(), early);
+        git(root, "add", "-f", "demo-early.ttl");
+        git(root, "commit", "-q", "-m", "release(1.0.0) under a name of its own");
+        git(root, "tag", "-a", "v1.0.0", "-m", "demo 1.0.0");
+        git(root, "rm", "-q", "demo-early.ttl");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        ByteArrayOutputStream other = new ByteArrayOutputStream();
+        manager.saveOntology(manager.createOntology(IRI.create("https://example.org/other.owl")),
+                new RDFXMLDocumentFormat(), other);
+        Files.write(new File(root, "other.owl").toPath(), other.toByteArray());
+        git(root, "add", "-f", "other.owl");
+        git(root, "commit", "-q", "-m", "another ontology, tagged");
+        git(root, "tag", "-a", "v1.5.0", "-m", "demo 1.5.0");
+        tagged(root, "2.0.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[2.0.0, 1.0.0]", versionsOf(releases), "1.5.0 holds another ontology");
+        assertArrayEquals(early, releases.get(1).bytes(), "what demo-early.ttl holds");
+        assertEquals(set("Egg"), classesOf(releases.get(1).load()));
+    }
+
+    /**
+     * One release that cannot be read is shown as such, with why; the others are read and
+     * compared with each other - before, History stopped at the first it could not read.
+     */
+    @Test
+    void aReleaseThatCannotBeReadStopsNothing(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        tagged(root, "1.0.0", demo("Egg"));
+        tagged(root, "1.1.0", "this is no ontology".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        tagged(root, "1.2.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(
+                ReleaseHistory.releasesOf(root, "demo"), null, null, null);
+
+        assertEquals("[1.2.0, 1.1.0, 1.0.0]", names(history));
+        assertTrue(history.get(0).isReadable());
+        assertEquals("+1 class", history.get(0).describeChange(),
+                "compared with 1.0.0, the release before it that could be read");
+        assertFalse(history.get(1).isReadable());
+        assertTrue(history.get(1).describeChange().startsWith("Could not be read"),
+                history.get(1).describeChange());
+        assertEquals("First release", history.get(2).describeChange());
+    }
+
+    /**
+     * A release fetched from GitHub earlier - ODK v1.6.1 keeps release files out of git and puts
+     * them on the GitHub release - is read from where it was kept, without the network; a version
+     * git or releases/ has already is not taken from there.
+     */
+    @Test
+    void aReleaseFetchedFromGitHubIsRead(@TempDir File top) throws Exception {
+        File root = new File(top, "project");
+        File dotGit = new File(root, ".git");
+        assertTrue(dotGit.mkdirs());
+        Files.write(new File(dotGit, "config").toPath(), ("[remote \"origin\"]\n"
+                + "\turl = https://github.com/o/demo.git\n").getBytes(
+                        java.nio.charset.StandardCharsets.UTF_8));
+        File cache = new File(top, "cache");
+        File fetched = new File(cache, "o/demo/v1.0.0/demo.owl");
+        assertTrue(fetched.getParentFile().mkdirs());
+        Files.write(fetched.toPath(), demo("Egg"));
+        File other = new File(cache, "o/demo/v1.1.0/demo.owl");
+        assertTrue(other.getParentFile().mkdirs());
+        Files.write(other.toPath(), demo("Egg", "Lid"));
+        kept(root, "1.1.0", demo("Egg", "Pan"));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo", NO_GIT,
+                cache);
+
+        assertEquals("[1.1.0, 1.0.0]", versionsOf(releases));
+        assertEquals("[FOLDER, GITHUB]", sourcesOf(releases));
+        assertEquals(fetched.getAbsoluteFile(), releases.get(1).file().getAbsoluteFile());
+        List<ReleaseHistory.Version> history = ReleaseHistory.of(releases, null, null, null);
+        assertEquals("+1 class", history.get(0).describeChange(), "Pan, the folder's");
+    }
+
+    /**
+     * What a release recorded of itself (1.155.0): its RELEASE.md beside the kept copy, else its
+     * tag's message when that is a record; a tag that says only "demo 1.0.0" has none.
+     */
+    @Test
+    void aReleasesRecordIsRead(@TempDir File root) throws Exception {
+        assumeGit();
+        git(root, "init", "-q");
+        tagged(root, "1.0.0", demo("Egg"));
+        Files.write(new File(root, "demo.owl").toPath(), demo("Egg", "Pan"));
+        git(root, "add", "-f", "demo.owl");
+        git(root, "commit", "-q", "-m", "release(1.1.0)");
+        File message = new File(root, "message.md");
+        Files.write(message.toPath(), "# demo 1.1.0\n\nReleased on 2026-11-19 with OntoBoard.\n"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        git(root, "tag", "-a", "v1.1.0", "--cleanup=verbatim", "-F", "message.md");
+        File kept = kept(root, "1.2.0", demo("Egg", "Pan", "Lid"));
+        Files.write(new File(kept.getParentFile(), "RELEASE.md").toPath(),
+                "# demo 1.2.0\n\nKept beside the copy.\n".getBytes(
+                        java.nio.charset.StandardCharsets.UTF_8));
+
+        List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(root, "demo");
+
+        assertEquals("[1.2.0, 1.1.0, 1.0.0]", versionsOf(releases));
+        assertEquals("# demo 1.2.0\n\nKept beside the copy.\n", releases.get(0).record());
+        assertTrue(releases.get(1).record().startsWith("# demo 1.1.0\n"),
+                releases.get(1).record());
+        assertNull(releases.get(2).record(), "demo 1.0.0 is a tag's name, no record");
+    }
+
     /** History reads a release that is only a tag, beside one that is only a folder. */
     @Test
     void theHistoryReadsTaggedReleases(@TempDir File root) throws Exception {

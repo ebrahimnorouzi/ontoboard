@@ -1,23 +1,65 @@
 @prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix ns: <http://creativecommons.org/ns#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix terms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl> .
 
 <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl> rdf:type owl:Ontology ;
                                                                               owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the nodes that are sending data to a given receiver?"^^xsd:string ,
-                                                                                                                                                                        "What is the receiving node of the given set of sending nodes?"^^xsd:string ,
-                                                                                                                                                                        "Which types of nodes are available in a network?"^^xsd:string ;
-                                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> """This pattern relies on both the SSN ontology and DUL in order to represent sensors and other techniqually needed objects to deploy a network in a smart home environment.
+                                                                              terms:description """This pattern relies on both the SSN ontology and DUL in order to represent sensors and other techniqually needed objects to deploy a network in a smart home environment.
 
 The concept of Network is modeled in this pattern as a System (http://purl.oclc.org/NET/ssnx/ssn#System) whose constituents are NodeStations (subclass of Node which is in turn subsumed by the class http://purl.oclc.org/NET/ssnx/ssn#Device). Another subsumee of the Device class is the class Node describing more details about the content of each node station. Depending on their roles, nodes of a network are devided into types of node senders (whcih observe a phenomenon and send the data) and receivers (which receive the observation data)."""^^xsd:string ;
-                                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> """The pattern extends both the SSN ontology and DUL. The extension is in the form of specialization of the following classes: http://purl.oclc.org/NET/ssnx/ssn#Deployment
+                                                                              terms:title "Smarthome Network Pattern"^^xsd:string ;
+                                                                              cpannotationschema:coversRequirements "What are the nodes that are sending data to a given receiver?"^^xsd:string ,
+                                                                                                                    "What is the receiving node of the given set of sending nodes?"^^xsd:string ,
+                                                                                                                    "Which types of nodes are available in a network?"^^xsd:string ;
+                                                                              cpannotationschema:hasIntent """This pattern relies on both the SSN ontology and DUL in order to represent sensors and other techniqually needed objects to deploy a network in a smart home environment.
+
+The concept of Network is modeled in this pattern as a System (http://purl.oclc.org/NET/ssnx/ssn#System) whose constituents are NodeStations (subclass of Node which is in turn subsumed by the class http://purl.oclc.org/NET/ssnx/ssn#Device). Another subsumee of the Device class is the class Node describing more details about the content of each node station. Depending on their roles, nodes of a network are devided into types of node senders (whcih observe a phenomenon and send the data) and receivers (which receive the observation data)."""^^xsd:string ;
+                                                                              cpannotationschema:isSpecializationOf """The pattern extends both the SSN ontology and DUL. The extension is in the form of specialization of the following classes: http://purl.oclc.org/NET/ssnx/ssn#Deployment
 http://purl.oclc.org/NET/ssnx/ssn#SensingDevice
 http://purl.oclc.org/NET/ssnx/ssn#Device
-http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
+http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string ;
+                                                                              rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x27; term declared x5;
+- header: dcterms:title \"Smarthome Network Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+terms:description rdf:type owl:AnnotationProperty ;
+                  rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+terms:title rdf:type owl:AnnotationProperty ;
+            rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+cpannotationschema:isSpecializationOf rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "is specialization of"@en .
+
 
 #################################################################
 #    Object Properties
@@ -27,45 +69,55 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
 :receivesDataFrom rdf:type owl:ObjectProperty ;
                   owl:inverseOf :sendsDataTo ;
                   rdfs:domain :DataReceiverNode ;
-                  rdfs:range :DataSenderNode .
+                  rdfs:range :DataSenderNode ;
+                  rdfs:label "receives data from"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#sendsDataTo
 :sendsDataTo rdf:type owl:ObjectProperty ;
              rdfs:domain :DataSenderNode ;
-             rdfs:range :DataReceiverNode .
+             rdfs:range :DataReceiverNode ;
+             rdfs:label "sends data to"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#deployedOnPlatform
-<http://purl.oclc.org/NET/ssnx/ssn#deployedOnPlatform> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#deployedOnPlatform> rdf:type owl:ObjectProperty ;
+                                                       rdfs:label "deployed on platform"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#deployedSystem
-<http://purl.oclc.org/NET/ssnx/ssn#deployedSystem> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#deployedSystem> rdf:type owl:ObjectProperty ;
+                                                   rdfs:label "deployed system"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#hasDeployment
-<http://purl.oclc.org/NET/ssnx/ssn#hasDeployment> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#hasDeployment> rdf:type owl:ObjectProperty ;
+                                                  rdfs:label "has deployment"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#onPlatform
-<http://purl.oclc.org/NET/ssnx/ssn#onPlatform> rdf:type owl:ObjectProperty .
+<http://purl.oclc.org/NET/ssnx/ssn#onPlatform> rdf:type owl:ObjectProperty ;
+                                               rdfs:label "on platform"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty ;
+                                                                       rdfs:label "has constituent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> rdf:type owl:ObjectProperty ;
+                                                                rdfs:label "has part"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf> rdf:type owl:ObjectProperty ;
+                                                                        rdfs:label "is constituent of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf
-<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> rdf:type owl:ObjectProperty .
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> rdf:type owl:ObjectProperty ;
+                                                                 rdfs:label "is part of"@en .
 
 
 #################################################################
@@ -82,7 +134,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                                   [ rdf:type owl:Restriction ;
                                     owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> ;
                                     owl:someValuesFrom :ReceiverNodeStation
-                                  ] .
+                                  ] ;
+                  rdfs:label "data receiver node"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#DataSenderNode
@@ -95,7 +148,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                                 [ rdf:type owl:Restriction ;
                                   owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> ;
                                   owl:someValuesFrom :SenderNodeStation
-                                ] .
+                                ] ;
+                rdfs:label "data sender node"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#Network
@@ -124,7 +178,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                       [ rdf:type owl:Restriction ;
                         owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> ;
                         owl:someValuesFrom :NodeStation
-                      ] .
+                      ] ;
+      rdfs:label "node"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#NodeStation
@@ -146,7 +201,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                              [ rdf:type owl:Restriction ;
                                owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf> ;
                                owl:someValuesFrom :Network
-                             ] .
+                             ] ;
+             rdfs:label "node station"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#ReceiverNodeStation
@@ -155,7 +211,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                                      [ rdf:type owl:Restriction ;
                                        owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> ;
                                        owl:someValuesFrom :DataReceiverNode
-                                     ] .
+                                     ] ;
+                     rdfs:label "receiver node station"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#SenderNodeStation
@@ -168,7 +225,8 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                                    [ rdf:type owl:Restriction ;
                                      owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> ;
                                      owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#SensingDevice>
-                                   ] .
+                                   ] ;
+                   rdfs:label "sender node station"@en .
 
 
 ###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl#SmartHomeDeployment
@@ -181,27 +239,33 @@ http://purl.oclc.org/NET/ssnx/ssn#System"""^^xsd:string .
                                      [ rdf:type owl:Restriction ;
                                        owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#deployedSystem> ;
                                        owl:someValuesFrom :Network
-                                     ] .
+                                     ] ;
+                     rdfs:label "smart home deployment"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Deployment
-<http://purl.oclc.org/NET/ssnx/ssn#Deployment> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#Deployment> rdf:type owl:Class ;
+                                               rdfs:label "deployment"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Device
-<http://purl.oclc.org/NET/ssnx/ssn#Device> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#Device> rdf:type owl:Class ;
+                                           rdfs:label "device"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#Platform
-<http://purl.oclc.org/NET/ssnx/ssn#Platform> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#Platform> rdf:type owl:Class ;
+                                             rdfs:label "platform"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#SensingDevice
-<http://purl.oclc.org/NET/ssnx/ssn#SensingDevice> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#SensingDevice> rdf:type owl:Class ;
+                                                  rdfs:label "sensing device"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#System
-<http://purl.oclc.org/NET/ssnx/ssn#System> rdf:type owl:Class .
+<http://purl.oclc.org/NET/ssnx/ssn#System> rdf:type owl:Class ;
+                                           rdfs:label "system"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

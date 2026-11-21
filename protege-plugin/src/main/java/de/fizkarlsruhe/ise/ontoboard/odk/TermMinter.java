@@ -55,19 +55,38 @@ public final class TermMinter {
         /** Numeric identifiers from an allocated range, with the typed name as rdfs:label. */
         NUMERIC,
         /** An IRI built from the typed name, under the ontology's namespace. */
-        FROM_NAME
+        FROM_NAME,
+        /**
+         * An ODK project that chose readable names ({@code ontoboard_term_names: readable} in its
+         * configuration, 1.155.0): an IRI from the typed name under the project's own address -
+         * a class BoiledEgg, a property or an individual hasPart - with the name as its label.
+         */
+        READABLE
     }
+
+    /** The configuration key and value a project chooses readable names with. */
+    public static final String TERM_NAMES_KEY = "ontoboard_term_names";
+    public static final String READABLE_NAMES = "readable";
+    public static final String NUMBERED_NAMES = "numbered";
 
     private final Style style;
     private final IdRanges ranges;
     private final String editor;
     private final File rangesFile;
+    /** Where readable names go, ending in a slash; null unless {@link Style#READABLE}. */
+    private final String readableNamespace;
 
     private TermMinter(Style style, IdRanges ranges, String editor, File rangesFile) {
+        this(style, ranges, editor, rangesFile, null);
+    }
+
+    private TermMinter(Style style, IdRanges ranges, String editor, File rangesFile,
+            String readableNamespace) {
         this.style = style;
         this.ranges = ranges;
         this.editor = editor;
         this.rangesFile = rangesFile;
+        this.readableNamespace = readableNamespace;
     }
 
     /**
@@ -82,7 +101,23 @@ public final class TermMinter {
      * @param editor who is minting - matched against the ranges' allocations
      */
     public static TermMinter forOntologyFile(File ontologyFile, String editor) {
+        String readable = readableNamespaceOf(ontologyFile);
         File found = findRangesFile(ontologyFile);
+        if (readable != null) {
+            // The ranges are still read: Protege reads them as well, and the person's range is
+            // claimed so that it does not ask (rangesNameNobodyYet).
+            IdRanges kept = null;
+            if (found != null) {
+                try {
+                    kept = IdRanges.parse(new String(Files.readAllBytes(found.toPath()),
+                            StandardCharsets.UTF_8));
+                } catch (IOException | RuntimeException unusable) {
+                    kept = null;
+                }
+            }
+            return new TermMinter(Style.READABLE, kept, editor, kept == null ? null : found,
+                    readable);
+        }
         if (found == null) {
             return new TermMinter(Style.FROM_NAME, null, editor, null);
         }
@@ -178,6 +213,16 @@ public final class TermMinter {
         return style == Style.NUMERIC;
     }
 
+    /**
+     * Whether the terms are minted for an ODK project - numbered from its ranges, or named
+     * readably as the project chose - and not for a file of its own. Asked by Record who edits
+     * terms, which follows an ODK project; isNumeric() answered it, and the new terms of a project
+     * with readable names were never stamped (the 1.155.0 review's M8).
+     */
+    public boolean isOdkProject() {
+        return style == Style.NUMERIC || style == Style.READABLE;
+    }
+
     /** The ranges in force, or null when naming from the typed name. */
     public IdRanges getRanges() {
         return ranges;
@@ -199,7 +244,16 @@ public final class TermMinter {
      * way that project gives them - ID ranges... - and told so when minting is refused.
      */
     public boolean needsClaim() {
-        return isNumeric() && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
+        return isNumeric() && rangesNameNobodyYet();
+    }
+
+    /**
+     * Whether the project's ID ranges are still ODK's placeholders and none is this editor's -
+     * whatever the project's names: Protege reads the ranges and asks "No Id Range Found For
+     * Current User" in a project with readable names as well.
+     */
+    public boolean rangesNameNobodyYet() {
+        return ranges != null && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
     }
 
     /** The placeholders the question offers, in the file's order; none unless all are. */
@@ -278,7 +332,7 @@ public final class TermMinter {
      * @throws IOException when the file cannot be read as UTF-8, or written
      */
     public TermMinter claim(String placeholder) throws IOException {
-        if (!needsClaim()) {
+        if (!rangesNameNobodyYet()) {
             throw new IllegalStateException("'" + editor + "' has nothing to claim: "
                     + (isNumeric() ? "the ranges in " + rangesFile.getName() + " are not all "
                             + "ODK's placeholders, or one is theirs already"
@@ -291,7 +345,89 @@ public final class TermMinter {
                 .toString();
         String after = IdRanges.claim(before, placeholder, editor);
         Files.write(rangesFile.toPath(), after.getBytes(StandardCharsets.UTF_8));
-        return new TermMinter(Style.NUMERIC, IdRanges.parse(after), editor, rangesFile);
+        return new TermMinter(style, IdRanges.parse(after), editor, rangesFile,
+                readableNamespace);
+    }
+
+    /**
+     * Where readable names go when the project beside {@code ontologyFile} chose them - the
+     * {@code ontoboard_term_names: readable} of its {@code <id>-odk.yaml} - or null: its
+     * {@code uribase}, then its {@code uribase_suffix} or id, as ODK names the project's own
+     * address, and a slash.
+     */
+    public static String readableNamespaceOf(File ontologyFile) {
+        File folder = ontologyFile == null ? null : ontologyFile.getAbsoluteFile().getParentFile();
+        File[] files = folder == null ? null : folder.listFiles();
+        if (files == null) {
+            return null;
+        }
+        for (File file : files) {
+            String name = file.getName();
+            if (!file.isFile() || !name.endsWith("-odk.yaml")) {
+                continue;
+            }
+            try {
+                return readableNamespaceOf(new String(Files.readAllBytes(file.toPath()),
+                        StandardCharsets.UTF_8), name);
+            } catch (IOException unreadable) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The same, of a configuration's text and its file name ({@code <id>-odk.yaml}); null when
+     * it does not choose readable names, or cannot be read.
+     */
+    public static String readableNamespaceOf(String configText, String fileName) {
+        try {
+            Map<String, String> values = new LinkedHashMap<String, String>();
+            for (OdkYaml.Entry entry : OdkYaml.entriesIn(configText)) {
+                values.put(entry.getPath(), entry.getValue());
+            }
+            String chosen = values.get(TERM_NAMES_KEY);
+            if (chosen == null || !READABLE_NAMES.equalsIgnoreCase(chosen.trim())) {
+                return null;
+            }
+            String name = fileName == null ? "" : fileName;
+            return projectAddress(values, name.endsWith("-odk.yaml")
+                    ? name.substring(0, name.length() - "-odk.yaml".length()) : name) + "/";
+        } catch (RuntimeException unreadable) {
+            return null;
+        }
+    }
+
+    /** ODK's address of the project: uribase, then uribase_suffix or the id. */
+    static String projectAddress(Map<String, String> values, String idFromFileName) {
+        String uribase = values.get("uribase");
+        String base = uribase == null || uribase.trim().isEmpty()
+                ? "http://purl.obolibrary.org/obo" : uribase.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String suffix = values.get("uribase_suffix");
+        String id = values.get("id");
+        String last = suffix != null && !suffix.trim().isEmpty() ? suffix.trim()
+                : id != null && !id.trim().isEmpty() ? id.trim() : idFromFileName;
+        return base + "/" + last;
+    }
+
+    /**
+     * What a typed name becomes in a readable IRI: its words joined as {@link #localNameFor}
+     * joins them, beginning in upper case for a class and in lower case for a property or an
+     * individual - "boiled egg" a class BoiledEgg, "has part" a property hasPart.
+     */
+    public static String readableName(String typed, EntityFactory.Kind kind) {
+        String name = localNameFor(typed);
+        int first = name.charAt(0) == '_' ? 1 : 0;
+        if (first < name.length() && Character.isLetter(name.charAt(first))) {
+            char letter = name.charAt(first);
+            char cased = kind == EntityFactory.Kind.CLASS ? Character.toUpperCase(letter)
+                    : Character.toLowerCase(letter);
+            name = name.substring(0, first) + cased + name.substring(first + 1);
+        }
+        return name;
     }
 
     /**
@@ -332,6 +468,12 @@ public final class TermMinter {
     }
 
     public String describe() {
+        if (style == Style.READABLE) {
+            return "New terms are named from what you type, in " + readableNamespace + " - "
+                    + "'boiled egg' becomes BoiledEgg, a property or an individual 'has part' "
+                    + "hasPart - with what you type as the label. This project chose readable "
+                    + "names (" + TERM_NAMES_KEY + " in its ODK configuration).";
+        }
         if (!isNumeric()) {
             return "New terms are named from what you type - 'tensile test' becomes TensileTest,"
                     + " labelled 'tensile test' - in the namespace this ontology's terms use.";
@@ -360,7 +502,30 @@ public final class TermMinter {
      *     which is deliberately not caught here - creating a term with a colliding identifier is
      *     worse than not creating one
      */
+    public IRI mintFor(OWLOntology ontology, String label, EntityFactory.Kind kind) {
+        if (style != Style.READABLE) {
+            return mintFor(ontology, label);
+        }
+        IRI iri = IRI.create(readableNamespace + readableName(label, kind));
+        if (!ontology.getEntitiesInSignature(iri,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED).isEmpty()) {
+            throw new IllegalArgumentException(iri + " is the name of a term this ontology has "
+                    + "already. Give the new " + (kind == EntityFactory.Kind.CLASS ? "class"
+                            : kind == EntityFactory.Kind.INDIVIDUAL ? "individual" : "property")
+                    + " another name.");
+        }
+        return iri;
+    }
+
+    /**
+     * The IRI for a new term whose label is {@code label}, by the numbered or the from-name
+     * style; a project with readable names mints with {@link #mintFor(OWLOntology, String,
+     * EntityFactory.Kind)}, which knows the kind.
+     */
     public IRI mintFor(OWLOntology ontology, String label) {
+        if (style == Style.READABLE) {
+            return mintFor(ontology, label, EntityFactory.Kind.CLASS);
+        }
         if (!isNumeric()) {
             return IRI.create(namespaceForNewTerms(ontology) + localNameFor(label));
         }
@@ -395,10 +560,19 @@ public final class TermMinter {
      * unnoticed - and which tags there are and which hold the file is asked of git again only
      * when the repository's tags have changed ({@link ReleaseTags}).
      *
+     * <p>ODK v1.6.1's .gitignore keeps the release files out of git, so its tags hold none (the
+     * 1.155.0 review's I2): the release files at the project's root - what the last release made
+     * here - are read too, and every release History fetched from GitHub.
+     *
      * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
      *     the project root that file's directory belongs to
      */
     public static Set<String> releasedIdentifiers(File rangesFile, IdRanges ranges) {
+        return releasedIdentifiers(rangesFile, ranges, GitHubReleases.cacheFolder());
+    }
+
+    /** {@link #releasedIdentifiers(File, IdRanges)}, the GitHub releases fetched into {@code cache}. */
+    static Set<String> releasedIdentifiers(File rangesFile, IdRanges ranges, File cache) {
         Set<String> released = new HashSet<String>();
         File directory = rangesFile == null ? null : rangesFile.getAbsoluteFile().getParentFile();
         if (directory == null || ranges == null || ranges.getIdPrefix().isEmpty()) {
@@ -429,9 +603,20 @@ public final class TermMinter {
         }
         String id = idOf(rangesFile);
         if (id != null) {
-            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id)) {
-                // A folder that holds the file was read above.
-                if (release.tag() != null && release.file() == null) {
+            for (File file : releaseFilesAtTheRoot(root, directory, id)) {
+                for (String digits : numbersIn(file, identifier)) {
+                    released.add(prefix + digits);
+                }
+            }
+            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id,
+                    de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real(), cache)) {
+                File file = release.file();
+                if (file != null && release.folder() == null) {
+                    // Fetched from GitHub; a folder that holds the file was read above.
+                    for (String digits : numbersIn(file, identifier)) {
+                        released.add(prefix + digits);
+                    }
+                } else if (file == null && release.tag() != null) {
                     for (String digits : numbersIn(release, identifier)) {
                         released.add(prefix + digits);
                     }
@@ -439,6 +624,63 @@ public final class TermMinter {
             }
         }
         return released;
+    }
+
+    /**
+     * ODK's release files in OWL at the project's root - {@code <id>.owl}, {@code <id>-base.owl}
+     * and the rest - which prepare_release copies there and v1.6.1's .gitignore keeps out of
+     * git. None where the edit file is at the root itself: there {@code <id>.owl} may be the
+     * edit file.
+     */
+    private static List<File> releaseFilesAtTheRoot(File root, File editDirectory, String id) {
+        List<File> found = new ArrayList<File>();
+        if (root.getAbsoluteFile().equals(editDirectory.getAbsoluteFile())) {
+            return found;
+        }
+        File[] files = root.listFiles();
+        for (File file : files == null ? new File[0] : files) {
+            if (file.isFile() && file.getName().toLowerCase(Locale.ROOT).endsWith(".owl")
+                    && ReleaseProducts.isProductName(file.getName(), id)) {
+                found.add(file);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The release tags whose ontology is not on this machine: the tag holds no file - ODK v1.6.1
+     * keeps them on GitHub - and History has not fetched it, nor is there a copy under
+     * {@code releases/}. Which terms such a release carried is not known here, so Readable names
+     * from labels does not rename on a guess (the 1.155.0 review's I2). Empty without git.
+     */
+    public static List<String> releasesNotRead(File rangesFile) {
+        return releasesNotRead(rangesFile, GitHubReleases.cacheFolder());
+    }
+
+    /** {@link #releasesNotRead(File)}, the GitHub releases fetched into {@code cache}. */
+    static List<String> releasesNotRead(File rangesFile, File cache) {
+        List<String> unread = new ArrayList<String>();
+        File directory = rangesFile == null ? null : rangesFile.getAbsoluteFile().getParentFile();
+        String id = rangesFile == null ? null : idOf(rangesFile);
+        if (directory == null || id == null) {
+            return unread;
+        }
+        File root = projectRootAbove(directory);
+        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner git =
+                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
+        Set<String> read = new HashSet<String>();
+        for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id, git, cache)) {
+            if (release.file() != null || release.tag() != null) {
+                read.add(release.version());
+            }
+        }
+        for (String tag : GitTags.releases(root, git)) {
+            String version = GitTags.versionOf(tag);
+            if (version != null && !read.contains(version)) {
+                unread.add(tag);
+            }
+        }
+        return unread;
     }
 
     /** The ontology's id, from its {@code <id>-idranges.owl}; null when the name has none. */
@@ -614,7 +856,8 @@ public final class TermMinter {
         // A name typed with spaces is the label: the IRI carries only "TensileTest".
         boolean renamed = label != null && !label.trim().isEmpty()
                 && !iri.toString().endsWith(label.trim());
-        if ((isNumeric() || renamed) && label != null && !label.trim().isEmpty()) {
+        if ((isNumeric() || style == Style.READABLE || renamed) && label != null
+                && !label.trim().isEmpty()) {
             OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
                     factory.getRDFSLabel(), iri, factory.getOWLLiteral(label.trim(), "en"))));

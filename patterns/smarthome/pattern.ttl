@@ -1,20 +1,38 @@
+@prefix : <http://observedchange.com/tisc/ns#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix ns: <http://purl.org/net/provenance/ns#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix voaf: <http://purl.org/vocommons/voaf#> .
+@prefix terms: <http://purl.org/dc/terms/> .
+@prefix vocab: <http://www.w3.org/1999/xhtml/vocab#> .
+@prefix se-geometry: <https://w3id.org/smartenvironment/patterns/geometry.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.w3.org/2002/07/owl#> .
 
 [ rdf:type owl:Ontology ;
    owl:imports <http://www.opengis.net/ont/geosparql> ;
-   <http://purl.org/dc/terms/created> "2017-10-22"@en ;
-   <http://purl.org/dc/terms/description> "This ontology describes the spatial features of things used in a smart environment. Thease feartures include the geometerical representation of objects along with the spatial and directional relations between them. This ontology relies on the two other spatial related ontologies http://www.opengis.net/ont/geosparql and http://www.observedchange.com/tisc/ns/"@en ;
-   <http://purl.org/dc/terms/title> "Smart Environment Geometry Ontology Pattern"@en ;
-   <http://purl.org/vocab/vann/preferredNamespacePrefix> "se-geometry"@en ;
-   <http://purl.org/vocab/vann/preferredNamespaceUri> <https://w3id.org/smartenvironment/patterns/geometry.owl> ;
-   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the spatial relations among objects or sections in a smart environment?"@en ;
-   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> <http://www.observedchange.com/tisc/ns> ,
-                                                                                             <http://www.opengis.net/ont/geosparql> ;
+   terms:created "2017-10-22"@en ;
+   terms:description "This ontology describes the spatial features of things used in a smart environment. Thease feartures include the geometerical representation of objects along with the spatial and directional relations between them. This ontology relies on the two other spatial related ontologies http://www.opengis.net/ont/geosparql and http://www.observedchange.com/tisc/ns/"@en ;
+   terms:title "Smart Environment Geometry Ontology Pattern"@en ;
+   vann:preferredNamespacePrefix "se-geometry"@en ;
+   vann:preferredNamespaceUri <https://w3id.org/smartenvironment/patterns/geometry.owl> ;
+   cpannotationschema:coversRequirements "What are the spatial relations among objects or sections in a smart environment?"@en ;
+   cpannotationschema:isSpecializationOf <http://www.observedchange.com/tisc/ns> ,
+                                         <http://www.opengis.net/ont/geosparql> ;
+   rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x37; term declared x2;
+- file: pattern.owl declares <http://purl.org/dc/terms/created> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/terms/description> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/terms/title> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> as an annotation property, as pattern.ttl did
+- file: pattern.owl declares <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> as an annotation property, as pattern.ttl did
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
    rdfs:seeAlso <http://www.observedchange.com/tisc/ns/> ,
                 <http://www.opengis.net/ont/geosparql>
  ] .
@@ -24,23 +42,38 @@
 #################################################################
 
 ###  http://purl.org/dc/terms/created
-<http://purl.org/dc/terms/created> rdf:type owl:AnnotationProperty .
+terms:created rdf:type owl:AnnotationProperty ;
+              rdfs:label "Date Created"@en .
 
 
 ###  http://purl.org/dc/terms/description
-<http://purl.org/dc/terms/description> rdf:type owl:AnnotationProperty .
+terms:description rdf:type owl:AnnotationProperty ;
+                  rdfs:label "Description (DC terms)"@en .
 
 
 ###  http://purl.org/dc/terms/title
-<http://purl.org/dc/terms/title> rdf:type owl:AnnotationProperty .
+terms:title rdf:type owl:AnnotationProperty ;
+            rdfs:label "Title"@en .
+
+
+###  http://purl.org/vocab/vann/preferredNamespacePrefix
+vann:preferredNamespacePrefix rdf:type owl:AnnotationProperty ;
+                              rdfs:label "preferred namespace prefix"@en .
+
+
+###  http://purl.org/vocab/vann/preferredNamespaceUri
+vann:preferredNamespaceUri rdf:type owl:AnnotationProperty ;
+                           rdfs:label "preferred namespace uri"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+cpannotationschema:isSpecializationOf rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "is specialization of"@en .
 
 
 #################################################################
@@ -48,157 +81,185 @@
 #################################################################
 
 ###  http://observedchange.com/tisc/ns#here
-<http://observedchange.com/tisc/ns#here> rdf:type owl:ObjectProperty ;
-                                         rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:here rdf:type owl:ObjectProperty ;
+      rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+      rdfs:label "here"@en .
 
 
 ###  http://observedchange.com/tisc/ns#insideOf
-<http://observedchange.com/tisc/ns#insideOf> rdf:type owl:ObjectProperty ;
-                                             rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:insideOf rdf:type owl:ObjectProperty ;
+          rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+          rdfs:label "inside of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#leftOf
-<http://observedchange.com/tisc/ns#leftOf> rdf:type owl:ObjectProperty ;
-                                           rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:leftOf rdf:type owl:ObjectProperty ;
+        rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+        rdfs:label "left of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#locatedAt
-<http://observedchange.com/tisc/ns#locatedAt> rdf:type owl:ObjectProperty ;
-                                              rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:locatedAt rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+           rdfs:label "located at"@en .
 
 
 ###  http://observedchange.com/tisc/ns#near
-<http://observedchange.com/tisc/ns#near> rdf:type owl:ObjectProperty ;
-                                         rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:near rdf:type owl:ObjectProperty ;
+      rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+      rdfs:label "near"@en .
 
 
 ###  http://observedchange.com/tisc/ns#nearest
-<http://observedchange.com/tisc/ns#nearest> rdf:type owl:ObjectProperty ;
-                                            rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:nearest rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+         rdfs:label "nearest"@en .
 
 
 ###  http://observedchange.com/tisc/ns#next
-<http://observedchange.com/tisc/ns#next> rdf:type owl:ObjectProperty ;
-                                         rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:next rdf:type owl:ObjectProperty ;
+      rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+      rdfs:label "next"@en .
 
 
 ###  http://observedchange.com/tisc/ns#nextTo
-<http://observedchange.com/tisc/ns#nextTo> rdf:type owl:ObjectProperty ;
-                                           rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:nextTo rdf:type owl:ObjectProperty ;
+        rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+        rdfs:label "next to"@en .
 
 
 ###  http://observedchange.com/tisc/ns#northEastOf
-<http://observedchange.com/tisc/ns#northEastOf> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:northEastOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+             rdfs:label "north east of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#northOf
-<http://observedchange.com/tisc/ns#northOf> rdf:type owl:ObjectProperty ;
-                                            rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:northOf rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+         rdfs:label "north of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#northWestOf
-<http://observedchange.com/tisc/ns#northWestOf> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:northWestOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+             rdfs:label "north west of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#outsideOf
-<http://observedchange.com/tisc/ns#outsideOf> rdf:type owl:ObjectProperty ;
-                                              rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:outsideOf rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+           rdfs:label "outside of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#partialOverlapArea
-<http://observedchange.com/tisc/ns#partialOverlapArea> rdf:type owl:ObjectProperty ;
-                                                       rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:partialOverlapArea rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+                    rdfs:label "partial overlap area"@en .
 
 
 ###  http://observedchange.com/tisc/ns#rightOf
-<http://observedchange.com/tisc/ns#rightOf> rdf:type owl:ObjectProperty ;
-                                            rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:rightOf rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+         rdfs:label "right of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#sharesPathWith
-<http://observedchange.com/tisc/ns#sharesPathWith> rdf:type owl:ObjectProperty ;
-                                                   rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:sharesPathWith rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+                rdfs:label "shares path with"@en .
 
 
 ###  http://observedchange.com/tisc/ns#southEastOf
-<http://observedchange.com/tisc/ns#southEastOf> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:southEastOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+             rdfs:label "south east of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#southOf
-<http://observedchange.com/tisc/ns#southOf> rdf:type owl:ObjectProperty ;
-                                            rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:southOf rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+         rdfs:label "south of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#southWestOf
-<http://observedchange.com/tisc/ns#southWestOf> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:southWestOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+             rdfs:label "south west of"@en .
 
 
 ###  http://observedchange.com/tisc/ns#westOf
-<http://observedchange.com/tisc/ns#westOf> rdf:type owl:ObjectProperty ;
-                                           rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> .
+:westOf rdf:type owl:ObjectProperty ;
+        rdfs:subPropertyOf se-geometry:hasDescriptiveSpatialRelation ;
+        rdfs:label "west of"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#hasGeometry
-<http://www.opengis.net/ont/geosparql#hasGeometry> rdf:type owl:ObjectProperty .
+<http://www.opengis.net/ont/geosparql#hasGeometry> rdf:type owl:ObjectProperty ;
+                                                   rdfs:label "has geometry"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfContains
 <http://www.opengis.net/ont/geosparql#sfContains> rdf:type owl:ObjectProperty ;
-                                                  rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                  rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                  rdfs:label "sf contains"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfCrosses
 <http://www.opengis.net/ont/geosparql#sfCrosses> rdf:type owl:ObjectProperty ;
-                                                 rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                 rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                 rdfs:label "sf crosses"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfDisjoint
 <http://www.opengis.net/ont/geosparql#sfDisjoint> rdf:type owl:ObjectProperty ;
-                                                  rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                  rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                  rdfs:label "sf disjoint"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfEquals
 <http://www.opengis.net/ont/geosparql#sfEquals> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                rdfs:label "sf equals"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfIntersects
 <http://www.opengis.net/ont/geosparql#sfIntersects> rdf:type owl:ObjectProperty ;
-                                                    rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                    rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                    rdfs:label "sf intersects"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfOverlaps
 <http://www.opengis.net/ont/geosparql#sfOverlaps> rdf:type owl:ObjectProperty ;
-                                                  rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                  rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                  rdfs:label "sf overlaps"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfTouches
 <http://www.opengis.net/ont/geosparql#sfTouches> rdf:type owl:ObjectProperty ;
-                                                 rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                 rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                 rdfs:label "sf touches"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#sfWithin
 <http://www.opengis.net/ont/geosparql#sfWithin> rdf:type owl:ObjectProperty ;
-                                                rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> .
+                                                rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                                rdfs:label "sf within"@en .
 
 
 ###  https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation
-<https://w3id.org/smartenvironment/patterns/geometry.owl#hasDescriptiveSpatialRelation> rdf:type owl:ObjectProperty ;
-                                                                                        rdfs:subPropertyOf <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> ;
-                                                                                        rdfs:comment "This object property, as an spacialization of the object property hasSpatialRelation, generalizes spatial relations defined in the Open Time and Space Core Vocabulary, which are more declarative than those defined in GeoSPARQL."@en ;
-                                                                                        rdfs:label "has descriptive spatial relation"@en .
+se-geometry:hasDescriptiveSpatialRelation rdf:type owl:ObjectProperty ;
+                                          rdfs:subPropertyOf se-geometry:hasSpatialRelation ;
+                                          rdfs:comment "This object property, as an spacialization of the object property hasSpatialRelation, generalizes spatial relations defined in the Open Time and Space Core Vocabulary, which are more declarative than those defined in GeoSPARQL."@en ;
+                                          rdfs:label "has descriptive spatial relation"@en .
 
 
 ###  https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation
-<https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> rdf:type owl:ObjectProperty ;
-                                                                             rdfs:domain <https://w3id.org/smartenvironment/patterns/geometry.owl#SpatialObject> ;
-                                                                             rdfs:range <https://w3id.org/smartenvironment/patterns/geometry.owl#SpatialObject> ;
-                                                                             rdfs:comment "Describes any possible spatial relations between any two given spatial objects. This object properties is used to generalize all the spatial relations defined in GeoSPARQL ontology."@en ;
-                                                                             rdfs:label "has spatial relation"@en .
+se-geometry:hasSpatialRelation rdf:type owl:ObjectProperty ;
+                               rdfs:domain se-geometry:SpatialObject ;
+                               rdfs:range se-geometry:SpatialObject ;
+                               rdfs:comment "Describes any possible spatial relations between any two given spatial objects. This object properties is used to generalize all the spatial relations defined in GeoSPARQL ontology."@en ;
+                               rdfs:label "has spatial relation"@en .
 
 
 #################################################################
@@ -206,26 +267,28 @@
 #################################################################
 
 ###  http://www.opengis.net/ont/geosparql#Feature
-<http://www.opengis.net/ont/geosparql#Feature> rdf:type owl:Class .
+<http://www.opengis.net/ont/geosparql#Feature> rdf:type owl:Class ;
+                                               rdfs:label "feature"@en .
 
 
 ###  http://www.opengis.net/ont/geosparql#Geometry
-<http://www.opengis.net/ont/geosparql#Geometry> rdf:type owl:Class .
+<http://www.opengis.net/ont/geosparql#Geometry> rdf:type owl:Class ;
+                                                rdfs:label "geometry"@en .
 
 
 ###  https://w3id.org/smartenvironment/patterns/geometry.owl#SpatialObject
-<https://w3id.org/smartenvironment/patterns/geometry.owl#SpatialObject> rdf:type owl:Class ;
-                                                                        rdfs:subClassOf <http://www.opengis.net/ont/geosparql#Feature> ,
-                                                                                        [ rdf:type owl:Restriction ;
-                                                                                          owl:onProperty <http://www.opengis.net/ont/geosparql#hasGeometry> ;
-                                                                                          owl:someValuesFrom <http://www.opengis.net/ont/geosparql#Geometry>
-                                                                                        ] ,
-                                                                                        [ rdf:type owl:Restriction ;
-                                                                                          owl:onProperty <https://w3id.org/smartenvironment/patterns/geometry.owl#hasSpatialRelation> ;
-                                                                                          owl:someValuesFrom <https://w3id.org/smartenvironment/patterns/geometry.owl#SpatialObject>
-                                                                                        ] ;
-                                                                        rdfs:comment "Describes any physcical object in a smart environment that has a geometry."@en ;
-                                                                        rdfs:label "spatial object"@en .
+se-geometry:SpatialObject rdf:type owl:Class ;
+                          rdfs:subClassOf <http://www.opengis.net/ont/geosparql#Feature> ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty <http://www.opengis.net/ont/geosparql#hasGeometry> ;
+                                            owl:someValuesFrom <http://www.opengis.net/ont/geosparql#Geometry>
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty se-geometry:hasSpatialRelation ;
+                                            owl:someValuesFrom se-geometry:SpatialObject
+                                          ] ;
+                          rdfs:comment "Describes any physcical object in a smart environment that has a geometry."@en ;
+                          rdfs:label "spatial object"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

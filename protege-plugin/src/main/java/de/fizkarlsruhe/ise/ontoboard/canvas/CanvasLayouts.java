@@ -74,6 +74,12 @@ public final class CanvasLayouts {
     private CanvasLayouts() {
     }
 
+    /** How far apart a look stands boxes: a share of the board's own spacing (1.155.0). */
+    static double spacing(BoardLook look) {
+        String spacing = look == null ? null : look.get(BoardLook.SPACING);
+        return "compact".equals(spacing) ? 0.6 : "roomy".equals(spacing) ? 1.5 : 1.0;
+    }
+
     /**
      * Where to put the neighbours of a term, as offsets from its centre.
      *
@@ -160,6 +166,15 @@ public final class CanvasLayouts {
      * @return how many terms stayed in their frames
      */
     public static int apply(SchemaGraph graph, Algorithm algorithm) {
+        return apply(graph, algorithm, BoardLook.defaults());
+    }
+
+    /**
+     * The same in a look's direction and spacing (1.155.0): a Hierarchical tree runs down or to
+     * the right, and the four library arrangements stand their boxes closer or further apart. The
+     * Outline keeps its own measured spacing.
+     */
+    public static int apply(SchemaGraph graph, Algorithm algorithm, BoardLook look) {
         if (algorithm == Algorithm.SECTIONS) {
             applySections(graph);
             return 0;
@@ -184,11 +199,12 @@ public final class CanvasLayouts {
                 }
             }
             if (algorithm == Algorithm.GRID) {
-                applyGrid(graph, staying);
+                applyGrid(graph, staying, spacing(look));
             } else if (algorithm == Algorithm.CIRCLE) {
-                applyCircle(graph, staying);
+                applyCircle(graph, staying, spacing(look));
             } else {
-                createLibraryLayout(graph, algorithm, staying).execute(graph.getDefaultParent());
+                createLibraryLayout(graph, algorithm, staying, look)
+                        .execute(graph.getDefaultParent());
             }
             for (Map.Entry<Object, mxGeometry> kept : annotations.entrySet()) {
                 graph.getModel().setGeometry(kept.getKey(), kept.getValue());
@@ -808,7 +824,8 @@ public final class CanvasLayouts {
     }
 
     private static mxIGraphLayout createLibraryLayout(SchemaGraph graph, Algorithm algorithm,
-            final Set<Object> staying) {
+            final Set<Object> staying, BoardLook look) {
+        final double spacing = spacing(look);
         // Aliased because mxGraphLayout has its own protected field called `graph`, of type mxGraph,
         // which shadows this parameter inside the anonymous subclasses below.
         final SchemaGraph board = graph;
@@ -836,7 +853,7 @@ public final class CanvasLayouts {
                                 || staying.contains(vertex);
                     }
                 };
-                organic.setForceConstant(240);
+                organic.setForceConstant(240 * spacing);
                 organic.setMinDistanceLimit(90);
                 organic.setInitialTemp(260);
                 organic.setMaxIterations(500);
@@ -851,7 +868,9 @@ public final class CanvasLayouts {
                 // bottom - upside down against every ontology tool there is, and the single most
                 // visible thing wrong with this canvas.
                 mxHierarchicalLayout tree =
-                        new mxHierarchicalLayout(graph, SwingConstants.SOUTH) {
+                        new mxHierarchicalLayout(graph,
+                                "right".equals(look.get(BoardLook.DIRECTION))
+                                        ? SwingConstants.EAST : SwingConstants.SOUTH) {
                             @Override
                             public boolean isVertexIgnored(Object vertex) {
                                 return super.isVertexIgnored(vertex) || isAnnotation(board, vertex)
@@ -869,9 +888,9 @@ public final class CanvasLayouts {
                                 return found;
                             }
                         };
-                tree.setIntraCellSpacing(24);
-                tree.setInterRankCellSpacing(120);
-                tree.setInterHierarchySpacing(120);
+                tree.setIntraCellSpacing(24 * spacing);
+                tree.setInterRankCellSpacing(120 * spacing);
+                tree.setInterHierarchySpacing(120 * spacing);
                 tree.setParallelEdgeSpacing(20);
                 // The stylesheet has asked for orthogonal edges since the first version and has
                 // never once got them: mxGraphHierarchyModel.createInternalCells stamps
@@ -1028,7 +1047,7 @@ public final class CanvasLayouts {
      * <p>{@code circle(Object[], double, double, double)} takes the cells to place, so both problems
      * go away: this picks the cells, and computes a radius from the real pitch.
      */
-    private static void applyCircle(SchemaGraph graph, Set<Object> staying) {
+    private static void applyCircle(SchemaGraph graph, Set<Object> staying, double spacing) {
         List<Object> terms = new ArrayList<Object>();
         double pitch = LOOSE_PITCH_X;
         for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
@@ -1045,7 +1064,7 @@ public final class CanvasLayouts {
         if (terms.isEmpty()) {
             return;
         }
-        double radius = Math.max(200, terms.size() * pitch / (2 * Math.PI));
+        double radius = Math.max(200 * spacing, terms.size() * pitch * spacing / (2 * Math.PI));
         new mxCircleLayout(graph).circle(terms.toArray(), radius, MARGIN, MARGIN);
     }
 
@@ -1079,7 +1098,7 @@ public final class CanvasLayouts {
      * nodes still gets a non-overlapping grid. Column and row indices are always {@code >= 0}, so
      * every coordinate this produces is non-negative before {@link #normalise} shifts it.
      */
-    private static void applyGrid(SchemaGraph graph, Set<Object> staying) {
+    private static void applyGrid(SchemaGraph graph, Set<Object> staying, double spacing) {
         // Terms only, and not those in a frame. An annotation left in this list would take a grid
         // cell and be moved into it.
         List<Object> terms = new ArrayList<Object>();
@@ -1099,8 +1118,8 @@ public final class CanvasLayouts {
                 pitchHeight = Math.max(pitchHeight, geometry.getHeight());
             }
         }
-        double dx = pitchWidth + GRID_GAP;
-        double dy = pitchHeight + GRID_GAP;
+        double dx = pitchWidth + GRID_GAP * spacing;
+        double dy = pitchHeight + GRID_GAP * spacing;
         int columns = gridColumns(vertices.length, dx, dy);
 
         for (int i = 0; i < vertices.length; i++) {

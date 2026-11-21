@@ -1,22 +1,54 @@
 @prefix : <http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix model: <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl> rdf:type owl:Ontology ;
                                                                     owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                    <http://purl.org/dc/elements/1.1/creator> "Eva Blomqvist and Mikko Rinne"^^xsd:string ;
-                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "By what sensor was this event object recorded?"^^xsd:string ,
-                                                                                                                                                              "What actual event does this event object document?"^^xsd:string ,
-                                                                                                                                                              "What are the parts of this composite event object?"^^xsd:string ,
-                                                                                                                                                              "What event objects are this complex event object and abstraction of?"^^xsd:string ,
-                                                                                                                                                              "What is the header/body of this event object?"^^xsd:string ,
-                                                                                                                                                              "What is the timestamp of this event object?"^^xsd:string ;
-                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer."^^xsd:string ;
-                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "The pattern extends both the SSN ontology and the Event-F model, which in turn are based on DUL."^^xsd:string ;
+                                                                    dc:creator "Eva Blomqvist and Mikko Rinne"^^xsd:string ;
+                                                                    dcterms:description "To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer."^^xsd:string ;
+                                                                    dcterms:title "Eventprocessing Pattern"^^xsd:string ;
+                                                                    cpannotationschema:coversRequirements "By what sensor was this event object recorded?"^^xsd:string ,
+                                                                                                          "What actual event does this event object document?"^^xsd:string ,
+                                                                                                          "What are the parts of this composite event object?"^^xsd:string ,
+                                                                                                          "What event objects are this complex event object and abstraction of?"^^xsd:string ,
+                                                                                                          "What is the header/body of this event object?"^^xsd:string ,
+                                                                                                          "What is the timestamp of this event object?"^^xsd:string ;
+                                                                    cpannotationschema:hasIntent "To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer."^^xsd:string ;
+                                                                    cpannotationschema:isSpecializationOf "The pattern extends both the SSN ontology and the Event-F model, which in turn are based on DUL."^^xsd:string ;
+                                                                    rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x26; term declared x6;
+- header: dcterms:title \"Eventprocessing Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+- file: pattern.owl declares <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://purl.oclc.org/NET/ssnx/ssn#SensorOutput> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#Event> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#Region> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval> as a class, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#hasPart> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#isAbout> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> as an object property, as pattern.ttl did
+- file: pattern.owl declares <http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue> as a data property, as pattern.ttl did
+- file: pattern.owl declares <http://purl.org/dc/elements/1.1/creator> as an annotation property, as pattern.ttl did
+- axiom added: EquivalentObjectProperties(<http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSensorReadingValue> <http://purl.oclc.org/NET/ssnx/ssn#hasValue>) - the source says hasSensorReadingValue owl:equivalentProperty ssn:hasValue and declares ssn:hasValue nowhere, so the OWL API read no axiom from it and the curated file lost the statement (the final review of 1.155.0); kept as the source says it, ssn:hasValue an object property as hasSensorReadingValue is
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ;
                                                                     owl:versionInfo "Created with TopBraid Composer"^^xsd:string .
 
 #################################################################
@@ -24,47 +56,88 @@
 #################################################################
 
 ###  http://purl.org/dc/elements/1.1/creator
-<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+dc:creator rdf:type owl:AnnotationProperty ;
+           rdfs:label "Creator"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+cpannotationschema:isSpecializationOf rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "is specialization of"@en .
 
 
 #################################################################
 #    Object Properties
 #################################################################
 
+###  http://purl.oclc.org/NET/ssnx/ssn#hasValue
+<http://purl.oclc.org/NET/ssnx/ssn#hasValue> rdf:type owl:ObjectProperty ;
+                                             owl:equivalentProperty :hasSensorReadingValue ;
+                                             rdfs:label "has value"@en .
+
+
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent
-<http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> rdf:type owl:ObjectProperty ;
+                                                        rdfs:label "has component"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent
-<http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty ;
+                                                          rdfs:label "has constituent"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#hasPart
-<http://www.loa-cnr.it/ontologies/DUL.owl#hasPart> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasPart> rdf:type owl:ObjectProperty ;
+                                                   rdfs:label "has part"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion
-<http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion> rdf:type owl:ObjectProperty ;
+                                                     rdfs:label "has region"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#isAbout
-<http://www.loa-cnr.it/ontologies/DUL.owl#isAbout> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#isAbout> rdf:type owl:ObjectProperty ;
+                                                   rdfs:label "is about"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf
-<http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> rdf:type owl:ObjectProperty ;
+                                                         rdfs:label "is component of"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf
-<http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf> rdf:type owl:ObjectProperty ;
+                                                           rdfs:label "is constituent of"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn
-<http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> rdf:type owl:ObjectProperty ;
+                                                             rdfs:label "is event included in"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf
-<http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> rdf:type owl:ObjectProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> rdf:type owl:ObjectProperty ;
+                                                    rdfs:label "is part of"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasDirectSubEventObject
@@ -245,7 +318,8 @@
 #################################################################
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue
-<http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue> rdf:type owl:DatatypeProperty .
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue> rdf:type owl:DatatypeProperty ;
+                                                        rdfs:label "has data value"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectApplicationTime
@@ -303,40 +377,49 @@
 #################################################################
 
 ###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription
-<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription> rdf:type owl:Class .
+model:EventDocumentationDescription rdf:type owl:Class ;
+                                    rdfs:label "event documentation description"@en .
 
 
 ###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation
-<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation> rdf:type owl:Class .
+model:EventDocumentationSituation rdf:type owl:Class ;
+                                  rdfs:label "event documentation situation"@en .
 
 
 ###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription
-<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription> rdf:type owl:Class .
+model:EventInterpretationDescription rdf:type owl:Class ;
+                                     rdfs:label "event interpretation description"@en .
 
 
 ###  http://purl.oclc.org/NET/ssnx/ssn#SensorOutput
 <http://purl.oclc.org/NET/ssnx/ssn#SensorOutput> rdf:type owl:Class ;
-                                                 owl:equivalentClass :SensorOutput .
+                                                 owl:equivalentClass :SensorOutput ;
+                                                 rdfs:label "sensor output"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#Event
-<http://www.loa-cnr.it/ontologies/DUL.owl#Event> rdf:type owl:Class .
+<http://www.loa-cnr.it/ontologies/DUL.owl#Event> rdf:type owl:Class ;
+                                                 rdfs:label "event"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject
-<http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> rdf:type owl:Class .
+<http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> rdf:type owl:Class ;
+                                                             rdfs:label "information object"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#Region
-<http://www.loa-cnr.it/ontologies/DUL.owl#Region> rdf:type owl:Class .
+<http://www.loa-cnr.it/ontologies/DUL.owl#Region> rdf:type owl:Class ;
+                                                  rdfs:label "region"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion
-<http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion> rdf:type owl:Class .
+<http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion> rdf:type owl:Class ;
+                                                       rdfs:label "space region"@en .
 
 
 ###  http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval
-<http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval> rdf:type owl:Class .
+<http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval> rdf:type owl:Class ;
+                                                        rdfs:label "time interval"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#ComplexEventObject
@@ -380,13 +463,13 @@
                                    owl:onProperty :informationAboutEvent ;
                                    owl:someValuesFrom [ rdf:type owl:Restriction ;
                                                         owl:onProperty <http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> ;
-                                                        owl:someValuesFrom <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation>
+                                                        owl:someValuesFrom model:EventDocumentationSituation
                                                       ]
                                  ] ;
              rdfs:subClassOf <http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> ,
                              [ rdf:type owl:Class ;
-                               owl:unionOf ( <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription>
-                                             <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription>
+                               owl:unionOf ( model:EventDocumentationDescription
+                                             model:EventInterpretationDescription
                                            )
                              ] ,
                              [ rdf:type owl:Class ;

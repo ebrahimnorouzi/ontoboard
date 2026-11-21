@@ -139,9 +139,18 @@ public final class ProjectWizard {
         // nothing in anybody's project unseen. Ticked, because a project recorded from its first
         // file is what ODK's own seed leaves behind.
         final javax.swing.JCheckBox git = new javax.swing.JCheckBox(GIT_BOX, true);
+        // How new terms are named, for everybody in the project (1.155.0): numbered from the ID
+        // ranges, as ODK and the OBO Foundry do, unless readable names are asked for.
+        final javax.swing.JCheckBox readable = new javax.swing.JCheckBox(READABLE_BOX, false);
+        readable.setToolTipText("Written into the project's ODK configuration "
+                + "(ontoboard_term_names: readable), with ODK's namespaces, so that its base "
+                + "release keeps the terms. OntoBoard > Project > ID ranges... changes it later.");
+        JPanel boxes = new JPanel(new java.awt.GridLayout(0, 1));
+        boxes.add(git);
+        boxes.add(readable);
 
         JPanel panel = form(id, title, description, iri, license, folder, owner, browse, problem,
-                adopt, git);
+                adopt, boxes);
 
         // Until it is accepted or abandoned. Every field this form collects is rejectable -
         // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
@@ -167,6 +176,10 @@ public final class ProjectWizard {
                 config.adopting();
             }
             config.setGithubOrg(owner.getText());
+            config.setReadableNames(readable.isSelected());
+            // The first range is claimed for whoever makes the project, so that Protege finds
+            // it and does not ask after every pattern imported (1.155.0).
+            config.setCreatorAsProtegeKnowsThem();
             try {
                 config.validate();
                 OdkConfigWriter.forNewProject(config);
@@ -183,6 +196,10 @@ public final class ProjectWizard {
 
     /** What the form's last box says. */
     static final String GIT_BOX = "Make it a git repository, with these files as its first commit";
+
+    /** The box for readable names (1.155.0). */
+    static final String READABLE_BOX = "Name new terms from what is typed - 'boiled egg' a class "
+            + "BoiledEgg - not with numbers";
 
     /** The row that asks for the GitHub owner. */
     static final String OWNER_LABEL = "GitHub owner (optional):";

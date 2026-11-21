@@ -114,9 +114,13 @@ public final class SheetHeaderTable extends JTable {
             // as a data edit does. Nothing is normalised on the way: the cell is stored as typed,
             // because a sheet whose working spec got tidied on save is a sheet that stopped
             // building for a reason nobody can see.
-            book.setCell(sheetName, row + 1, column + 1,
-                    value == null ? "" : value.toString());
-            fireTableRowsUpdated(row, row);
+            if (book.setCell(sheetName, row + 1, column + 1,
+                    value == null ? "" : value.toString())) {
+                fireTableRowsUpdated(row, row);
+                if (whenEdited != null) {
+                    whenEdited.run();
+                }
+            }
         }
 
         @Override
@@ -318,6 +322,19 @@ public final class SheetHeaderTable extends JTable {
             }
             return painted;
         }
+    }
+
+    /** What runs after a person's edit changed a cell of the two rows; null for nothing. */
+    private Runnable whenEdited;
+
+    /**
+     * What to do after a person's edit changed a cell of the two rows - once, and not after a
+     * refresh. The sheet editor listened to this table's model instead, and answered every
+     * change by refreshing the table, which changed it again: a heading committed, even
+     * unchanged, or a column added, and Protege froze (1.155.0, the user's nfdicore).
+     */
+    public void whenEdited(Runnable then) {
+        whenEdited = then;
     }
 
     /** Refreshes both rows after something else changed the sheet. */

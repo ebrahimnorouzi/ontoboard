@@ -136,6 +136,32 @@ class ReleaseDiffTest {
                 .count(ReleaseDiff.Change.OBSOLETED));
     }
 
+    /**
+     * nfdicore v3.0.0 and v3.0.1 say owl:deprecated "please use BFO2020 property ..." - a
+     * sentence. The OWL API's parseBoolean() throws for it, and History fell over on nfdicore
+     * (1.155.0). It is no deprecation; a "true" written as a string is one.
+     */
+    @Test
+    void aDeprecationThatIsNoBooleanDoesNotStopTheComparison() {
+        declare(before, "Polymer");
+        declare(after, "Polymer");
+        manager.addAxiom(after, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(OWLRDFVocabulary.OWL_DEPRECATED.getIRI()),
+                cls("Polymer").getIRI(),
+                factory.getOWLLiteral("please use BFO2020 property 'has continuant part'")));
+        declare(before, "Monomer");
+        declare(after, "Monomer");
+        manager.addAxiom(after, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(OWLRDFVocabulary.OWL_DEPRECATED.getIRI()),
+                cls("Monomer").getIRI(), factory.getOWLLiteral("true")));
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        assertEquals(1, diff.count(ReleaseDiff.Change.OBSOLETED));
+        assertEquals(NS + "Monomer",
+                diff.of(ReleaseDiff.Change.OBSOLETED).get(0).getIri().toString());
+    }
+
     // ---------- the other four kinds ----------
 
     @Test
@@ -569,5 +595,135 @@ class ReleaseDiffTest {
         assertEquals(java.util.Arrays.asList(NS + "Thing", NS + "note", source.toString()), gone,
                 "the class, the ontology's own property and the one used on a term - not the "
                         + "property that was only ever in the header");
+    }
+
+    /**
+     * A label or definition that runs over two lines, read from a file Git checked out with
+     * Windows line endings, is the same text as the release's: History said 2 definitions of
+     * nfdicore's IAO module changed since 3.0.5, its sources as they were at 3.0.5 compared with
+     * the release (Phase 7, 2026-11-20).
+     */
+    @Test
+    void textWithWindowsLineEndingsIsTheSameText() {
+        declare(before, "Software");
+        declare(after, "Software");
+        label(before, "Software", "soft\nware");
+        label(after, "Software", "soft\r\nware");
+        define(before, "Software", "A plan specification that can be \ninterpreted.");
+        define(after, "Software", "A plan specification that can be \r\ninterpreted.");
+
+        assertEquals(java.util.Collections.emptyList(),
+                ReleaseDiff.between(before, after).getChanges());
+    }
+
+    /**
+     * The working copy is compared as ODK's full release holds it: reasoned, relaxed and
+     * reduced. Reasoned only, a class under an intersection gained its named parent, which the
+     * release does not hold, and every class defined by an equivalence was another story:
+     * nfdicore's sources as they were at 3.0.5 came back "27 moved" against 3.0.5 (Phase 7,
+     * 2026-11-20). The release here holds the two terms as nfdicore 3.0.5 holds NFDI_0000110 and
+     * NFDI_0000006.
+     */
+    @Test
+    void theWorkingCopyIsComparedAsOdksFullReleaseHoldsIt() throws Exception {
+        org.semanticweb.owlapi.model.OWLObjectProperty r =
+                factory.getOWLObjectProperty(IRI.create(NS + "r"));
+        for (OWLOntology version : new OWLOntology[] {before, after}) {
+            for (String name : new String[] {"A", "X", "Y", "C", "D"}) {
+                declare(version, name);
+            }
+            manager.addAxiom(version, factory.getOWLDeclarationAxiom(r));
+        }
+        org.semanticweb.owlapi.model.OWLClassExpression definition =
+                factory.getOWLObjectIntersectionOf(cls("A"),
+                        factory.getOWLObjectSomeValuesFrom(r, cls("X")));
+        org.semanticweb.owlapi.model.OWLClassExpression under =
+                factory.getOWLObjectIntersectionOf(cls("A"),
+                        factory.getOWLObjectSomeValuesFrom(r, cls("Y")));
+        manager.addAxiom(after, factory.getOWLEquivalentClassesAxiom(cls("C"), definition));
+        manager.addAxiom(after, factory.getOWLSubClassOfAxiom(cls("D"), under));
+        manager.addAxiom(before, factory.getOWLEquivalentClassesAxiom(cls("C"), definition));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("C"), cls("A")));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("C"),
+                factory.getOWLObjectSomeValuesFrom(r, cls("X"))));
+        manager.addAxiom(before, factory.getOWLSubClassOfAxiom(cls("D"), under));
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
+
+    /**
+     * A property an import uses only in its own header - declared there, as RDF/XML declares
+     * every one it uses - is no term of the working copy, as it is none of the release: MWO's
+     * sources as they were at 3.0.2 came back "2 added" (dcterms:bibliographicCitation and
+     * dcterms:created, from its modules' headers) against 3.0.2 (Phase 7, 2026-11-20).
+     */
+    @Test
+    void aPropertyOfAnImportsHeaderIsNoTermOfTheWorkingCopy() throws Exception {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty created =
+                factory.getOWLAnnotationProperty(IRI.create("http://purl.org/dc/terms/created"));
+        OWLOntology module = manager.createOntology(IRI.create("http://example.org/module"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(module,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-20"))));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(created));
+        declare(module, "Imported");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(after,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/module"))));
+        declare(after, "Own");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(before,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-19"))));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(created));
+        declare(before, "Imported");
+        declare(before, "Own");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
+
+    /**
+     * A property a release only declares - ODK's merge keeps the declarations of the properties
+     * its imports used in their headers, and drops the headers - is no term, as it is none of the
+     * working copy whose module uses it in its header: nfdicore's sources as they were at 3.0.5
+     * read dc:description and dc:source as removed since 3.0.5 once a header's declarations were
+     * left out of the working copy (Phase 7, 2026-11-20).
+     */
+    @Test
+    void aPropertyAReleaseOnlyDeclaresIsNoTerm() throws Exception {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty source = factory
+                .getOWLAnnotationProperty(IRI.create("http://purl.org/dc/elements/1.1/source"));
+        OWLOntology module = manager.createOntology(IRI.create("http://example.org/module"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(module,
+                factory.getOWLAnnotation(source, factory.getOWLLiteral("an upstream"))));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(source));
+        declare(module, "Imported");
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(after,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/module"))));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(source));
+        declare(before, "Imported");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, ReleaseHistory.asReleased(after));
+
+        assertEquals(java.util.Collections.emptyList(), diff.getChanges());
+    }
+
+    /**
+     * A property a release newly writes into its header is not a published term removed: the
+     * one before had it only declared, as ODK's merge keeps a property its imports' headers used.
+     * Counted on one side only, "Refuse to release when a published term is gone" would have
+     * refused it.
+     */
+    @Test
+    void aPropertyTheNextReleaseWritesIntoItsHeaderIsNotRemoved() {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty created =
+                factory.getOWLAnnotationProperty(IRI.create("http://purl.org/dc/terms/created"));
+        manager.addAxiom(before, factory.getOWLDeclarationAxiom(created));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(after,
+                factory.getOWLAnnotation(created, factory.getOWLLiteral("2026-11-20"))));
+        manager.addAxiom(after, factory.getOWLDeclarationAxiom(created));
+
+        assertTrue(ReleaseDiff.between(before, after).removals().isEmpty(),
+                ReleaseDiff.between(before, after).getChanges().toString());
     }
 }

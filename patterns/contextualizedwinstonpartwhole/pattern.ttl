@@ -4,28 +4,54 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://daselab.org/ContextualizedWinstonPartWhole> .
 
-<http://daselab.org/ContextualizedWinstonPartWhole> rdf:type owl:Ontology .
+<http://daselab.org/ContextualizedWinstonPartWhole> rdf:type owl:Ontology ;
+                                                     dcterms:description "Ontology design pattern for modeling contextualizedwinstonpartwhole relationships and concepts."^^xsd:string ;
+                                                     dcterms:title "Contextualizedwinstonpartwhole Pattern"^^xsd:string ;
+                                                     rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label added x15; term declared x2;
+- header: dcterms:title \"Contextualizedwinstonpartwhole Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
 
 #################################################################
 #    Object Properties
 #################################################################
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#IsPartOf
-:IsPartOf rdf:type owl:ObjectProperty .
+:IsPartOf rdf:type owl:ObjectProperty ;
+          rdfs:label "is part of"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#hasWhole
-:hasWhole rdf:type owl:ObjectProperty .
+:hasWhole rdf:type owl:ObjectProperty ;
+          rdfs:label "has whole"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#part-of
-:part-of rdf:type owl:ObjectProperty .
+:part-of rdf:type owl:ObjectProperty ;
+         rdfs:label "part of"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#spatially-located-in
-:spatially-located-in rdf:type owl:ObjectProperty .
+:spatially-located-in rdf:type owl:ObjectProperty ;
+                      rdfs:label "spatially located in"@en .
 
 
 #################################################################
@@ -34,46 +60,55 @@
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Component-Type
 :PO-Component-Type rdf:type owl:Class ;
-                   rdfs:subClassOf :RelationInstance .
+                   rdfs:subClassOf :RelationInstance ;
+                   rdfs:label "PO component type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Feature-Type
 :PO-Feature-Type rdf:type owl:Class ;
-                 rdfs:subClassOf :RelationInstance .
+                 rdfs:subClassOf :RelationInstance ;
+                 rdfs:label "PO feature type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Member-Type
 :PO-Member-Type rdf:type owl:Class ;
-                rdfs:subClassOf :RelationInstance .
+                rdfs:subClassOf :RelationInstance ;
+                rdfs:label "PO member type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Part-Of_Type
 :PO-Part-Of_Type rdf:type owl:Class ;
-                 rdfs:subClassOf :RelationInstance .
+                 rdfs:subClassOf :RelationInstance ;
+                 rdfs:label "PO part of type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Place-Type
 :PO-Place-Type rdf:type owl:Class ;
-               rdfs:subClassOf :RelationInstance .
+               rdfs:subClassOf :RelationInstance ;
+               rdfs:label "PO place type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Portion-Type
 :PO-Portion-Type rdf:type owl:Class ;
-                 rdfs:subClassOf :RelationInstance .
+                 rdfs:subClassOf :RelationInstance ;
+                 rdfs:label "PO portion type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#PO-Stuff-Type
 :PO-Stuff-Type rdf:type owl:Class ;
-               rdfs:subClassOf :RelationInstance .
+               rdfs:subClassOf :RelationInstance ;
+               rdfs:label "PO stuff type"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance
-:RelationInstance rdf:type owl:Class .
+:RelationInstance rdf:type owl:Class ;
+                  rdfs:label "relation instance"@en .
 
 
 ###  http://daselab.org/ContextualizedWinstonPartWhole#Spatially-Located-In-Type
 :Spatially-Located-In-Type rdf:type owl:Class ;
-                           rdfs:subClassOf :RelationInstance .
+                           rdfs:subClassOf :RelationInstance ;
+                           rdfs:label "spatially located in type"@en .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -4,18 +4,28 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix timeinterval: <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> rdf:type owl:Ontology ;
                                                                  owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the end time of this interval? What is the starting time of this interval? What is the date of this time interval?"^^xsd:string ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We can represent time intervals as objects.
+                                                                 dcterms:description "To represent time intervals."^^xsd:string ;
+                                                                 dcterms:title "Timeinterval Pattern"^^xsd:string ;
+                                                                 cpannotationschema:coversRequirements "What is the end time of this interval? What is the starting time of this interval? What is the date of this time interval?"^^xsd:string ;
+                                                                 cpannotationschema:extractedFrom "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                                 cpannotationschema:hasConsequences """We can represent time intervals as objects.
 However, the dates of the time interval are not part of the domain of discourse, they are datatype values. If there is the need of reasoning about dates, this CP should be used in composition with the region CP."""^^xsd:string ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent time intervals."^^xsd:string ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "It is a component of time-indexed person role, time indexed part of, and can be composed with other CPs when temporal aspects need to be represented."^^xsd:string ;
-                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "The time inter val “January 2008” starts at 2008 − 01 − 0 and ends at 2008 − 01 − 31."^^xsd:string ;
-                                                                 rdfs:comment """The time interval pattern. 
+                                                                 cpannotationschema:hasIntent "To represent time intervals."^^xsd:string ;
+                                                                 cpannotationschema:relatedCPs "It is a component of time-indexed person role, time indexed part of, and can be composed with other CPs when temporal aspects need to be represented."^^xsd:string ;
+                                                                 cpannotationschema:scenarios "The time inter val “January 2008” starts at 2008 − 01 − 0 and ends at 2008 − 01 − 31."^^xsd:string ;
+                                                                 rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x2; label added x9; term declared x3;
+- header: dcterms:title \"Timeinterval Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                              """The time interval pattern. 
 This pattern is extracted from DOLCE-UltraLite by partial clone of elements and expansion. Two datatype properties have been added which allow to express the boundaries of the time interval.
 Ranges of datatype properties are not indicated, because otherwise specializing them with different xsd datatypes would lead to inconsistencies.""" ;
                                                                  owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
@@ -25,28 +35,44 @@ Ranges of datatype properties are not indicated, because otherwise specializing 
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+cpannotationschema:extractedFrom rdf:type owl:AnnotationProperty ;
+                                 rdfs:label "extracted from"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasConsequences rdf:type owl:AnnotationProperty ;
+                                   rdfs:label "has consequences"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+cpannotationschema:relatedCPs rdf:type owl:AnnotationProperty ;
+                              rdfs:label "related c ps"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+cpannotationschema:scenarios rdf:type owl:AnnotationProperty ;
+                             rdfs:label "scenarios"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -65,35 +91,40 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Data properties
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalDate
-:hasIntervalDate rdf:type owl:DatatypeProperty ;
-                 rdfs:domain :TimeInterval ;
-                 rdfs:comment "A datatype property that encodes values from xsd:date (or any other date-related xsd datatype) for a TimeInterval; a same TimeInterval can have more than one date value: begin date, end date, date at which the interval holds, as well as dates expressed in different formats: xsd:gYear, xsd:dateTime, etc." ;
-                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
-                 rdfs:label "has interval date"@en ,
-                            "intervallo ha data"@it .
+timeinterval:hasIntervalDate rdf:type owl:DatatypeProperty ;
+                             rdfs:domain timeinterval:TimeInterval ;
+                             rdfs:comment "A datatype property that encodes values from xsd:date (or any other date-related xsd datatype) for a TimeInterval; a same TimeInterval can have more than one date value: begin date, end date, date at which the interval holds, as well as dates expressed in different formats: xsd:gYear, xsd:dateTime, etc." ;
+                             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
+                             rdfs:label "has interval date"@en ;
+                             skos:prefLabel "intervallo ha data"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalEndDate
-:hasIntervalEndDate rdf:type owl:DatatypeProperty ;
-                    rdfs:subPropertyOf :hasIntervalDate ;
-                    rdfs:domain :TimeInterval ;
-                    rdfs:comment "The end date of a time interval." ;
-                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
-                    rdfs:label "interval has end date"@en .
+timeinterval:hasIntervalEndDate rdf:type owl:DatatypeProperty ;
+                                rdfs:subPropertyOf timeinterval:hasIntervalDate ;
+                                rdfs:domain timeinterval:TimeInterval ;
+                                rdfs:comment "The end date of a time interval." ;
+                                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
+                                rdfs:label "interval has end date"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#hasIntervalStartDate
-:hasIntervalStartDate rdf:type owl:DatatypeProperty ;
-                      rdfs:subPropertyOf :hasIntervalDate ;
-                      rdfs:domain :TimeInterval ;
-                      rdfs:comment "The start date of a time interval." ;
-                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
-                      rdfs:label "interval has start date"@en .
+timeinterval:hasIntervalStartDate rdf:type owl:DatatypeProperty ;
+                                  rdfs:subPropertyOf timeinterval:hasIntervalDate ;
+                                  rdfs:domain timeinterval:TimeInterval ;
+                                  rdfs:comment "The start date of a time interval." ;
+                                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
+                                  rdfs:label "interval has start date"@en .
 
 
 #################################################################
@@ -101,20 +132,20 @@ owl:versionInfo rdf:type owl:AnnotationProperty .
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval
-:TimeInterval rdf:type owl:Class ;
-              rdfs:subClassOf [ rdf:type owl:Restriction ;
-                                owl:onProperty :hasIntervalEndDate ;
-                                owl:maxCardinality "1"^^xsd:nonNegativeInteger
-                              ] ,
-                              [ rdf:type owl:Restriction ;
-                                owl:onProperty :hasIntervalStartDate ;
-                                owl:maxCardinality "1"^^xsd:nonNegativeInteger
-                              ] ;
-              rdfs:comment """Any Region in a dimensional space that aims at representing time.
+timeinterval:TimeInterval rdf:type owl:Class ;
+                          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                            owl:onProperty timeinterval:hasIntervalEndDate ;
+                                            owl:maxCardinality "1"^^xsd:nonNegativeInteger
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty timeinterval:hasIntervalStartDate ;
+                                            owl:maxCardinality "1"^^xsd:nonNegativeInteger
+                                          ] ;
+                          rdfs:comment """Any Region in a dimensional space that aims at representing time.
 It should be used when you want to talk about time as an object having some characteristics."""^^xsd:string ;
-              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
-              rdfs:label "Intervallo di tempo"@it ,
-                         "Time interval"@en .
+                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ;
+                          rdfs:label "Time interval"@en ;
+                          skos:prefLabel "Intervallo di tempo"@it .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

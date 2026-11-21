@@ -1,13 +1,16 @@
 @prefix : <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @base <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> .
 
 <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> rdf:type owl:Ontology ;
-                                                         rdfs:comment """The DOLCE+DnS Ultralite ontology.
+                                                         dcterms:description """The DOLCE+DnS Ultralite ontology.
 It is a simplification of some parts of the DOLCE Lite-Plus library (cf. http://www.ontologydesignpatterns.org/ont/dul/DLP397.owl). 
 Main aspects in which DOLCE+DnS Ultralite departs from DOLCE Lite-Plus are the following:
 
@@ -25,7 +28,31 @@ Several extensions of DOLCE+DnS Ultralite have been designed:
 - Plans: http://www.ontologydesignpatterns.org/ont/dul/PlansLite.owl
 - Legal domain: http://www.ontologydesignpatterns.org/ont/dul/CLO/CoreLegal.owl
 - Lexical and semiotic domains: http://www.ontologydesignpatterns.org/ont/lmm/LMM_L2.owl
-- DOLCE-Zero: http://www.ontologydesignpatterns.org/ont/d0.owl is a commonsense-oriented generalisation of some top-level classes, which allows to use DOLCE with tolerance against ambiguities like abstract vs. concrete information, locations vs. physical artifacts, event occurrences vs. event types, events vs. situations, qualities vs. regions, etc.; etc.""" ;
+- DOLCE-Zero: http://www.ontologydesignpatterns.org/ont/d0.owl is a commonsense-oriented generalisation of some top-level classes, which allows to use DOLCE with tolerance against ambiguities like abstract vs. concrete information, locations vs. physical artifacts, event occurrences vs. event types, events vs. situations, qualities vs. regions, etc.; etc."""^^xsd:string ;
+                                                         dcterms:title "EEP Pattern"^^xsd:string ;
+                                                         rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x172; label moved to skos:altLabel x1; label removed x1; label added x14; term declared x4;
+- header: dcterms:title \"EEP Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                      """The DOLCE+DnS Ultralite ontology.
+It is a simplification of some parts of the DOLCE Lite-Plus library (cf. http://www.ontologydesignpatterns.org/ont/dul/DLP397.owl). 
+Main aspects in which DOLCE+DnS Ultralite departs from DOLCE Lite-Plus are the following:
+
+- The names of classes and relations have been made more intuitive
+- The DnS-related part is closer to the newer 'constructive DnS' ontology (http://www.ontologydesignpatterns.org/ont/dul/cDnS.owl).
+- Temporal and spatial relations are simplified
+- Qualities and regions are more relaxed than in DOLCE-Full: they can be used as attributes of any entity; an axiom states that each quality has a region
+- Axiomatization makes use of simpler constructs than DOLCE Lite-Plus
+- The architecture of the ontology is pattern-based, which means that DOLCE+DnS Ultralite is also available in modules, called 'content ontology design patterns', which can be applied independently in the design of domain ontologies (cf. http://www.ontologydesignpatterns.org).  If many modules are needed in a same ontology project, it is anyway useful to use this integrated version.
+
+The final result is a lightweight, easy-to-apply foundational ontology for modeling either physical or social contexts.
+Several extensions of DOLCE+DnS Ultralite have been designed: 
+- Information objects: http://www.ontologydesignpatterns.org/ont/dul/IOLite.owl 
+- Systems: http://www.ontologydesignpatterns.org/ont/dul/SystemsLite.owl 
+- Plans: http://www.ontologydesignpatterns.org/ont/dul/PlansLite.owl
+- Legal domain: http://www.ontologydesignpatterns.org/ont/dul/CLO/CoreLegal.owl
+- Lexical and semiotic domains: http://www.ontologydesignpatterns.org/ont/lmm/LMM_L2.owl
+- DOLCE-Zero: http://www.ontologydesignpatterns.org/ont/d0.owl is a commonsense-oriented generalisation of some top-level classes, which allows to use DOLCE with tolerance against ambiguities like abstract vs. concrete information, locations vs. physical artifacts, event occurrences vs. event types, events vs. situations, qualities vs. regions, etc.; etc."""^^xsd:string ;
                                                          rdfs:label "DOLCE+DnS Ultralite" ;
                                                          owl:versionInfo "3.34"^^xsd:string ,
                                                                          "Created by Aldo Gangemi as both a simplification and extension of DOLCE and Descriptions and Situations ontologies." ,
@@ -78,11 +105,23 @@ A consequence is that any entity, when 'framed' by (satisfying) a description, b
 #################################################################
 
 ###  http://purl.org/dc/elements/1.1/creator
-<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+dc:creator rdf:type owl:AnnotationProperty ;
+           rdfs:label "Creator"@en .
 
 
 ###  http://purl.org/dc/elements/1.1/date
-<http://purl.org/dc/elements/1.1/date> rdf:type owl:AnnotationProperty .
+dc:date rdf:type owl:AnnotationProperty ;
+        rdfs:label "Date"@en .
+
+
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -95,6 +134,16 @@ rdfs:label rdf:type owl:AnnotationProperty .
 
 ###  http://www.w3.org/2002/07/owl#versionInfo
 owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#altLabel
+skos:altLabel rdf:type owl:AnnotationProperty ;
+              rdfs:label "alternative label"@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
 
 
 #################################################################
@@ -117,8 +166,8 @@ xsd:dateTime rdf:type rdfs:Datatype .
          rdfs:range :SocialAgent ;
          rdfs:comment "The relation holding between any Agent, and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be 'delegated'; e.g. a university can be acted for by a department, which on its turm is acted for by physical agents."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "acts for"@en ,
-                    "agisce per"@it .
+         rdfs:label "acts for"@en ;
+         skos:prefLabel "agisce per"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#actsThrough
@@ -128,8 +177,8 @@ xsd:dateTime rdf:type rdfs:Datatype .
              rdfs:range :Agent ;
              rdfs:comment "The relation holding between a PhysicalAgent and a SocialAgent. In principle, a SocialAgent requires at least one PhysicalAgent in order to act, but this dependency can be 'delegated', e.g. a university can be acted for by a department, which is acted for by physical agents. AKA isActedBy"^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "acts through"@en ,
-                        "agisce mediante"@it .
+             rdfs:label "acts through"@en ;
+             skos:prefLabel "agisce mediante"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#associatedWith
@@ -154,8 +203,8 @@ It is declared as both transitive and symmetric, in order to reason an a maximal
                rdfs:comment """A relation between concepts and collections, where a Concept is said to characterize a Collection; it corresponds to a link between the (reified) intensional and extensional interpretations of a _proper subset of_ a (reified) class. This is different from covers, because it refers to an interpretation the entire reified class.
 E.g. the collection of vintage saxophones is characterized by the Concept 'manufactured by hand', while it gets covered by the Concept 'Saxophone' with the Parameter 'Vintage'."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "caratterizza"@it ,
-                          "characterizes"@en .
+               rdfs:label "characterizes"@en ;
+               skos:prefLabel "caratterizza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies
@@ -166,8 +215,8 @@ E.g. the collection of vintage saxophones is characterized by the Concept 'manuf
             rdfs:range :Entity ;
             rdfs:comment "A relation between a Concept and an Entity, e.g. the Role 'student' classifies a Person 'John'."^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "classifica"@it ,
-                       "classifies"@en .
+            rdfs:label "classifies"@en ;
+            skos:prefLabel "classifica"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#conceptualizes
@@ -179,8 +228,8 @@ E.g. the collection of vintage saxophones is characterized by the Concept 'manuf
                 rdfs:comment """A relation stating that an Agent is internally representing a SocialObject: situations, descriptions, concepts, etc. E.g., 'John believes in the conspiracy theory'; 'Niels Bohr created the solar-system metaphor for the atomic theory'; 'Jacques assumes all swans are white'; 'the task force members share the attack plan'.
 Conceptualizations can be distinguished into different forms, primarily based on the type of SocialObject that is conceptualized. Descriptions and concepts can be 'assumed', situations can be 'believed' or 'known', plans can be 'adopted', etc. (see ontology: http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl."""^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "conceptualizes"@en ,
-                           "concettualizza"@it .
+                rdfs:label "conceptualizes"@en ;
+                skos:prefLabel "concettualizza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#concretelyExpresses
@@ -191,8 +240,8 @@ Conceptualizations can be distinguished into different forms, primarily based on
                      rdfs:range :SocialObject ;
                      rdfs:comment "A relation between an InformationRealization and a Description, e.g. 'the printout of the Italian Constitution concretelyExpresses the Italian Constitution'. It should be supplied also with a rule stating that the InformationRealization realizes an InformationObject that expresses the Description"^^xsd:string ;
                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                     rdfs:label "concretely expresses"@en ,
-                                "esprime concretamente"@it .
+                     rdfs:label "concretely expresses"@en ;
+                     skos:prefLabel "esprime concretamente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#coparticipatesWith
@@ -207,8 +256,8 @@ Conceptualizations can be distinguished into different forms, primarily based on
                                            ) ;
                     rdfs:comment "A relation between two objects participating in a same Event; e.g., 'Vitas and Jimmy are playing tennis'."^^xsd:string ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "co-participates with"@en ,
-                               "copartecipa con"@it .
+                    rdfs:label "co-participates with"@en ;
+                    skos:prefLabel "copartecipa con"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#covers
@@ -220,8 +269,8 @@ Conceptualizations can be distinguished into different forms, primarily based on
         rdfs:comment """A relation between concepts and collections, where a Concept is said to cover a Collection; it corresponds to a link between the (reified) intensional and extensional interpretations of a (reified) class.
 E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' with the Parameter 'Vintage'."""^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "covers"@en ,
-                   "ricopre"@it .
+        rdfs:label "covers"@en ;
+        skos:prefLabel "ricopre"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#defines
@@ -232,8 +281,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
          rdfs:range :Concept ;
          rdfs:comment "A relation between a Description and a Concept, e.g. a Workflow for a governmental Organization defines the Role 'officer', or 'the Italian Traffic Law defines the role Vehicle'."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "defines"@en ,
-                    "definisce"@it .
+         rdfs:label "defines"@en ;
+         skos:prefLabel "definisce"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#definesRole
@@ -244,8 +293,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
              rdfs:range :Role ;
              rdfs:comment "A relation between a description and a role, e.g. the recipe for a cake defines the role 'ingredient'."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "defines role"@en ,
-                        "definisce il ruolo"@it .
+             rdfs:label "defines role"@en ;
+             skos:prefLabel "definisce il ruolo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#definesTask
@@ -256,8 +305,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
              rdfs:range :Task ;
              rdfs:comment "A relation between a description and a task, e.g. the recipe for a cake defines the task 'boil'."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "defines task"@en ,
-                        "definisce il task"@it .
+             rdfs:label "defines task"@en ;
+             skos:prefLabel "definisce il task"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#describes
@@ -269,8 +318,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
            rdfs:comment """The relation between a Description and an Entity : a Description gives a unity to a Collection of parts (the components), or constituents, by assigning a Role to each of them in the context of a whole Object (the system).
 A same Entity can be given different descriptions, for example, an old cradle can be given a unifying Description based on the original aesthetic design, the functionality it was built for, or a new aesthetic functionality in which it can be used as a flower pot."""^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "describes"@en ,
-                      "descrive"@it .
+           rdfs:label "describes"@en ;
+           skos:prefLabel "descrive"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#directlyFollows
@@ -281,8 +330,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
                  rdfs:range :Entity ;
                  rdfs:comment "The intransitive follows relation. For example, Wednesday directly precedes Thursday. Directness of precedence depends on the designer conceptualization."^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "directly follows"@en ,
-                            "segue direttamente"@it .
+                 rdfs:label "directly follows"@en ;
+                 skos:prefLabel "segue direttamente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#directlyPrecedes
@@ -292,8 +341,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
                   rdfs:range :Entity ;
                   rdfs:comment "The intransitive precedes relation. For example, Monday directly precedes Tuesday. Directness of precedence depends on the designer conceptualization."^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "directly precedes"@en ,
-                             "precede direttamente"@it .
+                  rdfs:label "directly precedes"@en ;
+                  skos:prefLabel "precede direttamente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#executesTask
@@ -304,8 +353,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
               rdfs:range :Task ;
               rdfs:comment "A relation between an action and a task, e.g. 'putting some water in a pot and putting the pot on a fire until the water starts bubbling' executes the task 'boiling'."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "esegue il task"@it ,
-                         "executes task"@en .
+              rdfs:label "executes task"@en ;
+              skos:prefLabel "esegue il task"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expands
@@ -318,8 +367,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
 Descriptions can be expanded either by adding other descriptions as parts, or by refining concepts that are used by them. 
 An 'intention' to expand must be present (unless purely formal theories are considered, but even in this case a criterion of relevance is usually active)."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "espande"@it ,
-                    "expands"@en .
+         rdfs:label "expands"@en ;
+         skos:prefLabel "espande"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expresses
@@ -372,8 +421,8 @@ These different approaches are not necessarily conflicting, and they mostly talk
 
 This is only a first step to provide a framework, in which one can model different aspects of meaning. A more developed ontology should approach the problem of integrating the different uses of 'expresses', so that different theories, resources, methods can interoperate."""^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "esprime"@it ,
-                      "expresses"@en .
+           rdfs:label "expresses"@en ;
+           skos:prefLabel "esprime"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expressesConcept
@@ -384,8 +433,8 @@ This is only a first step to provide a framework, in which one can model differe
                   rdfs:range :Concept ;
                   rdfs:comment "A relation between an InformationObject and a Concept , e.g. the term \"dog\" expresses the Concept \"dog\". For expressing a relational meaning, see the more general object property: expresses"^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "esprime il concetto"@it ,
-                             "expresses concept"@en .
+                  rdfs:label "expresses concept"@en ;
+                  skos:prefLabel "esprime il concetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#farFrom
@@ -411,8 +460,8 @@ This is only a first step to provide a framework, in which one can model differe
 E.g. 'year 2000 follows 1999', 'preparing coffee' follows 'deciding what coffee to use', 'II World War follows I World War', etc. 
 It can be used between tasks, processes or time intervals, and subproperties would fit best in order to distinguish the different uses."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "follows"@en ,
-                    "segue"@it .
+         rdfs:label "follows"@en ;
+         skos:prefLabel "segue"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasCommonBoundary
@@ -436,8 +485,8 @@ It can be used between tasks, processes or time intervals, and subproperties wou
               rdfs:range :Entity ;
               rdfs:comment "The hasProperPart relation without transitivity, holding between an Object (the system) and another (the component), and assuming a Design that structures the Object."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "ha componente"@it ,
-                         "has component"@en .
+              rdfs:label "has component"@en ;
+              skos:prefLabel "ha componente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent
@@ -452,8 +501,8 @@ A desirable advantage of this distinction is that we are able to talk e.g. of ph
 Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
 In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it."""^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "ha costituente"@it ,
-                           "has constituent"@en .
+                rdfs:label "has constituent"@en ;
+                skos:prefLabel "ha costituente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstraint
@@ -465,8 +514,8 @@ In all these examples, we notice a typical discontinuity between the constituted
                rdfs:comment """A relation between parameters and entities. It allows to assert generic constraints (encoded as parameters), e.g. MinimumAgeForDriving isConstraintFor John (where John is a legal subject under the TrafficLaw).
 The intended semantics (not expressible in OWL) is that a Parameter isParameterFor a Concept that classifies an Entity; moreover, it entails that a Parameter parametrizes a Region that isRegionFor that Entity."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "ha vincolo"@it ,
-                          "has constraint"@en .
+               rdfs:label "has constraint"@en ;
+               skos:prefLabel "ha vincolo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation
@@ -478,8 +527,8 @@ The intended semantics (not expressible in OWL) is that a Parameter isParameterF
              rdfs:comment """A generic, relative spatial location, holding between any entities. E.g. 'the cat is on the mat', 'Omar is in Samarcanda', 'the wound is close to the femural artery'.
 For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "ha localizzazione"@it ,
-                        "has location"@en .
+             rdfs:label "has location"@en ;
+             skos:prefLabel "ha localizzazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember
@@ -490,8 +539,8 @@ For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
            rdfs:range :Entity ;
            rdfs:comment "A relation between collections and entities, e.g. 'my collection of saxophones includes an old Adolphe Sax original alto' (i.e. my collection has member an Adolphe Sax alto)."^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "ha membro"@it ,
-                      "has member"@en .
+           rdfs:label "has member"@en ;
+           skos:prefLabel "ha membro"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParameter
@@ -502,8 +551,8 @@ For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
               rdfs:range :Parameter ;
               rdfs:comment "A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "ha parametro"@it ,
-                         "has parameter"@en .
+              rdfs:label "has parameter"@en ;
+              skos:prefLabel "ha parametro"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart
@@ -528,8 +577,8 @@ In DUL, we adopt pattern #1 for partOf, and pattern #2 for properPartOf, which s
 
 Subproperties and restrictions can be used to specialize hasPart for objects, events, etc."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "ha parte"@it ,
-                    "has part"@en .
+         rdfs:label "has part"@en ;
+         skos:prefLabel "ha parte"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParticipant
@@ -540,8 +589,8 @@ Subproperties and restrictions can be used to specialize hasPart for objects, ev
                 rdfs:range :Object ;
                 rdfs:comment "A relation between an object and a process, e.g. 'John took part in the discussion', 'a large mass of snow fell during the avalanche', or 'a cook, some sugar, flour, etc. are all present in the cooking of a cake'."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "ha come partecipante"@it ,
-                           "has participant"@en .
+                rdfs:label "has participant"@en ;
+                skos:prefLabel "ha come partecipante"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPostcondition
@@ -561,8 +610,8 @@ Subproperties and restrictions can be used to specialize hasPart for objects, ev
                   rdfs:comment """Direct succession applied to situations. 
 E.g., 'A postcondition of our Plan is to have things settled'."""^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "ha postcondizione"@it ,
-                             "has postcondition"@en .
+                  rdfs:label "has postcondition"@en ;
+                  skos:prefLabel "ha postcondizione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPrecondition
@@ -582,8 +631,8 @@ E.g., 'A postcondition of our Plan is to have things settled'."""^^xsd:string ;
                  rdfs:comment """Direct precedence applied to situations. 
 E.g., 'A precondition to declare war against a foreign country is claiming to find nuclear weapons in it'."""^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "ha precondizione"@it ,
-                            "has precondition"@en .
+                 rdfs:label "has precondition"@en ;
+                 skos:prefLabel "ha precondizione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasProperPart
@@ -603,8 +652,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
             rdfs:range :Quality ;
             rdfs:comment "A relation between entities and qualities, e.g. 'Dmitri's skin is yellowish'."^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "ha qualità"@it ,
-                       "has quality"@en .
+            rdfs:label "has quality"@en ;
+            skos:prefLabel "ha qualità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRegion
@@ -615,8 +664,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
            rdfs:range :Region ;
            rdfs:comment "A relation between entities and regions, e.g. 'the number of wheels of that truck is 12', 'the time of the experiment is August 9th, 2004', 'the whale has been localized at 34 degrees E, 20 degrees S'."^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "ha attributo"@it ,
-                      "has region"@en .
+           rdfs:label "has region"@en ;
+           skos:prefLabel "ha attributo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRole
@@ -627,8 +676,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
          rdfs:range :Role ;
          rdfs:comment "A relation between an object and a role, e.g. the person 'John' has role 'student'."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "ha ruolo"@it ,
-                    "has role"@en .
+         rdfs:label "has role"@en ;
+         skos:prefLabel "ha ruolo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasSetting
@@ -639,8 +688,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
             rdfs:range :Situation ;
             rdfs:comment "A relation between entities and situations, e.g. 'this morning I've prepared my coffee with a new fantastic Arabica', i.e.: (an amount of) a new fantastic Arabica hasSetting the preparation of my coffee this morning."^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "has setting"@en ,
-                       "è nel contesto di"@it .
+            rdfs:label "has setting"@en ;
+            skos:prefLabel "è nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasTask
@@ -651,8 +700,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
          rdfs:range :Task ;
          rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "ha come obiettivo"@it ,
-                    "has task"@en .
+         rdfs:label "has task"@en ;
+         skos:prefLabel "ha come obiettivo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasTimeInterval
@@ -663,8 +712,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                  rdfs:range :TimeInterval ;
                  rdfs:comment "The generic relation between events and time intervals."@en ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "ha intervallo temporale"@it ,
-                            "has time interval"@en .
+                 rdfs:label "has time interval"@en ;
+                 skos:prefLabel "ha intervallo temporale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesAction
@@ -675,8 +724,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                 rdfs:range :Action ;
                 rdfs:comment "A relation between situations and actions, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included a burning of my fingers)."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "include azione"@it ,
-                           "includes action"@en .
+                rdfs:label "includes action"@en ;
+                skos:prefLabel "include azione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesAgent
@@ -687,8 +736,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                rdfs:range :Agent ;
                rdfs:comment "A relation between situations and persons, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included me)."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "include l'agente"@it ,
-                          "includes agent"@en .
+               rdfs:label "includes agent"@en ;
+               skos:prefLabel "include l'agente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesEvent
@@ -699,8 +748,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                rdfs:range :Event ;
                rdfs:comment "A relation between situations and events, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included a burning of my fingers)."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "include l'evento"@it ,
-                          "includes event"@en .
+               rdfs:label "includes event"@en ;
+               skos:prefLabel "include l'evento"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesObject
@@ -711,15 +760,16 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                 rdfs:range :Object ;
                 rdfs:comment "A relation between situations and objects, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included me)."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "include l'oggetto"@it ,
-                           "includes object"@en .
+                rdfs:label "includes object"@en ;
+                skos:prefLabel "include l'oggetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesPart
 :includesPart rdf:type owl:ObjectProperty ;
               rdfs:subPropertyOf :isSettingFor ;
-              <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-              <http://purl.org/dc/elements/1.1/date> "2021-04-03T14:11:09Z"^^xsd:dateTime .
+              dc:creator "Aldo Gangemi"^^xsd:string ;
+              dc:date "2021-04-03T14:11:09Z"^^xsd:dateTime ;
+              rdfs:label "includes part"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesTime
@@ -730,15 +780,16 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
               rdfs:range :TimeInterval ;
               rdfs:comment "A relation between situations and time intervals, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: preparing my coffee was held this morning). A data value attached to the time interval typically complements this modelling pattern."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "include tempo"@it ,
-                         "includes time"@en .
+              rdfs:label "includes time"@en ;
+              skos:prefLabel "include tempo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#includesWhole
 :includesWhole rdf:type owl:ObjectProperty ;
                rdfs:subPropertyOf :isSettingFor ;
-               <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-               <http://purl.org/dc/elements/1.1/date> "2021-04-03T14:11:01Z"^^xsd:dateTime .
+               dc:creator "Aldo Gangemi"^^xsd:string ;
+               dc:date "2021-04-03T14:11:01Z"^^xsd:dateTime ;
+               rdfs:label "includes whole"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#introduces
@@ -749,8 +800,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
             rdfs:range :SocialAgent ;
             rdfs:comment "A relation between a Description and a SocialAgent, e.g. a Constitutional Charter introduces the SocialAgent 'PresidentOfRepublic'."^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "introduce"@it ,
-                       "introduces"@en .
+            rdfs:label "introduces"@en ;
+            skos:prefLabel "introduce"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#involvesAgent
@@ -761,8 +812,8 @@ E.g., 'A precondition to declare war against a foreign country is claiming to fi
                rdfs:range :Agent ;
                rdfs:comment "Agent participation."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "coinvolge agente"@it ,
-                          "involves agent"@en .
+               rdfs:label "involves agent"@en ;
+               skos:prefLabel "coinvolge agente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAbout
@@ -777,8 +828,8 @@ A specific sentence may use common nouns with either a singular or plural refere
 The isAbout relation is sometimes considered as reflexive, however this is semiotically inaccurate, because information can be about itself ('de dicto' usage, as in 'John is four character long'), but it is typically about something else ('de re' usage, as in 'John loves Mary').
 If a reflexivity exists in general, it rather concerns its realisation, which is always associated with an event, e.g. an utterance, which makes the information denoting itself, besides its aboutness. This is implemented in DUL with the dul:realizesSelfInformation property, which is used with local reflexivity in the dul:InformationRealization class."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "is about"@en ,
-                    "si riferisce a"@it .
+         rdfs:label "is about"@en ;
+         skos:prefLabel "si riferisce a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isActionIncludedIn
@@ -787,8 +838,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                     rdfs:domain :Action ;
                     rdfs:range :Situation ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "is action included in"@en ,
-                               "è un'azione nel contesto di"@it .
+                    rdfs:label "is action included in"@en ;
+                    skos:prefLabel "è un'azione nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAgentIncludedIn
@@ -797,8 +848,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                    rdfs:domain :Agent ;
                    rdfs:range :Situation ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "is agent included in"@en ,
-                              "è un agente nel contesto di"@it .
+                   rdfs:label "is agent included in"@en ;
+                   skos:prefLabel "è un agente nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isAgentInvolvedIn
@@ -808,8 +859,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                    rdfs:range :Event ;
                    rdfs:comment "Agent participation."^^xsd:string ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "is agent involved in"@en ,
-                              "è un agente coinvolto in"@it .
+                   rdfs:label "is agent involved in"@en ;
+                   skos:prefLabel "è un agente coinvolto in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isCharacterizedBy
@@ -818,9 +869,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                    rdfs:domain :Collection ;
                    rdfs:range :Concept ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "is characterized by"@en ,
-                              "is characterized by {@en-us}"^^xsd:string ,
-                              "è caratterizzato da"@it .
+                   rdfs:label "is characterized by"@en ;
+                   skos:prefLabel "è caratterizzato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy
@@ -830,8 +880,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                 rdfs:range :Concept ;
                 rdfs:comment "A relation between a Concept and an Entity, e.g. 'John is considered a typical rude man'; your last concert constitutes the achievement of a lifetime; '20-year-old means she's mature enough'."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "is classified by"@en ,
-                           "è classificato da"@it .
+                rdfs:label "is classified by"@en ;
+                skos:prefLabel "è classificato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isComponentOf
@@ -842,8 +892,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                rdfs:range :Entity ;
                rdfs:comment "The asymmetric isProperPartOf relation without transitivity, holding between an Object (the system) and another (the component), and assuming a Design that structures the Object."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "is component of"@en ,
-                          "è componente di"@it .
+               rdfs:label "is component of"@en ;
+               skos:prefLabel "è componente di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptExpressedBy
@@ -853,8 +903,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                       rdfs:range :InformationObject ;
                       rdfs:comment "A relation between an InformationObject and a Concept , e.g. the term \"dog\" expresses the Concept \"dog\". For expressing a relational meaning, see the more general object property: expresses"^^xsd:string ;
                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                      rdfs:label "is concept expressed by"@en ,
-                                 "è un concetto espresso da"@it .
+                      rdfs:label "is concept expressed by"@en ;
+                      skos:prefLabel "è un concetto espresso da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptUsedIn
@@ -865,8 +915,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                  rdfs:range :Description ;
                  rdfs:comment "A more generic relation holding between a Description and a Concept. In order to be used, a Concept must be previously definedIn another Description"^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is concept used in"@en ,
-                            "è un concetto usato in"@it .
+                 rdfs:label "is concept used in"@en ;
+                 skos:prefLabel "è un concetto usato in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConceptualizedBy
@@ -876,8 +926,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                     rdfs:range :Agent ;
                     rdfs:comment "A relation stating that an Agent is internally representing a Description . E.g., 'John believes in the conspiracy theory'; 'Niels Bohr created a solar-system metaphor for his atomic theory'; 'Jacques assumes all swans are white'; 'the task force shares the attack plan'."^^xsd:string ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "is conceptualized by"@en ,
-                               "è concettualizzato da"@it .
+                    rdfs:label "is conceptualized by"@en ;
+                    skos:prefLabel "è concettualizzato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConcretelyExpressedBy
@@ -887,8 +937,8 @@ If a reflexivity exists in general, it rather concerns its realisation, which is
                          rdfs:range :InformationRealization ;
                          rdfs:comment "A relation between an InformationRealization and a Description, e.g. 'the printout of the Italian Constitution concretelyExpresses the Italian Constitution'. It should be supplied also with a rule stating that the InformationRealization realizes an InformationObject that expresses the Description"^^xsd:string ;
                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                         rdfs:label "is concretely expressed by"@en ,
-                                    "è espresso concretamente da"@it .
+                         rdfs:label "is concretely expressed by"@en ;
+                         skos:prefLabel "è espresso concretamente da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstituentOf
@@ -902,8 +952,8 @@ A desirable advantage of this distinction is that we are able to talk e.g. of ph
 Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
 In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it."""^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is constituent of"@en ,
-                            "è costituente di"@it .
+                 rdfs:label "is constituent of"@en ;
+                 skos:prefLabel "è costituente di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isConstraintFor
@@ -914,8 +964,8 @@ In all these examples, we notice a typical discontinuity between the constituted
                  rdfs:comment """A relation between parameters and entities. It allows to assert generic constraints (encoded as parameters), e.g. MinimumAgeForDriving isConstraintFor John (where John is a legal subject under the TrafficLaw).
 The intended semantics (not expressible in OWL) is that a Parameter isConstraintFor and Entity if the Parameter isParameterFor a Concept that classifies that Entity; moreover, it entails that a Parameter parametrizes a Region that isRegionFor that Entity. The use in OWL is therefore a shortcut to annotate what Parameter constrains what Entity"""^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is constraint for"@en ,
-                            "è un vincolo per"@it .
+                 rdfs:label "is constraint for"@en ;
+                 skos:prefLabel "è un vincolo per"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isCoveredBy
@@ -926,8 +976,8 @@ The intended semantics (not expressible in OWL) is that a Parameter isConstraint
              rdfs:comment """A relation between concepts and collections, where a Concept is said to cover a Collection; it corresponds to a link between the (reified) intensional and extensional interpretations of a (reified) class.
 E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' with the Parameter 'Vintage'."""^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "is covered by"@en ,
-                        "è ricoperto da"@it .
+             rdfs:label "is covered by"@en ;
+             skos:prefLabel "è ricoperto da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDefinedIn
@@ -937,8 +987,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
              rdfs:range :Description ;
              rdfs:comment "A relation between a Description and a Concept, e.g. a Workflow for a governmental Organization defines the Role 'officer', or 'the Italian Traffic Law defines the role Vehicle'."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "is defined in"@en ,
-                        "è definito in"@it .
+             rdfs:label "is defined in"@en ;
+             skos:prefLabel "è definito in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDescribedBy
@@ -949,8 +999,8 @@ E.g. the collection of vintage saxophones is covered by the Concept 'Saxophone' 
                rdfs:comment """The relation between an Entity and a Description: a Description gives a unity to a Collection of parts (the components), or constituents, by assigning a Role to each of them in the context of a whole Object (the system).
 A same Entity can be given different descriptions, for example, an old cradle can be given a unifying Description based on the original aesthetic design, the functionality it was built for, or a new aesthetic functionality in which it can be used as a flower pot."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "is described by"@en ,
-                          "è descritto da"@it .
+               rdfs:label "is described by"@en ;
+               skos:prefLabel "è descritto da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isEventIncludedIn
@@ -959,8 +1009,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
                    rdfs:domain :Event ;
                    rdfs:range :Situation ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "is event included in"@en ,
-                              "è un evento nel contesto di"@it .
+                   rdfs:label "is event included in"@en ;
+                   skos:prefLabel "è un evento nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExecutedIn
@@ -970,8 +1020,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
               rdfs:range :Action ;
               rdfs:comment "A relation between an action and a task, e.g. 'putting some water in a pot and putting the pot on a fire until the water starts bubbling' executes the task 'boiling'."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "is executed in"@en ,
-                         "è eseguito mediante"@it .
+              rdfs:label "is executed in"@en ;
+              skos:prefLabel "è eseguito mediante"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpandedIn
@@ -983,8 +1033,8 @@ A same Entity can be given different descriptions, for example, an old cradle ca
 Descriptions can be expanded either by adding other descriptions as parts, or by refining concepts that are used by them. 
 An 'intention' to expand must be present (unless purely formal theories are considered, but even in this case a criterion of relevance is usually active)."""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "is expanded in"@en ,
-                         "è espansa in"@it .
+              rdfs:label "is expanded in"@en ;
+              skos:prefLabel "è espansa in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy
@@ -996,8 +1046,8 @@ An 'intention' to expand must be present (unless purely formal theories are cons
 For example: 'A Beehive is a structure in which bees are kept, typically in the form of a dome or box.' (Oxford dictionary)'; 'the term Beehive expresses the concept Beehive in my apiculture ontology'.
 The intuition for 'meaning' is intended to be very broad. A separate, large comment is included in the encoding of 'expresses', for those who want to investigate more on what kind of meaning can be represented in what form."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "is expressed by"@en ,
-                          "è espresso da"@it .
+               rdfs:label "is expressed by"@en ;
+               skos:prefLabel "è espresso da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isIntroducedBy
@@ -1007,8 +1057,8 @@ The intuition for 'meaning' is intended to be very broad. A separate, large comm
                 rdfs:range :Description ;
                 rdfs:comment "A relation between a Description and a SocialAgent, e.g. a Constitutional Charter introduces the SocialAgent 'PresidentOfRepublic'."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "is introduced by"@en ,
-                           "è introdotto da"@it .
+                rdfs:label "is introduced by"@en ;
+                skos:prefLabel "è introdotto da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf
@@ -1019,8 +1069,8 @@ The intuition for 'meaning' is intended to be very broad. A separate, large comm
               rdfs:comment """A generic, relative localization, holding between any entities. E.g. 'Rome is the seat of the Pope', 'the liver is the location of the tumor'.
 For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "is location of"@en ,
-                         "è una localizzazione di"@it .
+              rdfs:label "is location of"@en ;
+              skos:prefLabel "è una localizzazione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf
@@ -1030,8 +1080,8 @@ For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
             rdfs:range :Collection ;
             rdfs:comment "A relation between collections and entities, e.g. 'the Night Watch by Rembrandt is in the Rijksmuseum collection'; 'Davide is member of the Pen Club', 'Igor is one the subjects chosen for the experiment'."^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "is member of"@en ,
-                       "è membro di"@it .
+            rdfs:label "is member of"@en ;
+            skos:prefLabel "è membro di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn
@@ -1040,8 +1090,8 @@ For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
                     rdfs:domain :Object ;
                     rdfs:range :Situation ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "is object included in"@en ,
-                               "è un oggetto nel contesto di"@it .
+                    rdfs:label "is object included in"@en ;
+                    skos:prefLabel "è un oggetto nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObservableAt
@@ -1054,8 +1104,8 @@ For 'absolute' locations, see SpaceRegion"""^^xsd:string ;
 In order to encode a specific time, a data value should be related to the TimeInterval. 
 An alternative way of representing time is the datatype property: hasIntervalDate"""^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "is observable at"@en ,
-                           "è osservabile a"@it .
+                rdfs:label "is observable at"@en ;
+                skos:prefLabel "è osservabile a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParameterFor
@@ -1065,8 +1115,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
                 rdfs:range :Concept ;
                 rdfs:comment "A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "is parameter for"@en ,
-                           "è un parametro per"@it .
+                rdfs:label "is parameter for"@en ;
+                skos:prefLabel "è un parametro per"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParametrizedBy
@@ -1077,8 +1127,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
                   rdfs:range :Parameter ;
                   rdfs:comment "The relation between a Parameter, e.g. 'MajorAge', and a Region, e.g. '>17 year'."^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "is parametrized by"@en ,
-                             "è parametrizzato da"@it .
+                  rdfs:label "is parametrized by"@en ;
+                  skos:prefLabel "è parametrizzato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf
@@ -1090,8 +1140,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
           rdfs:range :Entity ;
           rdfs:comment "A relation between any entities, e.g. 'brain is a part of the human body'. See dul:hasPart for additional documentation."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "is part of"@en ,
-                     "è parte di"@it .
+          rdfs:label "is part of"@en ;
+          skos:prefLabel "è parte di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn
@@ -1101,8 +1151,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
                  rdfs:range :Event ;
                  rdfs:comment "A relation between an object and a process, e.g. 'John took part in the discussion', 'a large mass of snow fell during the avalanche', or 'a cook, some sugar, flour, etc. are all present in the cooking of a cake'."^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is participant in"@en ,
-                            "è un partecipante a"@it .
+                 rdfs:label "is participant in"@en ;
+                 skos:prefLabel "è un partecipante a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPostconditionOf
@@ -1121,8 +1171,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
                    rdfs:comment """Direct succession applied to situations. 
 E.g., 'Taking some rest is a postcondition of my search for a hotel'."""^^xsd:string ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "is postcondition of"@en ,
-                              "è postcondizione di"@it .
+                   rdfs:label "is postcondition of"@en ;
+                   skos:prefLabel "è postcondizione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPreconditionOf
@@ -1141,8 +1191,8 @@ E.g., 'Taking some rest is a postcondition of my search for a hotel'."""^^xsd:st
                   rdfs:comment """Direct precedence applied to situations. 
 E.g., 'claiming to find nuclear weapons in a foreign country is a precondition to declare war against it'."""^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "is precondition of"@en ,
-                             "è precondizione di"@it .
+                  rdfs:label "is precondition of"@en ;
+                  skos:prefLabel "è precondizione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPropertPartOf
@@ -1160,8 +1210,8 @@ E.g., 'claiming to find nuclear weapons in a foreign country is a precondition t
              rdfs:range :Entity ;
              rdfs:comment "A relation between entities and qualities, e.g. 'Dmitri's skin is yellowish'."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "is quality of"@en ,
-                        "è una qualità di"@it .
+             rdfs:label "is quality of"@en ;
+             skos:prefLabel "è una qualità di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRealizedBy
@@ -1172,8 +1222,8 @@ E.g., 'claiming to find nuclear weapons in a foreign country is a precondition t
               rdfs:range :InformationRealization ;
               rdfs:comment "A relation between an information realization and an information object, e.g. the paper copy of the Italian Constitution realizes the text of the Constitution."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "is realized by"@en ,
-                         "è realizzato da"@it .
+              rdfs:label "is realized by"@en ;
+              skos:prefLabel "è realizzato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isReferenceOf
@@ -1184,8 +1234,8 @@ E.g., 'claiming to find nuclear weapons in a foreign country is a precondition t
                rdfs:comment """A relation between information objects and any Entity (including information objects). It can be used to talk about e.g. entities are references of proper nouns: the proper noun 'Leonardo da Vinci' isAbout the Person Leonardo da Vinci; as well as to talk about sets of entities that can be described by a common noun: the common noun 'person' isAbout the set of all persons in a domain of discourse, which can be represented in DOLCE-Ultralite as an individual of the class: Collection .
 The isReferenceOf relation is irreflexive, differently from its inverse isAbout."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "is reference of"@en ,
-                          "è il riferimento di"@it .
+               rdfs:label "is reference of"@en ;
+               skos:prefLabel "è il riferimento di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isReferenceOfInformationRealizedBy
@@ -1196,8 +1246,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                                     rdfs:range :InformationRealization ;
                                     rdfs:comment "The relation between entities and information realizations, e.g. between Italy and a paper copy of the text of the Italian Constitution."^^xsd:string ;
                                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                                    rdfs:label "is reference of information realized by"@en ,
-                                               "è riferimento dell'informazione realizzata da"@it .
+                                    rdfs:label "is reference of information realized by"@en ;
+                                    skos:prefLabel "è riferimento dell'informazione realizzata da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRegionFor
@@ -1207,8 +1257,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
              rdfs:range :Entity ;
              rdfs:comment "A relation between entities and regions, e.g. 'the color of my car is red'."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "is region for"@en ,
-                        "è una regione di"@it .
+             rdfs:label "is region for"@en ;
+             skos:prefLabel "è una regione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRelatedToConcept
@@ -1220,8 +1270,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                     rdfs:range :Concept ;
                     rdfs:comment "Any relation between concepts, e.g. superordinated, conceptual parthood, having a parameter, having a task, superordination, etc."^^xsd:string ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "is related to concept"@en ,
-                               "è associato al concetto"@it .
+                    rdfs:label "is related to concept"@en ;
+                    skos:prefLabel "è associato al concetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRelatedToDescription
@@ -1233,8 +1283,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                         rdfs:range :Description ;
                         rdfs:comment "Any relation between descriptions."^^xsd:string ;
                         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                        rdfs:label "is related to description"@en ,
-                                   "è associata alla descrizione"@it .
+                        rdfs:label "is related to description"@en ;
+                        skos:prefLabel "è associata alla descrizione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRoleDefinedIn
@@ -1244,8 +1294,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                  rdfs:range :Description ;
                  rdfs:comment "A relation between a description and a role, e.g. the role 'Ingredient' is defined in the recipe for a cake."^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is role defined in"@en ,
-                            "è un ruolo definito in"@it .
+                 rdfs:label "is role defined in"@en ;
+                 skos:prefLabel "è un ruolo definito in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isRoleOf
@@ -1255,8 +1305,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
           rdfs:range :Object ;
           rdfs:comment "A relation between an object and a role, e.g. 'student' is the role of 'John'."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "is role of"@en ,
-                     "è un ruolo di"@it .
+          rdfs:label "is role of"@en ;
+          skos:prefLabel "è un ruolo di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSatisfiedBy
@@ -1267,8 +1317,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                rdfs:range :Situation ;
                rdfs:comment "A relation between a Situation and a Description, e.g. the execution of a Plan satisfies that plan."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "is satisfied by"@en ,
-                          "è soddisfatta da"@it .
+               rdfs:label "is satisfied by"@en ;
+               skos:prefLabel "è soddisfatta da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSettingFor
@@ -1278,8 +1328,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
               rdfs:range :Entity ;
               rdfs:comment "A relation between situations and entities, e.g. 'this morning I've prepared my coffee with a new fantastic Arabica', i.e.: the preparation of my coffee this morning is the setting for (an amount of) a new fantastic Arabica."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "include"@it ,
-                         "is setting for"@en .
+              rdfs:label "is setting for"@en ;
+              skos:prefLabel "include"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSpecializedBy
@@ -1292,8 +1342,8 @@ The isReferenceOf relation is irreflexive, differently from its inverse isAbout.
                  rdfs:comment """A partial order relation that holds between social objects. It represents the subsumption relation between e.g. a Concept and another Concept that is broader in extensional interpretation, but narrowe in intensional interpretation.
 E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is specialized by"@en ,
-                            "è specializzato da"@it .
+                 rdfs:label "is specialized by"@en ;
+                 skos:prefLabel "è specializzato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSubordinatedTo
@@ -1305,8 +1355,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                   rdfs:range :Concept ;
                   rdfs:comment "Direct succession applied to concepts. E.g. the role 'Officer' is subordinated to 'Director'."^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "is subordinated to"@en ,
-                             "è subordinato a"@it .
+                  rdfs:label "is subordinated to"@en ;
+                  skos:prefLabel "è subordinato a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isSuperordinatedTo
@@ -1317,8 +1367,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                     rdfs:range :Concept ;
                     rdfs:comment "Direct precedence applied to concepts. E.g. the role 'Executive' is superordinated to 'DepartmentManager'."^^xsd:string ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "is superordinated to"@en ,
-                               "è superordinato a"@it .
+                    rdfs:label "is superordinated to"@en ;
+                    skos:prefLabel "è superordinato a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTaskDefinedIn
@@ -1328,8 +1378,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                  rdfs:range :Description ;
                  rdfs:comment "A relation between a description and a task, e.g. the task 'boil' is defined in a recipe for a cake."^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "is task defined in"@en ,
-                            "è un task definito in"@it .
+                 rdfs:label "is task defined in"@en ;
+                 skos:prefLabel "è un task definito in"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTaskOf
@@ -1339,8 +1389,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
           rdfs:range :Role ;
           rdfs:comment "A relation between roles and tasks, e.g. 'students have the duty of giving exams' (i.e. the Role 'student' hasTask the Task 'giving exams')."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "is task of"@en ,
-                     "è un obiettivo per"@it .
+          rdfs:label "is task of"@en ;
+          skos:prefLabel "è un obiettivo per"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeIncludedIn
@@ -1349,8 +1399,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                   rdfs:domain :TimeInterval ;
                   rdfs:range :Situation ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "is time included in"@en ,
-                             "è un tempo nel contesto di"@it .
+                  rdfs:label "is time included in"@en ;
+                  skos:prefLabel "è un tempo nel contesto di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeIntervalOf
@@ -1360,8 +1410,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
                   rdfs:range :Event ;
                   rdfs:comment "The generic relation between time intervals and events."@en ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "intervallo temporale di"@it ,
-                             "is time interval of"@en .
+                  rdfs:label "is time interval of"@en ;
+                  skos:prefLabel "intervallo temporale di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isTimeOfObservationOf
@@ -1373,8 +1423,8 @@ E.g. PhDStudent Role specializes Student Role"""^^xsd:string ;
 In order to encode a specific time, a data value should be related to the TimeInterval. 
 An alternative way of representing time is the datatype property: hasIntervalDate"""^^xsd:string ;
                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                       rdfs:label "is time of observation of"@en ,
-                                  "è il tempo di osservazione di"@it .
+                       rdfs:label "is time of observation of"@en ;
+                       skos:prefLabel "è il tempo di osservazione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isUnifiedBy
@@ -1385,8 +1435,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
              rdfs:range :Description ;
              rdfs:comment "A Collection has a unification criterion, provided by a Description; for example, a community of practice can be unified by a shared theory or interest, e.g. the community that makes research on mirror neurons shares some core knowledge about mirror neurons, which can be represented as a Description MirrorNeuronTheory that unifies the community. There can be several unifying descriptions."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "is unified by"@en ,
-                        "è unificato da"@it .
+             rdfs:label "is unified by"@en ;
+             skos:prefLabel "è unificato da"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#nearTo
@@ -1411,8 +1461,8 @@ An alternative way of representing time is the datatype property: hasIntervalDat
           rdfs:comment """A schematic relation between any entities, e.g. 'the chest region overlaps with the abdomen region', 'my spoken words overlap with hers', 'the time of my leave overlaps with the time of your arrival', 'fibromyalgia overlaps with other conditions'.
 Subproperties and restrictions can be used to specialize overlaps for objects, events, time intervals, etc."""^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "overlaps"@en ,
-                     "sovrapposto a"@it .
+          rdfs:label "overlaps"@en ;
+          skos:prefLabel "sovrapposto a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#parametrizes
@@ -1423,8 +1473,8 @@ Subproperties and restrictions can be used to specialize overlaps for objects, e
               rdfs:comment """The relation between a Parameter, e.g. 'MajorAgeLimit', and a Region, e.g. '18_year'.
 For a more data-oriented relation, see hasDataValue"""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "parametrizes"@en ,
-                         "parametrizza"@it .
+              rdfs:label "parametrizes"@en ;
+              skos:prefLabel "parametrizza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes
@@ -1438,8 +1488,8 @@ E.g. 'year 1999 precedes 2000', 'deciding what coffee to use' precedes 'preparin
 It can then be used between tasks, processes, time intervals, spatially locate objects, situations, etc. 
 Subproperties can be defined in order to distinguish the different uses."""^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "precede"@it ,
-                     "precedes"@en .
+          rdfs:label "precedes"@en ;
+          skos:prefLabel "precede"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#realizes
@@ -1449,8 +1499,8 @@ Subproperties can be defined in order to distinguish the different uses."""^^xsd
           rdfs:range :InformationObject ;
           rdfs:comment "A relation between an information realization and an information object, e.g. the paper copy of the Italian Constitution realizes the text of the Constitution."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "realizes"@en ,
-                     "realizza"@it .
+          rdfs:label "realizes"@en ;
+          skos:prefLabel "realizza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#realizesInformationAbout
@@ -1463,16 +1513,17 @@ Subproperties can be defined in order to distinguish the different uses."""^^xsd
                                                  ) ;
                           rdfs:comment "The relation between entities and information realizations, e.g. between Italy and a paper copy of the text of the Italian Constitution."^^xsd:string ;
                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                          rdfs:label "realizes information about"@en ,
-                                     "realizza informazione che si riferisce a"@it .
+                          rdfs:label "realizes information about"@en ;
+                          skos:prefLabel "realizza informazione che si riferisce a"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#realizesSelfInformation
 :realizesSelfInformation rdf:type owl:ObjectProperty ;
                          rdfs:subPropertyOf :realizesInformationAbout ;
-                         <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-                         <http://purl.org/dc/elements/1.1/date> "2021-04-05T22:31:22Z"^^xsd:dateTime ;
-                         rdfs:comment "This relation is a workaround to enable local reflexivity axioms (Self) working with non-simple properties; in this case, dul:realizesInformation About." .
+                         dc:creator "Aldo Gangemi"^^xsd:string ;
+                         dc:date "2021-04-05T22:31:22Z"^^xsd:dateTime ;
+                         rdfs:comment "This relation is a workaround to enable local reflexivity axioms (Self) working with non-simple properties; in this case, dul:realizesInformation About." ;
+                         rdfs:label "realizes self information"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#sameSettingAs
@@ -1487,8 +1538,8 @@ Subproperties can be defined in order to distinguish the different uses."""^^xsd
                                       ) ;
                rdfs:comment "A relation between two entities participating in a same Situation; e.g., 'Our company provides an antivenom service' (the situation is the service, the two entities are the company and the antivenom)."@it ;
                rdfs:isDefinedBy "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
-               rdfs:label "is in the same setting as"@en ,
-                          "è nella stessa situazione di"@it .
+               rdfs:label "is in the same setting as"@en ;
+               skos:prefLabel "è nella stessa situazione di"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies
@@ -1498,8 +1549,8 @@ Subproperties can be defined in order to distinguish the different uses."""^^xsd
            rdfs:range :Description ;
            rdfs:comment "A relation between a Situation and a Description, e.g. the execution of a Plan satisfies that plan."^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "satisfies"@en ,
-                      "soddisfa"@it .
+           rdfs:label "satisfies"@en ;
+           skos:prefLabel "soddisfa"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#specializes
@@ -1512,8 +1563,8 @@ Subproperties can be defined in order to distinguish the different uses."""^^xsd
 It mainly represents the subsumption relation between e.g. a Concept or Description and another Concept (resp. Description) that is broader in extensional interpretation, but narrower in intensional interpretation. For example, the role PhDStudent specializes the role Student.
 Another possible use is between a Collection that isCoveredBy a Concept A, and another Collection that isCoveredBy a Concept B that on its turm specializes A. For example, the 70,000 series Selmer Mark VI saxophone Collection specializes the Selmer Mark VI saxophone Collection."""^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "specializes"@en ,
-                        "specializza"@it .
+             rdfs:label "specializes"@en ;
+             skos:prefLabel "specializza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#unifies
@@ -1523,8 +1574,8 @@ Another possible use is between a Collection that isCoveredBy a Concept A, and a
          rdfs:range :Collection ;
          rdfs:comment "A Collection has a unification criterion, provided by a Description; for example, a community of practice can be unified by a shared theory or interest, e.g. the community that makes research on mirror neurons shares some core knowledge about mirror neurons, which can be represented as a Description MirrorNeuronTheory that unifies the community. There can be several unifying descriptions."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "unifica"@it ,
-                    "unifies"@en .
+         rdfs:label "unifies"@en ;
+         skos:prefLabel "unifica"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#usesConcept
@@ -1534,8 +1585,8 @@ Another possible use is between a Collection that isCoveredBy a Concept A, and a
              rdfs:range :Concept ;
              rdfs:comment "A generic relation holding between a Description and a Concept. In order to be used, a Concept must be previously definedIn another Description. This last condition cannot be encoded for object properties in OWL."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "usa il concetto"@it ,
-                        "uses concept"@en .
+             rdfs:label "uses concept"@en ;
+             skos:prefLabel "usa il concetto"@it .
 
 
 #################################################################
@@ -1559,8 +1610,8 @@ For example, a simple value can be easily asserted by using pattern (1), but if 
 Furthermore, if one needs to distinguish the individual Quality of a value, e.g. the particular nature of the density of a substance, pattern (3) can be used. 
 Patterns (4) and (5) should be used instead when a constraint or a selection is modeled, independently from the actual observation of values in the real world."""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "ha valore"@it ,
-                         "has data value"@en .
+              rdfs:label "has data value"@en ;
+              skos:prefLabel "ha valore"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasEventDate
@@ -1570,8 +1621,8 @@ Patterns (4) and (5) should be used instead when a constraint or a selection is 
               rdfs:range xsd:dateTime ;
               rdfs:comment "A datatype property that encodes values from xsd:dateTime for an Event; a same Event can have more than one xsd:dateTime value: begin date, end date, date at which the interval holds, etc."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "evento ha data"@it ,
-                         "has event date"@en .
+              rdfs:label "has event date"@en ;
+              skos:prefLabel "evento ha data"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasIntervalDate
@@ -1581,8 +1632,8 @@ Patterns (4) and (5) should be used instead when a constraint or a selection is 
                  rdfs:range xsd:dateTime ;
                  rdfs:comment "A datatype property that encodes values from xsd:dateTime for a TimeInterval; a same TimeInterval can have more than one xsd:dateTime value: begin date, end date, date at which the interval holds, etc."^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "has interval date"@en ,
-                            "intervallo ha data"@it .
+                 rdfs:label "has interval date"@en ;
+                 skos:prefLabel "intervallo ha data"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasParameterDataValue
@@ -1593,8 +1644,8 @@ Patterns (4) and (5) should be used instead when a constraint or a selection is 
 More complex parametrization requires workarounds. E.g. AgeRangeForDrugUsage could parametrize data value: 14 to 50 on the datatype: xsd:int. Since complex datatypes are not allowed in OWL1.0, a solution to this can only work by creating two 'sub-parameters': MinimumAgeForDrugUsage (that hasParameterDataValue 14) and MaximumAgeForDrugUsage (that hasParameterDataValue 50), which are components of (cf. hasComponent) the main Parameter AgeRangeForDrugUsage.
 Ordering on subparameters can be created by using or specializing the object property 'precedes'."""^^xsd:string ;
                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                       rdfs:label "ha valore"@it ,
-                                  "has parameter data value"@en .
+                       rdfs:label "has parameter data value"@en ;
+                       skos:prefLabel "ha valore"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasRegionDataValue
@@ -1603,8 +1654,8 @@ Ordering on subparameters can be created by using or specializing the object pro
                     rdfs:domain :Region ;
                     rdfs:comment "A datatype property that encodes values for a Region, e.g. a float for the Region Height."^^xsd:string ;
                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                    rdfs:label "has region data value"@en ,
-                               "regione ha valore"@it .
+                    rdfs:label "has region data value"@en ;
+                    skos:prefLabel "regione ha valore"@it .
 
 
 #################################################################
@@ -1619,8 +1670,8 @@ Ordering on subparameters can be created by using or specializing the object pro
                            :Quality ;
           rdfs:comment "Any Entity that cannot be located in space-time. E.g. mathematical entities: formal semantics elements, regions within dimensional spaces, etc."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "Abstract"@en ,
-                     "Astratto"@it .
+          rdfs:label "Abstract"@en ;
+          skos:prefLabel "Astratto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Action
@@ -1636,8 +1687,8 @@ Ordering on subparameters can be created by using or specializing the object pro
                         ] ;
         rdfs:comment "An Event with at least one Agent that isParticipantIn it, and that executes a Task that typically isDefinedIn a Plan, Workflow, Project, etc."^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Action"@en ,
-                   "Azione"@it .
+        rdfs:label "Action"@en ;
+        skos:prefLabel "Azione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent
@@ -1646,8 +1697,8 @@ Ordering on subparameters can be created by using or specializing the object pro
        rdfs:comment "Additional comment: a computational agent can be considered as a PhysicalAgent that realizes a certain class of algorithms (that can be considered as instances of InformationObject) that allow to obtain some behaviors that are considered typical of agents in general. For an ontology of computational objects based on DOLCE see e.g. http://www.loa-cnr.it/COS/COS.owl, and http://www.loa-cnr.it/KCO/KCO.owl."^^xsd:string ,
                     "Any agentive Object , either physical (e.g. a whale, a robot, an oak), or social (e.g. a corporation, an institution, a community)."^^xsd:string ;
        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-       rdfs:label "Agent"@en ,
-                  "Agente"@it .
+       rdfs:label "Agent"@en ;
+       skos:prefLabel "Agente"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Amount
@@ -1658,8 +1709,8 @@ Ordering on subparameters can be created by using or specializing the object pro
                          :TimeInterval ;
         rdfs:comment "A quantity, independently from how it is measured, computed, etc."^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Amount"@en ,
-                   "Quantità"@it .
+        rdfs:label "Amount"@en ;
+        skos:prefLabel "Quantità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#BiologicalObject
@@ -1694,9 +1745,9 @@ Ordering on subparameters can be created by using or specializing the object pro
                 rdfs:comment """A special kind of Situation that allows to include time indexing for the classifies relation in situations. For example, if a Situation s 'my old cradle is used in these days as a flower pot' isSettingFor the entity 'my old cradle' and the TimeIntervals '8June2007' and '10June2007', and we know that s satisfies a functional Description for aesthetic objects, which defines the Concepts 'flower pot' and 'flower', then we also need to know what concept classifies 'my old cradle' at what time.
 In order to solve this issue, we need to create a sub-situation s' for the classification time: 'my old cradle is a flower pot in 8June2007'. Such sub-situation s' isPartOf s."""^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "Classification"@en ,
-                           "Classificazione"@it ,
-                           "time-indexed classification"@en .
+                rdfs:label "Classification"@en ;
+                skos:altLabel "time-indexed classification"@en ;
+                skos:prefLabel "Classificazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection
@@ -1710,8 +1761,8 @@ In order to solve this issue, we need to create a sub-situation s' for the class
 A collection is not a logical class: a collection is a first-order entity, while a class is second-order.
 A collection is neither an aggregate of its member entities (see e.g. ObjectAggregate class)."""^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "Collection"@en ,
-                       "Collezione"@it .
+            rdfs:label "Collection"@en ;
+            skos:prefLabel "Collezione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collective
@@ -1724,8 +1775,8 @@ A collection is neither an aggregate of its member entities (see e.g. ObjectAggr
             rdfs:comment """A Collection whose members are agents, e.g. \"the nurses\", \"the Italian rockabilly fans\".
 Collectives, facon de parler, can act as agents, although they are not assumed here to be agents (they are even disjoint from the class SocialAgent). This is represented by admitting collectives in the range of the relations having Agent in their domain or range."""^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "Collective"@en ,
-                       "Collettivo"@it .
+            rdfs:label "Collective"@en ;
+            skos:prefLabel "Collettivo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#CollectiveAgent
@@ -1743,16 +1794,16 @@ Collectives, facon de parler, can act as agents, although they are not assumed h
 For example, in sociology, a 'group action' is the situation in which a number of people (that result to be members of a collective) in a given area behave in a coordinated way in order to achieve a (often common) goal. The Agent in such a Situation is not single, but a CollectiveAgent (a Group). This can be generalized to the notion of social movement, which assumes a large Community or even the entire Society as agents.
 The difference between a CollectiveAgent and an Organization is that a Description that introduces a CollectiveAgent is also one that unifies the corresponding Collective. In practice, this difference makes collective agents 'less stable' than organizations, because they have a dedicated, publicly recognizable Description that is conceived to introduce them."""^^xsd:string ;
                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                 rdfs:label "Agente collettivo"@it ,
-                            "Collective agent"@en .
+                 rdfs:label "Collective agent"@en ;
+                 skos:prefLabel "Agente collettivo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Community
 :Community rdf:type owl:Class ;
            rdfs:subClassOf :CollectiveAgent ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Community"@en ,
-                      "Comunità"@it .
+           rdfs:label "Community"@en ;
+           skos:prefLabel "Comunità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept
@@ -1772,8 +1823,8 @@ The difference between a CollectiveAgent and an Organization is that a Descripti
          rdfs:comment """A Concept is a SocialObject, and isDefinedIn some Description; once defined, a Concept can be used in other Description(s). If a Concept isDefinedIn exactly one Description, see the LocalConcept class.
 The classifies relation relates Concept(s) to Entity(s) at some TimeInterval"""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "Concept"@en ,
-                    "Concetto"@it .
+         rdfs:label "Concept"@en ;
+         skos:prefLabel "Concetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Configuration
@@ -1783,8 +1834,8 @@ The classifies relation relates Concept(s) to Entity(s) at some TimeInterval"""^
 Typically, a configuration is the collection that emerges out of a composed entity: an industrial artifact, a plan, a discourse, etc.  
 E.g. a physical book has a configuration provided by the part-whole schema that holds together its cover, pages, ink. That schema, based on the individual relations between the book and its parts, can be represented in a reified way by means of a (structural) description, which is said to 'unify' the book configuration."""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Configuration"@en ,
-                          "Configurazione"@it .
+               rdfs:label "Configuration"@en ;
+               skos:prefLabel "Configurazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Contract
@@ -1792,8 +1843,8 @@ E.g. a physical book has a configuration provided by the part-whole schema that 
           rdfs:subClassOf :Description ;
           rdfs:comment "(The content of) an agreement between at least two agents that play a Party Role, about some contract object (a Task to be executed)."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "Contract"@en ,
-                     "Contratto"@it .
+          rdfs:label "Contract"@en ;
+          skos:prefLabel "Contratto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description
@@ -1807,8 +1858,8 @@ It can be thought also as a 'descriptive context' that uses or defines concepts 
 For example, a Plan is a Description of some actions to be executed by agents in a certain way, with certain parameters; a Diagnosis is a Description that provides an interpretation for a set of observed entities, etc.
 Descriptions 'define' or 'use' concepts, and can be 'satisfied' by situations."""^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "Description"@en ,
-                        "Descrizione"@it .
+             rdfs:label "Description"@en ;
+             skos:prefLabel "Descrizione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Design
@@ -1818,8 +1869,8 @@ Descriptions 'define' or 'use' concepts, and can be 'satisfied' by situations.""
 A design is usually accompanied by the rationales behind the construction of the designed Entity (i.e. of the reasons why a design is claimed to be as such). For example, the actual design (a Situation) of a car or of a law is based on both the specification (a Description) of the structure, and the rationales used to construct cars or laws.
 While designs typically describe entities to be constructed, they can also be used to describe 'refunctionalized' entities, or to hypothesize unknown functions. For example, a cradle can be refunctionalized as a flowerpot based on a certain home design."""^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Design"@en ,
-                   "Design"@it .
+        rdfs:label "Design"@en ;
+        skos:prefLabel "Design"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#DesignedArtifact
@@ -1831,15 +1882,16 @@ While designs typically describe entities to be constructed, they can also be us
                                   ] ;
                   rdfs:comment "A PhysicalArtifact that is also described by a Design. This excludes simple recycling or refunctionalization of natural objects. Most common sense 'artifacts' can be included in this class: cars, lamps, houses, chips, etc."^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "Artefatto progettato"@it ,
-                             "Designed artifact"@en .
+                  rdfs:label "Designed artifact"@en ;
+                  skos:prefLabel "Artefatto progettato"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#DesignedSubstance
 :DesignedSubstance rdf:type owl:Class ;
                    rdfs:subClassOf :DesignedArtifact ,
                                    :FunctionalSubstance ;
-                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> .
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
+                   rdfs:label "designed substance"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Diagnosis
@@ -1847,16 +1899,16 @@ While designs typically describe entities to be constructed, they can also be us
            rdfs:subClassOf :Description ;
            rdfs:comment "A Description of the Situation of a system, usually applied in order to control a normal behaviour, or to explain a notable behavior (e.g. a functional breakdown)."^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Diagnosi"@it ,
-                      "Diagnosis"@en .
+           rdfs:label "Diagnosis"@en ;
+           skos:prefLabel "Diagnosi"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity
 :Entity rdf:type owl:Class ;
         rdfs:comment "Anything: real, possible, or imaginary, which some modeller wants to talk about for some purpose."^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Entity"@en ,
-                   "Entità"@it .
+        rdfs:label "Entity"@en ;
+        skos:prefLabel "Entità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event
@@ -1915,8 +1967,8 @@ Both positions are in principle valid, but, if taken too radically, they focus o
 
 For this reason, in this ontology version of DOLCE, both events and situations are allowed, together with descriptions (the reason for the inclusion of the D&S framewrok in DOLCE), in order to encode the modelling needs, independently from the position (if any) chosen by the model designer."""^^xsd:string ;
        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-       rdfs:label "Event"@en ,
-                  "Evento"@it .
+       rdfs:label "Event"@en ;
+       skos:prefLabel "Evento"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#EventType
@@ -1930,8 +1982,8 @@ For this reason, in this ontology version of DOLCE, both events and situations a
                             :Role ;
            rdfs:comment "A Concept that classifies an Event . An event type describes how an Event should be interpreted, executed, expected, seen, etc., according to the Description that the EventType isDefinedIn (or used in)"^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Event type"@en ,
-                      "Tipo di evento"@it .
+           rdfs:label "Event type"@en ;
+           skos:prefLabel "Tipo di evento"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#FormalEntity
@@ -1947,8 +1999,8 @@ For example, the class 'Quark' is an abstract FormalEntity from the purely set-t
 These distinctions allow to represent two different notions of 'semantics': the first one is abstract and formal ('formal semantics'), and formallyInterprets symbols that are about entities whatsoever; for example, the term 'Quark' isAbout the Collection of all quarks, and that Collection isFormalGroundingFor the abstract class 'Quark' (in the extensional sense). 
 The second notion is social, localized in space-time ('social semantics'), and can be used to interpret entities in the intensional sense. For example, the Collection of all quarks isCoveredBy the Concept 'Quark', which is also expressed by the term 'Quark'."""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "Entità formale astratta"@it ,
-                         "Formal entity"@en .
+              rdfs:label "Formal entity"@en ;
+              skos:prefLabel "Entità formale astratta"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#FunctionalSubstance
@@ -1963,8 +2015,8 @@ The second notion is social, localized in space-time ('social semantics'), and c
       rdfs:subClassOf :Description ;
       rdfs:comment "The Description of a Situation that is desired by an Agent, and usually associated to a Plan that describes how to actually achieve it"^^xsd:string ;
       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-      rdfs:label "Goal"@en ,
-                 "Scopo"@it .
+      rdfs:label "Goal"@en ;
+      skos:prefLabel "Scopo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Group
@@ -1976,8 +2028,8 @@ The second notion is social, localized in space-time ('social semantics'), and c
                        ] ;
        rdfs:comment "A CollectiveAgent whose acting agents conceptualize a same SocialRelation ."^^xsd:string ;
        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-       rdfs:label "Group"@en ,
-                  "Gruppo"@it .
+       rdfs:label "Group"@en ;
+       skos:prefLabel "Gruppo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationEntity
@@ -1985,7 +2037,8 @@ The second notion is social, localized in space-time ('social semantics'), and c
                    rdfs:subClassOf :Entity ;
                    rdfs:comment """A piece of information, be it concretely realized or not. It is a catchall class, intended to bypass the ambiguities of many data or text that could denote either a an expression or a concrete realization of that expression.
 In a semiotic model, there is no special reason to distinguish between them, however we may want to distinguish between a pure information content (e.g. the 3rd Gymnopedie by Satie), and its possible concrete realizations as a music sheet, a piano execution, the reproduction of the execution, its publishing as a record, etc.)."""^^xsd:string ;
-                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> .
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
+                   rdfs:label "information entity"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject
@@ -1995,8 +2048,8 @@ In a semiotic model, there is no special reason to distinguish between them, how
                    owl:disjointWith :SocialAgent ;
                    rdfs:comment "A piece of information, such as a musical composition, a text, a word, a picture, independently from how it is concretely realized."^^xsd:string ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "Information object"@en ,
-                              "Oggetto informativo"@it .
+                   rdfs:label "Information object"@en ;
+                   skos:prefLabel "Oggetto informativo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationRealization
@@ -2021,8 +2074,8 @@ In a semiotic model, there is no special reason to distinguish between them, how
 The realization of an information object also realizes information about itself. This is a special semiotic feature, which allows to avoid a traditonal paradox, by which an information is often supposed to be about itself besides other entities (e.g. the information object 'carpe diem' is about its meaning in Horace's Odes (let alone its fortune in Western culture and beyond), but also about its expression in context: 'dum loquimur, fugerit invida aetas: carpe diem, quam minimum credula postero', with the sound and emotional relations that it could activate.
 This is expressed in OWL2 with a local reflexivity axiom of the dul:InformationRealization class."""^^xsd:string ;
                         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                        rdfs:label "Information realization"@en ,
-                                   "Informazione concreta"@it .
+                        rdfs:label "Information realization"@en ;
+                        skos:prefLabel "Informazione concreta"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#LocalConcept
@@ -2039,8 +2092,8 @@ This is expressed in OWL2 with a local reflexivity axiom of the dul:InformationR
         rdfs:comment """A method is a Description that defines or uses concepts in order to guide carrying out actions aimed at a solution with respect to a problem. 
 It is different from a Plan, because plans could be carried out in order to follow a method, but a method can be followed by executing alternative plans."""^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Method"@en ,
-                   "Metodo"@it .
+        rdfs:label "Method"@en ;
+        skos:prefLabel "Metodo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Narrative
@@ -2056,8 +2109,8 @@ It is different from a Plan, because plans could be carried out in order to foll
                                :PhysicalAgent ;
                rdfs:comment "A person in the physical commonsense intuition: 'have you seen that person walking down the street?'"^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Natural person"@en ,
-                          "Persona fisica"@it .
+               rdfs:label "Natural person"@en ;
+               skos:prefLabel "Persona fisica"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Norm
@@ -2065,8 +2118,8 @@ It is different from a Plan, because plans could be carried out in order to foll
       rdfs:subClassOf :Description ;
       rdfs:comment "A social norm."^^xsd:string ;
       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-      rdfs:label "Norm"@en ,
-                 "Norma"@it .
+      rdfs:label "Norm"@en ;
+      skos:prefLabel "Norma"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Object
@@ -2095,8 +2148,8 @@ It is different from a Plan, because plans could be carried out in order to foll
         owl:disjointWith :Quality ;
         rdfs:comment "Any physical, social, or mental object, or a substance. Following DOLCE Full, objects are always participating in some event (at least their own life), and are spatially located."^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Object"@en ,
-                   "Oggetto"@it .
+        rdfs:label "Object"@en ;
+        skos:prefLabel "Oggetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#ObjectAggregate
@@ -2116,10 +2169,11 @@ It is different from a Plan, because plans could be carried out in order to foll
                                                       ) ;
                                    rdf:type owl:Class
                                  ] ;
-                 <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-                 <http://purl.org/dc/elements/1.1/date> "2021-02-21T23:35:02Z"^^xsd:dateTime ;
+                 dc:creator "Aldo Gangemi"^^xsd:string ;
+                 dc:date "2021-02-21T23:35:02Z"^^xsd:dateTime ;
                  rdfs:comment """An aggregate of distributed objects, members of a same Collection, e.g. the stars in a constellation, the parts of a car, the employees of a company, the entries from an encyclopedia, the concepts expressed in a speech, etc.
-It cannot be defined by means of an equivalence axiom, because it'd require the same Collection for all members, an axiom that cannot be expressed in OWL.""" .
+It cannot be defined by means of an equivalence axiom, because it'd require the same Collection for all members, an axiom that cannot be expressed in OWL.""" ;
+                 rdfs:label "object aggregate"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Organism
@@ -2128,8 +2182,8 @@ It cannot be defined by means of an equivalence axiom, because it'd require the 
                           :PhysicalAgent ;
           rdfs:comment "A physical objects with biological characteristics, typically that organisms can self-reproduce."^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "Organism"@en ,
-                     "Organismo"@it .
+          rdfs:label "Organism"@en ;
+          skos:prefLabel "Organismo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Organization
@@ -2138,8 +2192,8 @@ It cannot be defined by means of an equivalence axiom, because it'd require the 
               rdfs:comment "An internally structured, conventionally created SocialAgent, needing a specific Role and Agent that plays it, in order to act."@en ,
                            "Un agente sociale strutturato internamente e creato convenzionalmente. Per agire, ha bisogno di ruoli e agenti che li ricoprano."@it ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "Organization"@en ,
-                         "Organizzazione"@it .
+              rdfs:label "Organization"@en ;
+              skos:prefLabel "Organizzazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Parameter
@@ -2156,8 +2210,8 @@ It cannot be defined by means of an equivalence axiom, because it'd require the 
            owl:disjointWith :Role ;
            rdfs:comment "A Concept that classifies a Region; the difference between a Region and a Parameter is that regions represent sets of observable values, e.g. the height  of a given building, while parameters represent constraints or selections on observable values, e.g. 'VeryHigh'. Therefore, parameters can also be used to constrain regions, e.g. VeryHigh on a subset of values of the Region Height applied to buildings, or to add an external selection criterion , such as measurement units, to regions, e.g. Meter on a subset of values from the Region Length applied to the Region Length applied to roads."^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Parameter"@en ,
-                      "Parametro"@it .
+           rdfs:label "Parameter"@en ;
+           skos:prefLabel "Parametro"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Parthood
@@ -2174,8 +2228,8 @@ It cannot be defined by means of an equivalence axiom, because it'd require the 
           owl:hasKey ( :includesPart
                        :includesWhole
                      ) ;
-          <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-          <http://purl.org/dc/elements/1.1/date> "2021-04-03T13:53:57Z"^^xsd:dateTime ;
+          dc:creator "Aldo Gangemi"^^xsd:string ;
+          dc:date "2021-04-03T13:53:57Z"^^xsd:dateTime ;
           rdfs:comment """A special kind of Situation that allows to include time indexing for the hasPart relation in situations. 
 For example, if a Situation s 'finally, my bike has a luggage rack' isSettingFor the entity 'my bike' and the TimeIntervals 'now', or more specifically '29March2021', we need to have a time-index the part relation. With Parthood, we use includesWhole and includesPart properties.
 This can be done similarly for other arguments of parthood, e.g. location, configuration, topology, etc.
@@ -2199,8 +2253,8 @@ An occurrence of a pattern is an 'observable', or detected Situation"""^^xsd:str
         rdfs:subClassOf :Agent ;
         rdfs:comment "Persons in commonsense intuition, which does not apparently distinguish between either natural or social persons."^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Person"@en ,
-                   "Persona {it}"^^xsd:string .
+        rdfs:label "Person"@en ;
+        skos:prefLabel "Persona"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Personification
@@ -2218,8 +2272,8 @@ An occurrence of a pattern is an 'observable', or detected Situation"""^^xsd:str
                rdfs:comment """A PhysicalObject that is capable of self-representing (conceptualizing) a Description in order to plan an Action. 
 A PhysicalAgent is a substrate for (actsFor) a Social Agent"""^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Agente fisico"@it ,
-                          "Physical agent"@en .
+               rdfs:label "Physical agent"@en ;
+               skos:prefLabel "Agente fisico"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalArtifact
@@ -2234,8 +2288,8 @@ This axiomatization is weak, but allows to talk of artifacts in a very general s
 FunctionalSubstance(s) are included here as well.
 Immaterial (non-physical) artifacts (e.g. texts, ideas, cultural movements, corporations, communities, etc. can be modelled as social objects (see SocialObject), which are all 'artifactual' in the weak sense assumed here."""^^xsd:string ;
                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                  rdfs:label "Artefatto fisico"@it ,
-                             "Physical artifact"@en .
+                  rdfs:label "Physical artifact"@en ;
+                  skos:prefLabel "Artefatto fisico"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalAttribute
@@ -2249,8 +2303,8 @@ Immaterial (non-physical) artifacts (e.g. texts, ideas, cultural movements, corp
                                     :TimeInterval ;
                    rdfs:comment "Physical value of a physical object, e.g. density, color, etc."^^xsd:string ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "Caratteristica fisica"@it ,
-                              "Physical attribute"@en .
+                   rdfs:label "Physical attribute"@en ;
+                   skos:prefLabel "Caratteristica fisica"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalBody
@@ -2271,8 +2325,8 @@ Immaterial (non-physical) artifacts (e.g. texts, ideas, cultural movements, corp
                 owl:disjointWith :SocialObject ;
                 rdfs:comment "Any Object that has a proper space region. The prototypical physical object has also an associated mass, but the nature of its mass can greatly vary based on the epistemological status of the object (scientifically measured, subjectively possible, imaginary)."^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "Oggetto fisico"@it ,
-                           "Physical object"@en .
+                rdfs:label "Physical object"@en ;
+                skos:prefLabel "Oggetto fisico"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace
@@ -2280,8 +2334,8 @@ Immaterial (non-physical) artifacts (e.g. texts, ideas, cultural movements, corp
                rdfs:subClassOf :PhysicalObject ;
                rdfs:comment "A physical object that is inherently located; for example, a water area."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Luogo fisico"@it ,
-                          "Physical place"@en .
+               rdfs:label "Physical place"@en ;
+               skos:prefLabel "Luogo fisico"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Place
@@ -2294,8 +2348,8 @@ Immaterial (non-physical) artifacts (e.g. texts, ideas, cultural movements, corp
        rdfs:comment """Socially or cognitively dependent locations: political geographic entities (Rome, Lesotho), and non-material locations determined by the presence of other entities (\"the area close to Rome\") or of pivot events or signs (\"the area where the helicopter fell\"), as well as identified as complements to other entities (\"the area under the table\"), etc. 
 In this generic sense, a Place is a 'dependent' location. For 'non-dependent' locations, cf. the PhysicalPlace class. For an abstract (dimensional) location, cf. the SpaceRegion class."""^^xsd:string ;
        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-       rdfs:label "Luogo"@it ,
-                  "Place"@en .
+       rdfs:label "Place"@en ;
+       skos:prefLabel "Luogo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Plan
@@ -2307,8 +2361,8 @@ In this generic sense, a Place is a 'dependent' location. For 'non-dependent' lo
                       ] ;
       rdfs:comment "A Description having an explicit Goal, to be achieved by executing the plan"^^xsd:string ;
       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-      rdfs:label "Piano"@it ,
-                 "Plan"@en .
+      rdfs:label "Plan"@en ;
+      skos:prefLabel "Piano"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PlanExecution
@@ -2320,8 +2374,8 @@ In this generic sense, a Place is a 'dependent' location. For 'non-dependent' lo
                rdfs:subClassOf :Situation ;
                rdfs:comment "Plan executions are situations that proactively satisfy a plan. Subplan executions are proper parts of the whole plan execution."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Esecuzione di piano"@it ,
-                          "Plan execution"@en .
+               rdfs:label "Plan execution"@en ;
+               skos:prefLabel "Esecuzione di piano"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Process
@@ -2330,8 +2384,8 @@ In this generic sense, a Place is a 'dependent' location. For 'non-dependent' lo
          rdfs:comment """This is a placeholder for events that are considered in their evolution, or anyway not strictly dependent on agents, tasks, and plans. 
 See Event class for some thoughts on classifying events. See also 'Transition'."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "Process"@en ,
-                    "Processo"@it .
+         rdfs:label "Process"@en ;
+         skos:prefLabel "Processo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Project
@@ -2347,8 +2401,8 @@ See Event class for some thoughts on classifying events. See also 'Transition'."
                          ] ;
          rdfs:comment "A Plan that defines Role(s), Task(s), and a specific structure for tasks to be executed in relation to goals to be achieved, in order to achieve the main goal of the project. In other words, a project is a plan with a subgoal structure and multiple roles and tasks."^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "Progetto"@it ,
-                    "Project"@en .
+         rdfs:label "Project"@en ;
+         skos:prefLabel "Progetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality
@@ -2375,8 +2429,8 @@ From the design viewpoint, the Quality-Region distinction is useful only when in
 For example, in an automotive context, it would be irrelevant to consider the aspects of car windows for a specific car, unless the factory wants to check a specific window against design parameters (anomaly detection). 
 On the other hand, in an antiques context, the individual aspects for a specific piece of furniture are a major focus of attention, and may constitute the actual added value, because the design parameters for old furniture are often not fixed, and may not be viewed as 'anomalies'."""^^xsd:string ;
          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-         rdfs:label "Quality"@en ,
-                    "Qualità"@it .
+         rdfs:label "Quality"@en ;
+         skos:prefLabel "Qualità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Region
@@ -2401,8 +2455,8 @@ On the other hand, in an antiques context, the individual aspects for a specific
         rdfs:comment """Any region in a dimensional space (a dimensional space is a maximal Region), which can be used as a value for a quality of an Entity . For example, TimeInterval, SpaceRegion, PhysicalAttribute, Amount, SocialAttribute are all subclasses of Region. 
 Regions are not data values in the ordinary knowledge representation sense; in order to get patterns for modelling data, see the properties: representsDataValue and hasDataValue"""^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Region"@en ,
-                   "Regione"@it .
+        rdfs:label "Region"@en ;
+        skos:prefLabel "Regione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Relation
@@ -2412,8 +2466,8 @@ Regions are not data values in the ordinary knowledge representation sense; in o
 For example, 'givingGrantToInstitution(x,y,z)' with three argument types: Provider(x),Grant(y),Recipient(z), can have a Relation counterpart: 'GivingGrantToInstitution', which defines three Concept instances: Provider,Grant,Recipient.
 Since social objects are not formal entities, Relation includes here any 'relation-like' entity in common sense, including social relations."""^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "Relation"@en ,
-                     "Relazione"@it .
+          rdfs:label "Relation"@en ;
+          skos:prefLabel "Relazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Right
@@ -2429,8 +2483,8 @@ Since social objects are not formal entities, Relation includes here any 'relati
                        ] ;
        rdfs:comment "A legal position by which an Agent is entitled to obtain something from another Agent , under specified circumstances, through an enforcement explicited either in a Law, Contract , etc."^^xsd:string ;
        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-       rdfs:label "Diritto"@it ,
-                  "Right"@en .
+       rdfs:label "Right"@en ;
+       skos:prefLabel "Diritto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Role
@@ -2446,16 +2500,16 @@ Since social objects are not formal entities, Relation includes here any 'relati
                       ] ;
       rdfs:comment "A Concept that classifies an Object"^^xsd:string ;
       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-      rdfs:label "Role"@en ,
-                 "Ruolo"@it .
+      rdfs:label "Role"@en ;
+      skos:prefLabel "Ruolo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Set
 :Set rdf:type owl:Class ;
      rdfs:subClassOf :FormalEntity ;
      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-     rdfs:label "Insieme {it}"^^xsd:string ,
-                "Set"@en .
+     rdfs:label "Set"@en ;
+     skos:prefLabel "Insieme"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation
@@ -2471,8 +2525,8 @@ For example, a PlanExecution is a context including some actions executed by age
 Situation is also able to represent reified n-ary relations, where isSettingFor is the top-level relation for all binary projections of the n-ary relation. 
 If used in a transformation pattern for n-ary relations, the designer should take care of adding (some or all) OWL2 keys, corresponding to binary projections of the n-ary, to a subclass of Situation. Otherwise the 'identification constraint' (Calvanese et al., IJCAI 2001) might be violated."""^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Situation"@en ,
-                      "Situazione"@it .
+           rdfs:label "Situation"@en ;
+           skos:prefLabel "Situazione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialAgent
@@ -2485,8 +2539,8 @@ If used in a transformation pattern for n-ary relations, the designer should tak
                              ] ;
              rdfs:comment "Any individual whose existence is granted simply by its social communicability and capability of action (through some PhysicalAgent)."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "Agente sociale"@it ,
-                        "Social agent"@en .
+             rdfs:label "Social agent"@en ;
+             skos:prefLabel "Agente sociale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialObject
@@ -2504,8 +2558,8 @@ If used in a transformation pattern for n-ary relations, the designer should tak
 In other words, all objects that have been or are created in the process of social communication: for the sake of communication (InformationObject), for incorporating new individuals (SocialAgent, Place), for contextualizing or intepreting existing entities (Description, Concept), or for collecting existing entities (Collection).
 Being dependent on communication, all social objects need to be expressed by some information object (information objects are self-expressing)."""^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "Oggetto sociale"@it ,
-                         "Social object"@en .
+              rdfs:label "Social object"@en ;
+              skos:prefLabel "Oggetto sociale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialObjectAttribute
@@ -2517,8 +2571,8 @@ Being dependent on communication, all social objects need to be expressed by som
                                        ] ;
                        rdfs:comment "Any Region in a dimensional space that is used to represent some characteristic of a SocialObject, e.g. judgment values, social scalars, statistical attributes over a collection of entities, etc."^^xsd:string ;
                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                       rdfs:label "Caratteristica sociale"@it ,
-                                  "Social attribute"@en .
+                       rdfs:label "Social attribute"@en ;
+                       skos:prefLabel "Caratteristica sociale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialPerson
@@ -2531,9 +2585,9 @@ Being dependent on communication, all social objects need to be expressed by som
                               ] ;
               rdfs:comment "A SocialAgent that needs the existence of a specific NaturalPerson in order to act (but the lifetime of the NaturalPerson has only to overlap that of the SocialPerson)."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "Persona sociale"@it ,
-                         "Social person"@en ;
-              owl:versionInfo "Formerly: Person (changed to avoid confusion with commonsense intuition)"^^xsd:string .
+              rdfs:label "Social person"@en ;
+              owl:versionInfo "Formerly: Person (changed to avoid confusion with commonsense intuition)"^^xsd:string ;
+              skos:prefLabel "Persona sociale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialRelation
@@ -2541,8 +2595,8 @@ Being dependent on communication, all social objects need to be expressed by som
                 rdfs:subClassOf :Relation ;
                 rdfs:comment "Any social relationship"^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "Relazione sociale"@it ,
-                           "Social relation"@en .
+                rdfs:label "Social relation"@en ;
+                skos:prefLabel "Relazione sociale"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SpaceRegion
@@ -2551,8 +2605,8 @@ Being dependent on communication, all social objects need to be expressed by som
              owl:disjointWith :TimeInterval ;
              rdfs:comment "Any Region in a dimensional space that is used to localize an Entity ; i.e., it is not used to represent some characteristic (e.g. it excludes time intervals, colors, size values, judgment values, etc.). Differently from a Place , a space region has a specific dimensional space."^^xsd:string ;
              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-             rdfs:label "Regione di spazio"@it ,
-                        "Space region"@en .
+             rdfs:label "Space region"@en ;
+             skos:prefLabel "Regione di spazio"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SpatioTemporalRegion
@@ -2566,7 +2620,8 @@ Being dependent on communication, all social objects need to be expressed by som
                                         owl:onProperty :hasConstituent ;
                                         owl:someValuesFrom :TimeInterval
                                       ] ;
-                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> .
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
+                      rdfs:label "spatio temporal region"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Substance
@@ -2575,8 +2630,8 @@ Being dependent on communication, all social objects need to be expressed by som
            rdfs:comment """Any PhysicalBody that has not necessarily specified (designed) boundaries, e.g. a pile of trash, some sand, etc. 
 In this sense, an artistic object made of trash or a dose of medicine in the form of a pill would be a FunctionalSubstance, and a DesignedArtifact, since its boundaries are specified by a Design; aleatoric objects that are outcomes of an artistic process might be still considered DesignedArtifact(s), and Substance(s)."""^^xsd:string ;
            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-           rdfs:label "Sostanza"@it ,
-                      "Substance"@en .
+           rdfs:label "Substance"@en ;
+           skos:prefLabel "Sostanza"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Task
@@ -2603,8 +2658,8 @@ For example, reaching a destination is a task that can be executed by performing
 The actions to execute a task can also be organized according to a Plan that is not the same as the one that defines the task (if any). 
 For example, reaching a destination could be defined by a plan to get on holidays, while the plan to execute the task can consist of putting some travels into a sequence."""^^xsd:string ;
       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-      rdfs:label "Task"@en ,
-                 "Task"@it .
+      rdfs:label "Task"@en ;
+      skos:prefLabel "Task"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Theory
@@ -2617,8 +2672,8 @@ For example, reaching a destination could be defined by a plan to get on holiday
         rdfs:comment """A Theory is a Description that represents a set of assumptions for describing something, usually general. Scientific, philosophical, and commonsense theories can be included here.
 This class can also be used to act as 'naturalized reifications' of logical theories (of course, they will be necessarily incomplete in this case, because second-order entities are represented as first-order ones)."""^^xsd:string ;
         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-        rdfs:label "Teoria"@it ,
-                   "Theory"@en .
+        rdfs:label "Theory"@en ;
+        skos:prefLabel "Teoria"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeIndexedRelation
@@ -2632,9 +2687,10 @@ This class can also be used to act as 'naturalized reifications' of logical theo
                                            rdf:type owl:Class
                                          ] ;
                      rdfs:subClassOf :Situation ;
-                     <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi"^^xsd:string ;
-                     <http://purl.org/dc/elements/1.1/date> "2021-02-24T14:24:23Z"^^xsd:dateTime ;
-                     rdfs:comment "A Situation that includes a time indexing in its setting, so allowing to order any binary relation (property) with time."^^xsd:string .
+                     dc:creator "Aldo Gangemi"^^xsd:string ;
+                     dc:date "2021-02-24T14:24:23Z"^^xsd:dateTime ;
+                     rdfs:comment "A Situation that includes a time indexing in its setting, so allowing to order any binary relation (property) with time."^^xsd:string ;
+                     rdfs:label "time indexed relation"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval
@@ -2642,8 +2698,8 @@ This class can also be used to act as 'naturalized reifications' of logical theo
               rdfs:subClassOf :Region ;
               rdfs:comment "Any Region in a dimensional space that aims at representing time."^^xsd:string ;
               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-              rdfs:label "Intervallo di tempo"@it ,
-                         "Time interval"@en .
+              rdfs:label "Time interval"@en ;
+              skos:prefLabel "Intervallo di tempo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Transition
@@ -2693,8 +2749,8 @@ This class can also be used to act as 'naturalized reifications' of logical theo
 This class of situations partly encodes the ontology underlying typical engineering algebras for processes, e.g. Petri Nets. 
 A full representation of the transition ontology is outside the expressivity of OWL, because we would need qualified cardinality restrictions,  coreference, property equivalence, and property composition."""^^xsd:string ;
             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-            rdfs:label "Transition"@en ,
-                       "Transizione"@it .
+            rdfs:label "Transition"@en ;
+            skos:prefLabel "Transizione"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TypeCollection
@@ -2703,8 +2759,8 @@ A full representation of the transition ontology is outside the expressivity of 
                 rdfs:comment """A Collection whose members are the maximal set of individuals that share the same (named) type, e.g. \"the gem stones\", \"the Italians\".
 This class is very useful to apply a variety of the so-called \"ClassesAsValues\" design pattern, when it is used to talk about the extensional aspect of a class. An alternative variety of the pattern applies to the intensional aspect of a class, and the class Concept should be used instead."""^^xsd:string ;
                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                rdfs:label "Collezione di un tipo"@it ,
-                           "Type collection"@en .
+                rdfs:label "Type collection"@en ;
+                skos:prefLabel "Collezione di un tipo"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#UnitOfMeasure
@@ -2716,8 +2772,8 @@ This class is very useful to apply a variety of the so-called \"ClassesAsValues\
                                ] ;
                rdfs:comment "Units of measure are conceptualized here as parameters on regions, which can be valued as datatype values."^^xsd:string ;
                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-               rdfs:label "Unit of measure"@en ,
-                          "Unità di misura"@it .
+               rdfs:label "Unit of measure"@en ;
+               skos:prefLabel "Unità di misura"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Workflow
@@ -2733,8 +2789,8 @@ This class is very useful to apply a variety of the so-called \"ClassesAsValues\
                           ] ;
           rdfs:comment "A Plan that defines Role(s), Task(s), and a specific structure for tasks to be executed, usually supporting the work of an Organization"^^xsd:string ;
           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-          rdfs:label "Workflow"@en ,
-                     "Workflow"@it .
+          rdfs:label "Workflow"@en ;
+          skos:prefLabel "Workflow"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#WorkflowExecution
@@ -2745,8 +2801,8 @@ This class is very useful to apply a variety of the so-called \"ClassesAsValues\
                                        ] ;
                    rdfs:subClassOf :Situation ;
                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl> ;
-                   rdfs:label "Esecuzione di workflow"@it ,
-                              "Workflow execution"@en .
+                   rdfs:label "Workflow execution"@en ;
+                   skos:prefLabel "Esecuzione di workflow"@it .
 
 
 ###  http://www.w3.org/2002/07/owl#Thing

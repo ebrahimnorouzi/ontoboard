@@ -113,6 +113,57 @@ class CanvasLegendTest {
      * edits an imported term loses the change at the next refresh of the imports, or leaves a second
      * definition behind that survives into a release - and neither shows up as an error.
      */
+    /**
+     * A board drawn UML-like (1.155.0) says in its key what a row in a class's box is, and when a
+     * property is a box of its own rather than a row or its arrows.
+     */
+    @Test
+    void theKeyExplainsAClassBoxsRowsAndWhenAPropertyIsABox() {
+        CanvasLegend.Entry rows = null;
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (entry.getLabel().contains("name : datatype")) {
+                rows = entry;
+            }
+        }
+
+        assertNotNull(rows, "no row of the key explains the rows in a class's box");
+        assertEquals(CanvasLegend.Form.MODIFIER, rows.getForm());
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (SchemaStyles.OBJECT_PROPERTY_NODE.equals(entry.getStyleName())
+                    || SchemaStyles.DATA_PROPERTY_NODE.equals(entry.getStyleName())) {
+                assertTrue(entry.getMeaning().contains("Properties as boxes")
+                        && entry.getMeaning().contains("Show unused properties"), entry.getMeaning());
+            }
+        }
+    }
+
+    /** The key of a board drawn in a look of somebody's own (1.155.0) shows that look. */
+    @Test
+    void theKeyFollowsTheLook() {
+        BoardLook look = BoardLook.defaults().with("obClass.fill", "#FFEEDD").with("obClass.shape", "rectangle")
+                .with("obOnly.colour", "#123456").with("obOnly.line", "").with("obImported.opacity", "70")
+                .with("obDatatype.shape", "hexagon");
+        Map<String, CanvasLegend.Entry> byLabel = new java.util.HashMap<String, CanvasLegend.Entry>();
+        for (CanvasLegend.Entry entry : CanvasLegend.entries(look)) {
+            byLabel.put(entry.getLabel(), entry);
+        }
+
+        assertEquals("#FFEEDD", byLabel.get("Class").getFill());
+        assertEquals("rectangle", byLabel.get("Class").getShape());
+        assertEquals("#FFEEDD", byLabel.get("Has an editorial note").getFill(), "a marker on a class");
+        assertEquals("#123456", byLabel.get("∀ R - only").getStroke());
+        assertEquals(null, byLabel.get("∀ R - only").getDashPattern());
+        assertEquals(70, byLabel.get("Imported term").getOpacity());
+        assertEquals("hexagon", byLabel.get("Datatype").getShape());
+        for (int i = 0; i < CanvasLegend.entries().size(); i++) {
+            CanvasLegend.Entry plain = CanvasLegend.entries().get(i);
+            CanvasLegend.Entry drawn = CanvasLegend.entries(BoardLook.defaults()).get(i);
+            assertEquals(plain.getFill() + plain.getStroke() + plain.getDashPattern() + plain.getOpacity()
+                    + plain.getShape(), drawn.getFill() + drawn.getStroke() + drawn.getDashPattern()
+                    + drawn.getOpacity() + drawn.getShape(), "the default look's key is the key: " + plain.getLabel());
+        }
+    }
+
     @Test
     void theKeyExplainsWhichTermsAreImported() {
         CanvasLegend.Entry imported = null;

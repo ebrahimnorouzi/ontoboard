@@ -67,7 +67,8 @@ public final class ResultDialog {
     public static void show(Component parent, OperationResult result) {
         // A fix is applied over this dialog, and its own result is shown over it in turn.
         final Component[] over = {parent};
-        JPanel content = buildContent(result, fixable -> apply(over[0], fixable));
+        JPanel content = buildContent(result, fixable -> apply(over[0], fixable),
+                TermLink.opener(parent));
 
         JButton save = new JButton("Save report...");
         save.setToolTipText("Write the summary, the table and the log to a file");
@@ -111,6 +112,16 @@ public final class ResultDialog {
      */
     static JPanel buildContent(OperationResult result,
             java.util.function.Consumer<OperationResult.Fixable> applying) {
+        return buildContent(result, applying, null);
+    }
+
+    /**
+     * As {@link #buildContent(OperationResult, java.util.function.Consumer)}, a click on a row
+     * about a term handing its IRI to {@code opening} (1.155.0); null makes no row a link.
+     */
+    static JPanel buildContent(OperationResult result,
+            java.util.function.Consumer<OperationResult.Fixable> applying,
+            java.util.function.Consumer<String> opening) {
         JPanel content = new JPanel(new BorderLayout(0, 8));
         Component header = header(result, applying);
         // The dialog cannot be resized, so what the header takes the log loses - and what is
@@ -133,7 +144,7 @@ public final class ResultDialog {
         } else {
             content.add(header, BorderLayout.NORTH);
         }
-        content.add(body(result), BorderLayout.CENTER);
+        content.add(body(result, opening), BorderLayout.CENTER);
         content.setPreferredSize(new Dimension(width, Math.min(TALLEST,
                 Math.max(usual, Math.min(headerHeight, room) + 8 + LOG_KEEPS))));
         return content;
@@ -198,10 +209,12 @@ public final class ResultDialog {
         return header;
     }
 
-    private static Component body(OperationResult result) {
+    private static Component body(OperationResult result,
+            java.util.function.Consumer<String> opening) {
         JTabbedPane tabs = new JTabbedPane();
         if (result.hasTable()) {
-            tabs.addTab("Results (" + result.getRows().size() + ")", new JScrollPane(table(result)));
+            tabs.addTab("Results (" + result.getRows().size() + ")",
+                    new JScrollPane(table(result, opening)));
         }
         // Always a log tab, even when empty: an absent tab leaves the user wondering whether
         // there was a log they are not being shown.
@@ -221,7 +234,14 @@ public final class ResultDialog {
         return tabs;
     }
 
-    private static JTable table(OperationResult result) {
+    /**
+     * The table of a result. A row about a term is a link (1.155.0): pointed at, it says so; a
+     * click hands its term's IRI to {@code opening} - the row it is, however the table is sorted.
+     *
+     * @param opening shows a term; null makes no row a link
+     */
+    static JTable table(final OperationResult result,
+            final java.util.function.Consumer<String> opening) {
         List<String> columns = result.getColumns();
         DefaultTableModel model = new DefaultTableModel(
                 columns.toArray(new Object[0]), 0) {
@@ -251,6 +271,10 @@ public final class ResultDialog {
                 if (row < 0 || column < 0) {
                     return null;
                 }
+                String term = opening == null ? null : termAt(result, this, row);
+                if (term != null) {
+                    return "Show on the board: " + term;
+                }
                 Object value = getValueAt(row, column);
                 Component shown = prepareRenderer(getCellRenderer(row, column), row, column);
                 boolean cut = shown.getPreferredSize().width
@@ -260,7 +284,39 @@ public final class ResultDialog {
         };
         table.setAutoCreateRowSorter(true);
         table.setFillsViewportHeight(true);
+        if (opening != null && hasATerm(result)) {
+            table.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+            table.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent click) {
+                    if (click.getButton() != MouseEvent.BUTTON1) {
+                        return;
+                    }
+                    int row = table.rowAtPoint(click.getPoint());
+                    String term = row < 0 ? null : termAt(result, table, row);
+                    if (term != null) {
+                        opening.accept(term);
+                    }
+                }
+            });
+        }
         return table;
+    }
+
+    private static boolean hasATerm(OperationResult result) {
+        for (String term : result.getRowTerms()) {
+            if (term != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The term of the row shown at this place in the table, or null. */
+    private static String termAt(OperationResult result, JTable table, int viewRow) {
+        int row = table.convertRowIndexToModel(viewRow);
+        List<String> terms = result.getRowTerms();
+        return row < 0 || row >= terms.size() ? null : terms.get(row);
     }
 
     private static void saveWithChooser(Component parent, OperationResult result) {

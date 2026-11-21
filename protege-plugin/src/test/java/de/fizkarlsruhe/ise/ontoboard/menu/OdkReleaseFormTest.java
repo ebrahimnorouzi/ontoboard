@@ -203,18 +203,19 @@ class OdkReleaseFormTest {
         OdkReleaseForm.Start start = start();
 
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
-                + "VERSION=1.0.0", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
+                + "VERSION=1.0.0 REASONER=HermiT", OdkReleaseForm.lineUnder(start).apply(chosen(start)));
         assertEquals("Release, with the imports as they are - make clean, then make "
-                + "prepare_release_fast VERSION=1.0.0", OdkReleaseForm.lineUnder(start)
+                + "prepare_release_fast VERSION=1.0.0 REASONER=HermiT", OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.REFRESH, "false")));
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
                 + "VERSION=1.0.0 ANNOTATE_ONTOLOGY_VERSION='annotate -V " + BASE
-                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0'", OdkReleaseForm.lineUnder(start)
+                + "/1.0.0/$@ --annotation owl:versionInfo 1.0.0' REASONER=HermiT",
+                OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.SHAPE,
                                 BASE + "/<version>/eggboil.owl")));
         // Not a version yet: what was typed; the form says what is wrong when it is sent.
         assertEquals("Release, with fresh imports - make clean, then make prepare_release "
-                + "VERSION=1.0.x", OdkReleaseForm.lineUnder(start)
+                + "VERSION=1.0.x REASONER=HermiT", OdkReleaseForm.lineUnder(start)
                         .apply(chosen(start, OdkReleaseForm.VERSION, "1.0.x")));
     }
 
@@ -239,7 +240,7 @@ class OdkReleaseFormTest {
                 "Docker is not running", null, null, null, "It needs the network."));
 
         assertEquals("Release, with the imports as they are - make clean, then make "
-                + "prepare_release_fast VERSION=1.0.0",
+                + "prepare_release_fast VERSION=1.0.0 REASONER=HermiT",
                 OdkReleaseForm.lineUnder(start).apply(chosen(start)));
     }
 
@@ -480,6 +481,27 @@ class OdkReleaseFormTest {
                 .get(0).contains("{version}"));
     }
 
+    /**
+     * A dated version says when it was released: after today it is refused; below the newest
+     * the way out is a semantic version, not "a later" date (1.155.0).
+     */
+    @Test
+    void aDatedVersionIsTodayAtTheLatest() throws IOException {
+        tags = Arrays.asList("v2026-11-10");
+        OdkReleaseForm.Start start = start();
+
+        List<String> after = OdkReleaseForm.problems(start, chosen(start, OdkReleaseForm.VERSION,
+                "2026-11-13"));
+        assertEquals(Collections.singletonList("A dated version says when it was released; "
+                + "2026-11-13 is after today, 2026-11-12."), after);
+        String below = OdkReleaseForm.problems(start, chosen(start, OdkReleaseForm.VERSION,
+                "2026-11-01")).get(0);
+        assertTrue(below.contains("a semantic version"), below);
+        assertFalse(below.contains("or a later one"), below);
+        assertEquals(Collections.<String>emptyList(), OdkReleaseForm.problems(start,
+                chosen(start, OdkReleaseForm.VERSION, "2026-11-12")));
+    }
+
     /** A leading v, as in the tag, is not part of the version. */
     @Test
     void aLeadingVIsNotPartOfTheVersion() {
@@ -501,7 +523,8 @@ class OdkReleaseFormTest {
         List<Parameter> parameters = OdkReleaseForm.parameters(start, defaults);
 
         assertEquals(Arrays.asList(OdkReleaseForm.VERSION, OdkReleaseForm.PRIOR,
-                OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED), keys(parameters));
+                OdkReleaseForm.REASONER, OdkReleaseForm.REFUSE, OdkReleaseForm.UNCOMPARED),
+                keys(parameters));
         assertEquals("3.0.6", defaults.get(OdkReleaseForm.VERSION));
         assertEquals("3.0.5", defaults.get(OdkReleaseForm.PRIOR));
         String explanation = OdkReleaseForm.explanation(start);
@@ -509,6 +532,25 @@ class OdkReleaseFormTest {
         assertTrue(explanation.contains("annotate -V $ONTBASE/$VERSION/\\$@ --annotation "
                 + "owl:versionInfo $VERSION"), "the version IRI is the script's, shown as it "
                 + "writes it: " + explanation);
+    }
+
+    /**
+     * A project's own script run by OntoBoard itself, without a container, is said to be: the
+     * form said release.sh runs "in ODK's container" with the container switched off (Phase 7,
+     * nfdicore in the probe host, 2026-11-20).
+     */
+    @Test
+    void aProjectsOwnScriptRunByOntoBoardItselfIsSaidToBe() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+        tags = Arrays.asList("v3.0.5", "v3.0.4");
+        OdkReleaseForm.Start start = start().withRoute(itself(null));
+
+        String explanation = OdkReleaseForm.explanation(start);
+
+        assertTrue(explanation.contains("release.sh, so that is what runs. " + NO_CONTAINER
+                + ", so OntoBoard runs it itself"), explanation);
+        assertFalse(explanation.contains("in ODK's container"), explanation);
+        assertTrue(explanation.contains("Nothing is pushed."), explanation);
     }
 
     /** A maintainer who has set the script to the next version already is not second-guessed. */
@@ -526,8 +568,10 @@ class OdkReleaseFormTest {
     void aScriptThatCannotBeRunIsSaidBeforeTheForm() throws IOException {
         assertNull(start().refusal());
 
+        // Windows line endings stop no release (1.155.0): OntoBoard's engine reads them, and
+        // ODK's container is given a copy without them (ReleaseRun.Script.shellWords).
         write(new File(ontology, "release.sh"), SCRIPT.replace("\n", "\r\n"));
-        assertTrue(start().refusal().contains("Windows line endings"), start().refusal());
+        assertNull(start().refusal(), start().refusal());
 
         write(new File(ontology, "release.sh"), "VERSION=$1\nsh run.sh make prepare_release\n");
         assertTrue(start().refusal().contains("VERSION="), start().refusal());
@@ -549,6 +593,27 @@ class OdkReleaseFormTest {
                 .replace("PRIOR_VERSION=3.0.4", "PRIOR_VERSION=3.0.5"), scriptAsRun);
         assertTrue(result.getLog().toString().contains("release.sh: VERSION=3.0.6, "
                 + "PRIOR_VERSION=3.0.5"), result.getLog().toString());
+    }
+
+    /**
+     * A release that does not happen leaves the project's script as it was: the form sets
+     * VERSION= and PRIOR_VERSION= before the reasoner is asked, and a release it stopped left
+     * release.sh naming a version nobody released (the final review of 1.155.0).
+     */
+    @Test
+    void aReleaseThatDoesNotHappenLeavesTheScriptAsItWas() throws IOException {
+        write(new File(ontology, "release.sh"), SCRIPT);
+        tags = Arrays.asList("v3.0.5");
+        buildFails = true;
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null);
+
+        assertEquals(OperationResult.Status.FAILED, result.getStatus());
+        assertEquals(SCRIPT, read(new File(ontology, "release.sh")));
+        assertTrue(result.getLog().toString().contains("release.sh is as it was"),
+                result.getLog().toString());
     }
 
     @Test
@@ -697,6 +762,26 @@ class OdkReleaseFormTest {
         assertTrue(shown.contains("Nothing is pushed"), shown);
     }
 
+    /**
+     * What was saved while the release ran behind is named before the commit: the release may
+     * hold some of it or none, and git add -u would take it in as it is now (the 1.155.0
+     * review's I3).
+     */
+    @Test
+    void whatWasSavedWhileTheReleaseRanIsSaidBeforeTheCommit() throws IOException {
+        write(new File(root, "eggboil.owl"), owl(null));
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(new File(root, "eggboil.owl")),
+                Arrays.asList("## main...origin/main", " M src/ontology/eggboil-edit.owl"))
+                .withSavedMeanwhile(Collections.singletonList("src/ontology/eggboil-edit.owl"));
+
+        String shown = OdkReleaseForm.confirmation(staging, root);
+
+        assertTrue(shown.contains("Saved while the release ran: src/ontology/eggboil-edit.owl"),
+                shown);
+        assertTrue(shown.contains("Not now"), shown);
+    }
+
     /** A commit made with no branch checked out is reachable through its tag only. */
     @Test
     void aDetachedHeadIsSaidBeforeTheCommit() throws IOException {
@@ -746,7 +831,7 @@ class OdkReleaseFormTest {
 
         List<String> log = result.getLog();
         assertEquals(Arrays.asList("git commit -m \"release(1.0.0)\"",
-                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                "git tag -a v1.0.0 --cleanup=verbatim -F releases/1.0.0/RELEASE.md", "git push --follow-tags"),
                 log.subList(log.size() - 3, log.size()));
         assertTrue(log.indexOf("To record the release later, in " + root.getAbsolutePath()
                 + ":") > log.size() - 9, log.toString());
@@ -954,5 +1039,47 @@ class OdkReleaseFormTest {
                 start.withRoute(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.decide(false,
                         true, de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC, null,
                         null, null, null, null))));
+    }
+
+    // ------------------------------------------------------------------ the reasoner (1.155.0)
+
+    /** "For release the user define the reasoner": the form offers ROBOT's, and says why. */
+    @Test
+    void theFormOffersTheReasoners() {
+        OdkReleaseForm.Start start = start();
+
+        Parameter reasoner = named(OdkReleaseForm.parameters(start,
+                OdkReleaseForm.defaults(start)), OdkReleaseForm.REASONER);
+
+        assertNotNull(reasoner);
+        assertEquals("Reasoner", reasoner.getLabel());
+        assertEquals(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names(),
+                reasoner.getChoices());
+        assertTrue(reasoner.getHelp().contains("stops the release"), reasoner.getHelp());
+        assertTrue(reasoner.getHelp().contains("inverse properties"), reasoner.getHelp());
+    }
+
+    /** A project that chose none: HermiT first, so the egg project's mistake does not pass. */
+    @Test
+    void aSeedProjectPreselectsHermiT() {
+        assertEquals("HermiT", OdkReleaseForm.defaults(start()).get(OdkReleaseForm.REASONER));
+    }
+
+    @Test
+    void aProjectThatSaysElkPreselectsElk() throws IOException {
+        File yaml = new File(ontology, "eggboil-odk.yaml");
+        write(yaml, read(yaml).replaceAll("\\s*$", "") + "\nreasoner: ELK\n");
+
+        assertEquals("ELK", OdkReleaseForm.defaults(start()).get(OdkReleaseForm.REASONER));
+    }
+
+    @Test
+    void theChoiceReachesTheRequestAndTheLineUnder() {
+        OdkReleaseForm.Start start = start();
+        Map<String, String> elk = chosen(start, OdkReleaseForm.REASONER, "ELK");
+
+        assertEquals("ELK", OdkReleaseForm.request(start, elk).reasoner());
+        String line = OdkReleaseForm.lineUnder(start).apply(elk);
+        assertTrue(line.endsWith("REASONER=ELK"), line);
     }
 }

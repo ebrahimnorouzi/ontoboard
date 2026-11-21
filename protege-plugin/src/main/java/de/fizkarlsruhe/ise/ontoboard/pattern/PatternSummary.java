@@ -41,6 +41,13 @@ public final class PatternSummary {
      */
     public static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents,
             String whySuggested, String sayFirst) {
+        return asHtml(pattern, contents, whySuggested, sayFirst,
+                ReasonerVerdict.forPattern(pattern.getId()));
+    }
+
+    /** The same, with what a reasoner said about the pattern given rather than looked up. */
+    static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents,
+            String whySuggested, String sayFirst, ReasonerVerdict verdict) {
         StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif'>");
         html.append("<h2 style='margin-bottom:2px'>").append(escape(pattern.getName()))
             .append("</h2>");
@@ -69,26 +76,26 @@ public final class PatternSummary {
                     + ". Import the one whose terms you need, not both."));
         }
 
-        // WHAT A REASONER FOUND, before the import rather than after. Four of the bundled
-        // patterns are ones HermiT objects to, and that was measured, written to
+        // WHAT A REASONER FOUND, before the import rather than after. It is measured, written to
         // patterns/soundness.tsv and published on the web pages - which is the one place a
         // curator working inside Protege is not looking. Importing a pattern whose class cannot
         // have an instance makes their own ontology unsatisfiable, and the first they would hear
-        // of it is their own reasoner refusing to classify something unrelated.
+        // of it is their own reasoner refusing to classify something unrelated. Since 1.155.0
+        // OntoBoard curates the library and no bundled pattern is flagged; this box is for the
+        // one that is not repaired yet.
         //
         // Said in red, and only when there is something to say: a box on every pattern saying
-        // "a reasoner is happy with this" is a box nobody reads, and it would make the four that
-        // matter harder to notice rather than easier.
-        ReasonerVerdict verdict = ReasonerVerdict.forPattern(pattern.getId());
+        // "a reasoner is happy with this" is a box nobody reads.
         if (verdict.isWorthSaying()) {
             html.append("<div style='background:#FBE9E7;padding:6px;margin:6px 0'>"
                     + "<b style='color:#B3261E'>A reasoner objects: ")
                 .append(escape(verdict.getShortLabel()))
                 .append("</b><br>")
                 .append(escape(verdict.describe()))
-                .append("<br><span style='color:#777777'>This is how its authors published it. "
-                        + "OntoBoard reports it rather than silently repairing somebody else's "
-                        + "pattern.</span></div>");
+                .append("<br><span style='color:#777777'>OntoBoard has not repaired this one: "
+                        + "the library's patterns are curated by the smallest change, each "
+                        + "change recorded in the pattern itself, and this one is not yet."
+                        + "</span></div>");
         }
 
         // Where a contributed pattern came from, said out loud. Everything else here is a

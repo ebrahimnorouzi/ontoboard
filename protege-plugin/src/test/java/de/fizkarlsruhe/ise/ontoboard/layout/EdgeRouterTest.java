@@ -76,6 +76,33 @@ class EdgeRouterTest {
         return shared;
     }
 
+    /**
+     * A box with no side left to arrive at - its loop's two legs on its right, its subclass line's
+     * stub on its left, a box 20px above it and one 20px below - still takes the line, at the
+     * point between the loop's legs, rather than have it drawn through the box above. Found on
+     * scorepart once its labels were corrected (1.155.0): "has section" ran through "Homogeneous
+     * fragment".
+     */
+    @Test
+    void aBoxWithEverySideTakenStillTakesTheLine() {
+        EdgeRouter.Box parent = box("parent", 380, 140);
+        EdgeRouter.Box above = new EdgeRouter.Box("above", 420, 220, 240, 60);
+        EdgeRouter.Box target = box("target", 420, 300);
+        EdgeRouter.Box below = box("below", 420, 360);
+        Map<String, EdgeRouter.Route> routes = EdgeRouter.route(
+                Arrays.asList(parent, above, target, below), Collections.<EdgeRouter.Box>emptyList(),
+                Arrays.asList(new EdgeRouter.Link("loop", "target", "target", false, 80, 16),
+                        new EdgeRouter.Link("is-a", "target", "parent", true, 0, 0),
+                        new EdgeRouter.Link("below-is-a", "below", "parent", true, 0, 0),
+                        arrow("a", "parent", "target")));
+
+        assertTrue(routes.containsKey("a"), "the line has a route of its own: " + routes.keySet());
+        double[][] line = line(parent, routes.get("a"), target);
+        assertFalse(runsThrough(line, above), Arrays.deepToString(line));
+        assertFalse(runsThrough(line, below), Arrays.deepToString(line));
+        assertTrue(orthogonal(line), Arrays.deepToString(line));
+    }
+
     @Test
     void anArrowGoesRoundABoxInItsWay() {
         EdgeRouter.Box a = box("a", 0, 100);
@@ -192,6 +219,38 @@ class EdgeRouterTest {
                     "crosses the stem at y=" + y + ", the arrowhead ends at y=" + (head + 13) + ": "
                             + Arrays.deepToString(arrow));
         }
+    }
+
+    /**
+     * A subclass line between two frames is routed by search, not down a lane, and its arrowhead
+     * was not kept clear as a lane's is: an arrow ran through it. Found by 1.155.0's Linux build,
+     * whose board is drawn in DejaVu Sans: "has specified output" through the head of "textual
+     * entity is-a information content entity" on the study's three patterns.
+     */
+    @Test
+    void anArrowKeepsOffTheArrowheadOfASubclassLineBetweenFrames() {
+        EdgeRouter.Box upper = new EdgeRouter.Box("upper", 0, 0, 700, 200);
+        EdgeRouter.Box lower = new EdgeRouter.Box("lower", 0, 300, 700, 200);
+        EdgeRouter.Box parent = new EdgeRouter.Box("p", 260, 60, 160, 40);
+        EdgeRouter.Box child = new EdgeRouter.Box("c", 40, 380, 160, 40);
+        EdgeRouter.Box from = new EdgeRouter.Box("s", 40, 80, 160, 40);
+        EdgeRouter.Box to = new EdgeRouter.Box("t", 500, 80, 160, 40);
+        Map<String, EdgeRouter.Route> routes = EdgeRouter.route(
+                Arrays.asList(parent, child, from, to), Arrays.asList(upper, lower),
+                Arrays.asList(new EdgeRouter.Link("is-a", "c", "p", true, 0, 0),
+                        arrow("r", "s", "t")));
+
+        double[][] isA = line(child, routes.get("is-a"), parent);
+        double[] end = isA[isA.length - 1];
+        double[] before = isA[isA.length - 2];
+        assertEquals(end[0], before[0], 0.5, "arrives upright: " + Arrays.deepToString(isA));
+        double sign = Math.signum(before[1] - end[1]);
+        // The arrowhead as SchemaStyles draws it: the line's last 13px, 10px wide.
+        double[] head = {end[0] - 5, Math.min(end[1], end[1] + 13 * sign), 10, 13};
+        assertNotNull(routes.get("r"));
+        double[][] arrow = line(from, routes.get("r"), to);
+        assertFalse(crosses(arrow, head), "through the arrowhead at " + Arrays.toString(head)
+                + ": " + Arrays.deepToString(arrow));
     }
 
     @Test

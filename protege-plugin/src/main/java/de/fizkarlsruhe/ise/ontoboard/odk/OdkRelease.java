@@ -189,6 +189,8 @@ public final class OdkRelease {
         private final boolean releaseUncompared;
         private final boolean commitNewFiles;
         private final List<String> newFiles;
+        private final String reasoner;
+        private final long limitMillis;
 
         /**
          * A release that stops where it cannot be compared with the last release.
@@ -246,6 +248,40 @@ public final class OdkRelease {
             this.commitNewFiles = commitNewFiles;
             this.newFiles = newFiles == null ? null
                     : Collections.unmodifiableList(new ArrayList<String>(newFiles));
+            this.reasoner = null;
+            this.limitMillis = ReleaseVerdict.DEFAULT_LIMIT_MILLIS;
+        }
+
+        private Request(Request from, String reasoner, long limitMillis) {
+            this.editFile = from.editFile;
+            this.version = from.version;
+            this.shape = from.shape;
+            this.refreshImports = from.refreshImports;
+            this.refuseRemovedTerms = from.refuseRemovedTerms;
+            this.releaseUncompared = from.releaseUncompared;
+            this.commitNewFiles = from.commitNewFiles;
+            this.newFiles = from.newFiles;
+            this.reasoner = reasoner == null || reasoner.trim().isEmpty() ? null : reasoner.trim();
+            this.limitMillis = limitMillis;
+        }
+
+        /**
+         * The same release, with the reasoner the person chose (1.155.0): it is asked before
+         * anything is built, and ODK reasons with it ({@code REASONER=}).
+         *
+         * @param limitMillis how long the check may take before the person is asked
+         */
+        public Request withReasoner(String reasoner, long limitMillis) {
+            return new Request(this, reasoner, limitMillis);
+        }
+
+        /** The reasoner the person chose, or null where none was named (the project's own). */
+        public String reasoner() {
+            return reasoner;
+        }
+
+        public long limitMillis() {
+            return limitMillis;
         }
 
         public File editFile() {
@@ -304,6 +340,20 @@ public final class OdkRelease {
         default boolean runsTheMakefileAsItIs() {
             return true;
         }
+
+        /**
+         * Whether a project's own script is run by a shell - in ODK's container - which reads a
+         * carriage return as part of a word, and so is given {@link ReleaseRun.Script#shellWords};
+         * OntoBoard's engine reads the script itself and does not (1.155.0).
+         */
+        default boolean runsScriptsInAShell() {
+            return true;
+        }
+
+        /** What builds the release, with its versions, as the release's record says it. */
+        default String describe() {
+            return "ODK";
+        }
     }
 
     /** The person, asked before git records anything. */
@@ -318,6 +368,15 @@ public final class OdkRelease {
          * for which the version was refused as released the next time (review of 1.153.0).
          */
         default boolean stopped() {
+            return false;
+        }
+
+        /**
+         * Whether to release although the reasoner did not finish within the limit, so that
+         * nobody knows whether the ontology is consistent (1.155.0). Not asked for a finding: an
+         * inconsistent ontology or a class with no members is never released (D1).
+         */
+        default boolean goOnWithoutVerdict(ReleaseVerdict verdict) {
             return false;
         }
     }
@@ -351,6 +410,12 @@ public final class OdkRelease {
             public String shown(List<String> command, boolean passThroughRunSh) {
                 return ReleaseRun.shown(command) + "   (in the native ODK environment)";
             }
+
+            @Override
+            public String describe() {
+                return "ODK's own tools installed on this machine (" + activationScript
+                        + ")";
+            }
         };
     }
 
@@ -369,6 +434,11 @@ public final class OdkRelease {
             @Override
             public String shown(List<String> inContainer, boolean passThroughRunSh) {
                 return ReleaseRun.shown(command(inContainer, passThroughRunSh));
+            }
+
+            @Override
+            public String describe() {
+                return "ODK's container, " + image + " (" + runtime + ")";
             }
 
             private List<String> command(List<String> inContainer, boolean passThroughRunSh) {
@@ -394,42 +464,43 @@ public final class OdkRelease {
     public static Odk byOntoBoardItself(final File editFile,
             final java.util.function.BooleanSupplier stopped) {
         return new Odk() {
+            /**
+             * Whether how the Makefile differs from ODK's has been said in this route's run: a
+             * release calls make several times - clean, the build, its files, or a script's own
+             * calls - and the person reads it once, before the first (1.155.0).
+             */
+            private boolean noticeSaid;
+
             @Override
             public ProcessRunner.Outcome run(List<String> command, boolean passThroughRunSh) {
+                if (command.size() == 2 && command.get(0).equals("sh")
+                        && !command.get(1).equals("run.sh")) {
+                    // A project's own release script (1.155.0): read and run by OntoBoard
+                    // itself, each call of make on this engine, each line said as it starts.
+                    return script(command.get(1));
+                }
                 if (command.isEmpty() || !command.get(0).equals("make")) {
-                    return refused("'" + String.join(" ", command) + "' is no target of make. "
-                            + "OntoBoard itself runs ODK's Makefile; a script of the project's "
-                            + "own is run by a shell, in ODK's container.");
+                    return refused("'" + String.join(" ", command) + "' is no target of make, "
+                            + "and no script of the project's own. OntoBoard itself runs ODK's "
+                            + "Makefile and the project's release script.");
                 }
-                String goal = null;
-                Map<String, String> variables = new LinkedHashMap<String, String>();
-                for (String word : command.subList(1, command.size())) {
-                    int equals = word.indexOf('=');
-                    if (word.equals("-s")) {
-                        // make's "say no recipe line": asked for where only what a recipe
-                        // prints is wanted. The lines make says are told apart by whoever
-                        // reads the output.
-                        continue;
-                    } else if (word.equals("-B") || word.equals("--always-make")) {
-                        // Every target made again: carried with the variables, as make
-                        // carries both to a make below it.
-                        variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile
-                                .ALWAYS_MAKE, "");
-                    } else if (equals > 0
-                            && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
-                        variables.put(word.substring(0, equals), word.substring(equals + 1));
-                    } else if (goal == null && !word.startsWith("-")) {
-                        goal = word;
-                    } else {
-                        return refused("'" + word + "' on make's command line is not read by "
-                                + "OntoBoard's own engine: it takes one target and variables.");
-                    }
+                MakeLine line = MakeLine.read(command.subList(1, command.size()));
+                if (line.refusal() != null) {
+                    return refused(line.refusal());
                 }
-                if (goal == null) {
-                    return refused("make without a target is not run by OntoBoard's own engine.");
-                }
+                String goal = line.goal();
+                Map<String, String> variables = line.variables();
                 OdkEngine.Outcome outcome = OdkEngine.run(editFile, goal, variables, stopped);
                 List<String> said = new ArrayList<String>(outcome.getTranscript());
+                if (!said.isEmpty()) {
+                    String notice = FallbackEligibility.of(editFile, goal, variables).notice();
+                    if (notice != null && said.get(0).equals(notice)) {
+                        if (noticeSaid) {
+                            said.remove(0);
+                        }
+                        noticeSaid = true;
+                    }
+                }
                 if (!outcome.isOk()) {
                     said.add(outcome.getFailure());
                 }
@@ -445,15 +516,67 @@ public final class OdkRelease {
             }
 
             @Override
+            public String describe() {
+                String robot = robotVersion();
+                return "OntoBoard's own engine (ODK " + de.fizkarlsruhe.ise.ontoboard.odk.seed
+                        .OdkPin.VERSION + "'s Makefile, ROBOT" + (robot == null ? "" : " " + robot)
+                        + ", inside Protégé)";
+            }
+
+            @Override
             public boolean runsTheMakefileAsItIs() {
-                // The engine runs ODK's own Makefile only, and refuses another with its reason.
+                // The engine says itself, first in its transcript, how a Makefile differs from
+                // ODK's (1.155.0): the note for make's own routes is not said again.
                 return false;
+            }
+
+            @Override
+            public boolean runsScriptsInAShell() {
+                return false;
+            }
+
+            /** The project's own release script, read and run by OntoBoard itself. */
+            private ProcessRunner.Outcome script(String name) {
+                File ontology = editFile.getAbsoluteFile().getParentFile();
+                File file = new File(ontology, name);
+                String text;
+                try {
+                    text = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IOException unreadable) {
+                    return refused("The project's " + name + " could not be read: "
+                            + unreadable.getMessage());
+                }
+                Map<String, RecipeShell.Tool> tools = OdkTools.forProject(stopped);
+                ProjectScript.Plan plan = ProjectScript.read(text, tools);
+                try {
+                    return ProjectScript.run(plan, ontology, make -> run(make, false), tools,
+                            stopped);
+                } catch (IOException broke) {
+                    return refused(broke.getMessage());
+                }
             }
 
             private ProcessRunner.Outcome refused(String why) {
                 return new ProcessRunner.Outcome(1, Collections.singletonList(why), false);
             }
         };
+    }
+
+    /** The version of the ROBOT inside OntoBoard, as its jar says it; null when it does not. */
+    static String robotVersion() {
+        try (java.io.InputStream in = org.obolibrary.robot.CommandLineHelper.class
+                .getClassLoader().getResourceAsStream(
+                        "META-INF/maven/org.obolibrary.robot/robot-core/pom.properties")) {
+            if (in == null) {
+                return null;
+            }
+            java.util.Properties pom = new java.util.Properties();
+            pom.load(in);
+            return pom.getProperty("version");
+        } catch (IOException | RuntimeException unread) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------ what came of it
@@ -469,6 +592,8 @@ public final class OdkRelease {
         private final String tag;
         private final String summary;
 
+        private final ReleaseVerdict verdict;
+
         private Outcome(String failure, Log log, boolean committed, String tag, String summary) {
             this.failure = failure;
             this.transcript = Collections.unmodifiableList(new ArrayList<String>(log.transcript));
@@ -478,6 +603,12 @@ public final class OdkRelease {
             this.committed = committed;
             this.tag = tag;
             this.summary = summary;
+            this.verdict = log.verdict;
+        }
+
+        /** What the release's reasoner said before anything was built; null if it was not asked. */
+        public ReleaseVerdict getVerdict() {
+            return verdict;
         }
 
         public boolean isOk() {
@@ -529,6 +660,8 @@ public final class OdkRelease {
 
     /** What is said along the way. */
     private static final class Log {
+        /** What the release's reasoner said before the build (1.155.0). */
+        private ReleaseVerdict verdict;
         private final List<String> transcript = new ArrayList<String>();
         private final List<File> written = new ArrayList<File>();
         private final List<String> warnings = new ArrayList<String>();
@@ -579,6 +712,8 @@ public final class OdkRelease {
      * @param asks may be null, which is a no
      */
     public static Outcome run(Request request, Odk odk, ProcessRunner.Runner git, Asks asks) {
+        // What is saved in the project from now on is said before the commit (1.155.0, I3).
+        long started = System.currentTimeMillis();
         Log log = new Log();
         Facts facts;
         try {
@@ -597,6 +732,33 @@ public final class OdkRelease {
             return log.failed(released);
         }
 
+        // D1 (1.155.0): what the reasoner the person chose says, before anything is built. The
+        // user's egg project went out inconsistent because ODK reasons with ELK unless told
+        // otherwise, and ELK does not read inverse properties.
+        String chosen = ReleaseReasoners.canonical(request.reasoner);
+        String asking = chosen != null ? chosen : ReleaseReasoners.preselected(request.editFile);
+        ReleaseVerdict verdict = ReleaseVerdict.check(request.editFile, asking,
+                request.limitMillis, asks == null ? null : asks::stopped);
+        log.verdict = verdict;
+        log.note(verdict.said());
+        if (verdict.kind() == ReleaseVerdict.Kind.TIMED_OUT) {
+            if (asks == null || !asks.goOnWithoutVerdict(verdict)) {
+                return log.failed(verdict.said() + " The release was not checked, so it was "
+                        + "not made. Nothing was built, copied, committed or tagged.");
+            }
+            log.warn("Released not checked by " + asking + ": " + verdict.said());
+        } else if (verdict.stopsARelease()) {
+            String why = verdict.said() + " Nothing was built, copied, committed or tagged.";
+            if (!verdict.explanation().isEmpty()) {
+                why += "\n\n" + verdict.explanation();
+            }
+            return log.failed(why);
+        }
+        String misses = ReleaseReasoners.whatItMisses(asking);
+        if (misses != null) {
+            log.warn("Checked and released with " + asking + ". " + misses);
+        }
+
         // What builds it: the project's own script when it has one, else ODK's target.
         List<String> command;
         boolean passThrough = false;
@@ -608,8 +770,22 @@ public final class OdkRelease {
                 if (why != null) {
                     return log.failed(why);
                 }
-                command = Arrays.asList("sh", script.file().getName());
+                if (odk.runsScriptsInAShell()) {
+                    command = script.shellWords();
+                    if (script.hasWindowsLineEndings()) {
+                        log.note(script.file().getName() + " has Windows line endings, as Git "
+                                + "for Windows checks files out. The shell in ODK's container "
+                                + "would take each carriage return for part of a word, so it "
+                                + "runs a copy without them; the file is not changed.");
+                    }
+                } else {
+                    command = Arrays.asList("sh", script.file().getName());
+                }
                 passThrough = new File(facts.ontology(), "run.sh").isFile();
+                if (chosen != null) {
+                    log.warn("The project's " + script.file().getName() + " reasons with the "
+                            + "reasoner it chooses; " + chosen + " was asked before it ran.");
+                }
             } else {
                 if (facts.ontbase() == null
                         && request.shape.kind() != VersionIriShape.Kind.ODK) {
@@ -620,7 +796,7 @@ public final class OdkRelease {
                                     VersionIriShape.Kind.ODK).pattern() + ".");
                 }
                 command = ReleaseRun.makeArguments(version, request.shape, facts.ontbase(),
-                        request.refreshImports);
+                        request.refreshImports, chosen);
             }
         } catch (IllegalStateException cannotRead) {
             return log.failed(cannotRead.getMessage());
@@ -731,7 +907,8 @@ public final class OdkRelease {
                 log.warn("Removed: " + named(removed));
             }
             if (request.refuseRemovedTerms) {
-                return log.failed(whyTermsAreMissed(diff.removals(), last.version));
+                return log.failed(whyTermsAreMissed(diff.removals(), last.version,
+                        ownTermPrefix(facts.ontology(), facts.id())));
             }
         }
 
@@ -763,11 +940,42 @@ public final class OdkRelease {
             }
         }
 
+        // What the release records of itself (1.155.0): its log always; RELEASE.md beside its
+        // copy - and the tag's message - where the project keeps one.
+        // A script's release says that the script reasons with its own reasoner: the check
+        // was asked before it ran (the final review of 1.155.0).
+        String checked = log.verdict == null ? null : log.verdict.said();
+        if (checked != null && script != null) {
+            checked += " The project's " + script.file().getName() + " reasons with the "
+                    + "reasoner it chooses; " + log.verdict.reasoner() + " was asked before it "
+                    + "ran.";
+        }
+        String record = ReleaseRecord.markdown(ReleaseRecord.collect(facts.root(), facts.id(),
+                version, java.time.LocalDate.now().toString(), odk.describe(),
+                checked,
+                last == null ? null : last.version, diff == null ? null : diff.summary()));
+        log.note("");
+        for (String line : record.split("\n")) {
+            log.note(line);
+        }
+        String tagMessage = null;
+        if (kept) {
+            File recorded = new File(facts.root(), "releases/" + version + "/RELEASE.md");
+            try {
+                Files.write(recorded.toPath(), record.getBytes(StandardCharsets.UTF_8));
+                log.written.add(recorded);
+                tagMessage = "releases/" + version + "/RELEASE.md";
+            } catch (IOException cannotWrite) {
+                log.warn("The release's record could not be written to " + recorded + ": "
+                        + cannotWrite.getMessage() + ". It is in this log.");
+            }
+        }
+
         String done = "Released " + facts.id() + " " + version + ": " + assets.size()
                 + (assets.size() == 1 ? " file" : " files") + " at the top of the project"
                 + (kept ? ", a copy under releases/" + version : "");
         return recorded(facts, version, assets, git, asks, log, done,
-                request.commitsNewFilesFirst(), request.newFiles());
+                request.commitsNewFilesFirst(), request.newFiles(), tagMessage, started);
     }
 
     /** Said of a release the person stopped when ODK's part was done and OntoBoard's not begun. */
@@ -814,18 +1022,12 @@ public final class OdkRelease {
 
     /**
      * Why the project's release script cannot be run from here whatever the version, or null
-     * when it can: its line endings, or no version to read in it.
+     * when it can: no version to read in it. Its line endings stop nothing (1.155.0): ODK's
+     * container is given a copy without the carriage returns, and OntoBoard's engine reads
+     * them as line ends.
      */
     public static String whyNotAScriptToRun(ReleaseRun.Script script) {
         String name = script.file().getName();
-        if (script.hasWindowsLineEndings()) {
-            return name + " has Windows line endings. The shell in ODK's container reads the "
-                    + "carriage return at the end of every line as part of its last word - "
-                    + "the version, the target - so the script would release nothing, or the "
-                    + "wrong thing. Save it with Unix line endings (LF) and release again; "
-                    + "git's core.autocrlf is the usual reason a checkout looks like this, and "
-                    + "a line '*.sh text eol=lf' in .gitattributes keeps it from coming back.";
-        }
         String scripted = script.version();
         if (scripted == null || scripted.trim().isEmpty() || scripted.contains("$")) {
             return "This project is released by its own " + name + ", and that script has no "
@@ -1047,6 +1249,70 @@ public final class OdkRelease {
         return OntologyVersion.newestFirst(versions);
     }
 
+    /**
+     * A make command line as OntoBoard's own engine reads it: one target, its variables, -s and
+     * -B. The check of a project's own script reads its lines so too, so that a line the engine
+     * would refuse is named before anything runs (the final review of 1.155.0: the check read
+     * every target and skipped every option).
+     */
+    static final class MakeLine {
+        private final String goal;
+        private final Map<String, String> variables;
+        private final String refusal;
+
+        private MakeLine(String goal, Map<String, String> variables, String refusal) {
+            this.goal = goal;
+            this.variables = variables;
+            this.refusal = refusal;
+        }
+
+        /** @param words the line's words after {@code make} */
+        static MakeLine read(List<String> words) {
+            String goal = null;
+            Map<String, String> variables = new LinkedHashMap<String, String>();
+            for (String word : words) {
+                int equals = word.indexOf('=');
+                if (word.equals("-s")) {
+                    // make's "say no recipe line": asked for where only what a recipe prints
+                    // is wanted. The lines make says are told apart by whoever reads the output.
+                    continue;
+                } else if (word.equals("-B") || word.equals("--always-make")) {
+                    // Every target made again: carried with the variables, as make carries both
+                    // to a make below it.
+                    variables.put(de.fizkarlsruhe.ise.ontoboard.odk.make.MakeFile.ALWAYS_MAKE,
+                            "");
+                } else if (equals > 0
+                        && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
+                    variables.put(word.substring(0, equals), word.substring(equals + 1));
+                } else if (goal == null && !word.startsWith("-")) {
+                    goal = word;
+                } else {
+                    return new MakeLine(null, variables, "'" + word + "' on make's command line "
+                            + "is not read by OntoBoard's own engine: it takes one target and "
+                            + "variables.");
+                }
+            }
+            if (goal == null) {
+                return new MakeLine(null, variables,
+                        "make without a target is not run by OntoBoard's own engine.");
+            }
+            return new MakeLine(goal, variables, null);
+        }
+
+        String goal() {
+            return goal;
+        }
+
+        Map<String, String> variables() {
+            return variables;
+        }
+
+        /** Why the engine does not run the line, or null when it reads it. */
+        String refusal() {
+            return refusal;
+        }
+    }
+
     /** What went wrong, in its first line: a parser's message can run to pages. */
     private static String firstLineOf(RuntimeException failure) {
         String message = failure.getMessage() == null ? failure.getClass().getSimpleName()
@@ -1061,21 +1327,90 @@ public final class OdkRelease {
                 + (removed.getBefore().isEmpty() ? "" : " (" + removed.getBefore() + ")");
     }
 
-    private static String whyTermsAreMissed(List<ReleaseDiff.TermChange> removals,
-            String previous) {
+    /**
+     * Why a release with terms gone was refused, and what to do, by whose terms they are: one of
+     * the project's own is brought back and deprecated; one an import brought is named in that
+     * import's term list, where its source still has it - a project cannot deprecate another's
+     * terms. MWO's release after a Build was refused for 20 PMDco terms its module no longer
+     * brings, and told to deprecate them (Phase 7, 2026-11-20).
+     *
+     * @param ownPrefix the prefix of the project's own identifiers - its ID ranges' idprefix
+     *                  ({@link #ownTermPrefix}); null when not known, and then both ways are said
+     */
+    static String whyTermsAreMissed(List<ReleaseDiff.TermChange> removals, String previous,
+            String ownPrefix) {
         boolean one = removals.size() == 1;
         String it = one ? "it" : "them";
         // Short: the dialog that shows it keeps the build's log on screen below. Every term
         // that is gone is a line of that log.
-        return (one ? "1 term that the " + previous + " release published is gone from this "
-                + "one: " + named(removals.get(0)) + "."
+        String gone = one ? "1 term that the " + previous + " release published is gone from "
+                + "this one: " + named(removals.get(0))
                 : removals.size() + " terms that the " + previous + " release published are "
-                        + "gone from this one, " + named(removals.get(0)) + " among them.")
-                + " ODK built the release files and put them at the top of the project; "
-                + "nothing was copied to releases/, committed or tagged. "
-                + "Bring " + it + " back and mark " + it + " owl:deprecated with a replacement, "
-                + "so that what imported " + it + " still resolves; then release again. To "
-                + "drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
+                        + "gone from this one, " + named(removals.get(0)) + " among them";
+        String built = " ODK built the release files and put them at the top of the project; "
+                + "nothing was copied to releases/, committed or tagged. ";
+        String untick = "To drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
+        String list = "its import's term list (src/ontology/imports/<import>_terms.txt)";
+        String namespace = namespaceOf(ownPrefix);
+        int own = 0;
+        for (ReleaseDiff.TermChange removed : removals) {
+            if (namespace != null && removed.getIri().toString().startsWith(namespace)) {
+                own++;
+            }
+        }
+        int imported = removals.size() - own;
+        if (namespace == null) {
+            return gone + "." + built + "Bring a term of this project's own back and mark it "
+                    + "owl:deprecated with a replacement, so that what imported it still "
+                    + "resolves; name one that came with an import in " + list + ", where its "
+                    + "source still has it; then release again. " + untick;
+        }
+        if (imported == 0) {
+            return gone + "." + built + "Bring " + it + " back and mark " + it
+                    + " owl:deprecated with a replacement, so that what imported " + it
+                    + " still resolves; then release again. " + untick;
+        }
+        if (own == 0) {
+            return gone + (one ? " - not this project's own: it came with an import"
+                    : " - none of them this project's own: they came with its imports")
+                    + ", built again from " + (one ? "its source, which no longer brings it"
+                            : "their sources, which no longer bring them") + "." + built
+                    + "Name " + (one ? "it" : "each") + " in " + list + " to keep " + it
+                    + ", where the source still has " + it + "; then release again. " + untick;
+        }
+        return gone + ": " + own + " of them this project's own, " + imported + " from its "
+                + "imports." + built + "Bring this project's own back and mark them "
+                + "owl:deprecated with a replacement, so that what imported them still "
+                + "resolves; name an import's in " + list + ", where its source still has it; "
+                + "then release again. " + untick;
+    }
+
+    /** A prefix's namespace: up to its last slash or hash; null for none. */
+    private static String namespaceOf(String prefix) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            return null;
+        }
+        int end = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf('#'));
+        return end < 0 ? prefix : prefix.substring(0, end + 1);
+    }
+
+    /**
+     * The prefix of the project's own identifiers - the idprefix of {@code <id>-idranges.owl}
+     * beside the edit file - or null when there is none to read.
+     */
+    static String ownTermPrefix(File ontologyFolder, String id) {
+        File ranges = ontologyFolder == null || id == null ? null
+                : new File(ontologyFolder, id + "-idranges.owl");
+        if (ranges == null || !ranges.isFile()) {
+            return null;
+        }
+        try {
+            String prefix = IdRanges.parse(new String(Files.readAllBytes(ranges.toPath()),
+                    StandardCharsets.UTF_8)).getIdPrefix();
+            return prefix == null || prefix.trim().isEmpty() ? null : prefix.trim();
+        } catch (IOException | RuntimeException unreadable) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------ what the dialog proposes
@@ -1187,10 +1522,12 @@ public final class OdkRelease {
      *
      * @param commitNewFirst whether the project's new files are committed first, in a commit
      *                       of their own, so that the tag holds them
+     * @param started        when the release began: what was saved in the project since is
+     *                       named in the question to commit
      */
     private static Outcome recorded(Facts facts, String version, List<File> assets,
             ProcessRunner.Runner git, Asks asks, Log log, String done, boolean commitNewFirst,
-            List<String> newFiles) {
+            List<String> newFiles, String tagMessage, long started) {
         String where = facts.root().getAbsolutePath();
         String tag = GitTags.tagFor(version);
         if (GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")) == null) {
@@ -1227,7 +1564,8 @@ public final class OdkRelease {
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(),
                 GitRepo.repositoryFor(new File(facts.ontology(), "Makefile")), facts.id(),
-                version, assets, status, commitNewFirst, newFiles);
+                version, assets, status, commitNewFirst, newFiles, tagMessage)
+                .withSavedMeanwhile(SavedMeanwhile.under(facts.root(), started));
         List<String> conflicted = GitRepo.parseStatus(status).getConflicted();
         if (!conflicted.isEmpty()) {
             log.warn("A merge or rebase is unfinished in this repository - in conflict: "

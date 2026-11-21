@@ -31,9 +31,12 @@ class ReasonerVerdictTest {
      */
     @Test
     void theShippedTableIsOnTheClasspath() {
-        assertTrue(ReasonerVerdict.forPattern("roledependentnames").isWorthSaying(),
+        // Proved by a row only the table can know: template-instance ships without a worked
+        // example. (Since 1.155.0 no bundled pattern is one a reasoner objects to, so a flagged
+        // pattern can no longer be the proof.)
+        assertTrue(ReasonerVerdict.forPattern("template-instance").hasNoExample(),
                 "patterns/soundness.tsv is not on the classpath - check the pom's resource "
-                + "includes. Without it every pattern looks clean, including the broken ones.");
+                + "includes. Without it every pattern looks clean, including a broken one.");
         assertFalse(ReasonerVerdict.forPattern("actingfor").isWorthSaying(),
                 "a clean pattern gets no box: one on every pattern is one nobody reads");
         assertTrue(ReasonerVerdict.forPattern("actingfor").isClean(), "actingfor is clean");
@@ -47,22 +50,28 @@ class ReasonerVerdictTest {
      * looking for a clash that is not there.
      */
     @Test
-    void beingOutsideTheProfileIsNotCalledInconsistent() {
-        for (String outside : new String[] {"roledependentnames", "winstonpartwhole"}) {
-            ReasonerVerdict verdict = ReasonerVerdict.forPattern(outside);
-            assertTrue(verdict.isWorthSaying(), outside + " is one a reasoner refuses");
-            assertEquals("not OWL 2 DL", verdict.getShortLabel(), outside);
-            assertTrue(verdict.describe().contains("outside OWL 2 DL"), verdict.describe());
-            assertFalse(verdict.describe().contains("inconsistent"),
-                    "a question no reasoner can answer is not a contradiction: "
-                            + verdict.describe());
-        }
+    void beingOutsideTheProfileIsNotCalledInconsistent() throws Exception {
+        ReasonerVerdict verdict = refused();
+
+        assertTrue(verdict.isWorthSaying(), "one a reasoner refuses");
+        assertEquals("not OWL 2 DL", verdict.getShortLabel());
+        assertTrue(verdict.describe().contains("outside OWL 2 DL"), verdict.describe());
+        assertFalse(verdict.describe().contains("inconsistent"),
+                "a question no reasoner can answer is not a contradiction: " + verdict.describe());
+    }
+
+    /** As soundness.tsv recorded roledependentnames before 1.155.0 curated it. */
+    private static ReasonerVerdict refused() throws Exception {
+        return ReasonerVerdict.read(new StringReader(
+                "refused\t0\t34\tfalse\tNOT_OWL_2_DL\t35\tfalse\tNOT_OWL_2_DL\t\n")).get("refused");
     }
 
     /** An unsatisfiable class is named, and the consequence of using it is spelled out. */
     @Test
-    void anUnsatisfiableClassIsNamedWithItsConsequence() {
-        ReasonerVerdict verdict = ReasonerVerdict.forPattern("spatial-graph-adapter-sga");
+    void anUnsatisfiableClassIsNamedWithItsConsequence() throws Exception {
+        // As soundness.tsv recorded spatial-graph-adapter-sga before 1.155.0 curated it.
+        ReasonerVerdict verdict = ReasonerVerdict.read(new StringReader("sga\t0\t42\ttrue"
+                + "\tAttribute; ContextualizedRelation\t-\t-\tnone\tno example.ttl\n")).get("sga");
 
         assertTrue(verdict.isWorthSaying());
         assertTrue(verdict.getShortLabel().startsWith("unsatisfiable class"),
@@ -146,9 +155,10 @@ class ReasonerVerdictTest {
                 assertFalse(verdict.getShortLabel().isEmpty(), pattern.getId());
             }
         }
-        assertEquals(3, flagged,
-                "three of the bundled patterns are ones a reasoner objects to - the fourth, "
-                + "template-instance, is consistent and merely has no example");
+        assertEquals(0, flagged,
+                "since 1.155.0 no bundled pattern is one a reasoner objects to: the three that"
+                + " were - roledependentnames, winstonpartwhole, spatial-graph-adapter-sga - were"
+                + " curated, each change recorded in the pattern. One flagged now is new.");
     }
 
     /**
@@ -159,15 +169,17 @@ class ReasonerVerdictTest {
      */
     @Test
     void theChooserShowsTheWarningForAFlaggedPatternAndNotForACleanOne() throws Exception {
+        // A bundled pattern, shown with the verdict it had before 1.155.0 curated it.
         DesignPattern flagged = PatternLibrary.find("winstonpartwhole");
-        String warned = PatternSummary.asHtml(flagged, PatternLibrary.contentsOf(flagged));
+        String warned = PatternSummary.asHtml(flagged, PatternLibrary.contentsOf(flagged), null, null,
+                refused());
 
         assertTrue(warned.contains("A reasoner objects"), warned);
         assertTrue(warned.contains("not OWL 2 DL"), warned);
         assertTrue(warned.contains("outside OWL 2 DL"),
                 "the sentence, not only the label, has to be there");
-        assertTrue(warned.contains("rather than silently repairing somebody else"),
-                "it says whose defect it is");
+        assertTrue(warned.contains("OntoBoard has not repaired this one"),
+                "it says that OntoBoard's curation has not reached it: " + warned);
 
         DesignPattern clean = PatternLibrary.find("actingfor");
         String quiet = PatternSummary.asHtml(clean, PatternLibrary.contentsOf(clean));

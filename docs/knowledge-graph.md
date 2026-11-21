@@ -41,28 +41,28 @@ per thing.
 - **Type dates and numbers in the cell** - `2026-11-01T18:00:00^^xsd:dateTime` - or in the column,
   `AT dcterms:date^^xsd:date`, not both.
 
-*Spreadsheets → Template...* → *Write me a template to start from* writes a sheet to copy.
+*Knowledge graph → Build from sheets...* → *Write me a template to start from* writes a sheet to copy.
 
 ## 2. Give every row an identifier
 
-Leave the ID blank on new rows. *Spreadsheets → Sheet editor* opens the project's sheets; select a
+Leave the ID blank on new rows. *Knowledge graph → Edit sheets* opens the project's sheets; select a
 sheet and press **Generate IRIs...** - from your ID range, continuing the numbering, a timestamp,
 a UUID or the label. It never reuses an identifier. **Save** writes the files.
 
 ## 3. Check the sheets
 
-*Spreadsheets → Check sheets...* lists, cell by cell, names that point at nothing or at two
+*Knowledge graph → Check sheets...* lists, cell by cell, names that point at nothing or at two
 things, leftover placeholders, stray whitespace and curly quotes, with the correction where it is
 obvious. Nothing is changed; the sheet editor marks the same problems as you type.
 
 ## 4. Build the graph
 
-Open the graph file in Protégé, save the sheets, then *Spreadsheets → Template...*, choose a
+Open the graph file in Protégé, save the sheets, then *Knowledge graph → Build from sheets...*, choose a
 sheet and *Add every sheet in its folder*: the sheets are read together, and *Edit → Undo* removes
 the lot. A row that cannot be read is listed with its sheet, row and column; run *Check it, change
 nothing* first. *File → Save* keeps the result.
 
-*Template...* only ever adds: run it again after changing a label and the graph has both. To
+*Build from sheets...* only ever adds: run it again after changing a label and the graph has both. To
 rebuild, undo the earlier run, or build into a fresh copy of the graph file - its header,
 prefixes and imports, no individuals.
 

@@ -10,5 +10,13 @@
   "scenarios": "A hospital is located in a city. A sensor is deployed at a geographic coordinate.",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Place",
   "class_count": 2,
-  "property_count": 2
+  "property_count": 2,
+  "curated": [
+    "header: dcterms:title \"Place (Spatial Object) Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/"
+  ]
 }

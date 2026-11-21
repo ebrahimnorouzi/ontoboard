@@ -4,13 +4,23 @@
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix typesofentities: <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#> .
+@prefix cpannotationschema: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @base <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> .
 
 <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> rdf:type owl:Ontology ;
                                                                     owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
-                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What kind of entity is that?" ;
-                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To identify and categorize the most general possible types of things in the domain of discourse." ;
-                                                                    rdfs:comment """The types of entities pattern.
+                                                                    dcterms:description "To identify and categorize the most general possible types of things in the domain of discourse."^^xsd:string ;
+                                                                    dcterms:title "Types Of Entities Pattern"^^xsd:string ;
+                                                                    cpannotationschema:coversRequirements "What kind of entity is that?" ;
+                                                                    cpannotationschema:hasIntent "To identify and categorize the most general possible types of things in the domain of discourse."^^xsd:string ;
+                                                                    rdfs:comment """Curated by OntoBoard 1.155.0, so that the pattern passes ODK's quality report with its default profile, names every term with a label, and is consistent and coherent. Changes: label moved to skos:prefLabel x5; label added x5; term declared x3;
+- header: dcterms:title \"Types Of Entities Pattern\" - the library's name for the pattern
+- header: dcterms:description - the library's description of the pattern
+Each change is listed under \"curated\" in the pattern's metadata.json in OntoBoard's pattern library."""@en ,
+                                                                                 """The types of entities pattern.
 It is extracted from DOLCE-UltraLite by partial clone of elements.""" ;
                                                                     owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
                                                                                     "Created by Valentina Presutti"^^xsd:string .
@@ -19,12 +29,24 @@ It is extracted from DOLCE-UltraLite by partial clone of elements.""" ;
 #    Annotation properties
 #################################################################
 
+###  http://purl.org/dc/terms/description
+dcterms:description rdf:type owl:AnnotationProperty ;
+                    rdfs:label "Description (DC terms)"@en .
+
+
+###  http://purl.org/dc/terms/title
+dcterms:title rdf:type owl:AnnotationProperty ;
+              rdfs:label "Title"@en .
+
+
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+cpannotationschema:coversRequirements rdf:type owl:AnnotationProperty ;
+                                      rdfs:label "covers requirements"@en .
 
 
 ###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
-<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+cpannotationschema:hasIntent rdf:type owl:AnnotationProperty ;
+                             rdfs:label "has intent"@en .
 
 
 ###  http://www.w3.org/2000/01/rdf-schema#comment
@@ -43,71 +65,76 @@ rdfs:label rdf:type owl:AnnotationProperty .
 owl:versionInfo rdf:type owl:AnnotationProperty .
 
 
+###  http://www.w3.org/2004/02/skos/core#prefLabel
+skos:prefLabel rdf:type owl:AnnotationProperty ;
+               rdfs:label "preferred label"@en .
+
+
 #################################################################
 #    Classes
 #################################################################
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Abstract
-:Abstract rdf:type owl:Class ;
-          rdfs:subClassOf :Entity ;
-          owl:disjointWith :Event ,
-                           :Object ,
-                           :Quality ;
-          rdfs:comment "Any Entity that cannot be located in space-time. E.g. mathematical entities: formal semantics elements, regions within dimensional spaces, etc." ;
-          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
-          rdfs:label "Abstract"@en ,
-                     "Astratto"@it .
+typesofentities:Abstract rdf:type owl:Class ;
+                         rdfs:subClassOf typesofentities:Entity ;
+                         owl:disjointWith typesofentities:Event ,
+                                          typesofentities:Object ,
+                                          typesofentities:Quality ;
+                         rdfs:comment "Any Entity that cannot be located in space-time. E.g. mathematical entities: formal semantics elements, regions within dimensional spaces, etc." ;
+                         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
+                         rdfs:label "Abstract"@en ;
+                         skos:prefLabel "Astratto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity
-:Entity rdf:type owl:Class ;
-        owl:equivalentClass [ rdf:type owl:Class ;
-                              owl:unionOf ( :Abstract
-                                            :Event
-                                            :Object
-                                            :Quality
-                                          )
-                            ] ;
-        rdfs:comment "Anything: real, possible, or imaginary, which some modeller wants to talk about for some purpose."^^xsd:string ;
-        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
-        rdfs:label "Entity"@en ,
-                   "Entità"@it .
+typesofentities:Entity rdf:type owl:Class ;
+                       owl:equivalentClass [ rdf:type owl:Class ;
+                                             owl:unionOf ( typesofentities:Abstract
+                                                           typesofentities:Event
+                                                           typesofentities:Object
+                                                           typesofentities:Quality
+                                                         )
+                                           ] ;
+                       rdfs:comment "Anything: real, possible, or imaginary, which some modeller wants to talk about for some purpose."^^xsd:string ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
+                       rdfs:label "Entity"@en ;
+                       skos:prefLabel "Entità"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event
-:Event rdf:type owl:Class ;
-       rdfs:subClassOf :Entity ;
-       owl:disjointWith :Object ,
-                        :Quality ;
-       rdfs:comment """Any physical, social, or mental process, event, or state.
+typesofentities:Event rdf:type owl:Class ;
+                      rdfs:subClassOf typesofentities:Entity ;
+                      owl:disjointWith typesofentities:Object ,
+                                       typesofentities:Quality ;
+                      rdfs:comment """Any physical, social, or mental process, event, or state.
 More theoretically, events can be classified in different ways, possibly based on 'aspect' (e.g. stative, continuous, achievements, etc.), or on agentivity, typical participants (e.g. human, physical, abstract, food, etc.).
 Here no special direction is taken, and the following explains why: events are related to situations, and they can be seen from different perspectives at a same time:
 
 consider a same event 'rock erosion in the Sinni valley': it can be conceptualized as an accomplishment (what has brought a certain state to occur), as an achievement (the state resulting from a previous accomplishment), as a punctual event (if we collapse the time interval of the erosion into a time point), or as a transition (something that has changed our focus from a state to another). 
 In the erosion case, we could have good motivations to shift from one aspect to another: a) causation focus, b) effectual focus, c) condensation d) transition (causality).
 If we want to consider all the aspects of a process together, we need to postulate a unifying Situation that encompasses them."""^^xsd:string ;
-       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
-       rdfs:label "Event"@en ,
-                  "Evento"@it .
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
+                      rdfs:label "Event"@en ;
+                      skos:prefLabel "Evento"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object
-:Object rdf:type owl:Class ;
-        rdfs:subClassOf :Entity ;
-        owl:disjointWith :Quality ;
-        rdfs:comment "Any physical, social, or mental object, or a substance"^^xsd:string ;
-        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
-        rdfs:label "Object"@en ,
-                   "Oggetto"@it .
+typesofentities:Object rdf:type owl:Class ;
+                       rdfs:subClassOf typesofentities:Entity ;
+                       owl:disjointWith typesofentities:Quality ;
+                       rdfs:comment "Any physical, social, or mental object, or a substance"^^xsd:string ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
+                       rdfs:label "Object"@en ;
+                       skos:prefLabel "Oggetto"@it .
 
 
 ###  http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Quality
-:Quality rdf:type owl:Class ;
-         rdfs:subClassOf :Entity ;
-         rdfs:comment "Any aspect of an Entity (but not a part of it), which cannot exist without that Entity. For example, the way the surface of a specific PhysicalObject looks like is a Quality, while the encoding of that quality into e.g. a PhysicalAttribute is a Region" ;
-         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
-         rdfs:label "Quality"@en ,
-                    "Qualità"@it .
+typesofentities:Quality rdf:type owl:Class ;
+                        rdfs:subClassOf typesofentities:Entity ;
+                        rdfs:comment "Any aspect of an Entity (but not a part of it), which cannot exist without that Entity. For example, the way the surface of a specific PhysicalObject looks like is a Quality, while the encoding of that quality into e.g. a PhysicalAttribute is a Region" ;
+                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ;
+                        rdfs:label "Quality"@en ;
+                        skos:prefLabel "Qualità"@it .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

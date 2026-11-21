@@ -902,6 +902,8 @@ public final class SheetBook {
             throw new IOException("No sheet called " + sheetName);
         }
         Files.write(file.toPath(), render(sheet).getBytes(Charset.forName("UTF-8")));
+        // A release kept behind names what was saved while it ran (1.155.0).
+        de.fizkarlsruhe.ise.ontoboard.odk.SavedMeanwhile.saved(file);
         sheet.unsaved = false;
         if (file.equals(sheet.file)) {
             // Our own write is not somebody else's change. Without this the second save of a

@@ -22,7 +22,7 @@ shows each import - BFO 2020, two BFO patterns and four NFDIcore patterns - with
 
 *File → Open...* → `kg/pizzabfo-kg.ttl`, in a new window. It imports a release of the ontology
 and holds the data: cities, pizzerias, bakers, ovens, pizzas and bakings.
-*OntoBoard → Spreadsheets → Sheet editor* opens the nine sheets it is made from. Row 1 of each
+*OntoBoard → Knowledge graph → Edit sheets* opens the nine sheets it is made from. Row 1 of each
 sheet is the heading, row 2 says what each column means to ROBOT, and every row after that is one
 individual.
 
@@ -40,8 +40,9 @@ and *Save all*.
 
 ## 5. Check the sheets, and build
 
-*OntoBoard → Spreadsheets → Check sheets...* reads every sheet against the graph: names that point
-at nothing, names that mean two things. Then *Spreadsheets → Template...* → any sheet of the
+*OntoBoard → Knowledge graph → Check sheets...* reads every sheet against the graph: names that
+point at nothing, names that mean two things. Then *Knowledge graph → Build from sheets...* → any
+sheet of the
 folder → *Add every sheet in its folder*: the rows become individuals, and *Edit → Undo* takes
 the whole run back.
 

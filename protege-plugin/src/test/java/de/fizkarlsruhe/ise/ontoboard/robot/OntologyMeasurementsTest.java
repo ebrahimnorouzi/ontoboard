@@ -68,6 +68,14 @@ class OntologyMeasurementsTest {
         return found;
     }
 
+    private static Map<String, String> byKey(List<OntologyMeasurements.Measurement> rows) {
+        Map<String, String> found = new LinkedHashMap<String, String>();
+        for (OntologyMeasurements.Measurement row : rows) {
+            found.put(row.getKey(), row.getValue());
+        }
+        return found;
+    }
+
     private static List<String> groupsOf(List<OntologyMeasurements.Measurement> rows) {
         List<String> groups = new ArrayList<String>();
         for (OntologyMeasurements.Measurement row : rows) {
@@ -94,15 +102,15 @@ class OntologyMeasurementsTest {
 
     @Test
     void theCountsMatchTheOntologyItWasGiven() {
-        Map<String, String> found = byLabel(
+        Map<String, String> found = byKey(
                 OntologyMeasurements.run(ontology, OntologyMeasurements.Depth.ESSENTIAL));
 
-        assertEquals("4", found.get("Class count"),
+        assertEquals("4", found.get(MetricsLabels.CLASS_COUNT),
                 "Dog, Cat, Animal and Person - ROBOT counts declared classes and does not "
                         + "include owl:Thing");
-        assertEquals("1", found.get("Individual count"));
-        assertEquals("1", found.get("Obj property count"));
-        assertEquals("4", found.get("Logical axiom count"));
+        assertEquals("1", found.get(MetricsLabels.INDIVIDUAL_COUNT));
+        assertEquals("1", found.get(MetricsLabels.OBJPROPERTY_COUNT));
+        assertEquals("4", found.get(MetricsLabels.LOGICAL_AXIOM_COUNT));
     }
 
     @Test
@@ -156,8 +164,8 @@ class OntologyMeasurementsTest {
         List<OntologyMeasurements.Measurement> rows = OntologyMeasurements.present(result);
 
         Set<String> labels = new HashSet<String>(byLabel(rows).keySet());
-        assertTrue(labels.contains("Class count"), labels.toString());
-        assertTrue(labels.contains("Expressivity"), labels.toString());
+        assertTrue(labels.contains("Classes"), labels.toString());
+        assertTrue(labels.contains("Expressivity (description logic)"), labels.toString());
         assertTrue(labels.contains("A metric from a future robot"),
                 "an unknown metric was dropped instead of shown under Other: " + labels);
         assertEquals(3, rows.size());
@@ -170,8 +178,8 @@ class OntologyMeasurementsTest {
         result.put("something_new", 2);
 
         for (OntologyMeasurements.Measurement row : OntologyMeasurements.present(result)) {
-            if (row.getLabel().equals("Class count")) {
-                assertEquals("Entities", row.getGroup());
+            if (row.getKey().equals(MetricsLabels.CLASS_COUNT)) {
+                assertEquals("In this file", row.getGroup());
             } else {
                 assertEquals(OntologyMeasurements.OTHER_GROUP, row.getGroup());
             }
@@ -185,11 +193,11 @@ class OntologyMeasurementsTest {
     @Test
     void groupsAppearInDisplayOrderRegardlessOfWhatOrderRobotUsed() {
         MeasureResult result = new MeasureResult();
-        result.put(MetricsLabels.UNDECLARED_ENTITY_COUNT, 0);
+        result.put(MetricsLabels.UNDECLARED_ENTITY_COUNT_INCL, 0);
         result.put(MetricsLabels.CLASS_COUNT, 1);
-        result.put(MetricsLabels.AXIOM_COUNT, 2);
+        result.put(MetricsLabels.AXIOM_COUNT_INCL, 2);
 
-        assertEquals(java.util.Arrays.asList("Size", "Entities", "Warnings"),
+        assertEquals(java.util.Arrays.asList("With its imports", "In this file", "Warnings"),
                 groupsOf(OntologyMeasurements.present(result)));
     }
 
@@ -259,8 +267,123 @@ class OntologyMeasurementsTest {
     void theGroupOrderIsPublishedForAPanelToUse() {
         List<String> order = OntologyMeasurements.groupOrder();
 
-        assertEquals("Size", order.get(0));
+        assertEquals("With its imports", order.get(0));
         assertEquals(OntologyMeasurements.OTHER_GROUP, order.get(order.size() - 1),
                 "Other belongs last, or unknown metrics would push known ones down");
+    }
+
+    // ---------- what the person reads first (1.155.0) ----------
+
+    /**
+     * The user measured nfdicore and read its edit file's own counts first - 14 axioms, no class
+     * - with what it is, with its imports, under "Other" as "Obj property count incl". What the
+     * ontology is with its imports leads, in words; the open file's own counts follow.
+     */
+    @Test
+    void whatTheOntologyIsWithItsImportsLeadsInWords() throws Exception {
+        OWLOntology importing = manager.createOntology(IRI.create("http://example.org/edit"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(importing,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/o"))));
+
+        List<OntologyMeasurements.Measurement> rows =
+                OntologyMeasurements.run(importing, OntologyMeasurements.Depth.EXTENDED);
+
+        assertEquals("With its imports", rows.get(0).getGroup());
+        assertEquals(java.util.Arrays.asList("Classes", "Object properties", "Data properties",
+                "Annotation properties", "Individuals", "Datatypes", "Logical axioms", "Axioms"),
+                labelsOf(rows.subList(0, 8)));
+        Map<String, String> withImports = valuesIn(rows, "With its imports");
+        assertEquals("4", withImports.get("Classes"));
+        assertEquals("1", withImports.get("Object properties"));
+        assertEquals("4", withImports.get("Logical axioms"));
+        Map<String, String> own = valuesIn(rows, "In this file");
+        assertEquals("0", own.get("Classes"));
+        assertEquals("0", own.get("Logical axioms"));
+        assertTrue(groupsOf(rows).indexOf("With its imports")
+                < groupsOf(rows).indexOf("In this file"), groupsOf(rows).toString());
+    }
+
+    /**
+     * nfdicore's 235 terms were counted under "prefix_unknown": ROBOT knows OBO's prefixes, not
+     * the ontology's. Its own prefixes join ROBOT's; its default prefix is named as the file is.
+     */
+    @Test
+    void theOntologysOwnPrefixesNameItsTerms() {
+        org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat format =
+                new org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat();
+        format.setDefaultPrefix("http://example.org/o#");
+        manager.setOntologyFormat(ontology, format);
+
+        Map<String, String> found = byKey(OntologyMeasurements.run(ontology,
+                OntologyMeasurements.Depth.EXTENDED, "pets"));
+
+        String terms = found.get(MetricsLabels.NS_USE_SIGNATURE);
+        assertTrue(terms.contains("pets 6"), terms);
+        assertFalse(terms.contains("prefix_unknown"), terms);
+    }
+
+    /** The sentence at the top: the file, with its imports, in a few counts and its profile. */
+    @Test
+    void theSummarySaysWhatTheOntologyIsWithItsImports() {
+        MeasureResult result = new MeasureResult();
+        result.put(MetricsLabels.CLASS_COUNT_INCL, 271);
+        result.put(MetricsLabels.OBJPROPERTY_COUNT_INCL, 62);
+        result.put(MetricsLabels.INDIVIDUAL_COUNT_INCL, 1);
+        result.put(MetricsLabels.LOGICAL_AXIOM_COUNT_INCL, 521);
+        result.put(MetricsLabels.BOOL_PROFILE_OWL2_DL, true);
+
+        assertEquals("nfdicore-edit.owl with its imports: 271 classes, 62 object properties, "
+                + "1 individual and 521 logical axioms - in OWL 2 DL.",
+                OntologyMeasurements.summary(OntologyMeasurements.present(result),
+                        "nfdicore-edit.owl"));
+        result.put(MetricsLabels.BOOL_PROFILE_OWL2_DL, false);
+        assertTrue(OntologyMeasurements.summary(OntologyMeasurements.present(result),
+                "nfdicore-edit.owl").endsWith("- not in OWL 2 DL."));
+    }
+
+    private static List<String> labelsOf(List<OntologyMeasurements.Measurement> rows) {
+        List<String> labels = new ArrayList<String>();
+        for (OntologyMeasurements.Measurement row : rows) {
+            labels.add(row.getLabel());
+        }
+        return labels;
+    }
+
+    private static Map<String, String> valuesIn(List<OntologyMeasurements.Measurement> rows,
+            String group) {
+        Map<String, String> found = new LinkedHashMap<String, String>();
+        for (OntologyMeasurements.Measurement row : rows) {
+            if (row.getGroup().equals(group)) {
+                found.put(row.getLabel(), row.getValue());
+            }
+        }
+        return found;
+    }
+
+    /**
+     * nfdicore's edit file declares its default prefix as .../ontology#, which no term of it
+     * uses; its terms are under .../ontology/, nfdicore-main's default prefix. The name goes to
+     * the default prefix of the closure the terms use.
+     */
+    @Test
+    void theDefaultPrefixTheTermsUseIsNamedEvenWhereAnImportDeclaresIt() throws Exception {
+        OWLOntology edit = manager.createOntology(IRI.create("http://example.org/edit"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/o"))));
+        org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat editFormat =
+                new org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat();
+        editFormat.setDefaultPrefix("http://example.org/edit#");
+        manager.setOntologyFormat(edit, editFormat);
+        org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat mainFormat =
+                new org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat();
+        mainFormat.setDefaultPrefix("http://example.org/o#");
+        manager.setOntologyFormat(ontology, mainFormat);
+
+        Map<String, String> found = byKey(OntologyMeasurements.run(edit,
+                OntologyMeasurements.Depth.EXTENDED, "pets"));
+
+        String terms = found.get(MetricsLabels.NS_USE_SIGNATURE_INCL);
+        assertTrue(terms.contains("pets 6"), terms);
+        assertFalse(terms.contains("prefix_unknown"), terms);
     }
 }

@@ -11,5 +11,26 @@
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:ContextualizedWinstonPartWhole",
   "class_count": 9,
   "property_count": 4,
-  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none",
+  "curated": [
+    "header: dcterms:title \"Contextualizedwinstonpartwhole Pattern\" - the library's name for the pattern",
+    "header: dcterms:description - the library's description of the pattern",
+    "term declared: <http://purl.org/dc/terms/description> as an annotation property",
+    "term declared: <http://purl.org/dc/terms/title> as an annotation property",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#IsPartOf> \"is part of\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Component-Type> \"PO component type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Feature-Type> \"PO feature type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Member-Type> \"PO member type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Part-Of_Type> \"PO part of type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Place-Type> \"PO place type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Portion-Type> \"PO portion type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#PO-Stuff-Type> \"PO stuff type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#RelationInstance> \"relation instance\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#Spatially-Located-In-Type> \"spatially located in type\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#hasWhole> \"has whole\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#part-of> \"part of\"@en - from its name",
+    "label added: <http://daselab.org/ContextualizedWinstonPartWhole#spatially-located-in> \"spatially located in\"@en - from its name",
+    "label added: <http://purl.org/dc/terms/description> \"Description (DC terms)\"@en - from http://purl.org/dc/terms/, with its source in brackets: in the library it shares \"Description\" with another term",
+    "label added: <http://purl.org/dc/terms/title> \"Title\"@en - from http://purl.org/dc/terms/"
+  ]
 }

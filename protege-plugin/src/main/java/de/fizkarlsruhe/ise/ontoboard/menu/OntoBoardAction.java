@@ -49,6 +49,26 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      */
     protected abstract OperationResult run(OWLOntology ontology);
 
+    /**
+     * What this operation writes beside the open file - "the import of these terms" - or null when
+     * it writes nothing there (1.155.0). In a release file of an ODK project that work would be
+     * lost at the next release, or would change a published one: it is refused before anything is
+     * asked or written, with where to work instead and the edit file offered - see
+     * {@link ReleaseFileRefusal}.
+     */
+    protected String worksBesideTheFile() {
+        return null;
+    }
+
+    /**
+     * Whether the run may go on behind while the person works - Keep working on its progress
+     * window - and is told of when done (1.155.0: Build and Release). One that may is refused
+     * while another such run is going on behind.
+     */
+    protected boolean canRunBehind() {
+        return false;
+    }
+
     /** Whether to refuse when nothing is open. Most operations need an ontology; a few do not. */
     protected boolean needsAnOntology() {
         return true;
@@ -96,6 +116,36 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return !runsInBackground();
     }
 
+    /**
+     * Whether this action writes the project's files or runs make or git in it: it waits while a
+     * Build or Release goes on behind (Keep working), as two makes in one project write the same
+     * files. Only Build and Release waited, so an import or a refresh ran make beside a build
+     * kept behind (the 1.155.0 review's I5). What only reads, or changes the open ontology in
+     * Protege, goes on.
+     */
+    protected boolean writesTheProject() {
+        return false;
+    }
+
+    /**
+     * Says that this action waits for the runs going on behind, with the way to stop them - the
+     * window that held Stop was closed by Keep working.
+     */
+    private void waitForTheRunsBehind(java.util.Set<String> behind) {
+        String names = String.join(" and ", behind);
+        Object[] options = {"OK", behind.size() == 1 ? "Stop " + names : "Stop them"};
+        int chosen = JOptionPane.showOptionDialog(getOWLWorkspace(), names
+                + (behind.size() == 1 ? " is" : " are") + " running in the background. Its result "
+                + "opens when it is done; " + operationName() + " can be started then.",
+                operationName() + " waits", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (chosen == 1) {
+            for (String what : behind) {
+                BackgroundRun.stopBehind(what);
+            }
+        }
+    }
+
     @Override
     public final void actionPerformed(ActionEvent event) {
         OWLOntology ontology = getOWLModelManager() == null ? null
@@ -105,6 +155,18 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Open an ontology first - " + operationName() + " works on the one you have "
                             + "open.",
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        java.util.Set<String> behind = BackgroundRun.runningBehind();
+        if ((canRunBehind() || writesTheProject()) && !behind.isEmpty()) {
+            waitForTheRunsBehind(behind);
+            return;
+        }
+        String work = worksBesideTheFile();
+        if (work != null && ReleaseFileRefusal.said(getOWLWorkspace(),
+                ReleaseFileRefusal.documentOf(getOWLModelManager(), ontology), work)) {
+            LOGGER.info("OntoBoard: {} was not started - the open file is a release file",
+                    operationName());
             return;
         }
         final OWLOntology target = ontology;
@@ -133,17 +195,26 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
             // an action doing that on the dispatch thread freezes all of Protege with no repaint
             // and no way out, and an action that blocks the EDT *waiting* for it deadlocks
             // outright against any operation that needs the EDT to apply its changes.
-            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> run(target),
+            final long started = System.currentTimeMillis();
+            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> {
+                        OperationResult ran = run(target);
+                        return ran == null ? null
+                                : ran.tookAtLeast(System.currentTimeMillis() - started);
+                    },
                     result -> {
                         if (result != null) {
                             ResultDialog.show(getOWLWorkspace(), result);
                         }
-                    });
+                    }, canRunBehind());
             return;
         }
         OperationResult result;
+        long started = System.currentTimeMillis();
         try {
             result = run(target);
+            if (result != null) {
+                result = result.tookAtLeast(System.currentTimeMillis() - started);
+            }
         } catch (RuntimeException | LinkageError failure) {
             // LinkageError as well as RuntimeException: several ROBOT operations fail that way on
             // Protege 5.5's older OWL API, and a NoSuchMethodError escaping into Protege's log is

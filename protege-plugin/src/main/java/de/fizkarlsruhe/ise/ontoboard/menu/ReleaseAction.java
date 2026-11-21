@@ -84,9 +84,32 @@ public class ReleaseAction extends OntoBoardAction {
     private volatile ReleaseRoute odkRoute;
     private volatile File odkEditFile;
 
+    /** Writes the project, or runs make or git in it: waits for a run kept behind. */
+    @Override
+    protected boolean writesTheProject() {
+        return true;
+    }
+
     @Override
     protected String operationName() {
         return "Release";
+    }
+
+    /**
+     * Only an ODK project's release goes on behind: it is built from the files on disk. Any other
+     * reads the ontology open in Protege - the report, the reasoner, the copy released - on the
+     * run's own thread, and would read it while it is edited (the 1.155.0 review's open
+     * question). Until a release is set up, none does.
+     */
+    @Override
+    protected boolean canRunBehind() {
+        return odkStart != null;
+    }
+
+    /** A release file is not released as an ontology of its own: one is made from the edit file. */
+    @Override
+    protected String worksBesideTheFile() {
+        return ReleaseFileRefusal.RELEASING;
     }
 
     @Override
@@ -137,7 +160,10 @@ public class ReleaseAction extends OntoBoardAction {
         values.put(OPTION_DATE, proposed.getText());
         values.put(OPTION_CHECK, "true");
         values.put(OPTION_REASON, "true");
-        values.put(OPTION_REASONER, Reasoners.DEFAULT.getLabel());
+        // The release reasons with the person's choice, HermiT first (1.155.0): it is asked before
+        // anything is written, and ELK misses what an inverse property or a datatype implies.
+        values.put(OPTION_REASONER,
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.preselected(editFile));
         // On when there is something to merge: the guide promises the release is the merged,
         // reasoned file people use, and with it off a first release that imports anything warned
         // about a catalog nobody who reads the guide has heard of.
@@ -159,7 +185,7 @@ public class ReleaseAction extends OntoBoardAction {
                 return false;
             }
             values = chosen;
-            List<String> problems = versionProblems(chosen);
+            List<String> problems = versionProblems(chosen, today);
             if (problems.isEmpty()) {
                 String clash = clashWithReleases(projectRoot, ontologyId,
                         OntologyVersion.parseOrNull(chosen.get(OPTION_DATE).trim()));
@@ -291,9 +317,14 @@ public class ReleaseAction extends OntoBoardAction {
             whyNotFast = cannot[0];
             whyNotFull = cannot[1];
         }
+        // 1.155.0: a project's own script is run by OntoBoard itself where every line can run
+        // here - asked only where OntoBoard would be the one to run it.
+        String whyNotScript = script == null || container ? null
+                : de.fizkarlsruhe.ise.ontoboard.odk.ProjectScript.whyNotOnTheEngine(editFile,
+                        start.script().file());
         ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
-                container || choice == null ? null : choice.note(), script, whyNotFast,
-                whyNotFull);
+                container || choice == null ? null : choice.note(), script, whyNotScript,
+                whyNotFast, whyNotFull);
         // Refused for want of DOSDP-Tools: offered, and the engine asked again once it is there.
         // Declined, the offer was the refusal.
         String cure = variables == null ? null : DosdpOffer.forRelease(route.refusal());
@@ -303,8 +334,8 @@ public class ReleaseAction extends OntoBoardAction {
             }
             String[] cannot = whyTheEngineCannot(editFile, variables);
             route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
-                    container || choice == null ? null : choice.note(), script, cannot[0],
-                    cannot[1]);
+                    container || choice == null ? null : choice.note(), script, whyNotScript,
+                    cannot[0], cannot[1]);
         }
         if (route.refusal() != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
@@ -410,17 +441,9 @@ public class ReleaseAction extends OntoBoardAction {
                         start.facts().ontology())
                 : imageNote;
         return OdkReleaseForm.run(operationName(), start, odkChosen, odk,
-                ProcessRunner.real(), new OdkRelease.Asks() {
-                    @Override
-                    public boolean commit(ReleaseRun.Staging staging) {
-                        return askToCommit(staging, start.facts().root());
-                    }
-
-                    @Override
-                    public boolean stopped() {
-                        return BackgroundRun.abandoned();
-                    }
-                }, routeNote, protegeReadsAgain());
+                ProcessRunner.real(), odkAsks(staging -> askToCommit(staging,
+                        start.facts().root()), BackgroundRun::abandoned,
+                        this::goOnWithoutVerdict), routeNote, protegeReadsAgain());
     }
 
     /**
@@ -471,6 +494,28 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /**
+     * The answer the question to commit starts on: Not now when the run is behind - it comes up
+     * while the person works on, and a stray Enter committed and tagged - or when files were
+     * saved while it ran, which the release may hold some of or none (the 1.155.0 review's I3,
+     * I4).
+     */
+    static String commitDefault(boolean behind, boolean savedMeanwhile) {
+        return behind || savedMeanwhile ? "Not now" : "Commit and tag";
+    }
+
+    /** The answer "Release without the check?" starts on: No when the run is behind (I4). */
+    static String withoutTheCheckDefault(boolean behind) {
+        return behind ? "No" : "Yes";
+    }
+
+    /** The window in front - the progress dialog while a release runs - else the workspace. */
+    private java.awt.Component inFront() {
+        java.awt.Window front = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                .getActiveWindow();
+        return front != null ? front : getOWLWorkspace();
+    }
+
+    /**
      * Shows the git commands a release is about to run, and asks.
      *
      * <p>Called from the worker; the question is put on the event thread and waited for. It
@@ -481,6 +526,9 @@ public class ReleaseAction extends OntoBoardAction {
         if (BackgroundRun.abandoned()) {
             return false;
         }
+        // Asked here, on the run's own thread, which knows whether it was kept behind.
+        final String startsOn = commitDefault(BackgroundRun.questionWaits(),
+                !staging.savedMeanwhile().isEmpty());
         final boolean[] agreed = new boolean[1];
         Runnable ask = new Runnable() {
             @Override
@@ -493,7 +541,7 @@ public class ReleaseAction extends OntoBoardAction {
                 agreed[0] = javax.swing.JOptionPane.showOptionDialog(
                         front != null ? front : getOWLWorkspace(), scroll,
                         "Record the release in git", javax.swing.JOptionPane.YES_NO_OPTION,
-                        javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0])
+                        javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, startsOn)
                         == javax.swing.JOptionPane.YES_OPTION;
             }
         };
@@ -529,6 +577,26 @@ public class ReleaseAction extends OntoBoardAction {
      * other is selected would publish, say, {@code .../mwo/releases/3.0.2/mwo.owl} - a shape that
      * belongs to neither history, under an IRI that cannot be taken back.
      */
+    /**
+     * As {@link #versionProblems(Map)}, and a dated version after {@code today} refused: a
+     * dated version says when it was released (1.155.0).
+     *
+     * @param today as the release's date is written, {@code 2026-11-19}
+     */
+    static List<String> versionProblems(Map<String, String> values, String today) {
+        List<String> problems = versionProblems(values);
+        String typed = values.get(OPTION_DATE) == null ? "" : values.get(OPTION_DATE).trim();
+        OntologyVersion parsed = OntologyVersion.parseOrNull(typed);
+        OntologyVersion now = today == null ? null : OntologyVersion.parseOrNull(today);
+        if (problems.isEmpty() && parsed != null && now != null
+                && parsed.getScheme() == OntologyVersion.Scheme.DATE
+                && now.getScheme() == OntologyVersion.Scheme.DATE && parsed.compareTo(now) > 0) {
+            problems.add("A dated version says when it was released; " + typed
+                    + " is after today, " + today + ".");
+        }
+        return problems;
+    }
+
     static List<String> versionProblems(Map<String, String> values) {
         List<String> problems = new java.util.ArrayList<String>();
         String typed = values.get(OPTION_DATE) == null ? "" : values.get(OPTION_DATE).trim();
@@ -630,7 +698,8 @@ public class ReleaseAction extends OntoBoardAction {
         if (order > 0 || (order == 0 && dated)) {
             return null;
         }
-        String instead = dated ? "Release with today's date, or a later one."
+        String instead = dated ? "Release with today's date - which replaces that day's "
+                + "release - or, to keep both, under a semantic version."
                 : "Type a version above it - " + newest.nextPatch().getText()
                         + " if nothing moved, " + newest.nextMinor().getText()
                         + " if terms were added.";
@@ -659,7 +728,8 @@ public class ReleaseAction extends OntoBoardAction {
             return null;
         }
         return "Replace the " + releasing.getText() + " release? releases/" + releasing.getText()
-                + " holds a release made under that date, and somebody may already have taken it.";
+                + " holds a release made under that date, and somebody may already have taken it."
+                + " To keep it, release under a semantic version instead.";
     }
 
     /** The form, with whatever was typed last time already in it. */
@@ -715,9 +785,18 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "distinguishes a release from the edit file.")
                         .build(),
                 Parameter.of(OPTION_REASONER, "Reasoner", Parameter.Kind.CHOICE)
-                        .choices(Reasoners.labels().toArray(new String[0]))
+                        .choices(releaseReasonerChoices().toArray(new String[0]))
                         .defaultValue(values.get(OPTION_REASONER))
-                        .help(Reasoners.help())
+                        .help("The reasoner this release reasons with. Before anything is "
+                                + "written it is asked whether the ontology, with its imports, "
+                                + "is consistent and every class can have members; either "
+                                + "problem stops the release, with the axioms that cause it. "
+                                + "With 'Write down the inferences' it also writes them. ELK "
+                                + "and Whelk reason in OWL 2 EL: they ignore inverse "
+                                + "properties, universal restrictions, cardinalities, unions "
+                                + "and negation, so a contradiction that needs one of them "
+                                + "goes unseen. HermiT and JFact read all of OWL 2 DL; on a "
+                                + "large ontology they take longer.")
                         .build(),
                 Parameter.of(OPTION_MERGE, "One self-contained file (merge the imports in)",
                         Parameter.Kind.FLAG)
@@ -737,6 +816,144 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "ontologies keep them because they explain the modelling. Off "
                                 + "by default for that reason.")
                         .build());
+    }
+
+    /** The reasoners a release can use - not Structural, which concludes nothing (1.155.0). */
+    static List<String> releaseReasonerChoices() {
+        return de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.names();
+    }
+
+    /**
+     * What a release of an ontology in no project records of itself (1.155.0): RELEASE.md beside
+     * its dated copy, as an ODK project's release keeps one.
+     *
+     * @param verdict    what the reasoner said, or null when it was not asked
+     * @param reportSaid what the quality report found, or how it was not run
+     * @return the record written
+     */
+    static File recordBeside(File dated, File edit, String id, String version, String date,
+            String verdict, String reportSaid, String previous, String changes)
+            throws java.io.IOException {
+        File record = new File(dated.getParentFile(), "RELEASE.md");
+        java.nio.file.Files.write(record.toPath(), de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRecord
+                .markdown(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRecord.standalone(dated, edit,
+                        id, version, date, verdict, reportSaid, previous, changes))
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return record;
+    }
+
+    /** What the quality report found for this release, or how it was not run: for its record. */
+    private volatile String reportSaid;
+
+    /**
+     * D1 (1.155.0) for a release of an ontology in no project: what the reasoner the person
+     * chose says about the open ontology, with the imports it was loaded with.
+     *
+     * @param goOn asked when the reasoner did not finish in time: whether to release unchecked
+     * @return why nothing is released, or null to go on (what was found is in {@code result})
+     */
+    static String whatTheReasonerSays(OWLOntology ontology, String reasoner, long limitMillis,
+            java.util.function.BooleanSupplier stopped,
+            java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> goOn,
+            OperationResult.Builder result) {
+        return whatTheReasonerSays(ontology, reasoner, limitMillis, stopped, goOn, result, null);
+    }
+
+    /** The same, handing the verdict on - to the release's record. */
+    static String whatTheReasonerSays(OWLOntology ontology, String reasoner, long limitMillis,
+            java.util.function.BooleanSupplier stopped,
+            java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> goOn,
+            OperationResult.Builder result,
+            java.util.function.Consumer<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict> found) {
+        de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict =
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.check(ontology, reasoner,
+                        limitMillis, stopped);
+        if (found != null) {
+            found.accept(verdict);
+        }
+        result.note("Checked by " + verdict.reasoner() + ": " + verdict.kind().name()
+                .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
+        if (verdict.kind() == de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.Kind.TIMED_OUT) {
+            if (goOn == null || !goOn.test(verdict)) {
+                return verdict.said() + " The release was not checked, so it was not made. "
+                        + "Nothing was released.";
+            }
+            result.warn("Released not checked by " + verdict.reasoner() + ": "
+                    + verdict.said());
+            return null;
+        }
+        if (verdict.stopsARelease()) {
+            String why = verdict.said() + " Nothing was released.";
+            return verdict.explanation().isEmpty() ? why : why + "\n\n" + verdict.explanation();
+        }
+        String misses = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseReasoners.whatItMisses(
+                verdict.reasoner());
+        if (misses != null) {
+            result.warn("Checked and released with " + verdict.reasoner() + ". " + misses);
+        }
+        return null;
+    }
+
+    /**
+     * What an ODK project's release asks the person: whether to commit, whether they stopped it,
+     * and whether to go on when the reasoner did not finish - which it answered "no" without
+     * asking, so a reasoner that ran past the limit refused every large project's release (the
+     * final review of 1.155.0).
+     */
+    static de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Asks odkAsks(
+            final java.util.function.Predicate<ReleaseRun.Staging> commit,
+            final java.util.function.BooleanSupplier stopped,
+            final java.util.function.Predicate<de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict>
+                    goOn) {
+        return new de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Asks() {
+            @Override
+            public boolean commit(ReleaseRun.Staging staging) {
+                return commit.test(staging);
+            }
+
+            @Override
+            public boolean stopped() {
+                return stopped.getAsBoolean();
+            }
+
+            @Override
+            public boolean goOnWithoutVerdict(
+                    de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
+                return goOn.test(verdict);
+            }
+        };
+    }
+
+    /** Asked on the Swing thread when the reasoner did not finish in time. */
+    private boolean goOnWithoutVerdict(
+            final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict verdict) {
+        final boolean[] yes = {false};
+        // On the run's own thread, which knows whether it was kept behind: then No is where the
+        // question starts (the 1.155.0 review's I4).
+        final String startsOn = withoutTheCheckDefault(BackgroundRun.questionWaits());
+        // Owned by the window in front - the progress dialog, which is modal - as the
+        // question to commit is, so that it cannot open behind it.
+        Runnable ask = () -> {
+            Object[] options = {"Yes", "No"};
+            yes[0] = javax.swing.JOptionPane.showOptionDialog(inFront(),
+                    wrapped(verdict.said() + " Release without the check? The result will say it "
+                            + "was not checked."), "The reasoner did not finish",
+                    javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE,
+                    null, options, startsOn) == javax.swing.JOptionPane.YES_OPTION;
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            ask.run();
+        } else {
+            try {
+                javax.swing.SwingUtilities.invokeAndWait(ask);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return false;
+            } catch (java.lang.reflect.InvocationTargetException failed) {
+                return false;
+            }
+        }
+        return yes[0];
     }
 
     @Override
@@ -773,6 +990,16 @@ public class ReleaseAction extends OntoBoardAction {
         } else {
             result.warn("The quality report was not run, so nothing checked this release against "
                     + "the project's own rules.");
+            reportSaid = "not run: \"Refuse to release on an error\" was off.";
+        }
+        // D1 (1.155.0): what the reasoner the person chose says, before anything is written.
+        final de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict[] checked =
+                new de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict[1];
+        String contradiction = whatTheReasonerSays(ontology, reasoner.getLabel(),
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseVerdict.DEFAULT_LIMIT_MILLIS,
+                BackgroundRun::abandoned, this::goOnWithoutVerdict, result, v -> checked[0] = v);
+        if (contradiction != null) {
+            return result.failed(contradiction).build();
         }
 
         String overwriting = Release.wouldOverwrite(projectRoot, id, date);
@@ -969,6 +1196,16 @@ public class ReleaseAction extends OntoBoardAction {
             }
         }
 
+        // What the release records of itself (1.155.0), as an ODK project's release keeps one.
+        try {
+            result.wrote(recordBeside(dated, editFile, id, version.getText(), date,
+                    checked[0] == null ? null : checked[0].said(), reportSaid, previous,
+                    diff == null ? null : diff.summary()));
+        } catch (java.io.IOException | RuntimeException cannotWrite) {
+            result.warn("The release was written but its record, RELEASE.md, was not: "
+                    + cannotWrite.getMessage());
+        }
+
         result.note("The dated copy is what the version IRI names, so leave it alone - it is the "
                 + "only thing that makes the IRI mean anything.");
         result.note("The copy at the project root is the same file under the name a PURL resolves "
@@ -1017,12 +1254,17 @@ public class ReleaseAction extends OntoBoardAction {
                         + " in the quality report, so nothing was written. Fix them, or turn the "
                         + "check off if you know what you are publishing.";
             }
+            reportSaid = "OntoBoard's quality report, with " + (profile == null
+                    ? "ROBOT's built-in profile" : profile.getName()) + ": no errors - an error "
+                    + "stops the release.";
             return null;
         } catch (RobotException cannotReport) {
             // Not a silent pass. A release that skipped its own gate and did not say so is worse
             // than one that refused.
             result.warn("The quality report could not run here, so this release was not checked: "
                     + cannotReport.getMessage());
+            reportSaid = "could not run here, so this release was not checked against its rules: "
+                    + cannotReport.getMessage();
             return null;
         }
     }

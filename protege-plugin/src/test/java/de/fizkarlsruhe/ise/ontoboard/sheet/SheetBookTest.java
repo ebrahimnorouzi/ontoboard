@@ -404,6 +404,24 @@ class SheetBookTest {
         assertNotNull(book.get("good"));
     }
 
+    /**
+     * A sheet saved is recorded as saved, as Protege's own saves are: a release that ran behind
+     * meanwhile names it before it commits (the 1.155.0 review's I3).
+     */
+    @Test
+    void aSheetSavedIsRecordedAsSaved() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "stainless steel");
+        long before = System.currentTimeMillis();
+
+        book.save("one");
+
+        assertEquals(java.util.Arrays.asList("one.tsv"),
+                de.fizkarlsruhe.ise.ontoboard.odk.SavedMeanwhile.under(dir, before));
+    }
+
     @Test
     void savingWritesTheSheetBackAndClearsTheUnsavedMark() throws Exception {
         File file = new File(dir, "one.tsv");

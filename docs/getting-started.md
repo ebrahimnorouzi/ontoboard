@@ -57,7 +57,7 @@ fails, the result names the rule and the terms. See
 | *Project* | Start or open a project, turn an ontology into one; its configuration, ID ranges and scripts; *Update project files...* |
 | *Reuse* | Design patterns; terms from other ontologies; what each import brings |
 | *Terms* | Notes and discussion links; obsoleting, renaming and transforming; exporting terms |
-| *Spreadsheets* | Sheets of terms or data: edit, check, turn into terms or a knowledge graph |
+| *Knowledge graph* | Sheets of terms or data, a row each: edit, check, build terms or a knowledge graph from them |
 | *Check and test* | Tests from your questions, the quality report, explanations, profiles, measures, SPARQL, Konclude, project metadata |
 | *Build and release* | Build, release, history, comparing releases, the documentation page |
 | *Share* | Git, pull requests, editing live together |
@@ -71,7 +71,7 @@ Only Protégé is needed - it brings its own Java.
 | Works with nothing installed | Needs something else |
 |---|---|
 | New ODK project, Turn an ontology into an ODK repository, Update project files, Build, Release, Refresh imports - ODK's own targets, run by OntoBoard itself, and a project's own rules where every line of them can run here | A rule OntoBoard cannot run, a project's own `release.sh`, SSSOM or the `db` export: ODK's container (Docker or Podman) or, on Linux and macOS, ODK's tools |
-| Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the board, and *Record who edits terms* | Git, for commits, tags, pull and push; the network for imports fetched from the web |
+| Everything under *Reuse*, *Terms*, *Knowledge graph* and *Check and test*, the board, and *Record who edits terms* | Git, for commits, tags, pull and push; the network for imports fetched from the web |
 | | Widoco, Konclude and DOSDP-Tools: OntoBoard offers to download each the first time it is needed |
 
 *OntoBoard → Run self-test* checks this on your machine; *OntoBoard → Check requirements...* lists

@@ -55,10 +55,30 @@ public final class CanvasTooltips {
             text.append("<br><b>Imported</b> - defined in another ontology. Refer to it freely; "
                     + "editing it here writes into your file, not the import.");
         }
+        appendRows(text, node.getRows());
         appendSummary(text, node.getSummary());
         appendNotes(text, node.getNotes());
         return text.append("<br><font size=\"-2\">").append(escape(node.getId()))
                 .append("</font></html>").toString();
+    }
+
+    /**
+     * A class's rows as its box draws them (1.155.0), whole: the box cuts a row too long for it
+     * short, and a box sized by hand can hold fewer than there are.
+     */
+    private static void appendRows(StringBuilder text, java.util.List<String> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        boolean keys = false;
+        for (String row : rows) {
+            keys |= row.startsWith("key: ");
+        }
+        text.append("<br><b>").append(keys ? "Data properties and keys:" : "Data properties:")
+                .append("</b>");
+        for (String row : rows) {
+            text.append("<br>").append(escape(row));
+        }
     }
 
     /**

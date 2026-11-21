@@ -114,7 +114,8 @@ public class ExplainAction extends OntoBoardAction {
                             + "justifications per problem to see a smaller set.");
                     break;
                 }
-                result.row(justification.getEntailment(), axiom);
+                // A row about the class it explains, which a click shows (1.155.0).
+                result.rowAbout(justification.getSubject(), justification.getEntailment(), axiom);
                 rows++;
             }
             if (rows >= MAX_ROWS) {
